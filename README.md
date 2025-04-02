@@ -68,7 +68,7 @@ Test results will be available through an authenticated access to antithesis pla
 * Analyse the result
 * Write a report and publish it in the relevant directory
 
-> [!NOTICE]
+> [!NOTE]
 >
 > It's still unclear how the results are available, what kind of
 > reports are produced, and how to analyse and use those.  Things will

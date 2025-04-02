@@ -64,7 +64,7 @@ Each test run will be triggered from a Github action:
 * Later on through submitting a _Pull Request_
 
 Test results will be available through an authenticated access to antithesis platform, so they won't be directly shareable. Moreover, in the case test results expose some potential security vulnerability, we certainly don't want to disclose those publicly before notifying interested parties. The general process should look like:
-* Once test results are available, acknowledge the end of test by updating the [logbook](../Logbook.md) with some basic data from the result (time run, number of tests executed)
+* Once test results are available, acknowledge the end of test by updating the [Logbook](./Logbook.md) with some basic data from the result (time run, number of tests executed)
 * Analyse the result
 * Write a report and publish it in the relevant directory
 

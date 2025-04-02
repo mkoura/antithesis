@@ -41,14 +41,12 @@ All dates are expressed relative to project's start date:
 |             |             | - analysis of fitness-for-purpose of the platform w.r.t testing cardano-node, possibly detailing needed adjustments to the code (eg. tracing) |
 |             |             | - feedback from community (eg. core team, other node implementors, SMEs, SPOs, etc.                                                           |
 |             |             | - *Answer to the question*: Shall we keep evaluating the platform to test the cardano-node and/or other components of Cardano?                |
-|-------------|-------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
 | T+3m        | Prototyping | Evaluation report detailing:                                                                                                                  |
 |             |             | - as above plus                                                                                                                               |
 |             |             | - possible plan(s) to make the platform acccessible to community members                                                                      |
 |             |             | - evaluation of cost/benefit for node/components implementors                                                                                 |
 |             |             | - economic analysis of operating model for the project                                                                                        |
 |             |             | - *Answer to the question*: should the Cardano community pursue investment in the platform?                                                   |
-|-------------|-------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
 | T+ (k * 3m) | Production  | Produce quarterly reports on the use of the platform                                                                                          |
 
 ## Basic repository structure

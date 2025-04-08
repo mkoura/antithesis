@@ -5,7 +5,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
 const config: Config = {
-  title: 'Tartarus',
+  title: 'CF/Antithesis',
   tagline: "ch'i' non ti lascerò nel mondo basso.",
   favicon: 'img/cardano-ada-logo.svg',
 

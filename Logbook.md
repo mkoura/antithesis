@@ -1,5 +1,41 @@
 # Log Book
 
+## 2025-04-09
+
+### Meeting summary
+
+* We had our weekly touchpoint with AT team and CF Task Force
+* Over the past week we refined our understand of the platform and the CF team is working on a branch with several different setups, including one "large" cluster test where P2P networking can [lead to a crash](https://github.com/IntersectMBO/ouroboros-network/issues/5058) on some particular circumstances
+* We discussed our difficulties chasing that particular network bug which requires more runtime than is customary with AT runs
+  * We can reproduce the bug using a local docker compose setup so we know it's possible to do it
+  * We could not find a way to "miniaturise" the bug, e.g reduce network size, parameters, slot duration, $k$, etc.
+* A discussion about the kind of faults we are looking at ensued:
+  * network related faults, like the one above, which should be related to handling of adversarial conditions in the system
+  * consensus faults which are related to the diffusion logic and chain selection, also depend on resources (eg. selection and diffusiong needs to happen quickly) but mostly related to correct implementation of Ouroboros Praos protocol
+  * mempool faults, which are related to diffusion of txs, and can have adversarial effect on the system because of excessive use of resources, race conditions, competing with other parts, etc.
+  * ledger faults which relate to the block/transaction evaluation
+* AT work should focus (at least for now?) on the first three as ledger is a pure function, although it could be the case an error in the ledger ripples to other layers (eg. diverging computations, unexpected errors, etc.)
+  * we note that all layers have an extensive set of property tests
+  * it's still unclear how to be best use the tools. AT engine uses different computing characteristics for different workloads/SUTs
+  * It's possible to calibrate those performance characteristics in order to better replicate environment but this is not open to customers
+* One problem we was the logs output limit. Its purpose is to help reproducing things faster as obviously more output leads to more resources for each run
+* While there are certainly bugs that can be triggered through fuzzing I/Os, we need to have a way to run "adversaries" within the system, to inject blocks/transactions to load the system and possibly trigger issues in consensus, mempool, or ledger
+  * We don't currently deploy anything like that in our stack, but we should build something
+* We discuss how AT does fault injection
+  * it's completely rerandomized on purpose, in order to remove human biases as much as possible
+  * with more information about baseline guarantees expected from the system, some issues found could be filter out, eg. triggering errors that are beyond the operational limits of the system
+  * there's no API to control the various parameters for fault injection
+
+TODOs:
+
+1. extend test execution time to reproduce network bug, and explore how AT analysis can help to understand the bug
+1. try to miniaturise the setup to reproduce the bug
+2. try to reproduce a consensus bug that requires injection of data
+   a. implies we need to build some tool to inject blocks/data in the network
+3. defining & refining general security properties
+4. integrate [cardano-tracer](https://developers.cardano.org/docs/get-started/cardano-node/new-tracing-system/cardano-tracer/) into compose stack to be able to collect logs
+5. express assertion on logs collected with tracer
+
 ## 2025-04-02
 
 ### Official kick-off meeting

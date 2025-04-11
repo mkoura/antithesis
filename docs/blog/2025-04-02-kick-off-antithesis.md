@@ -5,7 +5,7 @@ authors: [abailly]
 tags: [infra]
 ---
 
-Today, April 2nd, 2025 was the date of the official kick-off for the Cardano/Antithesis project. Already involved in testing and monitoring the Cardano network infrastructure, the [Cardano Foundation](https://cardanofoundation.org) has decided to dedicate resources to evaluate if and how [Antithesis](https://antithesis.com) could increase the reach and level of quality assurance the network needs.
+Today, April 2nd, 2025 was the date of the kick-off for the Cardano/Antithesis project. Already involved in testing and monitoring the Cardano network infrastructure, the [Cardano Foundation](https://cardanofoundation.org) has decided to dedicate resources to evaluate if and how [Antithesis](https://antithesis.com) could increase the reach and level of quality assurance the network needs.
 
 This post introduces the project, its motivations, scope, ambitions, and timeline.
 
@@ -41,7 +41,7 @@ Here is a diagram from [antithesis' website](https://antithesis.com/product/what
 
 While we strongly believe in the effectiveness of this approach especially as new components get developed, network grows, and new features are added to the protocol, and Antithesis has already been adopted by industry leaders like Confluent or Ethereum, we want to understand how this investment can yield value to the Cardano community _as a whole_ in a perennial way.
 
-The long-term goal of this project is therefore to collectively build and maintain a testing infrastructure that can benefit the ecosystem and most notably those parties involved in the development and maintenance of the Cardano infrastructure: Nodes, protocols, and related tools. We envision this infrastructure to be governed through an open and transparent process which is yet to be defined, and to be funded by the _community_ through whatever channels seem the most effective, whether it is grants, dedicated treasury withdrawals, infrastructure budget, contributions and fees...
+The long-term goal of this project is therefore to collectively build and maintain a testing infrastructure that can benefit the ecosystem and most notably those parties involved in the development and maintenance of the Cardano infrastructure: Nodes, protocols, and related tools. We envision this infrastructure to be governed through an open and transparent process which is yet to be defined by and for the _Cardano community_ through whatever channels seem the most effective.
 
 In the short-term however, we need to experiment with the platform, understand what are its capabilities and limits, what it requires from the system-under-test in order to be the most effective, how powerful it is to find and troubleshoot bugs and security vulnerabilities, and more generally openly and candidly build a strong case for the governing bodies of the Cardano ecosystem to decide whether or not this investment shall be pursued.
 

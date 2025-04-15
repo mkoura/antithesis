@@ -24,7 +24,17 @@ verify_environment_variables() {
 enable_composers() {
     # CONVERGENCE_COMPOSER
     if [ "${CONVERGENCE_COMPOSER,,}" = "true" ]; then
-        ln -snf /opt/composer/convergence /opt/antithesis/test/v1/convergence
+        local src_dir="/opt/composer/convergence"
+        local dest_dir="/opt/antithesis/test/v1/convergence"
+
+        mkdir -p "$dest_dir"
+
+        for file in "$src_dir"/*; do
+            if [ -f "$file" ]; then  # Only process regular files (not directories or symlinks)
+                local filename=$(basename "$file")
+                ln -snf "$file" "$dest_dir/$filename"
+            fi
+        done
     fi
 }
 
@@ -33,9 +43,8 @@ signal_ready() {
         for i in $(seq 1 "${POOLS}"); do
             (
                 while true; do
-                    block_num=$(cardano-cli ping -t -q -j --magic 42 --host p${i}.example --port ${PORT} 2>/dev/null | jq -r '.tip[0].blockNo' 2>/dev/null)
-                    exit_code=${?}
-                    if [ ${exit_code} -ne 0 ]; then
+                    cardano-cli ping -c1 -q -j --magic 42 --host p${i}.example --port ${PORT} 2>/dev/null
+                    if [ $? -ne 0 ] ; then
                         sleep 1
                         continue
                     else

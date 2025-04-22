@@ -1,5 +1,60 @@
 # Log Book
 
+## 2025-04-16
+
+### Antithesis meeting
+
+* We are able to find the network p2p bug -> the node crashes after 200s
+  * 2 bugs in place -> an exception raised + change in exception policy that should only have killed the connection but killed the node
+  * why should it take 1 hour to detect? there's an hourly scheduled churn for hosts
+  * there are probably different ways of triggering the bug
+* working on eventually.sh script -> this might lead to triggering more interesting bugs
+  * it's purpose is to causing the chain to diverge
+* we are all trying to write more easily properties
+* Q: what are the priorities?
+  * block fetch bug (Brown M&Ms)? -> this is an old network bug (triggered by CPU load) when node takes too long to demote a peer
+  * consensus bug -> we need to wipe the DB and restarting
+* There was a bug in the converge.sh script that would rewrite return code to 0
+  * we need to change the way we handle SIGTERM -> exit code will be 1
+  * There is a property that checks container exit codes, the problem is exit w/ 1 is not distinguishable from any other exit
+  * AT could check the SIGTERM in the tester
+* Q: what about logs?
+  * logs in file make it possible to leverage SDK
+  * we are investigating how to write the program for asserting "sometimes it forks" and use shared volume
+* AT will write a fault injector that wipes out volume and restart a container
+* Also will write a test composer that can spin up a new container
+  * delay startup of a node after some time?
+  * wrap cardano-node to be able to start/stop/delay?
+* AT doesn't have disk faults for now
+  * something that's been asked by other people
+
+#### TODO:
+
+* (AB) reach out to core team to test UTxO HD
+  * discuss w/ Javier about fault simulation
+* (AT) schedule multiverse debugging session
+* (AT) start/stop containers wiping out dir
+* (KK) block fetch bug
+* (JL) write sometimes property using cardano-tracer
+* (AT) check SIGTERM exit
+* (AT) share docs of all the faults
+
+## 2025-04-13
+
+### Adding cardano-tracer
+
+* One of the issues we had with our initial setup was with logging, as the antithesis platform puts some limits on the amount of log one can output, something which is even checked by a property, currently set at 200MB/core/CPU hour
+* The [cardano-tracer](https://github.com/IntersectMBO/cardano-node/blob/master/cardano-tracer) is the new recommended tracing infrastructure for cardano-node that provides a protocol and an agent to forward logs to. This allows logging and tracing across a cluster of nodes to be aggregated  which is something that should prove useful to define properties
+* We have added the needed machinery in the [compose](compose) infrastructure:
+  1. compile a docker image to run the cardano-tracer executable as it's not available in a pre-compiled form by default
+  2. provide tracer configuration to expose prometheus metrics and enable connection from any number of other nodes
+  3. modify node's configuration to enable tracing and logging, which was turned off by default
+  4. run tracer container as part of compose stack along with cardano-node and "sidecar"
+* Some minor roadblocks we hit on this journey:
+  * managing users and r/w rights across shared volumes can be tricky. All services are run with a non-privileged user `cardano` but volumes are mounted with owner `root` by default (could not find a way to designate a different user in [compose](https://docs.docker.com/reference/compose-file/volumes/) documentation). We resorted to the usual technique of wrapping up `cardano-tracer` service in a script that modifies owner and rights on the fly upon startup
+  * for the cardano-node to forward traces require specific configuration, even though it's enabled by default since 10.2. if `TraceOptions` key is not present, the node won't start
+* While a first step would be to just read or follow the logs the cardano-tracer writes to files, the trace-forwarding protocol could be leveraged by write test and properties in a more direct manner, eg. to write a service ingesting logs and traces direclty and using default AT SDK to generate tests
+
 ## 2025-04-09
 
 ### Meeting summary

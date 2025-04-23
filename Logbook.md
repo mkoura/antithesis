@@ -1,5 +1,38 @@
 # Log Book
 
+## 2025-04-23
+
+### Antithesis meeting
+
+* Invited people from the Consensus core team joining to discuss one of the interesting bugs found
+* Going through the bug found, a Diffusion error about a missing block is detected in the logs
+  * precision: previous bugs found by the platform were known, eg. "brown M&Ms"
+* randomness is reseeded every 17s, controlled by the platform
+* Q: can we see faults injected?
+  * not shared by default, fault injectors logs are hard to read
+* Q: shrinking fault injections?
+  * upcoming feature
+* DB is designed to crash if files are deleted
+* find interesting points in time from the statistics graph, then poke around in the system at this point
+* Q: what's the normal workflow for debugging?
+  * some components are hard to debug
+* multiverse debugger ~ Jupyter notebook, JS environnement so one can write JS inside
+* rate of time in the debug env depends on busyness of the system
+* can work on branches from the moment where the bug happened
+  * can rewind branches back in time, keeping the same history
+  * branching ~ git
+* Q: can we replay history against different versions of the software?
+  * => want to fuzz ever more
+  * use properties as regression tests
+* Logs are disabled for consensus
+* Trying to query the node for the immmutable tip using cardano-cli inside debugging environment just before the node crashes
+  * cardnao-cli cannot access the node.socket, seems like it might be permission issue with reading the socket
+  * container does not have sudo/su
+  * could use cardano-ping to query the tip from the TCP socket
+* sounds like a great tool to debug the problem, need to investigate more -> no disk faults
+* could add artifacts, run commands, whatever to the run output
+* Next step: reproduce bug with more logs available, possibly using cardano-tracer sidecar, and use multiverse debugger to investigate with consensus team
+
 ## 2025-04-16
 
 ### Antithesis meeting

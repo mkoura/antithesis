@@ -2,7 +2,14 @@
 *~
 *.swp
 *.swo
+*.swl
+*.swm
+*.swn
+
 
 # compose
 compose/.testnet.yaml
 \#*
+
+# haskell
+dist-newstyle

@@ -10,6 +10,8 @@ Since our [kick-off meeting](./2025-04-02-kick-off-antithesis) that took place o
 
 This blog post outlines our journey and findings so far, and sketches out plans for the short and medium term in order to ensure this project delivers the most value for the Cardano community.
 
+<!-- truncate -->
+
 ## Overview and Timeline
 
 Our exploration with Antithesis began in January 2025, when we first made contact with their team. Quite excited with the prospect this tool offered for testing existing and feature core components of the Cardano network, a small team was assembled within the Cardano Foundation to work on a Proof-of-Concept with Antithesis team. This project was kicked-off on April 2nd at which point both teams started to collaborate actively to understand how to best use the platform to test cardano-node.

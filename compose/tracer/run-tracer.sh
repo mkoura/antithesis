@@ -5,4 +5,4 @@
 
 chown -R cardano /opt/cardano-tracer
 
-runuser -u cardano -- /usr/local/bin/cardano-tracer $@
+runuser -u cardano -- /usr/local/bin/cardano-tracer $@ > /dev/null

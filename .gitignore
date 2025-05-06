@@ -16,3 +16,7 @@ dist-newstyle
 
 # editors
 .vscode
+
+# direnv
+
+.direnv

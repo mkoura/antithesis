@@ -44,7 +44,7 @@ help:
 	@echo "    make anti testnet=example_10.2.1 password='password1234'"
 	@echo
 
-build: TESTNET build-image build-config build-sidecar build-tracer ## Build cardano-node, config, sidecar, and tracer images
+build: TESTNET build-image build-config build-sidecar build-tracer build-tracer-sidecar ## Build cardano-node, config, sidecar, and tracer images
 
 build-image: TESTNET ## Build cardano-node container image
 	ln -snf testnets/${testnet}/testnet.yaml .testnet.yaml ; cd testnets/${testnet} ; docker compose build
@@ -58,7 +58,10 @@ build-sidecar: TESTNET ## Build sidecar container image
 build-tracer: TESTNET ## Build tracer container image
 	docker build -f tracer/Dockerfile -t ${registry}${testnet}_tracer:latest tracer/
 
-push: TESTNET push-image push-config push-tracer push-sidecar ## Push cardano-node, config and sidecar container image
+build-tracer-sidecar: TESTNET ## Build tracer container image
+	docker build -f tracer-sidecar/Dockerfile -t ${registry}${testnet}_tracer-sidecar:latest tracer-sidecar/
+
+push: TESTNET push-image push-config push-tracer push-sidecar push-tracer-sidecar ## Push cardano-node, config and sidecar container image
 
 push-image: TESTNET ## Push cardano-node container image
 	docker push ${registry}${testnet}:latest
@@ -71,6 +74,9 @@ push-sidecar: TESTNET ## Push sidecar container image
 
 push-tracer: TESTNET ## Push tracer container image
 	docker push ${registry}${testnet}_tracer:latest
+
+push-tracer-sidecar: TESTNET ## Push tracer container image
+	docker push ${registry}${testnet}_tracer-sidecar:latest
 
 up: TESTNET ## Start Run local Docker Compose
 	cd testnets/${testnet} ; docker compose up --detach
@@ -90,7 +96,7 @@ anti: TESTNET ## Run Antithesis job
 	--arg description   '${description}' \
 	--arg duration      '${duration}' \
 	--arg config_image  '${testnet}_config:latest' \
-	--arg images        '${testnet}:latest;${testnet}_sidecar:latest' \
+	--arg images        '${testnet}:latest;${testnet}_sidecar:latest;${testnet}_tracer:latest;${testnet}_tracer-sidecar:latest' \
 	--arg recipients    '${recipients}' \
 	'{params: {"antithesis.description": $$description,"custom.duration": $$duration,"antithesis.config_image": $$config_image,"antithesis.images": $$images,"antithesis.report.recipients": $$recipients}}')"
 

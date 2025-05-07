@@ -1,5 +1,74 @@
 # Log Book
 
+## 2025-05-07
+
+### Antithesis meeting
+
+* We have new joiners in both teams!
+* We discussed several topics to work on next:
+  * schedule runs in CI to have regular reports overnight
+  * some issue with cardano-tracer integration being restarted: all containers are defaulted (controllable only from AT side), so we need to ensure this particular container is safe to be able to haev meaningful assertions
+  * Important: `sometimes` assertion only matters if they are catalogued, otherwise the report cannot tell them apart from `always` assertions
+* Community engagement: It's fine if people request the CF to run some tests that are curated by us
+* Discussing how we can make the environment less "dumb"
+  * share Praos paper defining the adversary
+* publishing and sharing blog post
+
+#### 17:11 (db-server)
+
+Key issue is tied to the "faults power" of the AT driver: Injecting "dumb" system-level faults leads
+
+Some interesting property from https://eprint.iacr.org/2020/1021.pdf: Even in the face of temporary adversarial supremacy, Cardano network can recover after some time
+
+Consensus-focused tests we could start designing & running:
+* Basic property we want to ensure is that a node never crashes!
+* Genesis:
+  * Run cluster of nodes with genesis enabled for a while then at some point stop a node, remove its DB, restart it
+  * Have a new node join later
+* Utxo-hd enabled (10.4.1)
+  * run a mix of nodes with lmdb and in-memory UTxO-HD enabled
+  * load the system with transactions
+  * There might be new race conditions due to code moving from STM to IO
+  * node should restarts gracefully
+
+Our mission should be to try very hard to crash the node, more like stress testing the system
+* Just syncing a node from another node in the same container and ensuring they end up on the same chain is interesting
+
+A simple adversarial node we could build:
+* Connect to some random node
+* Request arbitrary intersection along the node's chain
+* Sync a little
+* disconnect
+* restart
+
+
+### Meeting consensus team
+
+Everyone is interested in using AT to test Consensus code, esp. as we have evidence it can find bugs ! Key issue for "deep" testing of consensus properites is tied to the "faults power" of the AT driver: Injecting "dumb" system-level faults leads to a very degraded environment in which no guarantees can be given.
+
+Some interesting property from https://eprint.iacr.org/2020/1021.pdf: Even in the face of temporary adversarial supremacy, Cardano network can recover after some time
+
+Consensus-focused tests we could start designing & running:
+* Basic property we want to ensure is that a node never crashes!
+* Genesis:
+  * Run cluster of nodes with genesis enabled for a while then at some point stop a node, remove its DB, restart it
+  * Have a new node join later
+* Utxo-hd enabled (10.4.1)
+  * run a mix of nodes with lmdb and in-memory UTxO-HD enabled
+  * load the system with transactions
+  * There might be new race conditions due to code moving from STM to IO
+  * node should restarts gracefully
+
+Our mission should be to try very hard to crash the node, more like stress testing the system
+* Just syncing a node from another node in the same container and ensuring they end up on the same chain is interesting
+
+A simple adversarial node we could build:
+* Connect to some random node
+* Request arbitrary intersection along the node's chain
+* Sync a little
+* disconnect
+* restart
+
 ## 2025-04-23
 
 ### Antithesis meeting

@@ -16,6 +16,8 @@ protocolConsts:
 --- # Optional Shelley Genesis Overide
 epochLength: 86400
 securityParam: 432
+activeSlotsCoeff: 0.25 # 0.05 on mainnet
+slotLength: 1
 maxLovelaceSupply: 45000000000000000
 protocolParams:
   decentralisationParam: 0

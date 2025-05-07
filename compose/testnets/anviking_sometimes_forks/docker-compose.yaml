@@ -76,6 +76,15 @@ services:
     hostname: s1.example
     environment:
       POOLS: "3"
+  tracer-sidecar:
+    image: ${registry}${testnet}_tracer-sidecar:latest
+    restart: on-failure
+    container_name: tracer-sidecar
+    hostname: tracer-sidecar.example
+    environment:
+      POOLS: "3"
+    volumes:
+      - tracer:/opt/cardano-tracer
 
 volumes:
   tracer:

@@ -6,7 +6,7 @@ authors: [abailly]
 tags: [infra]
 ---
 
-Since our [kick-off meeting](./2025-04-02-kick-off-antithesis) that took place on April 2nd, Cardano Foundation and Antithesis have been busy working on a Proof-of-Concept aimed at evaluating Antithesis's capability to enhance Cardano's testing infrastructure. The results have been promising, with the platform successfully identifying both previously known and new unknown bugs in the cardano-node.
+Since our [kick-off meeting](./2025-04-02-kick-off-antithesis.md) that took place on April 2nd, Cardano Foundation and Antithesis have been busy working on a Proof-of-Concept aimed at evaluating Antithesis's capability to enhance Cardano's testing infrastructure. The results have been promising, with the platform successfully identifying both previously known and new unknown bugs in the cardano-node.
 
 This blog post outlines our journey and findings so far, and sketches out plans for the short and medium term in order to ensure this project delivers the most value for the Cardano community.
 

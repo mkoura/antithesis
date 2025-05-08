@@ -13,10 +13,7 @@ compose/.testnet.yaml
 
 # haskell
 dist-newstyle
-
-# editors
-.vscode
-
-# direnv
-
 .direnv
+.vscode
+cli/.vscode/settings.json
+cli/result

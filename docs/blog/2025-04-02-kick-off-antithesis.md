@@ -5,7 +5,7 @@ authors: [abailly]
 tags: [infra]
 ---
 
-Today, April 2nd, 2025 was the date of the kick-off for the Cardano/Antithesis project. Already involved in testing and monitoring the Cardano network infrastructure, the [Cardano Foundation](https://cardanofoundation.org) has decided to dedicate resources to evaluate if and how [Antithesis](https://antithesis.com) could increase the reach and level of quality assurance the network needs.
+Already involved in testing and monitoring the Cardano network infrastructure, the [Cardano Foundation](https://cardanofoundation.org) has decided to dedicate resources to evaluate if and how [Antithesis](https://antithesis.com) could increase the reach and level of quality assurance the network needs.
 
 This post introduces the project, its motivations, scope, ambitions, and timeline.
 

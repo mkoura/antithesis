@@ -6,13 +6,13 @@ authors: [abailly]
 tags: [infra]
 ---
 
-Since our [kick-off meeting](./2025-04-02-kick-off-antithesis.md) that took place on April 2nd, Cardano Foundation and Antithesis have been busy working on a Proof-of-Concept aimed at evaluating Antithesis's capability to enhance Cardano's testing infrastructure. The results have been promising, with the platform successfully identifying both previously known and new unknown bugs in the cardano-node.
+Since the [start](./2025-04-02-kick-off-antithesis.md) of our project, Cardano Foundation and Antithesis have been busy working on a Proof-of-Concept aimed at evaluating Antithesis's capability to enhance Cardano's testing infrastructure. The results have been promising, with the platform successfully identifying both previously known and new unknown bugs in the cardano-node.
 
 This blog post outlines our journey and findings so far, and sketches out plans for the short and medium term in order to ensure this project delivers the most value for the Cardano community.
 
 <!-- truncate -->
 
-## Overview and Timeline
+## Overview
 
 Our exploration with Antithesis began in January 2025, when we first made contact with their team. Quite excited with the prospect this tool offered for testing existing and feature core components of the Cardano network, a small team was assembled within the Cardano Foundation to work on a Proof-of-Concept with Antithesis team. This project was kicked-off on April 2nd at which point both teams started to collaborate actively to understand how to best use the platform to test cardano-node.
 
@@ -25,29 +25,14 @@ To achieve these goals, we established several concrete objectives:
 - Reproduce already known bugs, aka. [Brown M&Ms](https://www.smithsonianmag.com/arts-culture/why-did-van-halen-demand-concert-venues-remove-brown-mms-from-the-menu-180982570/)
 - Discover new, unknown bugs
 - Engage with the Core team to gather early feedback and build Cardano specific test environment (properties, [test composer](https://antithesis.com/docs/test_templates/)...)
-- Outline how to manage Antithesis as a community resource in the future
+- Outline how Antithesis can benefit the community in the future
 
 ### The Teams
 
 This initiative brought together expertise from both organizations:
 
 * On the Cardano side, people from the HAL, Network and Infrastructure team at the Cardano Foundation, as well as involvement of engineers from IOE's Consensus team
-* On the Antithesis side, consultant and engineers from the development and support team.
-
-### PoC Journey and Milestones
-
-Our one-month journey with Antithesis progressed rapidly:
-
-- **April 2nd**: PoC kickoff with repository setup, process sketching, and communication access
-- **April 4th**: First successful run using a P2P script developed at Cardano Foundation
-- **April 7th**: Blog site and inaugural post published
-- **April 9th**: Requested introduction of new fault types for specific scenario testing
-- **April 10th**: Successfully reproduced a network P2P bug and began integrating cardano-tracer with custom properties
-- **April 16th**: Set up SSO for the multiverse debugging tool
-- **April 21st**: Discovered and confirmed a previously unknown bug in the Consensus layer
-- **April 23rd**: Demonstrated the Multiverse debugger with the Consensus team
-- **April 25th**: Antithesis team's report
-- **April 30th**: Regroup and recap
+* On the Antithesis side, solution engineers to support the team.
 
 ### Results and Achievements
 

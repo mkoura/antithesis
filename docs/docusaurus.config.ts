@@ -10,14 +10,14 @@ const config: Config = {
   favicon: 'img/cardano-ada-logo.svg',
 
   // Set the production url of your site here
-  url: 'https://cardano-scaling.github.io/',
+  url: 'https://cardano-foundation.github.io/',
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
   baseUrl: '/antithesis',
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
-  organizationName: 'cardano-scaling', // Usually your GitHub org/user name.
+  organizationName: 'cardano-foundation', // Usually your GitHub org/user name.
   projectName: 'antithesis', // Usually your repo name.
 
   onBrokenLinks: 'throw',
@@ -79,7 +79,7 @@ const config: Config = {
           items: [
             {
               label: 'GitHub',
-              href: 'https://github.com/cardano-scaling/antithesis',
+              href: 'https://github.com/cardano-foundation/antithesis',
             },
           ],
         },

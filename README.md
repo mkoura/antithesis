@@ -90,3 +90,18 @@ At least during the PoC/Prototyping period, it's critical the team
 updates the [Logbook](./Logbook.md) on frequent basis, at least
 weekly and ideally daily, to keep track of experiments run, issues,
 successes, problems, etc.
+
+
+
+
+## Radicle
+
+We are using [radicle](https://radicle.xyz/) to track the code and the issues.
+You can observe
+- code at [rad:z2a7Te5b28CX5YyPQ7ihrdG2EEUsC](https://app.radicle.xyz/nodes/ash.radicle.garden/rad:z2a7Te5b28CX5YyPQ7ihrdG2EEUsC) - issues at [issues](https://app.radicle.xyz/nodes/ash.radicle.garden/rad:z2a7Te5b28CX5YyPQ7ihrdG2EEUsC/issues)
+
+Developers:
+ - paolino, [did:key:z6MksH6Yr4pkJqPYnY4N5e5a5bCdyCW88grKRkkK6KeMGwLN](https://app.radicle.xyz/nodes/ash.radicle.garden/users/did:key:z6MksH6Yr4pkJqPYnY4N5e5a5bCdyCW88grKRkkK6KeMGwLN)
+ - paweljakubas, [did:key:z6Mks4nj3eXrWhjEXknLooeH8ac9c8XcTSzmM7GaooaVyEMN](https://app.radicle.xyz/nodes/ash.radicle.garden/users/did:key:z6Mks4nj3eXrWhjEXknLooeH8ac9c8XcTSzmM7GaooaVyEMN)
+ - anviking, [did:key:z6MkoqswZoM5EtGgsWyTYbrbAw2MXWd2JmSvsQ8Ns9jstmCX](https://app.radicle.xyz/nodes/ash.radicle.garden/users/did:key:z6MkoqswZoM5EtGgsWyTYbrbAw2MXWd2JmSvsQ8Ns9jstmCX)
+ - abailly, [did:key:z6MkhgPg6WShnhJcmfwox4G5yL3EvJ2zW8L31SZLD95yUi11](https://app.radicle.xyz/nodes/ash.radicle.garden/users/did:key:z6MkhgPg6WShnhJcmfwox4G5yL3EvJ2zW8L31SZLD95yUi11)

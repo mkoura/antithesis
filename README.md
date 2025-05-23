@@ -34,7 +34,7 @@ different goals:
 All dates are expressed relative to project's start date:
 
 | Time        | Phase       | Deliverable                                                                                                                                   |
-|-------------|-------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
+| ----------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | T+1m        | PoC         | PoC report detailing:                                                                                                                         |
 |             |             | - experiments run using cardano-node only                                                                                                     |
 |             |             | - results (eg. did we find the bugs we expected to find, and possibly other ones?)                                                            |
@@ -90,9 +90,6 @@ At least during the PoC/Prototyping period, it's critical the team
 updates the [Logbook](./Logbook.md) on frequent basis, at least
 weekly and ideally daily, to keep track of experiments run, issues,
 successes, problems, etc.
-
-
-
 
 ## Radicle
 

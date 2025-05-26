@@ -5,12 +5,13 @@ x-base: &base
   restart: on-failure
   build:
     context: "../../"
-    dockerfile: "Dockerfile.source"
+    dockerfile: "Dockerfile.compiled"
     args:
-      CARDANO_NODE_REF: "master"
+      CARDANO_NODE_VERSION: "10.4.1"
 
 x-env: &env
   POOL_ID: "0" # Placeholder required for override
+  UTXO_HD_WITH_MEM: "true"
 
 services:
   tracer:
@@ -41,6 +42,7 @@ services:
     environment:
       <<: *env
       POOL_ID: "1"
+      UTXO_HD_WITH_LMDB: "true"
 
   p2:
     <<: *base
@@ -54,7 +56,6 @@ services:
     environment:
       <<: *env
       POOL_ID: "2"
-      PEER_SHARING: "false"
 
   p3:
     <<: *base
@@ -69,13 +70,41 @@ services:
       <<: *env
       POOL_ID: "3"
 
+  p4:
+    <<: *base
+    container_name: p4
+    hostname: p4.example
+    volumes:
+      - p4:/opt/cardano-node/data
+      - tracer:/opt/cardano-tracer
+    ports:
+      - "3004:3001"
+    environment:
+      <<: *env
+      POOL_ID: "4"
+      UTXO_HD_WITH_LMDB: "true"
+
+
+  p5:
+    <<: *base
+    container_name: p5
+    hostname: p5.example
+    volumes:
+      - p5:/opt/cardano-node/data
+      - tracer:/opt/cardano-tracer
+    ports:
+      - "3005:3001"
+    environment:
+      <<: *env
+      POOL_ID: "5"
+
   s1:
     image: ${registry}${testnet}_sidecar:latest
     restart: on-failure
     container_name: s1
     hostname: s1.example
     environment:
-      POOLS: "3"
+      POOLS: "5"
 
 volumes:
   tracer:

@@ -12,7 +12,7 @@ on:
         required: true
         default: cardano_node_latest
         type: string
-
+  push:
   schedule:
     # run every 6 hours
     - cron:  '5 1,7,13,19 * * *'

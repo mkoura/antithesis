@@ -57,6 +57,24 @@ verify_environment_variables() {
     fi
 }
 
+# Updates specific node's configuration depending on environment variables
+# Those environment variables can be set in the service definition in the
+# docker-compose file like:
+#
+# ```
+# p2:
+#   <<: *base
+#   container_name: p2
+#   hostname: p2.example
+#   volumes:
+#     - p2:/opt/cardano-node/data
+#   ports:
+#     - "3002:3001"
+#   environment:
+#     <<: *env
+#     POOL_ID: "2"
+#     PEER_SHARING: "false"
+# ```
 config_config_json() {
     # .AlonzoGenesisHash, .ByronGenesisHash, .ConwayGenesisHash, .ShelleyGenesisHash
     jq "del(.AlonzoGenesisHash, .ByronGenesisHash, .ConwayGenesisHash, .ShelleyGenesisHash)" "${CONFIG_JSON}" | write_file "${CONFIG_JSON}"
@@ -91,6 +109,17 @@ config_config_json() {
     else
         jq ".PeerSharing = false" "${CONFIG_JSON}" | write_file "${CONFIG_JSON}"
     fi
+
+    # configure UTxO-HD
+    # see https://ouroboros-consensus.cardano.intersectmbo.org/docs/for-developers/utxo-hd/migrating
+    if [ "${UTXO_HD_WITH_LMDB,,}" = "true" ]; then
+        jq '.LedgerDB = { Backend: "V1LMDB"}' "${CONFIG_JSON}" | write_file "${CONFIG_JSON}"
+    fi
+
+    if [ "${UTXO_HD_WITH_MEM,,}" = "true" ]; then
+        jq '.LedgerDB = { Backend: "V2InMemory"}' "${CONFIG_JSON}" | write_file "${CONFIG_JSON}"
+    fi
+
 }
 
 config_topology_json() {

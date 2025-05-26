@@ -1,5 +1,6 @@
 name: "Test cardano-node"
 env:
+  TESTNET: "cardano_node_10.4.1"
   REGISTRY: ghcr.io/cardano-foundation
   EMAILS: 'antithesis@cardanofoundation.org'
   DURATION: 5 # in hours
@@ -10,7 +11,7 @@ on:
        test:
         description: 'Test configuration to run (a directory in compose/testnets)'
         required: true
-        default: cardano_node_latest
+        default: cardano_node_10.4.1
         type: string
   push:
   schedule:
@@ -47,12 +48,12 @@ jobs:
     - name: 🏗  Build images
       working-directory: compose
       run: |
-        make build testnet=${{ inputs.test }} registry=${{ env.REGISTRY }}/
+        make build testnet=${{ inputs.test || env.TESTNET }} registry=${{ env.REGISTRY }}/
 
     - name: 🚢 Push images
       working-directory: compose
       run: |
-        make push testnet=${{ inputs.test }} registry=${{ env.REGISTRY }}/
+        make push testnet=${{ inputs.test || env.TESTNET }} registry=${{ env.REGISTRY }}/
 
     # this is where we should send a request on-chain
     # for now we use the GHA provided by AT
@@ -64,10 +65,10 @@ jobs:
         username: ${{ secrets.ANTITHESIS_USERNAME }}
         password: ${{ secrets.ANTITHESIS_PASSWORD }}
         github_token: ${{ secrets.GH_PAT }}
-        images: ${{ env.REGISTRY }}/${{ inputs.test }}:latest;${{ env.REGISTRY }}/${{ inputs.test }}_sidecar:latest;${{ env.REGISTRY }}/${{ inputs.test }}_tracer:latest;${{ env.REGISTRY }}/${{ inputs.test }}_tracer-sidecar:latest
-        config_image: ${{ env.REGISTRY }}/${{ inputs.test }}_config:latest
-        description: "Run ${{ inputs.test }}"
+        images: ${{ env.REGISTRY }}/${{ inputs.test || env.TESTNET }}:latest;${{ env.REGISTRY }}/${{ inputs.test || env.TESTNET }}_sidecar:latest;${{ env.REGISTRY }}/${{ inputs.test || env.TESTNET }}_tracer:latest;${{ env.REGISTRY }}/${{ inputs.test || env.TESTNET }}_tracer-sidecar:latest
+        config_image: ${{ env.REGISTRY }}/${{ inputs.test || env.TESTNET }}_config:latest
+        description: "Run ${{ inputs.test || env.TESTNET }}"
         email_recipients: ${{ env.EMAILS }}
-        test_name: "${{ inputs.test }}"
+        test_name: "${{ inputs.test || env.TESTNET }}"
         additional_parameters: |-
           duration=${{ env.DURATION }}

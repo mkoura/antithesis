@@ -14,9 +14,12 @@ x-tracer-base: &tracerbase
   restart: on-failure
   build:
     context: "../../tracer/"
-    dockerfile: "Dockerfile.compiled"
+    # ideally we would like to use a precompiled version of the tracer
+    # but unfortunately it's not yet packaged in archives
+    # https://github.com/IntersectMBO/cardano-node/issues/6228
+    dockerfile: "Dockerfile"
     args:
-      CARDANO_NODE_VERSION: "10.4.1"
+      CARDANO_NODE_REF: "10.4.1"
 
 x-env: &env
   POOL_ID: "0" # Placeholder required for override

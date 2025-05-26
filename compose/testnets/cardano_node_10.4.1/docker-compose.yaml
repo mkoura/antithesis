@@ -34,9 +34,6 @@ services:
     command:
        - "--config"
        - "tracer-config.yaml"
-    build:
-      context: "../../tracer"
-      dockerfile: "Dockerfile"
 
   p1:
     <<: *base

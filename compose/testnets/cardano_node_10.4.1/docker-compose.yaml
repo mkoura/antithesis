@@ -9,14 +9,22 @@ x-base: &base
     args:
       CARDANO_NODE_VERSION: "10.4.1"
 
+tracer-base: &tracerbase
+  image: ${registry}${testnet}_tracer:latest
+  restart: on-failure
+  build:
+    context: "../../tracer/"
+    dockerfile: "Dockerfile.compiled"
+    args:
+      CARDANO_NODE_VERSION: "10.4.1"
+
 x-env: &env
   POOL_ID: "0" # Placeholder required for override
   UTXO_HD_WITH_MEM: "true"
 
 services:
   tracer:
-    image: ${registry}${testnet}_tracer:latest
-    restart: on-failure
+    <<: *tracerbase
     hostname: tracer.example
     container_name: tracer
     volumes:

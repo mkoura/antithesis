@@ -1,6 +1,5 @@
 name: "Test cardano-node"
 env:
-  TESTNET: cardano_node_latest
   REGISTRY: ghcr.io/cardano-foundation
   EMAILS: 'antithesis@cardanofoundation.org'
   DURATION: 5 # in hours
@@ -9,12 +8,11 @@ on:
   workflow_dispatch:
      inputs:
        test:
-        description: 'Test name'
-        required: false
+        description: 'Test configuration to run (a directory in compose/testnets)'
+        required: true
         default: cardano_node_latest
         type: string
-  # FIXME: remove before mergin
-  push:
+
   schedule:
     # run every 6 hours
     - cron:  '5 1,7,13,19 * * *'
@@ -49,12 +47,12 @@ jobs:
     - name: 🏗  Build images
       working-directory: compose
       run: |
-        make build testnet=${{ env.TESTNET }} registry=${{ env.REGISTRY }}/
+        make build testnet=${{ inputs.test }} registry=${{ env.REGISTRY }}/
 
     - name: 🚢 Push images
       working-directory: compose
       run: |
-        make push testnet=${{ env.TESTNET }} registry=${{ env.REGISTRY }}/
+        make push testnet=${{ inputs.test }} registry=${{ env.REGISTRY }}/
 
     # this is where we should send a request on-chain
     # for now we use the GHA provided by AT
@@ -66,9 +64,9 @@ jobs:
         username: ${{ secrets.ANTITHESIS_USERNAME }}
         password: ${{ secrets.ANTITHESIS_PASSWORD }}
         github_token: ${{ secrets.GH_PAT }}
-        images: ${{ env.REGISTRY }}/${{ env.TESTNET }}:latest;${{ env.REGISTRY }}/${{ env.TESTNET }}_sidecar:latest;${{ env.REGISTRY }}/${{ env.TESTNET }}_tracer:latest;${{ env.REGISTRY }}/${{ env.TESTNET }}_tracer-sidecar:latest
-        config_image: ${{ env.REGISTRY }}/${{ env.TESTNET }}_config:latest
-        description: "Run ${{ env.TESTNET }}"
+        images: ${{ env.REGISTRY }}/${{ inputs.test }}:latest;${{ env.REGISTRY }}/${{ inputs.test }}_sidecar:latest;${{ env.REGISTRY }}/${{ inputs.test }}_tracer:latest;${{ env.REGISTRY }}/${{ inputs.test }}_tracer-sidecar:latest
+        config_image: ${{ env.REGISTRY }}/${{ inputs.test }}_config:latest
+        description: "Run ${{ inputs.test }}"
         email_recipients: ${{ env.EMAILS }}
         test_name: "${{ inputs.test }}"
         additional_parameters: |-

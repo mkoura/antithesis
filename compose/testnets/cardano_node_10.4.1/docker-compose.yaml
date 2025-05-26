@@ -9,7 +9,7 @@ x-base: &base
     args:
       CARDANO_NODE_VERSION: "10.4.1"
 
-tracer-base: &tracerbase
+x-tracer-base: &tracerbase
   image: ${registry}${testnet}_tracer:latest
   restart: on-failure
   build:

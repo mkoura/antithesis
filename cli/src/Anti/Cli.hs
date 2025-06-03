@@ -95,7 +95,7 @@ manageUser
     operation =
         requestChange tokenId
             $ Request
-                { key = mkKey [platform, username, pubkeyhash]
+                { key = mkKey ["register-public-key", platform, username, pubkeyhash]
                 , value = ""
                 , operation
                 }
@@ -117,7 +117,7 @@ manageRole
     operation =
         requestChange tokenId
             $ Request
-                { key = mkKey [platform, org, repo, username, role]
+                { key = mkKey ["register-role", platform, org, repo, username, role]
                 , value = ""
                 , operation
                 }
@@ -139,7 +139,9 @@ requestTestCLI
     (Directory directory) =
         requestChange tokenId
             $ Request
-                { key = mkKey [platform, org, repo, username, sha1, directory]
+                { key =
+                    mkKey
+                        ["request-test-run", platform, org, repo, username, sha1, directory]
                 , value =
                     BL.unpack
                         $ encode

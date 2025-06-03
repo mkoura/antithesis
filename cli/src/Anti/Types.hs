@@ -36,6 +36,7 @@ import Data.Aeson
     , (.:)
     )
 import Servant.API (FromHttpApiData (..), ToHttpApiData (..))
+import Text.Read (readMaybe)
 
 import qualified Data.Text as T
 
@@ -122,16 +123,25 @@ data OutputReference = OutputReference
 
 instance ToJSON OutputReference where
     toJSON (OutputReference{outputReferenceTx, outputReferenceIndex}) =
-        object
-            [ "txHash" .= outputReferenceTx
-            , "outputIndex" .= outputReferenceIndex
-            ]
+        String
+            $ T.pack outputReferenceTx
+                <> "-"
+                <> T.pack (show outputReferenceIndex)
 
 instance FromJSON OutputReference where
-    parseJSON = withObject "OutputReference" $ \v ->
-        OutputReference
-            <$> v .: "txHash"
-            <*> v .: "outputIndex"
+    parseJSON = withText "OutputReference" $ \v -> do
+        let parts = T.splitOn "-" v
+        case parts of
+            [tx, index] -> do
+                case readMaybe (T.unpack index) of
+                    Just i ->
+                        pure
+                            $ OutputReference
+                                { outputReferenceTx = T.unpack tx
+                                , outputReferenceIndex = i
+                                }
+                    Nothing -> fail $ "Invalid index: " ++ T.unpack index
+            _ -> fail $ "Invalid output reference format: " ++ T.unpack v
 
 newtype RequestRefs = RequestRefs
     { outputReferences :: [OutputReference]
@@ -140,12 +150,12 @@ newtype RequestRefs = RequestRefs
 instance ToJSON RequestRefs where
     toJSON (RequestRefs{outputReferences}) =
         object
-            [ "requests" .= outputReferences
+            [ "requestIds" .= outputReferences
             ]
 instance FromJSON RequestRefs where
     parseJSON = withObject "Requests" $ \v ->
         RequestRefs
-            <$> v .: "requests"
+            <$> v .: "requestIds"
 
 data OracleCommand
     = CreateToken

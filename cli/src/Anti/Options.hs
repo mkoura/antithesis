@@ -24,6 +24,7 @@ import Anti.Types
 import Options.Applicative
     ( Alternative (..)
     , Parser
+    , ReadM
     , auto
     , command
     , defaultPrefs
@@ -45,6 +46,7 @@ import Options.Applicative
     , value
     , (<**>)
     )
+import Options.Applicative.Types (readerAsk)
 
 platformOption :: Parser Platform
 platformOption =
@@ -230,18 +232,28 @@ userCommandParser =
 
 outputReferenceParser :: Parser OutputReference
 outputReferenceParser =
-    OutputReference
-        <$> strOption
-            ( long "tx-hash"
-                <> metavar "TX_HASH"
-                <> help "The transaction hash for the output reference"
-            )
-        <*> option
-            auto
-            ( long "index"
-                <> metavar "INDEX"
-                <> help "Index of the output reference"
-            )
+    option parseOutputReference
+        $ short 'o'
+            <> long "outref"
+            <> metavar "OUTPUT_REF"
+            <> help "The transaction hash and index for the output reference"
+
+parseOutputReference :: ReadM OutputReference
+parseOutputReference = do
+    s <- readerAsk
+    case break (== '-') s of
+        (txHash, '-' : indexStr) -> do
+            index <- case reads indexStr of
+                [(i, "")] -> pure i
+                _ ->
+                    fail
+                        "Invalid index format. Use 'txHash-index' where index is an integer."
+            pure
+                $ OutputReference
+                    { outputReferenceTx = txHash
+                    , outputReferenceIndex = index
+                    }
+        _ -> fail "Invalid output reference format. Use 'txHash-index'"
 
 oracleCommandParser :: Parser OracleCommand
 oracleCommandParser =

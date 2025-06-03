@@ -332,7 +332,7 @@ portOption =
             ( long "port"
                 <> short 'p'
                 <> metavar "PORT"
-                <> value 8080
+                <> value 3000
                 <> help "The port to connect to (defaults to 8080)"
             )
 

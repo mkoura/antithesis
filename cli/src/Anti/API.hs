@@ -10,6 +10,7 @@ module Anti.API
     , deleteToken
     , getToken
     , updateToken
+    , getTokenFacts
     ) where
 
 import Anti.Types (Request, RequestRefs, TokenId)
@@ -50,6 +51,10 @@ type API =
             :> Capture "tokenId" TokenId
             :> ReqBody '[JSON] RequestRefs
             :> Put '[JSON] Value
+        :<|> "token"
+            :> Capture "tokenId" TokenId
+            :> "facts"
+            :> Get '[JSON] Value
 
 api :: Proxy API
 api = Proxy
@@ -63,10 +68,12 @@ deleteToken :: TokenId -> ClientM Value
 updateToken :: TokenId -> RequestRefs -> ClientM Value
 getToken :: TokenId -> ClientM Value
 retractRequest :: [Char] -> Int -> ClientM Value
+getTokenFacts :: TokenId -> ClientM Value
 requestChange
     :<|> retractRequest
     :<|> createToken
     :<|> deleteToken
     :<|> getToken
-    :<|> updateToken =
+    :<|> updateToken
+    :<|> getTokenFacts =
         client api

@@ -11,6 +11,7 @@ import Anti.API
     ( createToken
     , deleteToken
     , getToken
+    , getTokenFacts
     , requestChange
     , retractRequest
     , updateToken
@@ -65,6 +66,7 @@ anti command = do
             RetractRequest
                 (OutputReference{outputReferenceTx, outputReferenceIndex}) ->
                     retractRequest outputReferenceTx outputReferenceIndex
+            GetFacts{tokenId} -> getTokenFacts tokenId
         OracleCommand oracleCommand -> case oracleCommand of
             CreateToken -> createToken
             DeleteToken tk -> deleteToken tk

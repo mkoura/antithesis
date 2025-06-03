@@ -220,6 +220,12 @@ userCommandParser =
                     retractRequestOptions
                     (progDesc "Retract a request")
                 )
+            <> command
+                "get-facts"
+                ( info
+                    (GetFacts <$> tokenIdOption)
+                    (progDesc "Get token facts")
+                )
         )
 
 outputReferenceParser :: Parser OutputReference

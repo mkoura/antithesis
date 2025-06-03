@@ -198,6 +198,9 @@ data UserCommand
     | RetractRequest
         { outputReference :: OutputReference
         }
+    | GetFacts
+        { tokenId :: TokenId
+        }
     deriving (Eq, Show)
 
 newtype Port = Port Int

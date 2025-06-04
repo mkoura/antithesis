@@ -55,9 +55,9 @@ TraceConnectionManagerTransitions: false
 TraceDNSResolver: false
 TraceDNSSubscription: false
 TraceDebugPeerSelection: false
-TraceForge: true 
-TraceForgeStateInfo: true 
-TraceHandshake: true 
+TraceForge: true
+TraceForgeStateInfo: true
+TraceHandshake: true
 TraceInboundGovernor: false
 TraceIpSubscription: false
 TraceLedgerPeers: true
@@ -100,9 +100,11 @@ TraceOptions:
     maxFrequency: 2
   ChainDB.CopyToImmutableDBEvent.CopiedBlockToImmutableDB:
     maxFrequency: 2
+  ChainDB.AddBlockEvent.SwitchedToAFork:
+    severity: Notice
   ChainSync.Client:
     severity: Warning
-  
+
   Forge.Loop:
     severity: Info
   Forge.StateInfo:
@@ -120,7 +122,7 @@ TraceOptions:
   Net.ErrorPolicy.Local:
     severity: Info
   Net.InboundGovernor:
-    severity: Silence 
+    severity: Silence
   Net.Mux.Remote:
     severity: Info
   Net.PeerSelection:

@@ -24,15 +24,18 @@ validate_block_hash() {
     # Fetch hashes in parallel
     for i in $(seq 1 "${POOLS}"); do
         (
-            timeout 10 cardano-cli ping -j --magic 42 --host p${i}.example --port ${PORT} --tip --quiet -c1 | jq -r '.tip[0].hash + " " + (.tip[0].blockNo|tostring) + " " + (.tip[0].slotNo|tostring)' >"$temp_dir/hash_${i}"
+            timeout 10 cardano-cli ping -j --magic 42 --host "p${i}.example" --port "${PORT}" --tip --quiet -c1 | jq -r '.tip[0].hash + " " + (.tip[0].blockNo|tostring) + " " + (.tip[0].slotNo|tostring)' >"$temp_dir/hash_${i}"
         ) &
-        pids+=($!)
+        # store background process pid and corresponding node being checked
+        pids+=("$i $!")
     done
 
     # Wait for all processes and handle errors
     for pid in "${pids[@]}"; do
-        if ! wait "$pid"; then
-            echo "Error: Process $pid failed" >&2
+        # extract pid to wait on and node id
+        read -ra check <<< "$pid"
+        if ! wait "${check[1]}"; then
+            echo "Error: Checking node ${check[0]} failed" >&2
             status=2
         fi
     done

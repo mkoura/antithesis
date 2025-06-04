@@ -1,6 +1,6 @@
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE LambdaCase        #-}
+{-# LANGUAGE NamedFieldPuns    #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- | Boilerplate to parse (some) node logs
@@ -10,34 +10,28 @@ module Cardano.Antithesis.LogMessage
 
 import qualified Data.Aeson.KeyMap as KeyMap
 
-import Data.Aeson
-import Data.Aeson.Types
-    ( Parser
-    )
-import Data.Text
-import Data.Time
-    ( UTCTime
-    )
-import GHC.Generics
-    ( Generic
-    )
+import           Data.Aeson
+import           Data.Aeson.Types  (Parser)
+import           Data.Text
+import           Data.Time         (UTCTime)
+import           GHC.Generics      (Generic)
 
 type Node = Text
 
 data LogMessage = LogMessage
-  { at     :: UTCTime
-  , ns     :: [Text]
-  , details  :: Value -- renamed from 'data'
-  , sev    :: Severity
-  , thread :: Text
-  , host   :: Node
-  , kind   :: Text
+  { at      :: UTCTime
+  , ns      :: Text
+  , details :: Value -- renamed from 'data'
+  , sev     :: Severity
+  , thread  :: Text
+  , host    :: Node
+  , kind    :: Text
   } deriving (Show, Generic)
 
 instance FromJSON LogMessage where
   parseJSON = withObject "LogMessage" $ \o -> do
     at      <- o .:  "at"
-    ns      <- o .:? "ns" .!= []
+    ns      <- o .:  "ns"
     details <- o .:  "data"
     sev     <- o .:  "sev"
     thread  <- o .:  "thread"
@@ -71,4 +65,4 @@ instance FromJSON Severity where
     "Warning"  -> pure Warning
     "Error"    -> pure SevError
     "Critical" -> pure Critical
-    _         -> fail $ "Unknown severity: " <> show t
+    _          -> fail $ "Unknown severity: " <> show t

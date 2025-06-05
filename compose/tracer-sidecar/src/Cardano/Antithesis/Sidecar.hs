@@ -1,24 +1,37 @@
-{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE NamedFieldPuns        #-}
-{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Cardano.Antithesis.Sidecar where
 
-import qualified Data.Text                     as T
+import Cardano.Antithesis.LogMessage
+import Cardano.Antithesis.Sdk
 
-import           Cardano.Antithesis.LogMessage
-import           Cardano.Antithesis.Sdk
+import qualified Data.Text as T
 
-import           Control.Arrow                 (second)
-import           Control.Monad                 (forM_)
-import           Data.Aeson                    (Value)
-import           Data.List                     (mapAccumL)
-import qualified Data.List                     as L
-import           Data.Maybe                    (fromJust)
-import           Data.Set                      (Set)
-import qualified Data.Set                      as Set
-import           Data.Text                     (Text)
+import Control.Arrow
+    ( second
+    )
+import Control.Monad
+    ( forM_
+    )
+import Data.Aeson
+    ( Value
+    )
+import Data.List
+    ( mapAccumL
+    )
+import Data.Maybe
+    ( fromJust
+    )
+import Data.Set
+    ( Set
+    )
+import qualified Data.Set as Set
+import Data.Text
+    ( Text
+    )
 
 -- State -----------------------------------------------------------------------
 

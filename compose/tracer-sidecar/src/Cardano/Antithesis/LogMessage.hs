@@ -1,6 +1,5 @@
-{-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE NamedFieldPuns    #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- | Boilerplate to parse (some) node logs
@@ -10,11 +9,22 @@ module Cardano.Antithesis.LogMessage
 
 import qualified Data.Aeson.KeyMap as KeyMap
 
-import           Data.Aeson
-import           Data.Aeson.Types  (Parser)
-import           Data.Text
-import           Data.Time         (UTCTime)
-import           GHC.Generics      (Generic)
+import Data.Aeson
+    ( FromJSON (..)
+    , Value (..)
+    , withObject
+    , withText
+    , (.:)
+    )
+import Data.Text
+    ( Text
+    )
+import Data.Time
+    ( UTCTime
+    )
+import GHC.Generics
+    ( Generic
+    )
 
 type Node = Text
 

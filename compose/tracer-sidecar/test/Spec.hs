@@ -10,10 +10,6 @@ import qualified Data.ByteString.Lazy as BL
 import Cardano.Antithesis.LogMessage
 import Cardano.Antithesis.Sidecar
 
-
-import Control.Monad
-    ( unless
-    )
 import Data.Aeson
     ( Value
     , decodeStrict'

@@ -1,18 +1,38 @@
-{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 module Antithesis where
 
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Text as T
 
-import System.Environment    (lookupEnv)
-import System.IO             (withFile, IOMode(AppendMode))
-import Data.Aeson (Value (Null), encode, (.=), object)
-import Data.Aeson.QQ (aesonQQ)
-import Data.Maybe (fromMaybe)
-import GHC.Stack             (HasCallStack, callStack, getCallStack, SrcLoc(..))
-import Data.Text (Text)
-
+import Data.Aeson
+    ( Value (Null)
+    , encode
+    , object
+    , (.=)
+    )
+import Data.Aeson.QQ
+    ( aesonQQ
+    )
+import Data.Maybe
+    ( fromMaybe
+    )
+import Data.Text
+    ( Text
+    )
+import GHC.Stack
+    ( HasCallStack
+    , SrcLoc (..)
+    , callStack
+    , getCallStack
+    )
+import System.Environment
+    ( lookupEnv
+    )
+import System.IO
+    ( IOMode (AppendMode)
+    , withFile
+    )
 
 -- | Append a JSON Value as one line to $ANTITHESIS_OUTPUT_DIR/sdk.jsonl
 writeSdkJsonl :: Value -> IO ()
@@ -51,7 +71,7 @@ sometimesForksDeclaration = [aesonQQ|
 
 sometimesForksReached :: HasCallStack => Value
 sometimesForksReached =
-  let 
+  let
       ((funcName, loc) : _) = getCallStack callStack
 
       file   = T.pack (srcLocFile      loc)
@@ -81,4 +101,3 @@ sometimesForksReached =
        , "details"      .= Null
        ]
      ]
-

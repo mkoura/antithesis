@@ -7,28 +7,12 @@ x-base: &base
     context: "../../"
     dockerfile: "Dockerfile.compiled"
     args:
-      CARDANO_NODE_VERSION: "10.2.1"
+      CARDANO_NODE_VERSION: "10.4.1"
 
 x-env: &env
   POOL_ID: "0" # Placeholder required for override
 
 services:
-  tracer:
-    image: ${registry}${testnet}_tracer:latest
-    restart: on-failure
-    hostname: tracer.example
-    container_name: tracer
-    volumes:
-      - tracer:/opt/cardano-tracer
-    ports:
-      - "4000:4000"
-    command:
-       - "--config"
-       - "tracer-config.yaml"
-    build:
-      context: "../../tracer"
-      dockerfile: "Dockerfile"
-
   p1:
     <<: *base
     container_name: p1
@@ -76,6 +60,21 @@ services:
     hostname: s1.example
     environment:
       POOLS: "3"
+  tracer:
+    image: ${registry}${testnet}_tracer:latest
+    restart: on-failure
+    hostname: tracer.example
+    container_name: tracer
+    volumes:
+      - tracer:/opt/cardano-tracer
+    ports:
+      - "4000:4000"
+    command:
+       - "--config"
+       - "tracer-config.yaml"
+    build:
+      context: "../../tracer"
+      dockerfile: "Dockerfile"
   tracer-sidecar:
     image: ${registry}${testnet}_tracer-sidecar:latest
     restart: on-failure

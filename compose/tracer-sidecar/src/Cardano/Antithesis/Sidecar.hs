@@ -8,12 +8,12 @@ module Cardano.Antithesis.Sidecar where
 import Cardano.Antithesis.LogMessage
 import Cardano.Antithesis.Sdk
 
+import qualified Data.Set as Set
 import qualified Data.Text as T
 
 import Control.Arrow
     ( second
     )
-import System.Environment (getEnv)
 import Control.Monad
     ( forM_
     )
@@ -29,9 +29,11 @@ import Data.Maybe
 import Data.Set
     ( Set
     )
-import qualified Data.Set as Set
 import Data.Text
     ( Text
+    )
+import System.Environment
+    ( getEnv
     )
 
 -- State -----------------------------------------------------------------------

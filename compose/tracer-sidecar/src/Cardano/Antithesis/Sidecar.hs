@@ -13,6 +13,7 @@ import qualified Data.Text as T
 import Control.Arrow
     ( second
     )
+import System.Environment (getEnv)
 import Control.Monad
     ( forM_
     )
@@ -50,8 +51,8 @@ data State = State
   , scanningForNodes :: Set Text
   }
 
-initialState :: (State, [Value])
-initialState =
+initialState :: Int -> (State, [Value])
+initialState nPools =
   (State (Set.fromList kinds) (Set.fromList nodes)
   , map sometimesTracesDeclaration kinds ++ map (sometimesTracesDeclaration . anyMessageFromNode) nodes)
   where
@@ -61,7 +62,7 @@ initialState =
         , "PeerStatusChanged"
         ]
 
-    nodes = map (\i -> T.pack $ "p" <> show i <> ".example") [1 :: Int .. 3]
+    nodes = map (\i -> T.pack $ "p" <> show i <> ".example") [1 :: Int .. nPools]
 
 anyMessageFromNode :: Text -> Text
 anyMessageFromNode node = "Any " <> fromJust (T.stripSuffix ".example" node) <> " log"
@@ -102,7 +103,9 @@ hoistToIO :: (State, [Value]) -> IO State
 hoistToIO (s, vals) = forM_ vals writeSdkJsonl >> return s
 
 initialStateIO :: IO State
-initialStateIO = hoistToIO initialState
+initialStateIO = do
+    nPools <- read <$> getEnv "POOLS"
+    hoistToIO (initialState nPools)
 
 processMessageIO :: State -> LogMessage -> IO State
 processMessageIO s msg = hoistToIO $ processMessage s msg

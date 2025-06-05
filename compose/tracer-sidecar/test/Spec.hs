@@ -33,7 +33,7 @@ spec = do
         <- runIO $ B8.lines <$> B8.readFile "test/data/input.jsonl"
 
     it "processMessages" $
-        let (_finalState, actualVals) = processMessages initialState msgs
+        let (_finalState, actualVals) = processMessages (initialState 3) msgs
             msgs = mapMaybe decodeStrict' input
         in myGoldenTest actualVals
 

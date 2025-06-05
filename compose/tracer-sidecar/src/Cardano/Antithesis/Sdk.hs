@@ -72,6 +72,41 @@ sometimesTracesReached label = [aesonQQ|
     }
     |]
 
+alwaysOrUnreachableDeclaration :: Text -> Value
+alwaysOrUnreachableDeclaration label = [aesonQQ|
+    {
+      "antithesis_assert": {
+        "id":           #{label},
+        "message":      #{label},
+        "condition":    false,
+        "display_type": "AlwaysOrUnreachable",
+        "hit":          false,
+        "must_hit":     false,
+        "assert_type":  "always",
+        "location": #{dummyLocation},
+        "details": null
+      }
+    }
+    |]
+
+
+alwaysOrUnreachableFailed :: Text -> Value -> Value
+alwaysOrUnreachableFailed label details = [aesonQQ|
+    {
+      "antithesis_assert": {
+        "id":           #{label},
+        "message":      #{label},
+        "condition":    false,
+        "display_type": "AlwaysOrUnreachable",
+        "hit":          true,
+        "must_hit":     false,
+        "assert_type":  "AlwaysOrUnreachable",
+        "location": #{dummyLocation},
+        "details": #{details}
+      }
+    }
+    |]
+
 dummyLocation :: Value
 dummyLocation = [aesonQQ|
     {

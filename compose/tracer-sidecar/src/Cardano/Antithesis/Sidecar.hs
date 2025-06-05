@@ -55,8 +55,13 @@ data State = State
 
 initialState :: Int -> (State, [Value])
 initialState nPools =
-  (State (Set.fromList kinds) (Set.fromList nodes)
-  , map sometimesTracesDeclaration kinds ++ map (sometimesTracesDeclaration . anyMessageFromNode) nodes)
+  ( State (Set.fromList kinds) (Set.fromList nodes)
+  , concat
+    [ map sometimesTracesDeclaration kinds
+    , map (sometimesTracesDeclaration . anyMessageFromNode) nodes
+    , [alwaysOrUnreachableDeclaration "no critical logs"]
+    ]
+  )
   where
     kinds :: [TraceKind]
     kinds =
@@ -74,23 +79,30 @@ processMessage s m =
     let
         (s', o) = processKind s m  -- FIXME use monad
         (s'', o') = processHost s' m
-    in (s'', o <> o')
-  where
-    processKind :: State -> LogMessage -> (State, [Value])
-    processKind (State scanningFor nodes) LogMessage{kind}
-        | Set.member kind scanningFor =
-            ( State (Set.delete kind scanningFor) nodes
-            , [sometimesTracesReached kind]
-            )
-        | otherwise = (State scanningFor nodes, [])
+        (s''', o'') = processSev s'' m
+    in (s''', o <> o' <> o'')
 
-    processHost :: State -> LogMessage -> (State, [Value])
-    processHost (State scanningFor nodes) LogMessage{host}
-        | Set.member host nodes =
-            ( State scanningFor (Set.delete host nodes)
-            , [sometimesTracesReached $ anyMessageFromNode host]
-            )
-        | otherwise = (State scanningFor nodes, [])
+processKind :: State -> LogMessage -> (State, [Value])
+processKind (State scanningFor nodes) LogMessage{kind}
+    | Set.member kind scanningFor =
+        ( State (Set.delete kind scanningFor) nodes
+        , [sometimesTracesReached kind]
+        )
+    | otherwise = (State scanningFor nodes, [])
+
+processHost :: State -> LogMessage -> (State, [Value])
+processHost (State scanningFor nodes) LogMessage{host}
+    | Set.member host nodes =
+        ( State scanningFor (Set.delete host nodes)
+        , [sometimesTracesReached $ anyMessageFromNode host]
+        )
+    | otherwise = (State scanningFor nodes, [])
+
+processSev :: State -> LogMessage -> (State, [Value])
+processSev s LogMessage{sev, json}
+    | sev >= Critical = (s, [alwaysOrUnreachableFailed "no critical logs" json])
+    | otherwise       = (s, [])
+
 
 processMessages :: (State, [Value]) -> [LogMessage] -> (State, [Value])
 processMessages st =

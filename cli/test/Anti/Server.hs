@@ -7,8 +7,9 @@ module Anti.Server
     )
 where
 
-import Anti.API (api)
-import Anti.Types (Request (..), RequestRefs, TokenId)
+import Oracle.Token.API (tokenApi)
+import Oracle.Types (RequestRefs)
+import Types (Request (..), TokenId)
 import Data.Aeson (ToJSON (..), Value, object, (.=))
 import Network.Wai (Application)
 import Servant (serve, (:<|>) (..))
@@ -17,7 +18,7 @@ import Servant.Server (Handler)
 appDummy :: Application
 appDummy =
     serve
-        api
+        tokenApi
         ( postRequestDummy
             :<|> retractRequestDummy
             :<|> postTokenDummy

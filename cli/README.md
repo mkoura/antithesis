@@ -7,7 +7,7 @@
 `oracle` create a token to track antithesis interactions
 
 ```bash
-> tokenId=$(anti oracle create-token | jq -r .tokenId)
+> tokenId=$(anti oracle token create | jq -r .tokenId)
 > echo $tokenId
 7775e63684562092db55e0cdecbfefbb9d506164a2c4fde66c13e3c709604276
 ```
@@ -20,14 +20,14 @@ tokenId=7775e63684562092db55e0cdecbfefbb9d506164a2c4fde66c13e3c709604276
 `alice` request to register herself (or any GH user) as an identified user with some public key in the `token`
 
 ``` bash
-> anti user register-public-key --platform github --username alice --pubkeyhash AAAAC3NzaC1lZDI1NTE5AAAAIO773JHqlyLm5XzOjSe+Q5yFJyLFuMLL6+n63t4t7HR8 -t   $tokenId | jq -r
+> anti user request register-public-key --platform github --username alice --pubkeyhash AAAAC3NzaC1lZDI1NTE5AAAAIO773JHqlyLm5XzOjSe+Q5yFJyLFuMLL6+n63t4t7HR8 -t   $tokenId | jq -r
 f36c501b5081db1a40df949749264fb76c0a6c8460976825faaa0c651f1f74e6-0
 ```
 
 `oracle` collect current requests
 
 ```bash
-> anti oracle get-token -t $tokenId | jq '.requests | .[] | {key: .change.key, value: .change.value, ref: .outputRef}'
+> anti oracle token get -t $tokenId | jq '.requests | .[] | {key: .change.key, value: .change.value, ref: .outputRef}'
 {
   "key": "register-public-key/github/alice/AAAAC3NzaC1lZDI1NTE5AAAAIO773JHqlyLm5XzOjSe+Q5yFJyLFuMLL6+n63t4t7HR8",
   "value": "",
@@ -35,7 +35,7 @@ f36c501b5081db1a40df949749264fb76c0a6c8460976825faaa0c651f1f74e6-0
 }
 ```
 
-`oracle` checks that the request is valid
+`oracle` checks that the request is valid (TO_DO in 802bf7)
 
 ```bash
 > anti oracle github --key register-public-key/github/alice/AAAAC3NzaC1lZDI1NTE5AAAAIO773JHqlyLm5XzOjSe+Q5yFJyLFuMLL6+n63t4t7HR8 --value ""
@@ -45,13 +45,13 @@ true
 `oracle` merges the request into the `token`
 
 ```bash
-> anti oracle update-token -t $tokenId -o f36c501b5081db1a40df949749264fb76c0a6c8460976825faaa0c651f1f74e6-0
+> anti oracle token update -t $tokenId -o f36c501b5081db1a40df949749264fb76c0a6c8460976825faaa0c651f1f74e6-0
 ```
 
 now `alice` can inspect the token facts
 
 ```bash
-> anti user get-facts -t $tokenId | jq
+> anti user request get-facts -t $tokenId | jq
 {
   "register-public-key/github/alice/AAAAC3NzaC1lZDI1NTE5AAAAIO773JHqlyLm5XzOjSe+Q5yFJyLFuMLL6+n63t4t7HR8": ""
 }

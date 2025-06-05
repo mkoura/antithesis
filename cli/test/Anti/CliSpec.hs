@@ -8,9 +8,9 @@ module Anti.CliSpec
     )
 where
 
-import Anti.Main (main)
+import App (server)
 import Anti.Server (appDummy, dummyTxId)
-import Anti.Types
+import Types
     ( Command (..)
     , Directory (..)
     , Host (..)
@@ -21,10 +21,12 @@ import Anti.Types
     , Port (..)
     , PublicKeyHash (..)
     , Repository (..)
+    , RequesterCommand (..)
     , Role (..)
     , SHA1 (..)
     , TokenId (..)
     , UserCommand (..)
+    , TokenCommand (..)
     , Username (..)
     )
 import Control.Concurrent (threadDelay)
@@ -58,7 +60,7 @@ anti args = do
             ]
                 ++ args
     -- Call the main function with the simulated arguments
-    ev <- withArgs args' main
+    ev <- withArgs args' server
     case ev of
         (_, Left err) -> error $ "Error: " ++ show err
         (o, Right result) -> return (o, result)
@@ -68,6 +70,7 @@ spec = beforeAll_ runDummyServer $ do
     it "can request user registration" $ do
         let args =
                 [ "user"
+                , "request"
                 , "register-public-key"
                 , "--platform"
                 , "github"
@@ -83,7 +86,7 @@ spec = beforeAll_ runDummyServer $ do
                     { host = Host "localhost"
                     , port = Port 8084
                     , command =
-                        UserCommand
+                        UserCommand $ UserRequesterCommand
                             RegisterPublicKey
                                 { platform = Platform "github"
                                 , username = Username "bob"
@@ -98,6 +101,7 @@ spec = beforeAll_ runDummyServer $ do
     it "can request user unregistration" $ do
         let args =
                 [ "user"
+                , "request"
                 , "unregister-public-key"
                 , "--platform"
                 , "github"
@@ -114,7 +118,7 @@ spec = beforeAll_ runDummyServer $ do
                     { host = Host "localhost"
                     , port = Port 8084
                     , command =
-                        UserCommand
+                        UserCommand $ UserRequesterCommand
                             UnregisterPublicKey
                                 { platform = Platform "github"
                                 , username = Username "bob"
@@ -129,6 +133,7 @@ spec = beforeAll_ runDummyServer $ do
     it "can request adding user to a project" $ do
         let args =
                 [ "user"
+                , "request"
                 , "register-role"
                 , "--platform"
                 , "github"
@@ -146,7 +151,7 @@ spec = beforeAll_ runDummyServer $ do
                     { host = Host "localhost"
                     , port = Port 8084
                     , command =
-                        UserCommand
+                        UserCommand $ UserRequesterCommand
                             RegisterRole
                                 { platform = Platform "github"
                                 , repository = Repository "cardano-foundation" "antithesis"
@@ -161,6 +166,7 @@ spec = beforeAll_ runDummyServer $ do
     it "can request removing user from a project" $ do
         let args =
                 [ "user"
+                , "request"
                 , "unregister-role"
                 , "--platform"
                 , "github"
@@ -178,7 +184,7 @@ spec = beforeAll_ runDummyServer $ do
                     { host = Host "localhost"
                     , port = Port 8084
                     , command =
-                        UserCommand
+                        UserCommand $ UserRequesterCommand
                             UnregisterRole
                                 { platform = Platform "github"
                                 , repository = Repository "cardano-foundation" "antithesis"
@@ -193,7 +199,8 @@ spec = beforeAll_ runDummyServer $ do
     it "can request antithesis run" $ do
         let args =
                 [ "user"
-                , "request-test"
+                , "request"
+                , "test"
                 , "--platform"
                 , "github"
                 , "--repository"
@@ -210,7 +217,7 @@ spec = beforeAll_ runDummyServer $ do
                     { host = Host "localhost"
                     , port = Port 8084
                     , command =
-                        UserCommand
+                        UserCommand $ UserRequesterCommand
                             RequestTest
                                 { platform = Platform "github"
                                 , repository = Repository "cardano-foundation" "antithesis"
@@ -224,7 +231,8 @@ spec = beforeAll_ runDummyServer $ do
     it "can retract a request" $ do
         let args =
                 [ "user"
-                , "retract-request"
+                , "request"
+                , "retract"
                 , "--outref"
                 , "9114528e2343e6fcf3c92de71364275227e6b16d-0"
                 ]
@@ -233,7 +241,7 @@ spec = beforeAll_ runDummyServer $ do
                     { host = Host "localhost"
                     , port = Port 8084
                     , command =
-                        UserCommand
+                        UserCommand $ UserRequesterCommand
                             RetractRequest
                                 { outputReference =
                                     OutputReference
@@ -246,14 +254,15 @@ spec = beforeAll_ runDummyServer $ do
     it "can create a token" $ do
         let args =
                 [ "oracle"
-                , "create-token"
+                , "token"
+                , "create"
                 ]
         let opts =
                 Options
                     { host = Host "localhost"
                     , port = Port 8084
                     , command =
-                        OracleCommand
+                        OracleCommand $ OracleTokenCommand
                             CreateToken
                     }
         anti args
@@ -265,7 +274,8 @@ spec = beforeAll_ runDummyServer $ do
     it "can delete a token" $ do
         let args =
                 [ "oracle"
-                , "delete-token"
+                , "token"
+                , "delete"
                 , "--token-id"
                 , "dummyTokenId"
                 ]
@@ -274,14 +284,15 @@ spec = beforeAll_ runDummyServer $ do
                     { host = Host "localhost"
                     , port = Port 8084
                     , command =
-                        OracleCommand
+                        OracleCommand $ OracleTokenCommand
                             (DeleteToken $ TokenId "dummyTokenId")
                     }
         anti args `shouldReturn` (opts, dummyTxId)
     it "can get a token" $ do
         let args =
                 [ "oracle"
-                , "get-token"
+                , "token"
+                , "get"
                 , "--token-id"
                 , "dummyTokenId"
                 ]
@@ -290,7 +301,7 @@ spec = beforeAll_ runDummyServer $ do
                     { host = Host "localhost"
                     , port = Port 8084
                     , command =
-                        OracleCommand
+                        OracleCommand $ OracleTokenCommand
                             (GetToken $ TokenId "dummyTokenId")
                     }
         anti args

@@ -64,11 +64,14 @@ library
 
   -- Modules exported by the library.
   exposed-modules:
-    Anti.API
-    Anti.Cli
-    Anti.Main
-    Anti.Options
-    Anti.Types
+    App
+    Cli
+    Options
+    Oracle.Token.API
+    Oracle.Token.Cli
+    Oracle.Types
+    Types
+    User.Requester.Cli
 
   -- Modules included in this library but not exported.
   -- other-modules:

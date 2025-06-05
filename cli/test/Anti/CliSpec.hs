@@ -225,10 +225,8 @@ spec = beforeAll_ runDummyServer $ do
         let args =
                 [ "user"
                 , "retract-request"
-                , "--tx-hash"
-                , "dummyTxId"
-                , "--index"
-                , "0"
+                , "--outref"
+                , "9114528e2343e6fcf3c92de71364275227e6b16d-0"
                 ]
         let opts =
                 Options
@@ -237,7 +235,11 @@ spec = beforeAll_ runDummyServer $ do
                     , command =
                         UserCommand
                             RetractRequest
-                                { outputReference = OutputReference "dummyTxId" 0
+                                { outputReference =
+                                    OutputReference
+                                        { outputReferenceTx = "9114528e2343e6fcf3c92de71364275227e6b16d"
+                                        , outputReferenceIndex = 0
+                                        }
                                 }
                     }
         anti args `shouldReturn` (opts, dummyTxId)

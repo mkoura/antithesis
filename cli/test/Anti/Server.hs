@@ -60,4 +60,3 @@ postRequestDummy _tokenId = \case
         , value = _
         , operation = _
         } -> do return dummyTxId
-

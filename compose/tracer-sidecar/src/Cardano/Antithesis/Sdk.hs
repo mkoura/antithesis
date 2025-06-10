@@ -107,6 +107,41 @@ alwaysOrUnreachableFailed label details = [aesonQQ|
     }
     |]
 
+
+alwaysDeclaration :: Text -> Value
+alwaysDeclaration label = [aesonQQ|
+    {
+      "antithesis_assert": {
+        "id":           #{label},
+        "message":      #{label},
+        "condition":    false,
+        "display_type": "Always",
+        "hit":          false,
+        "must_hit":     false,
+        "assert_type":  "always",
+        "location": #{dummyLocation},
+        "details": null
+      }
+    }
+    |]
+
+alwaysReached :: Text -> Value -> Value
+alwaysReached label details = [aesonQQ|
+    {
+      "antithesis_assert": {
+        "id":           #{label},
+        "message":      #{label},
+        "condition":    false,
+        "display_type": "Always",
+        "hit":          false,
+        "must_hit":     false,
+        "assert_type":  "always",
+        "location": #{dummyLocation},
+        "details": #{details}
+      }
+    }
+    |]
+
 dummyLocation :: Value
 dummyLocation = [aesonQQ|
     {

@@ -62,10 +62,10 @@ sometimesTracesReached label = [aesonQQ|
         "id":           #{label},
         "message":      #{label},
         "condition":    true,
-        "display_type": "AlwaysOrUnreachable",
+        "display_type": "Sometimes",
         "hit":          true,
         "must_hit":     true,
-        "assert_type":  "always",
+        "assert_type":  "sometimes",
         "location": #{dummyLocation},
         "details": null
       }
@@ -100,7 +100,7 @@ alwaysOrUnreachableFailed label details = [aesonQQ|
         "display_type": "AlwaysOrUnreachable",
         "hit":          true,
         "must_hit":     false,
-        "assert_type":  "AlwaysOrUnreachable",
+        "assert_type":  "always",
         "location": #{dummyLocation},
         "details": #{details}
       }
@@ -117,7 +117,7 @@ alwaysDeclaration label = [aesonQQ|
         "condition":    false,
         "display_type": "Always",
         "hit":          false,
-        "must_hit":     false,
+        "must_hit":     true,
         "assert_type":  "always",
         "location": #{dummyLocation},
         "details": null
@@ -131,10 +131,10 @@ alwaysReached label details = [aesonQQ|
       "antithesis_assert": {
         "id":           #{label},
         "message":      #{label},
-        "condition":    false,
+        "condition":    true,
         "display_type": "Always",
-        "hit":          false,
-        "must_hit":     false,
+        "hit":          true,
+        "must_hit":     true,
         "assert_type":  "always",
         "location": #{dummyLocation},
         "details": #{details}

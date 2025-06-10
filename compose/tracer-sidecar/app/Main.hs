@@ -64,7 +64,6 @@ main = do
              [d] -> return d
              _   -> error "Usage: <executable name> <directory>"
 
-    mvar <- newMVar =<< initialStateIO
 
     (nPools :: Int) <- read <$> getEnv "POOLS"
 
@@ -75,8 +74,10 @@ main = do
 
     putStrLn $ "Observing .json files: " <> show files
 
+    let spec = mkSpec nPools
+    mvar <- newMVar =<< initialStateIO spec
     forM_ files $ \file ->
-      forkIO $ tailJsonLines file (modifyMVar_ mvar . flip processMessageIO)
+      forkIO $ tailJsonLines file (modifyMVar_ mvar . flip (processMessageIO spec))
     forever $ threadDelay maxBound
   where
     waitFor :: Monad m => (a -> Bool) -> m a -> m a

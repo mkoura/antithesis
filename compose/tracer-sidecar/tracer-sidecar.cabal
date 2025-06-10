@@ -51,6 +51,7 @@ library
     , stm
     , generic-lens
     , optics-core
+    , transformers
   exposed-modules:
     Cardano.Antithesis.Sdk
     Cardano.Antithesis.LogMessage

@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -17,6 +18,11 @@ import Control.Arrow
 import Control.Monad
     ( forM_
     )
+import Control.Monad.Trans.Writer.Strict
+    ( Writer
+    , execWriter
+    , tell
+    )
 import Data.Aeson
     ( Value
     )
@@ -32,82 +38,119 @@ import Data.Set
 import Data.Text
     ( Text
     )
-import System.Environment
-    ( getEnv
-    )
 
--- State -----------------------------------------------------------------------
+-- spec ------------------------------------------------------------------------
 
-type TraceKind = Text
-
--- TODO: Could probably be written in some nice way like
--- data Seen a = Seen a | Unseen a
--- seen :: Foldable f => f (Seen a) -> a
--- unseen :: Foldable f => f (Seen a) -> a
--- found ::
---
--- kinds :: [Seen TraceKind]
--- nodes :: [Seen HostName]
-data State = State
-  { scanningFor      :: Set TraceKind
-  , scanningForNodes :: Set Text
-  }
-
-initialState :: Int -> (State, [Value])
-initialState nPools =
-  ( State (Set.fromList kinds) (Set.fromList nodes)
-  , concat
-    [ map sometimesTracesDeclaration kinds
-    , map (sometimesTracesDeclaration . anyMessageFromNode) nodes
-    , [alwaysOrUnreachableDeclaration "no critical logs"]
-    ]
-  )
-  where
-    kinds :: [TraceKind]
-    kinds =
+mkSpec :: Int -> Spec
+mkSpec nPools = do
+    mapM_ sometimesTraces
         [ "TraceAddBlockEvent.SwitchedToAFork"
         , "PeerStatusChanged"
         ]
 
-    nodes = map (\i -> T.pack $ "p" <> show i <> ".example") [1 :: Int .. nPools]
+    forM_ [1 :: Int .. nPools] $ \i -> do
+        let pool = "p" <> T.pack (show i)
+        sometimes ("Any " <> pool <> " log") $ \_s LogMessage{host} ->
+            fromJust (T.stripSuffix ".example" host) == pool
 
-anyMessageFromNode :: Text -> Text
-anyMessageFromNode node = "Any " <> fromJust (T.stripSuffix ".example" node) <> " log"
+    alwaysOrUnreachable "no critical logs" $ \_s LogMessage{sev} ->
+        sev < Critical
 
-processMessage :: State -> LogMessage -> (State, [Value])
-processMessage s m =
-    let
-        (s', o) = processKind s m  -- FIXME use monad
-        (s'', o') = processHost s' m
-        (s''', o'') = processSev s'' m
-    in (s''', o <> o' <> o'')
+-- State -----------------------------------------------------------------------
 
-processKind :: State -> LogMessage -> (State, [Value])
-processKind (State scanningFor nodes) LogMessage{kind}
-    | Set.member kind scanningFor =
-        ( State (Set.delete kind scanningFor) nodes
-        , [sometimesTracesReached kind]
-        )
-    | otherwise = (State scanningFor nodes, [])
+newtype State = State
+  { unreachedAssertions :: Set Text
+  }
 
-processHost :: State -> LogMessage -> (State, [Value])
-processHost (State scanningFor nodes) LogMessage{host}
-    | Set.member host nodes =
-        ( State scanningFor (Set.delete host nodes)
-        , [sometimesTracesReached $ anyMessageFromNode host]
-        )
-    | otherwise = (State scanningFor nodes, [])
+initialState :: Spec -> (State, [Value])
+initialState spec =
+  ( foldl (\a f -> f a) s0 setupFns
+  , declarations spec
+  )
+  where
+    s0 = State mempty
+    setupFns = stateInitFunctions spec
 
-processSev :: State -> LogMessage -> (State, [Value])
-processSev s LogMessage{sev, json}
-    | sev >= Critical = (s, [alwaysOrUnreachableFailed "no critical logs" json])
-    | otherwise       = (s, [])
+-- Spec ------------------------------------------------------------------------
 
+type Spec = SpecWith ()
 
-processMessages :: (State, [Value]) -> [LogMessage] -> (State, [Value])
-processMessages st =
+newtype SpecWith a = Spec (Writer [Rule] a)
+  deriving (Functor, Applicative, Monad) via (Writer [Rule])
+
+data Rule = Rule
+    { ruleProcess     :: State -> LogMessage -> (State, [Value])
+    , ruleDeclaration :: Value -- ^ Makes it possible to declare the assertion to the antithesis sdk
+    , ruleInit        :: State -> State -- ^ Makes it possible to initialize the 'State'
+    }
+
+-- Properties ------------------------------------------------------------------
+
+-- | Declare an antithesis 'sometimes' assertion.
+--
+-- Will cause a test failure if the provided function ever returns 'False'.
+alwaysOrUnreachable
+  :: Text -- ^ Name and identifier
+  -> (State -> LogMessage -> Bool)
+  -> Spec
+alwaysOrUnreachable name f =
+  Spec $ tell [ Rule process  (alwaysOrUnreachableDeclaration name) initState]
+  where
+    initState s = s { unreachedAssertions = Set.insert name (unreachedAssertions s) }
+
+    process :: State -> LogMessage -> (State, [Value])
+    process s@(State scanningFor) msg@LogMessage{json} = case f s msg of
+        False
+            | Set.member name scanningFor ->
+                ( State (Set.delete name scanningFor)
+                , [alwaysOrUnreachableFailed name json]
+                )
+            | otherwise -> (State scanningFor, [])
+        True  -> (State scanningFor, [])
+
+-- | Declare an antithesis 'sometimes' assertion.
+--
+-- Will cause a test failure unless the provided function returns 'True' once.
+sometimes
+  :: Text -- ^ Name and identifier
+  -> (State -> LogMessage -> Bool)
+  -> Spec
+sometimes name f =
+  Spec $ tell [ Rule process  (sometimesTracesDeclaration name) initState]
+  where
+    initState s = s { unreachedAssertions = Set.insert name (unreachedAssertions s) }
+
+    process :: State -> LogMessage -> (State, [Value])
+    process s@(State scanningFor) msg
+        | Set.member name scanningFor && f s msg =
+            ( State (Set.delete name scanningFor)
+            , [sometimesTracesReached name]
+            )
+        | otherwise = (State scanningFor, [])
+
+sometimesTraces :: Text -> Spec
+sometimesTraces text = sometimes text $ \_s LogMessage{kind} -> kind == text
+
+declarations :: Spec -> [Value]
+declarations (Spec s) = map ruleDeclaration $ execWriter s
+
+stateInitFunctions :: Spec -> [State -> State]
+stateInitFunctions (Spec s) = map ruleInit $ execWriter s
+
+processMessage :: Spec -> State -> LogMessage -> (State, [Value])
+processMessage (Spec w) =
+  let rules = execWriter w
+  in \s0 logMsg ->
+       let step (s, vals) (Rule f _ _) =
+             let (s', newVals) = f s logMsg
+             in  (s', vals ++ newVals)
+           (finalState, collected) = foldl step (s0, []) rules
+       in  (finalState, reverse collected)
+
+processMessages :: Spec -> (State, [Value]) -> [LogMessage] -> (State, [Value])
+processMessages spec st =
     second (concat . (v:))
-  . mapAccumL processMessage s
+  . mapAccumL (processMessage spec) s
   where
     (s, v) = st
 
@@ -116,10 +159,8 @@ processMessages st =
 hoistToIO :: (State, [Value]) -> IO State
 hoistToIO (s, vals) = forM_ vals writeSdkJsonl >> return s
 
-initialStateIO :: IO State
-initialStateIO = do
-    nPools <- read <$> getEnv "POOLS"
-    hoistToIO (initialState nPools)
+initialStateIO :: Spec -> IO State
+initialStateIO spec = hoistToIO $ initialState spec
 
-processMessageIO :: State -> LogMessage -> IO State
-processMessageIO s msg = hoistToIO $ processMessage s msg
+processMessageIO :: Spec -> State -> LogMessage -> IO State
+processMessageIO spec s msg = hoistToIO $ processMessage spec s msg

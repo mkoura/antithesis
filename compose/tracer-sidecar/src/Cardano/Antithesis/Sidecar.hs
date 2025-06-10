@@ -26,6 +26,9 @@ import Control.Monad.Trans.Writer.Strict
 import Data.Aeson
     ( Value
     )
+import Data.Foldable
+    ( foldl'
+    )
 import Data.List
     ( mapAccumL
     )
@@ -144,7 +147,7 @@ processMessage (Spec w) =
        let step (s, vals) (Rule f _ _) =
              let (s', newVals) = f s logMsg
              in  (s', vals ++ newVals)
-           (finalState, collected) = foldl step (s0, []) rules
+           (finalState, collected) = foldl' step (s0, []) rules
        in  (finalState, reverse collected)
 
 processMessages :: Spec -> (State, [Value]) -> [LogMessage] -> (State, [Value])

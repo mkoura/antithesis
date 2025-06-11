@@ -88,10 +88,12 @@ library
     , bytestring
     , http-client
     , http-types
+    , lens
     , optparse-applicative
     , servant
     , servant-client
     , text
+    , wreq
 
   -- Directories containing source files.
   hs-source-dirs:   src

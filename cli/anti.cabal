@@ -67,6 +67,7 @@ library
     App
     Cli
     Options
+    Oracle.Github.FactRequester
     Oracle.Token.API
     Oracle.Token.Cli
     Oracle.Types

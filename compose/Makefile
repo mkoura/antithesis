@@ -43,6 +43,10 @@ help:
 	@echo "    make push testnet=example_10.2.1 registry=us-central1-docker.pkg.dev/molten-verve-216720/cardano-repository/"
 	@echo "    make anti testnet=example_10.2.1 password='password1234'"
 	@echo
+	@printf "  \033[34mAntithesis debugging session\033[0m\n"
+	@echo "    Grab the 'Moment' definition from a report, extract parameters session_id, input_hash, and vtime, then:"
+	@echo "    make anti password='password1234' session_id=<some session_id> input_hash=<some hash> vtime=<decimal seconds>"
+	@echo
 
 build: TESTNET build-image build-config build-sidecar build-tracer build-tracer-sidecar ## Build cardano-node, config, sidecar, and tracer images
 
@@ -99,6 +103,16 @@ anti: TESTNET ## Run Antithesis job
 	--arg images        '${testnet}:latest;${testnet}_sidecar:latest;${testnet}_tracer:latest;${testnet}_tracer-sidecar:latest' \
 	--arg recipients    '${recipients}' \
 	'{params: {"antithesis.description": $$description,"custom.duration": $$duration,"antithesis.config_image": $$config_image,"antithesis.images": $$images,"antithesis.report.recipients": $$recipients}}')"
+
+anti-debug: ## Request debugger session
+	curl --fail -u "${username}:${password}" \
+       -X POST https://cardano.antithesis.com/api/v1/launch/debugging \
+       -d '{"params": { \
+           "antithesis.debugging.session_id":"${session_id}",   \
+           "antithesis.debugging.input_hash":"${input_hash}" ,  \
+           "antithesis.debugging.vtime":"${vtime}", \
+           "antithesis.report.recipients":"hal@cardanofoundation.org" \
+       }}'
 
 TESTNET: ;
 	@if [ -z "${testnet}" ]; then echo "* Please define the testnet argument:"; echo "testnet=example_10.2.1"; echo; exit 1; else export "testnet=${testnet}"; fi

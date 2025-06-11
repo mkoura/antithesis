@@ -13,7 +13,8 @@ import Cardano.Antithesis.Sidecar hiding
     )
 
 import Data.Aeson
-    ( Value
+    ( ToJSON (toJSON)
+    , Value
     , decodeStrict'
     , eitherDecodeStrict
     , encode
@@ -39,7 +40,7 @@ spec = do
             propSpec = mkSpec 3
             (_finalState, actualVals) = processMessages propSpec (initialState propSpec) msgs
             msgs = mapMaybe decodeStrict' input
-        in myGoldenTest actualVals
+        in myGoldenTest (map jsonifyOutput actualVals)
 
     it "all test data messages can be decoded" $ do
         let (errs, _res) = partitionEithers $ map (eitherDecodeStrict @LogMessage) input
@@ -47,6 +48,10 @@ spec = do
             ["Unexpected end-of-input, expecting record key literal or }"] -> pure ()
             [] -> pure ()
             _ -> expectationFailure $ "Some messages couldn't be decoded: " <> show errs
+
+jsonifyOutput :: Output -> Value
+jsonifyOutput (StdOut msg)      = toJSON $ "### STDOUT: " <> msg
+jsonifyOutput (AntithesisSdk v) = v
 
 myGoldenTest :: [Value] -> Golden [Value]
 myGoldenTest actualOutput =

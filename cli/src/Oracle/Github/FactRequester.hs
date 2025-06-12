@@ -27,22 +27,24 @@ import System.Environment
     ( lookupEnv )
 import Types (PublicKeyHash, Username (..))
 
+import qualified Data.ByteString.Char8 as BC
 import qualified Network.Wreq as Wreq
 
 newtype GithubAccessToken = GithubAccessToken
-    { tokenPayload :: String
+    { tokenPayload :: ByteString
     }
     deriving (Eq, Show)
 
 getGithubAccessToken :: IO GithubAccessToken
 getGithubAccessToken = do
-    GithubAccessToken . fromMaybe (error errMsg) <$> lookupEnv accessToken
+    GithubAccessToken . BC.pack . fromMaybe (error errMsg) <$> lookupEnv accessToken
   where
     accessToken = "GITHUB_PERSONAL_ACCESS_TOKEN"
     errMsg = unlines
         [ accessToken <> " is not set."
         , ""
-        , "See how to generate the token : https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token"
+        , "See how to generate the token :"
+        , "https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token"
         ]
 
 -- https://docs.github.com/en/rest/users/keys?apiVersion=2022-11-28#list-public-keys-for-a-user

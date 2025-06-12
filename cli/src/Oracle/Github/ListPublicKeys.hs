@@ -10,16 +10,23 @@ module Oracle.Github.ListPublicKeys
 
 import Types (Username, PublicKeyHash)
 
+import qualified Data.Text as T
 import qualified Oracle.Github.ListPublicKeysIO as IO
 
 data PublicKeyValidation =
-    PublicKeyValidated | NoPublicKeyFound
+    PublicKeyValidated |
+    NoPublicKeyFound |
+    NoEd25519KeyFound
     deriving (Eq, Show)
 
 analyzePublicKeyResponse ::[IO.ResponsePublicKey] -> PublicKeyValidation
-analyzePublicKeyResponse resp
-    | null resp = NoPublicKeyFound
-    | otherwise = PublicKeyValidated
+analyzePublicKeyResponse = cond
+  where
+      cond resp
+          | null resp = NoPublicKeyFound
+          | not (any hasEpectedPrefix resp) = NoEd25519KeyFound
+          | otherwise = PublicKeyValidated
+      hasEpectedPrefix = T.isPrefixOf "ssh-ed25519" . IO.key
 
 inspectPublicKey
     :: Username

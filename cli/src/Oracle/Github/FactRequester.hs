@@ -1,31 +1,23 @@
-{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StrictData #-}
 
 module Oracle.Github.FactRequester
     ( GithubAccessToken (..)
+    , ResponsePublicKey (..)
     , getGithubAccessToken
     , inspectPublicKey
     ) where
 
 import Control.Lens
-import Data.Aeson
-    ( FromJSON (parseJSON)
-    , KeyValue ((.=))
-    , ToJSON (toJSON)
-    , object
-    , withObject
-    , (.:)
-    )
+import Data.Aeson (FromJSON)
 import Data.ByteString (ByteString)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import System.Environment
-    ( lookupEnv )
-import Types (PublicKeyHash, Username (..))
+import System.Environment (lookupEnv)
+import Types (Username (..))
 
 import qualified Data.ByteString.Char8 as BC
 import qualified Network.Wreq as Wreq
@@ -37,15 +29,17 @@ newtype GithubAccessToken = GithubAccessToken
 
 getGithubAccessToken :: IO GithubAccessToken
 getGithubAccessToken = do
-    GithubAccessToken . BC.pack . fromMaybe (error errMsg) <$> lookupEnv accessToken
+    GithubAccessToken . BC.pack . fromMaybe (error errMsg)
+        <$> lookupEnv accessToken
   where
     accessToken = "GITHUB_PERSONAL_ACCESS_TOKEN"
-    errMsg = unlines
-        [ accessToken <> " is not set."
-        , ""
-        , "See how to generate the token :"
-        , "https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token"
-        ]
+    errMsg =
+        unlines
+            [ accessToken <> " is not set."
+            , ""
+            , "See how to generate the token :"
+            , "https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token"
+            ]
 
 -- https://docs.github.com/en/rest/users/keys?apiVersion=2022-11-28#list-public-keys-for-a-user
 data ResponsePublicKey = ResponsePublicKey
@@ -56,24 +50,28 @@ data ResponsePublicKey = ResponsePublicKey
 
 instance FromJSON ResponsePublicKey
 
-requestListingOfPublicKeysForUser :: GithubAccessToken -> Username -> IO (Wreq.Response [ResponsePublicKey])
+requestListingOfPublicKeysForUser
+    :: GithubAccessToken
+    -> Username
+    -> IO (Wreq.Response [ResponsePublicKey])
 requestListingOfPublicKeysForUser token username = do
     response <- Wreq.getWith headers endpoint
     case response ^. Wreq.responseStatus . Wreq.statusCode of
         200 -> Wreq.asJSON response
-        _ -> error $ show  $ response ^. Wreq.responseStatus
+        _ -> error $ show $ response ^. Wreq.responseStatus
   where
     headers =
-        Wreq.defaults &
-        Wreq.header "Accept" .~ ["application/vnd.github+json"] &
-        Wreq.header "Authorization" .~ ["Bearer" <> tokenPayload token ] &
-        Wreq.header "X-GitHub-Api-Version" .~ ["2022-11-28"]
+        Wreq.defaults
+            & Wreq.header "Accept" .~ ["application/vnd.github+json"]
+            & Wreq.header "Authorization" .~ ["Bearer" <> tokenPayload token]
+            & Wreq.header "X-GitHub-Api-Version" .~ ["2022-11-28"]
     endpoint =
-        "https://api.github.com/users/" <>
-        show username <>
-        "/keys"
+        "https://api.github.com/users/"
+            <> show username
+            <> "/keys"
 
-inspectPublicKey :: Username -> IO [PublicKeyHash]
+inspectPublicKey :: Username -> IO [ResponsePublicKey]
 inspectPublicKey username = do
     token <- getGithubAccessToken
-    undefined
+    resp <- requestListingOfPublicKeysForUser token username
+    pure $ resp ^. Wreq.responseBody

@@ -7,10 +7,16 @@ module User.Requester.Cli
     ( requesterCmd
     ) where
 
+import Control.Monad.IO.Class (liftIO)
 import Data.Aeson (Value, encode, object, (.=))
 import Data.Binary.Builder (toLazyByteString)
 import Data.Text (Text)
 import Network.HTTP.Types (encodePathSegmentsRelative)
+import Oracle.Github.ListPublicKeys
+    ( PublicKeyValidation (..)
+    , emitPublicKeyMsg
+    , inspectPublicKey
+    )
 import Oracle.Token.API
     ( getTokenFacts
     , requestChange
@@ -106,15 +112,25 @@ manageUser
 manageUser
     tokenId
     (Platform platform)
-    (Username username)
-    (PublicKeyHash pubkeyhash)
-    operation =
-        requestChange tokenId
-            $ Request
-                { key = mkKey ["register-public-key", platform, username, pubkeyhash]
-                , value = ""
-                , operation
-                }
+    user@(Username username)
+    pubkey@(PublicKeyHash pubkeyhash)
+    operation = case operation of
+        Insert -> do
+            validation <- liftIO $ inspectPublicKey user pubkey
+            case validation of
+                PublicKeyValidated ->
+                    makeMPFSChange
+                notValidated -> error $ emitPublicKeyMsg notValidated
+        _ ->
+            makeMPFSChange
+      where
+        makeMPFSChange =
+            requestChange tokenId
+                $ Request
+                    { key = mkKey ["register-public-key", platform, username, pubkeyhash]
+                    , value = ""
+                    , operation
+                    }
 
 manageRole
     :: TokenId

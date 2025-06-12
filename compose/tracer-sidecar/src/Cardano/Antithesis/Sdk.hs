@@ -3,13 +3,10 @@
 module Cardano.Antithesis.Sdk where
 
 import qualified Data.ByteString.Lazy as BL
-import qualified Data.Text as T
 
 import Data.Aeson
-    ( Value (Null)
+    ( Value
     , encode
-    , object
-    , (.=)
     )
 import Data.Aeson.QQ
     ( aesonQQ
@@ -19,12 +16,6 @@ import Data.Maybe
     )
 import Data.Text
     ( Text
-    )
-import GHC.Stack
-    ( HasCallStack
-    , SrcLoc (..)
-    , callStack
-    , getCallStack
     )
 import System.Environment
     ( lookupEnv
@@ -49,57 +40,114 @@ writeSdkJsonl v = do
 
 sometimesTracesDeclaration :: Text -> Value
 sometimesTracesDeclaration label = [aesonQQ|
-{
-  "antithesis_assert": {
-    "id":           #{label},
-    "message":      #{label},
-    "condition":    false,
-    "display_type": "Sometimes",
-    "hit":          false,
-    "must_hit":     true,
-    "assert_type":  "sometimes",
-    "location": {
-      "file":         "",
-      "function":     "",
-      "class":        "",
-      "begin_line":   0,
-      "begin_column": 0
-    },
-    "details": null
-  }
-}
-|]
+    {
+      "antithesis_assert": {
+        "id":           #{label},
+        "message":      #{label},
+        "condition":    false,
+        "display_type": "Sometimes",
+        "hit":          false,
+        "must_hit":     true,
+        "assert_type":  "sometimes",
+        "location": #{dummyLocation},
+        "details": null
+      }
+    }
+    |]
 
-sometimesTracesReached :: HasCallStack => Text -> Value
-sometimesTracesReached label =
-  let
-      ((funcName, loc) : _) = getCallStack callStack
+sometimesTracesReached :: Text -> Value
+sometimesTracesReached label = [aesonQQ|
+    {
+      "antithesis_assert": {
+        "id":           #{label},
+        "message":      #{label},
+        "condition":    true,
+        "display_type": "Sometimes",
+        "hit":          true,
+        "must_hit":     true,
+        "assert_type":  "sometimes",
+        "location": #{dummyLocation},
+        "details": null
+      }
+    }
+    |]
 
-      file   = T.pack (srcLocFile      loc)
-      modName = T.pack (srcLocModule    loc)
-      func   = T.pack funcName
-      line   = srcLocStartLine loc
-      column = srcLocStartCol  loc
+alwaysOrUnreachableDeclaration :: Text -> Value
+alwaysOrUnreachableDeclaration label = [aesonQQ|
+    {
+      "antithesis_assert": {
+        "id":           #{label},
+        "message":      #{label},
+        "condition":    false,
+        "display_type": "AlwaysOrUnreachable",
+        "hit":          false,
+        "must_hit":     false,
+        "assert_type":  "always",
+        "location": #{dummyLocation},
+        "details": null
+      }
+    }
+    |]
 
-      locObj = object
-        [ "file"         .= file
-        , "function"     .= func
-        , "class"        .= modName
-        , "begin_line"   .= line
-        , "begin_column" .= column
-        ]
 
-  in object
-     [ "antithesis_assert" .= object
-       [ "id"           .= label
-       , "message"      .= label
-       , "condition"    .= True
-       , "display_type" .= ("Sometimes"     :: Text)
-       , "hit"          .= True
-       , "must_hit"     .= True
-       , "assert_type"  .= ("sometimes"     :: Text)
-       , "location"     .= locObj
-       , "details"      .= Null
-       ]
-     ]
+alwaysOrUnreachableFailed :: Text -> Value -> Value
+alwaysOrUnreachableFailed label details = [aesonQQ|
+    {
+      "antithesis_assert": {
+        "id":           #{label},
+        "message":      #{label},
+        "condition":    false,
+        "display_type": "AlwaysOrUnreachable",
+        "hit":          true,
+        "must_hit":     false,
+        "assert_type":  "always",
+        "location": #{dummyLocation},
+        "details": #{details}
+      }
+    }
+    |]
 
+
+alwaysDeclaration :: Text -> Value
+alwaysDeclaration label = [aesonQQ|
+    {
+      "antithesis_assert": {
+        "id":           #{label},
+        "message":      #{label},
+        "condition":    false,
+        "display_type": "Always",
+        "hit":          false,
+        "must_hit":     true,
+        "assert_type":  "always",
+        "location": #{dummyLocation},
+        "details": null
+      }
+    }
+    |]
+
+alwaysReached :: Text -> Value -> Value
+alwaysReached label details = [aesonQQ|
+    {
+      "antithesis_assert": {
+        "id":           #{label},
+        "message":      #{label},
+        "condition":    true,
+        "display_type": "Always",
+        "hit":          true,
+        "must_hit":     true,
+        "assert_type":  "always",
+        "location": #{dummyLocation},
+        "details": #{details}
+      }
+    }
+    |]
+
+dummyLocation :: Value
+dummyLocation = [aesonQQ|
+    {
+          "file":         "",
+          "function":     "",
+          "class":        "",
+          "begin_line":   0,
+          "begin_column": 0
+    } |]

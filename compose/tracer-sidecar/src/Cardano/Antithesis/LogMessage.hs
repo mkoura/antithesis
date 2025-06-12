@@ -5,6 +5,7 @@
 -- | Boilerplate to parse (some) node logs
 module Cardano.Antithesis.LogMessage
   ( LogMessage (..)
+  , Severity (..)
   ) where
 
 import qualified Data.Aeson.KeyMap as KeyMap
@@ -36,6 +37,7 @@ data LogMessage = LogMessage
   , thread  :: Text
   , host    :: Node
   , kind    :: Text
+  , json    :: Value
   } deriving (Show, Generic)
 
 instance FromJSON LogMessage where
@@ -61,11 +63,12 @@ instance FromJSON LogMessage where
       , thread  = thread
       , host    = host
       , kind    = kind
+      , json    = Object o
       }
 
 -- | Severity levels in your logs
 data Severity = Debug | Info | Notice | Warning | SevError | Critical
-  deriving (Show, Generic)
+  deriving (Show, Generic, Eq, Ord)
 
 instance FromJSON Severity where
   parseJSON = withText "Severity" $ \t -> case t of

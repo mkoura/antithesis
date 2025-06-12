@@ -8,6 +8,7 @@
 module Main where
 
 import Cardano.Antithesis.LogMessage
+import Cardano.Antithesis.Sdk
 import Cardano.Antithesis.Sidecar
 
 import qualified Data.ByteString.Char8 as B8
@@ -27,7 +28,8 @@ import Control.Monad
     , unless
     )
 import Data.Aeson
-    ( eitherDecode
+    ( Value (Null)
+    , eitherDecode
     )
 import System.Directory
     ( doesDirectoryExist
@@ -64,19 +66,24 @@ main = do
              [d] -> return d
              _   -> error "Usage: <executable name> <directory>"
 
-    mvar <- newMVar =<< initialStateIO
 
     (nPools :: Int) <- read <$> getEnv "POOLS"
+
+    writeSdkJsonl $ alwaysDeclaration "finds all node log files"
 
     files <- waitFor (\files -> length files == nPools) $ do
         threadDelay 2000000 -- allow log files to be created
         putStrLn $ "Looking for " <> show nPools <> " log files"
         jsonFiles dir
 
+    writeSdkJsonl $ alwaysReached "finds all node log files" Null
+
     putStrLn $ "Observing .json files: " <> show files
 
+    let spec = mkSpec nPools
+    mvar <- newMVar =<< initialStateIO spec
     forM_ files $ \file ->
-      forkIO $ tailJsonLines file (modifyMVar_ mvar . flip processMessageIO)
+      forkIO $ tailJsonLines file (modifyMVar_ mvar . flip (processMessageIO spec))
     forever $ threadDelay maxBound
   where
     waitFor :: Monad m => (a -> Bool) -> m a -> m a

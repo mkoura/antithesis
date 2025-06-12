@@ -8,7 +8,9 @@ import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy as BL
 
 import Cardano.Antithesis.LogMessage
-import Cardano.Antithesis.Sidecar
+import Cardano.Antithesis.Sidecar hiding
+    ( Spec
+    )
 
 import Data.Aeson
     ( Value
@@ -33,7 +35,9 @@ spec = do
         <- runIO $ B8.lines <$> B8.readFile "test/data/input.jsonl"
 
     it "processMessages" $
-        let (_finalState, actualVals) = processMessages (initialState 3) msgs
+        let
+            propSpec = mkSpec 3
+            (_finalState, actualVals) = processMessages propSpec (initialState propSpec) msgs
             msgs = mapMaybe decodeStrict' input
         in myGoldenTest actualVals
 

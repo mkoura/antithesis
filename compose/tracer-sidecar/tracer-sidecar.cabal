@@ -19,7 +19,7 @@ executable tracer-sidecar
     import:           warnings
     main-is:          Main.hs
     -- other-extensions:
-    build-depends:    base ^>=4.18.3.0
+    build-depends:    base
                     , aeson
                     , aeson-qq
                     , text
@@ -39,7 +39,7 @@ library
   import:          warnings
   hs-source-dirs:  src
   build-depends:
-    , base ^>=4.18.3.0
+    , base
     , aeson
     , aeson-qq
     , text
@@ -51,6 +51,7 @@ library
     , stm
     , generic-lens
     , optics-core
+    , transformers
   exposed-modules:
     Cardano.Antithesis.Sdk
     Cardano.Antithesis.LogMessage

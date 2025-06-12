@@ -77,7 +77,6 @@ services:
       dockerfile: "Dockerfile"
   tracer-sidecar:
     image: ${registry}${testnet}_tracer-sidecar:latest
-    restart: on-failure
     container_name: tracer-sidecar
     hostname: tracer-sidecar.example
     environment:

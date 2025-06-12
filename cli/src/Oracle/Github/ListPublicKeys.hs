@@ -8,7 +8,8 @@ module Oracle.Github.ListPublicKeys
     , inspectPublicKey
     ) where
 
-import Types (Username, PublicKeyHash)
+import Data.Maybe (catMaybes)
+import Types (Username, PublicKeyHash (..) )
 
 import qualified Data.Text as T
 import qualified Oracle.Github.ListPublicKeysIO as IO
@@ -16,17 +17,28 @@ import qualified Oracle.Github.ListPublicKeysIO as IO
 data PublicKeyValidation =
     PublicKeyValidated |
     NoPublicKeyFound |
-    NoEd25519KeyFound
+    NoEd25519KeyFound |
+    NoEd25519KeyMatch
     deriving (Eq, Show)
 
-analyzePublicKeyResponse ::[IO.ResponsePublicKey] -> PublicKeyValidation
-analyzePublicKeyResponse = cond
+analyzePublicKeyResponse
+    :: PublicKeyHash
+    -> [IO.ResponsePublicKey]
+    -> PublicKeyValidation
+analyzePublicKeyResponse (PublicKeyHash pubkeyToValidate) = cond
   where
       cond resp
           | null resp = NoPublicKeyFound
-          | not (any hasEpectedPrefix resp) = NoEd25519KeyFound
+          | not (any hasExpectedPrefix resp) = NoEd25519KeyFound
+          | hasTheKey resp = NoEd25519KeyMatch
           | otherwise = PublicKeyValidated
-      hasEpectedPrefix = T.isPrefixOf "ssh-ed25519" . IO.key
+
+      expectedPrefix = "ssh-ed25519"
+      hasExpectedPrefix = T.isPrefixOf expectedPrefix . IO.key
+      hasTheKey =
+          any (== (T.pack pubkeyToValidate)) .
+          catMaybes .
+          map (T.stripPrefix expectedPrefix . IO.key)
 
 inspectPublicKey
     :: Username
@@ -34,7 +46,7 @@ inspectPublicKey
     -> IO IO.GithubAccessToken
     -> (IO.GithubAccessToken -> Username -> IO [IO.ResponsePublicKey])
     -> IO PublicKeyValidation
-inspectPublicKey username _pubKeyExpected getAccessToken requestPublicKeysForUser = do
+inspectPublicKey username pubKeyExpected getAccessToken requestPublicKeysForUser = do
     token <- getAccessToken
     resp <- requestPublicKeysForUser token username
-    pure $ analyzePublicKeyResponse resp
+    pure $ analyzePublicKeyResponse pubKeyExpected resp

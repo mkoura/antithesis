@@ -57,7 +57,7 @@ mkSpec nPools = do
             fromJust (T.stripSuffix ".example" host) == pool
 
     alwaysOrUnreachable "no critical logs" $ \_s LogMessage{sev} ->
-        sev < SevError -- FIXME: For testing failure
+        sev < Critical
 
 -- State -----------------------------------------------------------------------
 

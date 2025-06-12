@@ -7,9 +7,10 @@ module Anti.Server
     )
 where
 
-import Anti.API (api)
-import Anti.Types (Request (..), TokenId, RequestRefs)
-import Data.Aeson (Value, object, (.=))
+import Oracle.Token.API (tokenApi)
+import Oracle.Types (RequestRefs)
+import Types (Request (..), TokenId)
+import Data.Aeson (ToJSON (..), Value, object, (.=))
 import Network.Wai (Application)
 import Servant (serve, (:<|>) (..))
 import Servant.Server (Handler)
@@ -17,14 +18,18 @@ import Servant.Server (Handler)
 appDummy :: Application
 appDummy =
     serve
-        api
+        tokenApi
         ( postRequestDummy
             :<|> retractRequestDummy
             :<|> postTokenDummy
             :<|> deleteTokenDummy
             :<|> getTokenDummy
             :<|> updateTokenDummy
+            :<|> facts
         )
+
+facts :: TokenId -> Handler Value
+facts _ = return $ toJSON ([] :: [()])
 
 retractRequestDummy :: [Char] -> Int -> Handler Value
 retractRequestDummy _txHash _outputIndex = do
@@ -56,5 +61,3 @@ postRequestDummy _tokenId = \case
         , value = _
         , operation = _
         } -> do return dummyTxId
-
--- _ -> error "Invalid request format"

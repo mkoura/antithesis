@@ -3,13 +3,17 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StrictData #-}
 
-module Anti.Types
-    ( UserCommand (..)
+module Types
+    ( Command (..)
+    , UserCommand (..)
+    , RequesterCommand (..)
     , OracleCommand (..)
-    , Command (..)
+    , TokenCommand (..)
     , Directory (..)
     , Host (..)
+    , Operation (..)
     , Options (..)
+    , OutputReference (..)
     , Platform (..)
     , Port (..)
     , PublicKeyHash (..)
@@ -18,11 +22,7 @@ module Anti.Types
     , Role (..)
     , SHA1 (..)
     , TokenId (..)
-    , TxId (..)
     , Username (..)
-    , Operation (..)
-    , OutputReference (..)
-    , RequestRefs (..)
     ) where
 
 import Data.Aeson
@@ -36,29 +36,9 @@ import Data.Aeson
     , (.:)
     )
 import Servant.API (FromHttpApiData (..), ToHttpApiData (..))
+import Text.Read (readMaybe)
 
 import qualified Data.Text as T
-
-newtype Platform = Platform String
-    deriving (Eq, Show)
-
-newtype SHA1 = SHA1 String
-    deriving (Eq, Show)
-
-newtype TxId = TxId String
-    deriving (Eq, Show)
-
-newtype Username = Username String
-    deriving (Eq, Show)
-
-newtype Role = Role String
-    deriving (Eq, Show)
-
-newtype PublicKeyHash = PublicKeyHash String
-    deriving (Eq, Show)
-
-newtype Directory = Directory String
-    deriving (Eq, Show)
 
 newtype TokenId = TokenId String
     deriving (Eq, Show)
@@ -71,6 +51,33 @@ instance FromHttpApiData TokenId where
         case T.unpack tokenId of
             "" -> Left "TokenId cannot be empty"
             _ -> Right (TokenId (T.unpack tokenId))
+
+newtype Platform = Platform String
+    deriving (Eq, Show)
+
+newtype PublicKeyHash = PublicKeyHash String
+    deriving (Eq, Show)
+
+newtype SHA1 = SHA1 String
+    deriving (Eq, Show)
+
+newtype TxId = TxId String
+    deriving (Eq, Show)
+
+newtype Role = Role String
+    deriving (Eq, Show)
+
+newtype Directory = Directory String
+    deriving (Eq, Show)
+
+newtype Username = Username String
+    deriving (Eq, Show)
+
+data Repository = Repository
+    { organization :: String
+    , project :: String
+    }
+    deriving (Eq, Show)
 
 data Request = Request
     { key :: String
@@ -94,12 +101,6 @@ instance FromJSON Request where
             <*> v .: "value"
             <*> v .: "operation"
 
-data Repository = Repository
-    { organization :: String
-    , project :: String
-    }
-    deriving (Eq, Show)
-
 data Operation = Insert | Delete
     deriving (Eq, Show)
 
@@ -122,32 +123,49 @@ data OutputReference = OutputReference
 
 instance ToJSON OutputReference where
     toJSON (OutputReference{outputReferenceTx, outputReferenceIndex}) =
-        object
-            [ "txHash" .= outputReferenceTx
-            , "outputIndex" .= outputReferenceIndex
-            ]
+        String
+            $ T.pack outputReferenceTx
+                <> "-"
+                <> T.pack (show outputReferenceIndex)
 
 instance FromJSON OutputReference where
-    parseJSON = withObject "OutputReference" $ \v ->
-        OutputReference
-            <$> v .: "txHash"
-            <*> v .: "outputIndex"
+    parseJSON = withText "OutputReference" $ \v -> do
+        let parts = T.splitOn "-" v
+        case parts of
+            [tx, index] -> do
+                case readMaybe (T.unpack index) of
+                    Just i ->
+                        pure
+                            $ OutputReference
+                                { outputReferenceTx = T.unpack tx
+                                , outputReferenceIndex = i
+                                }
+                    Nothing -> fail $ "Invalid index: " ++ T.unpack index
+            _ -> fail $ "Invalid output reference format: " ++ T.unpack v
 
-newtype RequestRefs = RequestRefs
-    { outputReferences :: [OutputReference]
+newtype Port = Port Int
+    deriving (Eq, Show)
+
+newtype Host = Host String
+    deriving (Eq, Show)
+
+data Options = Options
+    { host :: Host
+    , port :: Port
+    , command :: Command
     }
     deriving (Eq, Show)
-instance ToJSON RequestRefs where
-    toJSON (RequestRefs{outputReferences}) =
-        object
-            [ "requests" .= outputReferences
-            ]
-instance FromJSON RequestRefs where
-    parseJSON = withObject "Requests" $ \v ->
-        RequestRefs
-            <$> v .: "requests"
 
-data OracleCommand
+data Command
+    = UserCommand UserCommand
+    | OracleCommand OracleCommand
+    deriving (Eq, Show)
+
+newtype OracleCommand
+    = OracleTokenCommand TokenCommand
+    deriving (Eq, Show)
+
+data TokenCommand
     = CreateToken
     | DeleteToken
         { tokenId :: TokenId
@@ -160,16 +178,13 @@ data OracleCommand
         , requests :: [OutputReference]
         }
     deriving (Eq, Show)
-data UserCommand
-    = RequestTest
-        { platform :: Platform
-        , repository :: Repository
-        , commit :: SHA1
-        , directory :: Directory
-        , username :: Username
-        , tokenId :: TokenId
-        }
-    | RegisterPublicKey
+
+newtype UserCommand
+    = UserRequesterCommand RequesterCommand
+    deriving (Eq, Show)
+
+data RequesterCommand
+    = RegisterPublicKey
         { platform :: Platform
         , username :: Username
         , pubkeyhash :: PublicKeyHash
@@ -195,25 +210,18 @@ data UserCommand
         , username :: Username
         , tokenId :: TokenId
         }
+    | RequestTest
+        { platform :: Platform
+        , repository :: Repository
+        , commit :: SHA1
+        , directory :: Directory
+        , username :: Username
+        , tokenId :: TokenId
+        }
     | RetractRequest
         { outputReference :: OutputReference
         }
-    deriving (Eq, Show)
-
-newtype Port = Port Int
-    deriving (Eq, Show)
-
-newtype Host = Host String
-    deriving (Eq, Show)
-
-data Command
-    = UserCommand UserCommand
-    | OracleCommand OracleCommand
-    deriving (Eq, Show)
-
-data Options = Options
-    { host :: Host
-    , port :: Port
-    , command :: Command
-    }
+    | GetFacts
+        { tokenId :: TokenId
+        }
     deriving (Eq, Show)

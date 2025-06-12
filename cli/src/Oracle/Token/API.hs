@@ -1,20 +1,21 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Anti.API
-    ( api
-    , API
+module Oracle.Token.API
+    ( tokenApi
+    , TokenAPI
     , requestChange
     , retractRequest
     , createToken
     , deleteToken
     , getToken
     , updateToken
+    , getTokenFacts
     ) where
 
-import Anti.Types (Request, RequestRefs, TokenId)
 import Data.Aeson (Value)
 import Data.Data (Proxy (..))
+import Oracle.Types (RequestRefs)
 import Servant.API
     ( Capture
     , Delete
@@ -27,8 +28,9 @@ import Servant.API
     , type (:>)
     )
 import Servant.Client (ClientM, client)
+import Types (Request, TokenId)
 
-type API =
+type TokenAPI =
     "token"
         :> Capture "tokenId" TokenId
         :> "request"
@@ -50,23 +52,29 @@ type API =
             :> Capture "tokenId" TokenId
             :> ReqBody '[JSON] RequestRefs
             :> Put '[JSON] Value
+        :<|> "token"
+            :> Capture "tokenId" TokenId
+            :> "facts"
+            :> Get '[JSON] Value
 
-api :: Proxy API
-api = Proxy
+tokenApi :: Proxy TokenAPI
+tokenApi = Proxy
 
-requestChange
-    :: TokenId
-    -> Request
-    -> ClientM Value
 createToken :: ClientM Value
 deleteToken :: TokenId -> ClientM Value
 updateToken :: TokenId -> RequestRefs -> ClientM Value
 getToken :: TokenId -> ClientM Value
 retractRequest :: [Char] -> Int -> ClientM Value
+getTokenFacts :: TokenId -> ClientM Value
+requestChange
+    :: TokenId
+    -> Request
+    -> ClientM Value
 requestChange
     :<|> retractRequest
     :<|> createToken
     :<|> deleteToken
     :<|> getToken
-    :<|> updateToken =
-        client api
+    :<|> updateToken
+    :<|> getTokenFacts =
+        client tokenApi

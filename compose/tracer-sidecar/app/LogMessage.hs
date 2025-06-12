@@ -1,5 +1,5 @@
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- | Boilerplate to parse (some) node logs
@@ -9,10 +9,16 @@ module LogMessage
   ) where
 
 import Data.Aeson
-import Data.Aeson.Types (Parser)
+import Data.Aeson.Types
+    ( Parser
+    )
 import Data.Text
-import GHC.Generics (Generic)
-import Data.Time    (UTCTime)
+import Data.Time
+    ( UTCTime
+    )
+import GHC.Generics
+    ( Generic
+    )
 
 type Node = Text
 

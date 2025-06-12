@@ -2,28 +2,12 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Anti.Options (parseArgs) where
+module Options (parseArgs) where
 
-import Anti.Types
-    ( Command (..)
-    , Directory (..)
-    , Host (..)
-    , Options (Options)
-    , OracleCommand (..)
-    , OutputReference (..)
-    , Platform (..)
-    , Port (..)
-    , PublicKeyHash (..)
-    , Repository (Repository)
-    , Role (..)
-    , SHA1 (..)
-    , TokenId (..)
-    , UserCommand (..)
-    , Username (..)
-    )
 import Options.Applicative
     ( Alternative (..)
     , Parser
+    , ReadM
     , auto
     , command
     , defaultPrefs
@@ -44,6 +28,26 @@ import Options.Applicative
     , strOption
     , value
     , (<**>)
+    )
+import Options.Applicative.Types (readerAsk)
+import Types
+    ( Command (..)
+    , Directory (..)
+    , Host (..)
+    , Options (Options)
+    , OracleCommand (..)
+    , OutputReference (..)
+    , Platform (..)
+    , Port (..)
+    , PublicKeyHash (..)
+    , Repository (Repository)
+    , RequesterCommand (..)
+    , Role (..)
+    , SHA1 (..)
+    , TokenCommand (..)
+    , TokenId (..)
+    , UserCommand (..)
+    , Username (..)
     )
 
 platformOption :: Parser Platform
@@ -92,7 +96,7 @@ directoryOption =
                 <> help "The directory to run in (defaults to \".\")"
             )
 
-requestTestOptions :: Parser UserCommand
+requestTestOptions :: Parser RequesterCommand
 requestTestOptions =
     RequestTest
         <$> platformOption
@@ -122,7 +126,7 @@ pubkeyhashOption =
                 <> help "The public key hash for the user"
             )
 
-addPublicKeyOptions :: Parser UserCommand
+addPublicKeyOptions :: Parser RequesterCommand
 addPublicKeyOptions =
     RegisterPublicKey
         <$> platformOption
@@ -130,7 +134,7 @@ addPublicKeyOptions =
         <*> pubkeyhashOption
         <*> tokenIdOption
 
-removePublicKeyOptions :: Parser UserCommand
+removePublicKeyOptions :: Parser RequesterCommand
 removePublicKeyOptions =
     UnregisterPublicKey
         <$> platformOption
@@ -148,7 +152,7 @@ roleOption =
                 <> help "The role to assign to the user (e.g., maintainer, contributor)"
             )
 
-addRoleOptions :: Parser UserCommand
+addRoleOptions :: Parser RequesterCommand
 addRoleOptions =
     RegisterRole
         <$> platformOption
@@ -157,7 +161,7 @@ addRoleOptions =
         <*> usernameOption
         <*> tokenIdOption
 
-removeRoleOptions :: Parser UserCommand
+removeRoleOptions :: Parser RequesterCommand
 removeRoleOptions =
     UnregisterRole
         <$> platformOption
@@ -176,20 +180,32 @@ tokenIdOption =
                 <> help "The token ID"
             )
 
-retractRequestOptions :: Parser UserCommand
+retractRequestOptions :: Parser RequesterCommand
 retractRequestOptions =
     RetractRequest
         <$> outputReferenceParser
 
-userCommandParser :: Parser UserCommand
-userCommandParser =
+requesterCommandParser :: Parser RequesterCommand
+requesterCommandParser =
     hsubparser
         ( command
-            "request-test"
+            "test"
             ( info
                 requestTestOptions
                 (progDesc "Request a test on a specific platform")
             )
+            <> command
+                "retract"
+                ( info
+                    retractRequestOptions
+                    (progDesc "Retract a request")
+                )
+            <> command
+                "get-facts"
+                ( info
+                    (GetFacts <$> tokenIdOption)
+                    (progDesc "Get token facts")
+                )
             <> command
                 "register-public-key"
                 ( info
@@ -214,52 +230,56 @@ userCommandParser =
                     removeRoleOptions
                     (progDesc "Remove a user from a repository")
                 )
-            <> command
-                "retract-request"
-                ( info
-                    retractRequestOptions
-                    (progDesc "Retract a request")
-                )
         )
 
 outputReferenceParser :: Parser OutputReference
 outputReferenceParser =
-    OutputReference
-        <$> strOption
-            ( long "tx-hash"
-                <> metavar "TX_HASH"
-                <> help "The transaction hash for the output reference"
-            )
-        <*> option
-            auto
-            ( long "index"
-                <> metavar "INDEX"
-                <> help "Index of the output reference"
-            )
+    option parseOutputReference
+        $ short 'o'
+            <> long "outref"
+            <> metavar "OUTPUT_REF"
+            <> help "The transaction hash and index for the output reference"
 
-oracleCommandParser :: Parser OracleCommand
-oracleCommandParser =
+parseOutputReference :: ReadM OutputReference
+parseOutputReference = do
+    s <- readerAsk
+    case break (== '-') s of
+        (txHash, '-' : indexStr) -> do
+            index <- case reads indexStr of
+                [(i, "")] -> pure i
+                _ ->
+                    fail
+                        "Invalid index format. Use 'txHash-index' where index is an integer."
+            pure
+                $ OutputReference
+                    { outputReferenceTx = txHash
+                    , outputReferenceIndex = index
+                    }
+        _ -> fail "Invalid output reference format. Use 'txHash-index'"
+
+tokenCommandParser :: Parser TokenCommand
+tokenCommandParser =
     hsubparser
         ( command
-            "create-token"
+            "create"
             ( info
                 (pure CreateToken <**> helper)
                 (progDesc "Create a new token")
             )
             <> command
-                "delete-token"
+                "delete"
                 ( info
                     (deleteTokenOptions <**> helper)
                     (progDesc "Delete a token")
                 )
             <> command
-                "get-token"
+                "get"
                 ( info
                     (GetToken <$> tokenIdOption <**> helper)
                     (progDesc "Get a token")
                 )
             <> command
-                "update-token"
+                "update"
                 ( info
                     ( UpdateToken
                         <$> tokenIdOption
@@ -270,7 +290,7 @@ oracleCommandParser =
                 )
         )
 
-deleteTokenOptions :: Parser OracleCommand
+deleteTokenOptions :: Parser TokenCommand
 deleteTokenOptions =
     DeleteToken
         <$> tokenIdOption
@@ -282,17 +302,36 @@ commandParser =
             "oracle"
             ( info
                 (OracleCommand <$> oracleCommandParser <**> helper)
-                (progDesc "Manage tokens")
+                (progDesc "Oracle services")
             )
             <> command
                 "user"
                 ( info
-                    ( UserCommand
-                        <$> userCommandParser
-                        <**> helper
-                    )
-                    (progDesc "Manage users")
+                    (UserCommand <$> userCommandParser <**> helper)
+                    (progDesc "Manage user requests")
                 )
+        )
+
+oracleCommandParser :: Parser OracleCommand
+oracleCommandParser =
+    hsubparser
+        ( command
+            "token"
+            ( info
+                (OracleTokenCommand <$> tokenCommandParser <**> helper)
+                (progDesc "Manage tokens")
+            )
+        )
+
+userCommandParser :: Parser UserCommand
+userCommandParser =
+    hsubparser
+        ( command
+            "request"
+            ( info
+                (UserRequesterCommand <$> requesterCommandParser <**> helper)
+                (progDesc "Allow users to send requests")
+            )
         )
 
 hostOption :: Parser Host
@@ -314,7 +353,7 @@ portOption =
             ( long "port"
                 <> short 'p'
                 <> metavar "PORT"
-                <> value 8080
+                <> value 3000
                 <> help "The port to connect to (defaults to 8080)"
             )
 

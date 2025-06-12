@@ -16,8 +16,6 @@ protocolConsts:
 --- # Optional Shelley Genesis Overide
 epochLength: 86400
 securityParam: 432
-activeSlotsCoeff: 0.25 # 0.05 on mainnet
-slotLength: 1
 maxLovelaceSupply: 45000000000000000
 protocolParams:
   decentralisationParam: 0
@@ -53,25 +51,27 @@ TestConwayHardForkAtEpoch: 0
 TestMaryHardForkAtEpoch: 0
 TestShelleyHardForkAtEpoch: 0
 TraceConnectionManager: true
-TraceConnectionManagerTransitions: true
-TraceDNSResolver: true
-TraceDNSSubscription: true
-TraceDebugPeerSelection: true
+TraceConnectionManagerTransitions: false
+TraceDNSResolver: false
+TraceDNSSubscription: false
+TraceDebugPeerSelection: false
 TraceForge: true
 TraceForgeStateInfo: true
 TraceHandshake: true
-TraceInboundGovernor: true
-TraceIpSubscription: true
+TraceInboundGovernor: false
+TraceIpSubscription: false
 TraceLedgerPeers: true
-TraceLocalConnectionManager: true
-TraceLocalHandshake: true
-TraceLocalRootPeers: true
+TracePeerStateActions: true
+TracePeerSelectionActions: true
+TracePeerSelection: True
+TraceLocalConnectionManager: false
+TraceLocalHandshake: false
+TraceLocalRootPeers: false
 TracePeerSelection: true
 TracePeerSelectionActions: true
-TracePublicRootPeers: true
+TracePublicRootPeers: false
 TraceServer: true
-TurnOnLoggingMetrics: true
-TurnOnLogging: true
+TurnOnLogMetrics: false
 UseTraceDispatcher: true
 TraceOptionForwarder:
   connQueueSize: 64
@@ -100,8 +100,11 @@ TraceOptions:
     maxFrequency: 2
   ChainDB.CopyToImmutableDBEvent.CopiedBlockToImmutableDB:
     maxFrequency: 2
+  ChainDB.AddBlockEvent.SwitchedToAFork:
+    severity: Notice
   ChainSync.Client:
     severity: Warning
+
   Forge.Loop:
     severity: Info
   Forge.StateInfo:
@@ -112,14 +115,14 @@ TraceOptions:
     severity: Info
   Net.ConnectionManager.Remote.ConnectionManagerCounters:
     severity: Silence
+  Net.PeerSelection.Actions:
+    severity: Info
   Net.ErrorPolicy:
     severity: Info
   Net.ErrorPolicy.Local:
     severity: Info
   Net.InboundGovernor:
-    severity: Warning
-  Net.InboundGovernor.Remote:
-    severity: Info
+    severity: Silence
   Net.Mux.Remote:
     severity: Info
   Net.PeerSelection:

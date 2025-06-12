@@ -1,11 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections #-}
 
-module Anti.Main (main) where
+module App (server) where
 
-import Anti.Cli (anti)
-import Anti.Options (parseArgs)
-import Anti.Types (Host (..), Options (Options), Port (..))
+import Cli (cmd)
 import Data.Aeson (Value)
 import Network.HTTP.Client
     ( ManagerSettings (..)
@@ -14,6 +12,7 @@ import Network.HTTP.Client
     , defaultManagerSettings
     , newManager
     )
+import Options (parseArgs)
 import Servant.Client
     ( BaseUrl
         ( BaseUrl
@@ -28,9 +27,10 @@ import Servant.Client
     , runClientM
     )
 import System.Environment (getArgs)
+import Types (Host (..), Options (Options), Port (..))
 
-main :: IO (Options, Either ClientError Value)
-main = do
+server :: IO (Options, Either ClientError Value)
+server = do
     args <- getArgs
     o@(Options (Host host') (Port port) command) <- parseArgs args
     -- putStrLn $ "Options: " ++ show o
@@ -43,7 +43,7 @@ main = do
                 , baseUrlPath = ""
                 }
         clientEnv = mkClientEnv manger baseUrl
-    (o,) <$> runClientM (anti command) clientEnv
+    (o,) <$> runClientM (cmd command) clientEnv
 
 _logRequests :: ManagerSettings -> ManagerSettings
 _logRequests settings =

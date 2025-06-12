@@ -75,9 +75,9 @@ spec = beforeAll_ runDummyServer $ do
                 , "--platform"
                 , "github"
                 , "--username"
-                , "bob"
+                , "paolino"
                 , "--pubkeyhash"
-                , "607a0d8a64616a407537edf0d9b59cf4cb509c556f6d2de4250ce15df2"
+                , "AAAAC3NzaC1lZDI1NTE5AAAAIO773JHqlyLm5XzOjSe+Q5yFJyLFuMLL6+n63t4t7HR8"
                 , "--token-id"
                 , "dummyTokenId"
                 ]
@@ -89,10 +89,10 @@ spec = beforeAll_ runDummyServer $ do
                         UserCommand $ UserRequesterCommand
                             RegisterPublicKey
                                 { platform = Platform "github"
-                                , username = Username "bob"
+                                , username = Username "paolino"
                                 , pubkeyhash =
                                     PublicKeyHash
-                                        "607a0d8a64616a407537edf0d9b59cf4cb509c556f6d2de4250ce15df2"
+                                        "AAAAC3NzaC1lZDI1NTE5AAAAIO773JHqlyLm5XzOjSe+Q5yFJyLFuMLL6+n63t4t7HR8"
                                 , tokenId = TokenId "dummyTokenId"
                                 }
                     }

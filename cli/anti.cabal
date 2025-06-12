@@ -139,6 +139,7 @@ test-suite anti-test
   other-modules:
     Anti.CliSpec
     Anti.Server
+    Oracle.Github.ListPublicKeysSpec
 
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:
@@ -158,6 +159,7 @@ test-suite anti-test
     , anti
     , async
     , base
+    , bytestring
     , hspec
     , servant-server
     , wai

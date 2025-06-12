@@ -54,7 +54,7 @@ requestListingOfPublicKeysForUser
     :: GithubAccessToken
     -> Username
     -> IO [ResponsePublicKey]
-requestListingOfPublicKeysForUser token username = do
+requestListingOfPublicKeysForUser token (Username username) = do
     response <- Wreq.getWith headers endpoint
     case response ^. Wreq.responseStatus . Wreq.statusCode of
         200 -> (^. Wreq.responseBody) <$> Wreq.asJSON response
@@ -67,5 +67,5 @@ requestListingOfPublicKeysForUser token username = do
             & Wreq.header "X-GitHub-Api-Version" .~ ["2022-11-28"]
     endpoint =
         "https://api.github.com/users/"
-            <> show username
+            <> username
             <> "/keys"

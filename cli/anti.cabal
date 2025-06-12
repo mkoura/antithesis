@@ -67,7 +67,8 @@ library
     App
     Cli
     Options
-    Oracle.Github.FactRequester
+    Oracle.Github.ListPublicKeysIO
+    Oracle.Github.ListPublicKeys
     Oracle.Token.API
     Oracle.Token.Cli
     Oracle.Types

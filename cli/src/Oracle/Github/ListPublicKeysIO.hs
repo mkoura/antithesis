@@ -3,14 +3,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StrictData #-}
 
-module Oracle.Github.FactRequester
+module Oracle.Github.ListPublicKeysIO
     ( GithubAccessToken (..)
     , ResponsePublicKey (..)
     , getGithubAccessToken
-    , inspectPublicKey
+    , requestListingOfPublicKeysForUser
     ) where
 
-import Control.Lens
+import Control.Lens ((^.), (&), (.~))
 import Data.Aeson (FromJSON)
 import Data.ByteString (ByteString)
 import Data.Maybe (fromMaybe)
@@ -53,11 +53,11 @@ instance FromJSON ResponsePublicKey
 requestListingOfPublicKeysForUser
     :: GithubAccessToken
     -> Username
-    -> IO (Wreq.Response [ResponsePublicKey])
+    -> IO [ResponsePublicKey]
 requestListingOfPublicKeysForUser token username = do
     response <- Wreq.getWith headers endpoint
     case response ^. Wreq.responseStatus . Wreq.statusCode of
-        200 -> Wreq.asJSON response
+        200 -> (^. Wreq.responseBody) <$> Wreq.asJSON response
         _ -> error $ show $ response ^. Wreq.responseStatus
   where
     headers =
@@ -69,9 +69,3 @@ requestListingOfPublicKeysForUser token username = do
         "https://api.github.com/users/"
             <> show username
             <> "/keys"
-
-inspectPublicKey :: Username -> IO [ResponsePublicKey]
-inspectPublicKey username = do
-    token <- getGithubAccessToken
-    resp <- requestListingOfPublicKeysForUser token username
-    pure $ resp ^. Wreq.responseBody

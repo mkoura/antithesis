@@ -112,14 +112,14 @@ config_config_json() {
 
     # configure UTxO-HD
     # see https://ouroboros-consensus.cardano.intersectmbo.org/docs/for-developers/utxo-hd/migrating
-    if [ "${UTXO_HD_WITH_LMDB,,}" = "true" ]; then
-        jq '.LedgerDB = { Backend: "V1LMDB"}' "${CONFIG_JSON}" | write_file "${CONFIG_JSON}"
-    fi
-
-    if [ "${UTXO_HD_WITH_MEM,,}" = "true" ]; then
-        jq '.LedgerDB = { Backend: "V2InMemory"}' "${CONFIG_JSON}" | write_file "${CONFIG_JSON}"
-    fi
-
+    case "${UTXO_HD_WITH,,}" in
+        hd)
+            jq '.LedgerDB = { Backend: "V1LMDB"}' "${CONFIG_JSON}" | write_file "${CONFIG_JSON}"
+            ;;
+        *)
+            jq '.LedgerDB = { Backend: "V2InMemory"}' "${CONFIG_JSON}" | write_file "${CONFIG_JSON}"
+            ;;
+    esac
 }
 
 config_topology_json() {

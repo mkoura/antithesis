@@ -23,7 +23,7 @@ x-tracer-base: &tracerbase
 
 x-env: &env
   POOL_ID: "0" # Placeholder required for override
-  UTXO_HD_WITH_MEM: "true"
+  UTXO_HD_WITH: "mem"
 
 services:
   tracer:
@@ -50,7 +50,7 @@ services:
     environment:
       <<: *env
       POOL_ID: "1"
-      UTXO_HD_WITH_LMDB: "true"
+      UTXO_HD_WITH: "hd"
 
   p2:
     <<: *base
@@ -90,7 +90,7 @@ services:
     environment:
       <<: *env
       POOL_ID: "4"
-      UTXO_HD_WITH_LMDB: "true"
+      UTXO_HD_WITH: "hd"
 
 
   p5:

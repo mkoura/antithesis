@@ -11,7 +11,7 @@ module Oracle.Github.GetRepoRole
     ) where
 
 import Data.Text (Text)
-import Types (Role (..), Username, Repository)
+import Types (Repository, Role (..), Username)
 
 import qualified Data.Text as T
 import qualified Oracle.Github.CommonIO as IO
@@ -28,16 +28,21 @@ emitRepoRoleMsg :: RepoRoleValidation -> String
 emitRepoRoleMsg = \case
     RepoRoleValidated -> "The user's role is validated in a given Github repository."
     NoRoleInRepo -> "User does not have any role in the repository."
-    NonexistantRolePicked -> "Role picked does not exist. Please use one of " <> unlines (T.unpack <$> permissionDomain)
-    WrongRolePicked -> "Role picked is not exactly the one in a repository user has attributed."
+    NonexistantRolePicked ->
+        "Role picked does not exist. Please use one of "
+            <> unlines (T.unpack <$> permissionDomain)
+    WrongRolePicked ->
+        "Role picked is not exactly the one in a repository user has attributed."
 
 permissionDomain :: [Text]
 permissionDomain = ["admin", "write", "read", "none"]
 
-analyzeRepoRoleResponse :: Role -> IO.ResponseRepoRole -> RepoRoleValidation
+analyzeRepoRoleResponse
+    :: Role -> IO.ResponseRepoRole -> RepoRoleValidation
 analyzeRepoRoleResponse (Role roleToValidate) (IO.ResponseRepoRole roleResp)
     | roleResp == "none" = NoRoleInRepo
-    | T.pack roleToValidate `notElem` permissionDomain = NonexistantRolePicked
+    | T.pack roleToValidate `notElem` permissionDomain =
+        NonexistantRolePicked
     | T.pack roleToValidate /= roleResp = WrongRolePicked
     | otherwise = RepoRoleValidated
 
@@ -46,7 +51,11 @@ inspectRepoRoleForUserTemplate
     -> Repository
     -> Role
     -> IO IO.GithubAccessToken
-    -> (IO.GithubAccessToken -> Username -> Repository -> IO IO.ResponseRepoRole)
+    -> ( IO.GithubAccessToken
+         -> Username
+         -> Repository
+         -> IO IO.ResponseRepoRole
+       )
     -> IO RepoRoleValidation
 inspectRepoRoleForUserTemplate username repo roleExpected getAccessToken requestRepoRoleForUser = do
     token <- getAccessToken

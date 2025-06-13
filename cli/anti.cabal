@@ -143,7 +143,7 @@ test-suite anti-test
   other-modules:
     Anti.CliSpec
     Anti.Server
-    Oracle.Github.ListPublicKeysSpec
+    Oracle.Github.OracleValidationSpec
 
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:

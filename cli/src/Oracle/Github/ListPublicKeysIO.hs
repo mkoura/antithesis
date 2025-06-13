@@ -12,7 +12,7 @@ import Control.Lens ((&), (.~), (^.))
 import Data.Aeson (FromJSON)
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import Oracle.Github.CommonIO ( GithubAccessToken (..) )
+import Oracle.Github.CommonIO (GithubAccessToken (..))
 import Types (Username (..))
 
 import qualified Network.Wreq as Wreq

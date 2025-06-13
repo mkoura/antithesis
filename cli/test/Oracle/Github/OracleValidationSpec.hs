@@ -1,13 +1,22 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Oracle.Github.ListPublicKeysSpec
+module Oracle.Github.OracleValidationSpec
     ( spec
     )
 where
 
-import Oracle.Github.ListPublicKeysIO
+import Oracle.Github.CommonIO
     ( GithubAccessToken (..)
-    , ResponsePublicKey (..)
+    )
+import Oracle.Github.GetRepoRole
+    ( RepoRoleValidation (..)
+    , inspectRepoRoleForUserTemplate
+    )
+import Oracle.Github.GetRepoRoleIO
+    ( ResponseRepoRole (..)
+    )
+import Oracle.Github.ListPublicKeysIO
+    ( ResponsePublicKey (..)
     )
 import Oracle.Github.ListPublicKeys
     ( PublicKeyValidation (..)
@@ -18,7 +27,7 @@ import Test.Hspec
     , it
     , shouldReturn
     )
-import Types (Username (..), PublicKeyHash (..) )
+import Types (Username (..), PublicKeyHash (..), Repository (..), Role (..) )
 
 import qualified Data.ByteString.Char8 as BC
 
@@ -69,3 +78,35 @@ spec = do
             pubkey = PublicKeyHash "XAAAAAAY"
         inspectPublicKeyTemplate user pubkey mockedAccessToken okExpectedEd25519PubKeyOfUser
         `shouldReturn` PublicKeyValidated
+
+    it "user does not have any right to the repo" $ do
+        let noPermissions _ _ _ = pure $ ResponseRepoRole "none"
+            user = Username "user1"
+            repo = Repository "org" "repo"
+            roleExp = Role ""
+        inspectRepoRoleForUserTemplate user repo roleExp mockedAccessToken noPermissions
+        `shouldReturn` NoRoleInRepo
+
+    it "user tries to set non-existent role in the repo" $ do
+        let permissionReps _ _ _ = pure $ ResponseRepoRole "write"
+            user = Username "user1"
+            repo = Repository "org" "repo"
+            roleExp = Role "rite"
+        inspectRepoRoleForUserTemplate user repo roleExp mockedAccessToken permissionReps
+        `shouldReturn` NonexistantRolePicked
+
+    it "user tries to validate the role that is different than what repo has set" $ do
+        let permissionReps _ _ _ = pure $ ResponseRepoRole "read"
+            user = Username "user1"
+            repo = Repository "org" "repo"
+            roleExp = Role "write"
+        inspectRepoRoleForUserTemplate user repo roleExp mockedAccessToken permissionReps
+        `shouldReturn` WrongRolePicked
+
+    it "user's role in a given api is validated" $ do
+        let permissionReps _ _ _ = pure $ ResponseRepoRole "write"
+            user = Username "user1"
+            repo = Repository "org" "repo"
+            roleExp = Role "write"
+        inspectRepoRoleForUserTemplate user repo roleExp mockedAccessToken permissionReps
+        `shouldReturn` RepoRoleValidated

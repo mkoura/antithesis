@@ -55,7 +55,7 @@ analyzePublicKeyResponse (PublicKeyHash pubkeyToValidate) = cond
     hasExpectedPrefix = T.isPrefixOf expectedPrefix . IO.key
     hasNotTheKey =
         L.notElem (T.pack pubkeyToValidate)
-        . mapMaybe (T.stripPrefix expectedPrefix . IO.key)
+            . mapMaybe (T.stripPrefix expectedPrefix . IO.key)
 
 inspectPublicKeyTemplate
     :: Username

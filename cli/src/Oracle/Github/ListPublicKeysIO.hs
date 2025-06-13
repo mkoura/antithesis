@@ -10,7 +10,7 @@ module Oracle.Github.ListPublicKeysIO
     , requestListingOfPublicKeysForUser
     ) where
 
-import Control.Lens ((^.), (&), (.~))
+import Control.Lens ((&), (.~), (^.))
 import Data.Aeson (FromJSON)
 import Data.ByteString (ByteString)
 import Data.Maybe (fromMaybe)

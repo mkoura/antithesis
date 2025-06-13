@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -11,31 +10,34 @@ module Oracle.Github.ListPublicKeys
     , emitPublicKeyMsg
     ) where
 
-import Data.Maybe (catMaybes)
+import Data.Maybe (mapMaybe)
 import Data.Text (Text)
-import Types (Username, PublicKeyHash (..) )
+import Types (PublicKeyHash (..), Username)
 
+import qualified Data.List as L
 import qualified Data.Text as T
 import qualified Oracle.Github.ListPublicKeysIO as IO
 
-data PublicKeyValidation =
-    PublicKeyValidated |
-    NoPublicKeyFound |
-    NoEd25519KeyFound |
-    NoEd25519KeyMatch
+data PublicKeyValidation
+    = PublicKeyValidated
+    | NoPublicKeyFound
+    | NoEd25519KeyFound
+    | NoEd25519KeyMatch
     deriving (Eq, Show)
 
 emitPublicKeyMsg :: PublicKeyValidation -> String
 emitPublicKeyMsg = \case
     PublicKeyValidated -> "Public key of the user validated in Github."
     NoPublicKeyFound -> "The user does not have any public key exposed in Github."
-    NoEd25519KeyFound -> "The user is expected to have public key with '"
-        <> T.unpack expectedPrefix
-        <> "' exposed."
-    NoEd25519KeyMatch -> "The user does not have the specified Ed25519 public key exposed in Github."
+    NoEd25519KeyFound ->
+        "The user is expected to have public key with '"
+            <> T.unpack expectedPrefix
+            <> "' exposed. And none was found"
+    NoEd25519KeyMatch ->
+        "The user does not have the specified Ed25519 public key exposed in Github."
 
 expectedPrefix :: Text
-expectedPrefix = "ssh-ed25519"
+expectedPrefix = "ssh-ed25519 "
 
 analyzePublicKeyResponse
     :: PublicKeyHash
@@ -43,17 +45,16 @@ analyzePublicKeyResponse
     -> PublicKeyValidation
 analyzePublicKeyResponse (PublicKeyHash pubkeyToValidate) = cond
   where
-      cond resp
-          | null resp = NoPublicKeyFound
-          | not (any hasExpectedPrefix resp) = NoEd25519KeyFound
-          | hasTheKey resp = NoEd25519KeyMatch
-          | otherwise = PublicKeyValidated
+    cond resp
+        | null resp = NoPublicKeyFound
+        | not (any hasExpectedPrefix resp) = NoEd25519KeyFound
+        | hasNotTheKey resp = NoEd25519KeyMatch
+        | otherwise = PublicKeyValidated
 
-      hasExpectedPrefix = T.isPrefixOf expectedPrefix . IO.key
-      hasTheKey =
-          any (== (T.pack pubkeyToValidate)) .
-          catMaybes .
-          map (T.stripPrefix expectedPrefix . IO.key)
+    hasExpectedPrefix = T.isPrefixOf expectedPrefix . IO.key
+    hasNotTheKey =
+        L.notElem (T.pack pubkeyToValidate)
+        . mapMaybe (T.stripPrefix expectedPrefix . IO.key)
 
 inspectPublicKeyTemplate
     :: Username
@@ -70,5 +71,9 @@ inspectPublicKey
     :: Username
     -> PublicKeyHash
     -> IO PublicKeyValidation
-inspectPublicKey username pubKeyExpected  =
-    inspectPublicKeyTemplate username pubKeyExpected IO.getGithubAccessToken IO.requestListingOfPublicKeysForUser
+inspectPublicKey username pubKeyExpected =
+    inspectPublicKeyTemplate
+        username
+        pubKeyExpected
+        IO.getGithubAccessToken
+        IO.requestListingOfPublicKeysForUser

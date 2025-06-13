@@ -17,7 +17,7 @@ module Types
     , Platform (..)
     , Port (..)
     , PublicKeyHash (..)
-    , Repository (Repository)
+    , Repository (..)
     , Request (..)
     , Role (..)
     , SHA1 (..)

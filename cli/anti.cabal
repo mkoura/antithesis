@@ -67,8 +67,11 @@ library
     App
     Cli
     Options
+    Oracle.Github.CommonIO
     Oracle.Github.ListPublicKeysIO
     Oracle.Github.ListPublicKeys
+    Oracle.Github.GetRepoRoleIO
+    Oracle.Github.GetRepoRole
     Oracle.Token.API
     Oracle.Token.Cli
     Oracle.Types
@@ -90,6 +93,7 @@ library
     , http-client
     , http-types
     , lens
+    , lens-aeson
     , optparse-applicative
     , servant
     , servant-client

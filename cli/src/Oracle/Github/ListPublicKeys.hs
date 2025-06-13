@@ -16,6 +16,7 @@ import Types (PublicKeyHash (..), Username)
 
 import qualified Data.List as L
 import qualified Data.Text as T
+import qualified Oracle.Github.CommonIO as IO
 import qualified Oracle.Github.ListPublicKeysIO as IO
 
 data PublicKeyValidation

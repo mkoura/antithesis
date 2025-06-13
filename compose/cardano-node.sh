@@ -114,7 +114,7 @@ config_config_json() {
     # see https://ouroboros-consensus.cardano.intersectmbo.org/docs/for-developers/utxo-hd/migrating
     case "${UTXO_HD_WITH,,}" in
         hd)
-            jq '.LedgerDB = { Backend: "V1LMDB"}' "${CONFIG_JSON}" | write_file "${CONFIG_JSON}"
+            jq ".LedgerDB = { Backend: \"V1LMDB\", LiveTablesPath: \"${DATA_PATH}/lmdb\"}" "${CONFIG_JSON}" | write_file "${CONFIG_JSON}"
             ;;
         *)
             jq '.LedgerDB = { Backend: "V2InMemory"}' "${CONFIG_JSON}" | write_file "${CONFIG_JSON}"

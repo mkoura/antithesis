@@ -75,4 +75,4 @@ jobs:
         email_recipients: ${{ env.EMAILS }}
         test_name: "${{ inputs.test || env.TESTNET }}"
         additional_parameters: |-
-          duration=${{ inputs.duration || env.DURATION }}
+          custom.duration=${{ inputs.duration || env.DURATION }}

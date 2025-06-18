@@ -10,57 +10,66 @@ module Oracle.Github.GetRepoRole
     , emitRepoRoleMsg
     ) where
 
-import Data.Text (Text)
-import Types (Repository, Role (..), Username)
+import Data.Maybe (catMaybes)
+import Types (Repository, Role (..), Username (..))
 
-import qualified Data.Text as T
-import qualified Oracle.Github.CommonIO as IO
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as BC
+import qualified Data.List as L
 import qualified Oracle.Github.GetRepoRoleIO as IO
 
 data RepoRoleValidation
     = RepoRoleValidated
-    | NoRoleInRepo
-    | NonexistantRolePicked
-    | WrongRolePicked
+    | NoRoleEntryInCodeowners
+    | NoUsersAssignedToRoleInCodeowners
+    | NoUserInCodeowners
     deriving (Eq, Show)
 
 emitRepoRoleMsg :: RepoRoleValidation -> String
 emitRepoRoleMsg = \case
     RepoRoleValidated -> "The user's role is validated in a given Github repository."
-    NoRoleInRepo -> "User does not have any role in the repository."
-    NonexistantRolePicked ->
-        "Role picked does not exist. Please use one of "
-            <> unlines (T.unpack <$> permissionDomain)
-    WrongRolePicked ->
-        "Role picked is not exactly the one in a repository user has attributed."
+    NoRoleEntryInCodeowners -> "CODEOWNERS in the repository does not contain the role entry."
+    NoUsersAssignedToRoleInCodeowners ->
+        "CODEOWNERS in the repository does not contain any users assigned to the role."
+    NoUserInCodeowners -> "CODEOWNERS in the repository does not contain the user."
 
-permissionDomain :: [Text]
-permissionDomain = ["admin", "write", "read", "none"]
-
-analyzeRepoRoleResponse
-    :: Role -> IO.ResponseRepoRole -> RepoRoleValidation
-analyzeRepoRoleResponse (Role roleToValidate) (IO.ResponseRepoRole roleResp)
-    | roleResp == "none" = NoRoleInRepo
-    | T.pack roleToValidate `notElem` permissionDomain =
-        NonexistantRolePicked
-    | T.pack roleToValidate /= roleResp = WrongRolePicked
+-- In order to verify the role of the userX CODEOWNERS file is downloaded with
+-- the expectation there a line:
+-- role: user1 user2 .. userX .. userN
+analyzeResponseCodeownersFile
+    :: Role -> Username -> IO.ResponseCodeownersFile -> RepoRoleValidation
+analyzeResponseCodeownersFile (Role role) (Username user) (IO.ResponseCodeownersFile file)
+    | null lineWithRole  = NoRoleEntryInCodeowners
+    | users == [Nothing] = NoUsersAssignedToRoleInCodeowners
+    | foundUser == [ [] ] = NoUserInCodeowners
     | otherwise = RepoRoleValidated
+  where
+    linefeed = 10
+    fileLines = BS.splitWith (==linefeed) $ BC.toStrict file
+    strBS = BC.pack role
+    lineWithRole = L.filter (BS.isPrefixOf strBS) fileLines
+    colon = BC.pack $ role <> ": "
+    getUsersWithRole = BS.stripPrefix colon
+    users =
+        getUsersWithRole <$>
+        L.take 1 lineWithRole
+    space = 32
+    foundUser =
+        L.filter (== BC.pack user) . BS.split space <$>
+        catMaybes users
 
 inspectRepoRoleForUserTemplate
     :: Username
     -> Repository
     -> Role
-    -> IO IO.GithubAccessToken
-    -> ( IO.GithubAccessToken
-         -> Username
+    -> ( Username
          -> Repository
-         -> IO IO.ResponseRepoRole
+         -> IO IO.ResponseCodeownersFile
        )
     -> IO RepoRoleValidation
-inspectRepoRoleForUserTemplate username repo roleExpected getAccessToken requestRepoRoleForUser = do
-    token <- getAccessToken
-    resp <- requestRepoRoleForUser token username repo
-    pure $ analyzeRepoRoleResponse roleExpected resp
+inspectRepoRoleForUserTemplate username repo roleExpected downloadCodeownersFile = do
+    resp <- downloadCodeownersFile username repo
+    pure $ analyzeResponseCodeownersFile roleExpected username resp
 
 inspectRepoRoleForUser
     :: Username
@@ -72,5 +81,4 @@ inspectRepoRoleForUser username repo roleExpected =
         username
         repo
         roleExpected
-        IO.getGithubAccessToken
-        IO.requestRepoRoleForUser
+        IO.downloadCodeownersFile

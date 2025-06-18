@@ -93,7 +93,6 @@ library
     , http-client
     , http-types
     , lens
-    , lens-aeson
     , optparse-applicative
     , servant
     , servant-client

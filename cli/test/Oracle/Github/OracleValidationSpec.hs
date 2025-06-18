@@ -13,7 +13,7 @@ import Oracle.Github.GetRepoRole
     , inspectRepoRoleForUserTemplate
     )
 import Oracle.Github.GetRepoRoleIO
-    ( ResponseRepoRole (..)
+    ( ResponseCodeownersFile (..)
     )
 import Oracle.Github.ListPublicKeysIO
     ( ResponsePublicKey (..)
@@ -29,6 +29,7 @@ import Test.Hspec
     )
 import Types (Username (..), PublicKeyHash (..), Repository (..), Role (..) )
 
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BC
 
 mockedAccessToken :: IO GithubAccessToken
@@ -79,34 +80,56 @@ spec = do
         inspectPublicKeyTemplate user pubkey mockedAccessToken okExpectedEd25519PubKeyOfUser
         `shouldReturn` PublicKeyValidated
 
-    it "user does not have any right to the repo" $ do
-        let noPermissions _ _ _ = pure $ ResponseRepoRole "none"
+    it "CODEOWNERS does not have role entry" $ do
+        let noRoleEntry _ _ = pure $ ResponseCodeownersFile $ BS.fromStrict $ BC.pack $ unlines
+                [ "# Haskell components"
+                , "core        /     @user"
+                , "command-line/     @user"
+                ]
             user = Username "user1"
             repo = Repository "org" "repo"
-            roleExp = Role ""
-        inspectRepoRoleForUserTemplate user repo roleExp mockedAccessToken noPermissions
-        `shouldReturn` NoRoleInRepo
+            roleExp = Role "antihesis"
+        inspectRepoRoleForUserTemplate user repo roleExp noRoleEntry
+            `shouldReturn` NoRoleEntryInCodeowners
 
-    it "user tries to set non-existent role in the repo" $ do
-        let permissionReps _ _ _ = pure $ ResponseRepoRole "write"
+    it "CODEOWNERS does not have users assigned" $ do
+        let noRoleEntry _ _ = pure $ ResponseCodeownersFile $ BS.fromStrict $ BC.pack $ unlines
+                [ "# Haskell components"
+                , "core        /     @user"
+                , "command-line/     @user"
+                , ""
+                , "antithesis:"
+                ]
             user = Username "user1"
             repo = Repository "org" "repo"
-            roleExp = Role "rite"
-        inspectRepoRoleForUserTemplate user repo roleExp mockedAccessToken permissionReps
-        `shouldReturn` NonexistantRolePicked
+            roleExp = Role "antithesis"
+        inspectRepoRoleForUserTemplate user repo roleExp noRoleEntry
+            `shouldReturn` NoUsersAssignedToRoleInCodeowners
 
-    it "user tries to validate the role that is different than what repo has set" $ do
-        let permissionReps _ _ _ = pure $ ResponseRepoRole "read"
-            user = Username "user1"
+    it "CODEOWNERS does have other users assigned" $ do
+        let noRoleEntry _ _ = pure $ ResponseCodeownersFile $ BS.fromStrict $ BC.pack $ unlines
+                [ "# Haskell components"
+                , "core        /     @user"
+                , "command-line/     @user"
+                , ""
+                , "antithesis: user1 user3"
+                ]
+            user = Username "user2"
             repo = Repository "org" "repo"
-            roleExp = Role "write"
-        inspectRepoRoleForUserTemplate user repo roleExp mockedAccessToken permissionReps
-        `shouldReturn` WrongRolePicked
+            roleExp = Role "antithesis"
+        inspectRepoRoleForUserTemplate user repo roleExp noRoleEntry
+            `shouldReturn` NoUserInCodeowners
 
-    it "user's role in a given api is validated" $ do
-        let permissionReps _ _ _ = pure $ ResponseRepoRole "write"
-            user = Username "user1"
+    it "CODEOWNERS does have user assigned" $ do
+        let noRoleEntry _ _ = pure $ ResponseCodeownersFile $ BS.fromStrict $ BC.pack $ unlines
+                [ "# Haskell components"
+                , "core        /     @user"
+                , "command-line/     @user"
+                , ""
+                , "antithesis: user1 user2 user3"
+                ]
+            user = Username "user2"
             repo = Repository "org" "repo"
-            roleExp = Role "write"
-        inspectRepoRoleForUserTemplate user repo roleExp mockedAccessToken permissionReps
-        `shouldReturn` RepoRoleValidated
+            roleExp = Role "antithesis"
+        inspectRepoRoleForUserTemplate user repo roleExp noRoleEntry
+            `shouldReturn` RepoRoleValidated

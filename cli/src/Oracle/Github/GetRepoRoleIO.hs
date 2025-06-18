@@ -4,52 +4,45 @@
 {-# LANGUAGE StrictData #-}
 
 module Oracle.Github.GetRepoRoleIO
-    ( ResponseRepoRole (..)
-    , requestRepoRoleForUser
+    ( ResponseCodeownersFile (..)
+    , downloadCodeownersFile
     ) where
 
-import Control.Lens ((&), (.~), (^.))
-import Data.Aeson (FromJSON)
-import Data.Aeson.Lens (key, _String)
-import Data.Text (Text)
+import Control.Lens ((^.))
+import Data.ByteString.Lazy (ByteString)
 import GHC.Generics (Generic)
-import Oracle.Github.CommonIO (GithubAccessToken (..))
 import Types (Repository (..), Username (..))
 
 import qualified Network.Wreq as Wreq
 
--- https://docs.github.com/en/rest/collaborators/collaborators?apiVersion=2022-11-28&versionId=free-pro-team%40latest&category=orgs&subcategory=organization-roles#get-repository-permissions-for-a-user
-newtype ResponseRepoRole = ResponseRepoRole
-    { role :: Text
+-- In order to verify the role of the userX CODEOWNERS file is downloaded with
+-- the expectation there a line:
+-- role: user1 user2 .. userX .. userN
+newtype ResponseCodeownersFile = ResponseCodeownersFile
+    { file :: ByteString
     }
     deriving (Eq, Generic, Show)
 
-instance FromJSON ResponseRepoRole
-
-requestRepoRoleForUser
-    :: GithubAccessToken
-    -> Username
+downloadCodeownersFile
+    :: Username
     -> Repository
-    -> IO ResponseRepoRole
-requestRepoRoleForUser token (Username username) repo = do
+    -> IO ResponseCodeownersFile
+downloadCodeownersFile (Username user) repo = do
     response <- Wreq.getWith headers endpoint
     case response ^. Wreq.responseStatus . Wreq.statusCode of
         200 ->
             pure
-                $ ResponseRepoRole
-                    (response ^. Wreq.responseBody . key "permission" . _String)
-        _ -> error $ show $ response ^. Wreq.responseStatus
+                $ ResponseCodeownersFile (response ^. Wreq.responseBody)
+        _ -> error $ "There is no CODEOWNERS file in "
+               <> show (organization repo) <> "/"
+               <> show (project repo) <> " github repository, which is required to "
+               <> "verify the role of " <> user
+               <> "in the repository."
   where
-    headers =
-        Wreq.defaults
-            & Wreq.header "Accept" .~ ["application/vnd.github+json"]
-            & Wreq.header "Authorization" .~ ["Bearer" <> tokenPayload token]
-            & Wreq.header "X-GitHub-Api-Version" .~ ["2022-11-28"]
+    headers = Wreq.defaults
     endpoint =
-        "https://api.github.com/repos/"
-            <> organization repo
-            <> "/"
-            <> project repo
-            <> "/collaborators/"
-            <> username
-            <> "/permission"
+        "https://raw.githubusercontent.com/"
+        <> organization repo
+        <> "/"
+        <> project repo
+        <> "/master/CODEOWNERS"

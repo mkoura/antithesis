@@ -4,6 +4,8 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use :" #-}
 
 module Main where
 
@@ -71,10 +73,13 @@ main = do
 
     writeSdkJsonl $ alwaysDeclaration "finds all node log files"
 
-    files <- waitFor (\files -> length files == nPools) $ do
+    files <- waitFor (jsonFiles dir) $ \files -> do
         threadDelay 2000000 -- allow log files to be created
-        putStrLn $ "Looking for " <> show nPools <> " log files"
-        jsonFiles dir
+        putStrLn $ unlines $
+            [ "Looking for " <> show nPools <> " log files, found "
+                <> show (length files) <> ":"
+            ] ++ map ("- " <>) files
+        return $ length files == nPools
 
     writeSdkJsonl $ alwaysReached "finds all node log files" Null
 
@@ -86,10 +91,11 @@ main = do
       forkIO $ tailJsonLines file (modifyMVar_ mvar . flip (processMessageIO spec))
     forever $ threadDelay maxBound
   where
-    waitFor :: Monad m => (a -> Bool) -> m a -> m a
-    waitFor cond act = do
+    waitFor :: Monad m => m a -> (a -> m Bool) -> m a
+    waitFor act cond = do
         a <- act
-        if cond a then return a else waitFor cond act
+        c <- cond a
+        if c then return a else waitFor act cond
 
 -- utils -----------------------------------------------------------------------
 

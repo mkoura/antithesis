@@ -112,7 +112,7 @@ spec = do
                 , "core        /     @user"
                 , "command-line/     @user"
                 , ""
-                , "antithesis: user1 user3"
+                , "antithesis: @user1 @user3"
                 ]
             user = Username "user2"
             repo = Repository "org" "repo"
@@ -126,7 +126,7 @@ spec = do
                 , "core        /     @user"
                 , "command-line/     @user"
                 , ""
-                , "antithesis: user1 user2 user3"
+                , "antithesis: @user1 @user2 @user3"
                 ]
             user = Username "user2"
             repo = Repository "org" "repo"

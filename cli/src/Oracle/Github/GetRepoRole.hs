@@ -55,7 +55,7 @@ analyzeResponseCodeownersFile (Role role) (Username user) (IO.ResponseCodeowners
         L.take 1 lineWithRole
     space = 32
     foundUser =
-        L.filter (== BC.pack user) . BS.split space <$>
+        L.filter (== (BC.pack $ "@" <> user)) . BS.split space <$>
         catMaybes users
 
 inspectRepoRoleForUserTemplate

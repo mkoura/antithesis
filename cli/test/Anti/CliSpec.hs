@@ -38,8 +38,10 @@ import System.Environment (withArgs)
 import Test.Hspec
     ( Spec
     , beforeAll_
+    , errorCall
     , it
     , shouldReturn
+    , shouldThrow
     )
 
 runDummyServer :: IO ()
@@ -130,7 +132,7 @@ spec = beforeAll_ runDummyServer $ do
                     }
         anti args `shouldReturn` (opts, dummyTxId)
 
-    it "can request adding user to a project" $ do
+    it "cannot request adding user to a project if CODEOWNERS does not have valid entry" $ do
         let args =
                 [ "user"
                 , "request"
@@ -138,7 +140,7 @@ spec = beforeAll_ runDummyServer $ do
                 , "--platform"
                 , "github"
                 , "--repository"
-                , "cardano-foundation/antithesis"
+                , "intersectMBO/cardano-addresses"
                 , "--role"
                 , "maintainer"
                 , "--username"
@@ -146,22 +148,7 @@ spec = beforeAll_ runDummyServer $ do
                 , "--token-id"
                 , "dummyTokenId"
                 ]
-        let opts =
-                Options
-                    { host = Host "localhost"
-                    , port = Port 8084
-                    , command =
-                        UserCommand $ UserRequesterCommand
-                            RegisterRole
-                                { platform = Platform "github"
-                                , repository = Repository "cardano-foundation" "antithesis"
-                                , role = Role "maintainer"
-                                , username = Username "bob"
-                                , tokenId = TokenId "dummyTokenId"
-                                }
-                    }
-
-        anti args `shouldReturn` (opts, dummyTxId)
+        anti args `shouldThrow` (errorCall "CODEOWNERS in the repository does not contain the role entry.")
 
     it "can request removing user from a project" $ do
         let args =

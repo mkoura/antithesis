@@ -12,6 +12,11 @@ import Data.Aeson (Value, encode, object, (.=))
 import Data.Binary.Builder (toLazyByteString)
 import Data.Text (Text)
 import Network.HTTP.Types (encodePathSegmentsRelative)
+import Oracle.Github.GetRepoRole
+    ( RepoRoleValidation (..)
+    , inspectRepoRoleForUser
+    , emitRepoRoleMsg
+    )
 import Oracle.Github.ListPublicKeys
     ( PublicKeyValidation (..)
     , emitPublicKeyMsg
@@ -143,13 +148,23 @@ manageRole
 manageRole
     tokenId
     (Platform platform)
-    (Repository org repo)
-    (Username username)
-    (Role role)
-    operation =
-        requestChange tokenId
-            $ Request
-                { key = mkKey ["register-role", platform, org, repo, username, role]
-                , value = ""
-                , operation
-                }
+    rep@(Repository org repo)
+    user@(Username username)
+    role@(Role roleStr)
+    operation = case operation of
+        Insert -> do
+            validation <- liftIO $ inspectRepoRoleForUser user rep role
+            case validation of
+                RepoRoleValidated ->
+                    makeMPFSChange
+                notValidated -> error $ emitRepoRoleMsg notValidated
+        _ ->
+            makeMPFSChange
+      where
+        makeMPFSChange =
+            requestChange tokenId
+                $ Request
+                    { key = mkKey ["register-role", platform, org, repo, username, roleStr]
+                    , value = ""
+                    , operation
+                    }

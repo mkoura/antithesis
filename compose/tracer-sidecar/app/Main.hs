@@ -30,7 +30,8 @@ import Control.Monad
     , unless
     )
 import Data.Aeson
-    ( Value (Null)
+    ( ToJSON (toJSON)
+    , Value (Null)
     , eitherDecode
     )
 import System.Directory
@@ -71,7 +72,7 @@ main = do
 
     (nPools :: Int) <- read <$> getEnv "POOLS"
 
-    writeSdkJsonl $ alwaysDeclaration "finds all node log files"
+    writeSdkJsonl $ sometimesTracesDeclaration "finds all node log files"
 
     files <- waitFor (jsonFiles dir) $ \files -> do
         threadDelay 2000000 -- allow log files to be created
@@ -79,9 +80,11 @@ main = do
             [ "Looking for " <> show nPools <> " log files, found "
                 <> show (length files) <> ":"
             ] ++ map ("- " <>) files
+        let details = toJSON files
+        writeSdkJsonl $ sometimesFailed "finds all node log files" details
         return $ length files == nPools
 
-    writeSdkJsonl $ alwaysReached "finds all node log files" Null
+    writeSdkJsonl $ sometimesTracesReached "finds all node log files"
 
     putStrLn $ "Observing .json files: " <> show files
 

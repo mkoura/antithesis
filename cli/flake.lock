@@ -1,5 +1,22 @@
 {
   "nodes": {
+    "CHaP": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1749727790,
+        "narHash": "sha256-yCKoVpny9PSGTcSrCtXq77FuKFlq9Hf81ULVgCvkfmc=",
+        "owner": "intersectmbo",
+        "repo": "cardano-haskell-packages",
+        "rev": "b1b559392d6fc44626cef9d5b7821421cc7adcdc",
+        "type": "github"
+      },
+      "original": {
+        "owner": "intersectmbo",
+        "ref": "repo",
+        "repo": "cardano-haskell-packages",
+        "type": "github"
+      }
+    },
     "HTTP": {
       "flake": false,
       "locked": {
@@ -588,6 +605,7 @@
     },
     "root": {
       "inputs": {
+        "CHaP": "CHaP",
         "flake-parts": "flake-parts",
         "flake-utils": "flake-utils",
         "haskellNix": "haskellNix",

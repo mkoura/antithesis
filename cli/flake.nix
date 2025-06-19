@@ -7,21 +7,36 @@
     nixpkgs.follows = "haskellNix/nixpkgs-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
     flake-utils.url = "github:hamishmack/flake-utils/hkm/nested-hydraJobs";
+    CHaP = {
+      url = "github:intersectmbo/cardano-haskell-packages?ref=repo";
+      flake = false;
+    };
   };
 
-  outputs = inputs@{ self, nixpkgs, flake-utils, haskellNix, ... }:
+  outputs = inputs@{ self, nixpkgs, flake-utils, haskellNix, CHaP, ... }:
     let
       lib = nixpkgs.lib;
       version = self.dirtyShortRev or self.shortRev;
 
       perSystem = system:
         let
+          libOverlay = { lib, pkgs, ... }: {
+            # Use our forked libsodium from iohk-nix crypto overlay.
+            packages.plutus-tx.components.library.pkgconfig =
+              lib.mkForce [[ pkgs.libsodium-vrf pkgs.secp256k1 ]];
+            packages.byron-spec-ledger.components.library.pkgconfig =
+              lib.mkForce [[ pkgs.libsodium-vrf pkgs.secp256k1 ]];
+            packages.cardano-crypto-praos.components.library.pkgconfig =
+              lib.mkForce [[ pkgs.libsodium-vrf pkgs.secp256k1 ]];
+            packages.cardano-crypto-class.components.library.pkgconfig =
+              lib.mkForce [[ pkgs.libsodium-vrf pkgs.secp256k1 pkgs.libblst ]];
+          };
 
           pkgs = import nixpkgs {
             overlays = [ haskellNix.overlay ];
             inherit system;
           };
-          indexState = "2025-05-01T00:00:00Z";
+          indexState = "2025-05-07T00:00:00Z";
 
           shell = { pkgs, ... }: {
             tools = {
@@ -47,6 +62,8 @@
             src = ./.;
             compiler-nix-name = "ghc984";
             shell = shell { inherit pkgs; };
+            modules = [ libOverlay ];
+            inputMap = { "https://chap.intersectmbo.org/" = CHaP; };
           };
           project = pkgs.haskell-nix.cabalProject' mkProject;
 

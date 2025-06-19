@@ -17,3 +17,5 @@ dist-newstyle
 .vscode
 cli/.vscode/settings.json
 cli/result
+cli/test.json
+cli/tx.json

@@ -75,6 +75,7 @@ library
     Oracle.Token.API
     Oracle.Token.Cli
     Oracle.Types
+    Submitting
     Types
     User.Requester.Cli
 
@@ -91,6 +92,7 @@ library
     , binary
     , bytestring
     , http-client
+    , http-client-tls
     , http-types
     , lens
     , optparse-applicative
@@ -166,6 +168,7 @@ test-suite anti-test
     , bytestring
     , hspec
     , servant-server
+    , text
     , wai
     , warp
 

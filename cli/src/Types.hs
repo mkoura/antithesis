@@ -23,6 +23,14 @@ module Types
     , SHA1 (..)
     , TokenId (..)
     , Username (..)
+    , Address (..)
+    , WithUnsignedTx (..)
+    , WithTxHash (..)
+    , Wallet (..)
+    , RequestRefId (..)
+    , SignedTx (..)
+    , UnsignedTx (..)
+    , TxHash (..)
     ) where
 
 import Data.Aeson
@@ -34,12 +42,27 @@ import Data.Aeson
     , withObject
     , withText
     , (.:)
+    , (.:?)
     )
+import Data.Text (Text)
 import Servant.API (FromHttpApiData (..), ToHttpApiData (..))
 import Text.Read (readMaybe)
 
 import qualified Data.Text as T
 
+newtype RequestRefId = RequestRefId
+    { requestId :: Text
+    }
+    deriving (Eq, Show)
+
+instance ToHttpApiData RequestRefId where
+    toUrlPiece (RequestRefId rid) = rid
+
+instance FromHttpApiData RequestRefId where
+    parseUrlPiece rid =
+        case rid of
+            "" -> Left "RequestRefId cannot be empty"
+            _ -> Right (RequestRefId rid)
 newtype TokenId = TokenId String
     deriving (Eq, Show)
 
@@ -63,6 +86,12 @@ newtype SHA1 = SHA1 String
 
 newtype TxId = TxId String
     deriving (Eq, Show)
+
+instance FromJSON TxId where
+    parseJSON = withText "TxId" $ \v ->
+        case readMaybe (T.unpack v) of
+            Just txId -> pure (TxId txId)
+            Nothing -> fail $ "Invalid TxId: " ++ T.unpack v
 
 newtype Role = Role String
     deriving (Eq, Show)
@@ -103,6 +132,17 @@ instance FromJSON Request where
 
 data Operation = Insert | Delete
     deriving (Eq, Show)
+
+instance ToHttpApiData Operation where
+    toUrlPiece Insert = "insert"
+    toUrlPiece Delete = "delete"
+
+instance FromHttpApiData Operation where
+    parseUrlPiece v =
+        case v of
+            "insert" -> Right Insert
+            "delete" -> Right Delete
+            _ -> Left $ "Invalid operation: " <> v
 
 instance ToJSON Operation where
     toJSON Insert = String "insert"
@@ -149,10 +189,8 @@ newtype Port = Port Int
 newtype Host = Host String
     deriving (Eq, Show)
 
-data Options = Options
-    { host :: Host
-    , port :: Port
-    , command :: Command
+newtype Options = Options
+    { command :: Command
     }
     deriving (Eq, Show)
 
@@ -166,16 +204,9 @@ newtype OracleCommand
     deriving (Eq, Show)
 
 data TokenCommand
-    = CreateToken
-    | DeleteToken
-        { tokenId :: TokenId
-        }
-    | GetToken
-        { tokenId :: TokenId
-        }
+    = GetToken
     | UpdateToken
-        { tokenId :: TokenId
-        , requests :: [OutputReference]
+        { requests :: [RequestRefId]
         }
     deriving (Eq, Show)
 
@@ -188,27 +219,23 @@ data RequesterCommand
         { platform :: Platform
         , username :: Username
         , pubkeyhash :: PublicKeyHash
-        , tokenId :: TokenId
         }
     | UnregisterPublicKey
         { platform :: Platform
         , username :: Username
         , pubkeyhash :: PublicKeyHash
-        , tokenId :: TokenId
         }
     | RegisterRole
         { platform :: Platform
         , repository :: Repository
         , role :: Role
         , username :: Username
-        , tokenId :: TokenId
         }
     | UnregisterRole
         { platform :: Platform
         , repository :: Repository
         , role :: Role
         , username :: Username
-        , tokenId :: TokenId
         }
     | RequestTest
         { platform :: Platform
@@ -216,12 +243,106 @@ data RequesterCommand
         , commit :: SHA1
         , directory :: Directory
         , username :: Username
-        , tokenId :: TokenId
         }
     | RetractRequest
-        { outputReference :: OutputReference
+        { outputReference :: RequestRefId
         }
     | GetFacts
-        { tokenId :: TokenId
+        {
         }
     deriving (Eq, Show)
+
+newtype Address = Address Text
+
+instance FromHttpApiData Address where
+    parseUrlPiece addr =
+        if T.null addr
+            then Left "Address cannot be empty"
+            else Right (Address addr)
+
+instance ToHttpApiData Address where
+    toUrlPiece (Address addr) = addr
+
+newtype SignedTx = SignedTx
+    { signedTransaction :: Text
+    }
+    deriving (Show)
+
+instance ToJSON SignedTx where
+    toJSON (SignedTx signedTransaction) =
+        object
+            [ "signedTransaction" .= signedTransaction
+            ]
+
+instance FromJSON SignedTx where
+    parseJSON = withObject "SignedTx" $ \v ->
+        SignedTx
+            <$> v .: "signedTransaction"
+
+newtype UnsignedTx = UnsignedTx
+    { unsignedTransaction :: Text
+    }
+    deriving (Show)
+
+instance ToJSON UnsignedTx where
+    toJSON (UnsignedTx unsignedTransaction) =
+        object
+            [ "unsignedTransaction" .= unsignedTransaction
+            ]
+
+instance FromJSON UnsignedTx where
+    parseJSON = withObject "UnsignedTx" $ \v ->
+        UnsignedTx
+            <$> v .: "unsignedTransaction"
+
+data WithUnsignedTx = WithUnsignedTx
+    { unsignedTransaction :: Text
+    , value :: Maybe Value
+    }
+    deriving (Show)
+
+instance ToJSON WithUnsignedTx where
+    toJSON (WithUnsignedTx unsignedTransaction value) =
+        object
+            [ "unsignedTransaction" .= unsignedTransaction
+            , "value" .= value
+            ]
+
+instance FromJSON WithUnsignedTx where
+    parseJSON = withObject "WithUnsignedTx" $ \v ->
+        WithUnsignedTx
+            <$> v .: "unsignedTransaction"
+            <*> v .:? "value"
+
+newtype TxHash = TxHash
+    { txHash :: Text
+    }
+    deriving (Eq, Show)
+
+instance FromJSON TxHash where
+    parseJSON = withObject "TxHash" $ \v ->
+        TxHash
+            <$> v .: "txHash"
+
+instance ToJSON TxHash where
+    toJSON (TxHash txHash) =
+        object
+            [ "txHash" .= txHash
+            ]
+data WithTxHash = WithTxHash
+    { txHash :: Text
+    , value :: Maybe Value
+    }
+    deriving (Show)
+
+instance ToJSON WithTxHash where
+    toJSON (WithTxHash txHash value) =
+        object
+            [ "txHash" .= txHash
+            , "value" .= value
+            ]
+
+data Wallet = Wallet
+    { address :: Address
+    , sign :: Text -> Text
+    }

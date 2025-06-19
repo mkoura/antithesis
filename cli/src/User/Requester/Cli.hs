@@ -1,3 +1,4 @@
+{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -7,69 +8,70 @@ module User.Requester.Cli
     ( requesterCmd
     ) where
 
-import Control.Monad.IO.Class (liftIO)
-import Data.Aeson (Value, encode, object, (.=))
+import Data.Aeson (ToJSON (..), Value (..), encode, object, (.=))
 import Data.Binary.Builder (toLazyByteString)
 import Data.Text (Text)
 import Network.HTTP.Types (encodePathSegmentsRelative)
-import Oracle.Github.GetRepoRole
-    ( RepoRoleValidation (..)
-    , inspectRepoRoleForUser
-    , emitRepoRoleMsg
-    )
-import Oracle.Github.ListPublicKeys
-    ( PublicKeyValidation (..)
-    , emitPublicKeyMsg
-    , inspectPublicKey
-    )
 import Oracle.Token.API
     ( getTokenFacts
     , requestChange
-    , retractRequest
+    , retractChange
     )
 import Servant.Client (ClientM)
+import Submitting (submitting)
 import Types
     ( Directory (..)
     , Operation (..)
-    , OutputReference (..)
     , Platform (..)
     , PublicKeyHash (..)
     , Repository (..)
-    , Request (..)
     , RequesterCommand (..)
     , Role (..)
     , SHA1 (..)
     , TokenId
     , Username (..)
+    , Wallet (..)
+    , WithTxHash
     )
 
+import Control.Monad.IO.Class (MonadIO (..))
 import qualified Data.ByteString.Lazy.Char8 as BL
 import qualified Data.Text as T
 
-requesterCmd :: RequesterCommand -> ClientM Value
-requesterCmd command = do
+requesterCmd :: Wallet -> TokenId -> RequesterCommand -> ClientM Value
+requesterCmd wallet tokenId command = do
     case command of
-        RegisterPublicKey{platform, username, pubkeyhash, tokenId} ->
-            manageUser tokenId platform username pubkeyhash Insert
-        UnregisterPublicKey{platform, username, pubkeyhash, tokenId} ->
-            manageUser tokenId platform username pubkeyhash Delete
-        RegisterRole{platform, repository, username, role, tokenId} ->
-            manageRole tokenId platform repository username role Insert
-        UnregisterRole{platform, repository, username, role, tokenId} ->
-            manageRole tokenId platform repository username role Delete
+        RegisterPublicKey{platform, username, pubkeyhash} ->
+            toJSON
+                <$> manageUser wallet tokenId platform username pubkeyhash Insert
+        UnregisterPublicKey{platform, username, pubkeyhash} ->
+            toJSON
+                <$> manageUser wallet tokenId platform username pubkeyhash Delete
+        RegisterRole{platform, repository, username, role} ->
+            toJSON
+                <$> manageRole wallet tokenId platform repository username role Insert
+        UnregisterRole{platform, repository, username, role} ->
+            toJSON
+                <$> manageRole wallet tokenId platform repository username role Delete
         RequestTest
             { platform
             , repository
             , username
             , commit
             , directory
-            , tokenId
             } ->
-                requestTestCLI tokenId platform repository username commit directory
-        RetractRequest
-            (OutputReference{outputReferenceTx, outputReferenceIndex}) ->
-                retractRequest outputReferenceTx outputReferenceIndex
-        GetFacts{tokenId} -> getTokenFacts tokenId
+                toJSON
+                    <$> requestTestCLI
+                        wallet
+                        tokenId
+                        platform
+                        repository
+                        username
+                        commit
+                        directory
+        RetractRequest refId -> fmap toJSON $ submitting wallet $ \address ->
+            retractChange address refId
+        GetFacts -> getTokenFacts tokenId
 
 mkKey :: [String] -> String
 mkKey =
@@ -79,92 +81,106 @@ mkKey =
         . fmap T.pack
 
 requestTestCLI
-    :: TokenId
+    :: Wallet
+    -> TokenId
     -> Platform
     -> Repository
     -> Username
     -> SHA1
     -> Directory
-    -> ClientM Value
+    -> ClientM WithTxHash
 requestTestCLI
+    wallet
     tokenId
     (Platform platform)
     (Repository org repo)
     (Username username)
     (SHA1 sha1)
-    (Directory directory) =
-        requestChange tokenId
-            $ Request
-                { key =
+    (Directory directory) = do
+        submitting wallet $ \address -> do
+            let key =
                     mkKey
-                        ["request-test-run", platform, org, repo, username, sha1, directory]
-                , value =
+                        [ "request-test-run"
+                        , platform
+                        , org
+                        , repo
+                        , username
+                        , sha1
+                        , directory
+                        ]
+                value =
                     BL.unpack
                         $ encode
                         $ object
                             [ "state" .= ("pending" :: Text)
                             ]
-                , operation = Insert
-                }
+            requestChange address tokenId key value Insert
 
 manageUser
-    :: TokenId
+    :: Wallet
+    -> TokenId
     -> Platform
     -> Username
     -> PublicKeyHash
     -> Operation
-    -> ClientM Value
+    -> ClientM WithTxHash
 manageUser
+    wallet
     tokenId
     (Platform platform)
-    user@(Username username)
-    pubkey@(PublicKeyHash pubkeyhash)
-    operation = case operation of
-        Insert -> do
-            validation <- liftIO $ inspectPublicKey user pubkey
-            case validation of
-                PublicKeyValidated ->
-                    makeMPFSChange
-                notValidated -> error $ emitPublicKeyMsg notValidated
-        _ ->
-            makeMPFSChange
-      where
-        makeMPFSChange =
-            requestChange tokenId
-                $ Request
-                    { key = mkKey ["register-public-key", platform, username, pubkeyhash]
-                    , value = ""
-                    , operation
-                    }
+    (Username username)
+    (PublicKeyHash pubkeyhash)
+    operation =
+        submitting wallet $ \address -> do
+            let
+                key =
+                    mkKey
+                        [ "register-user"
+                        , platform
+                        , username
+                        , pubkeyhash
+                        ]
+            r <- requestChange address tokenId key "" operation
+            liftIO $ print r
+            return r
+
+-- validation <- liftIO $ inspectPublicKey user pubkey
+-- case validation of
+--     PublicKeyValidated ->
+--         makeMPFSChange
+--     notValidated -> error $ emitPublicKeyMsg notValidated
 
 manageRole
-    :: TokenId
+    :: Wallet
+    -> TokenId
     -> Platform
     -> Repository
     -> Username
     -> Role
     -> Operation
-    -> ClientM Value
+    -> ClientM WithTxHash
 manageRole
+    wallet
     tokenId
     (Platform platform)
-    rep@(Repository org repo)
-    user@(Username username)
-    role@(Role roleStr)
-    operation = case operation of
-        Insert -> do
-            validation <- liftIO $ inspectRepoRoleForUser user rep role
-            case validation of
-                RepoRoleValidated ->
-                    makeMPFSChange
-                notValidated -> error $ emitRepoRoleMsg notValidated
-        _ ->
-            makeMPFSChange
-      where
-        makeMPFSChange =
-            requestChange tokenId
-                $ Request
-                    { key = mkKey ["register-role", platform, org, repo, username, roleStr]
-                    , value = ""
-                    , operation
-                    }
+    (Repository org repo)
+    (Username username)
+    (Role roleStr)
+    operation =
+        submitting wallet $ \address -> do
+            let key =
+                    mkKey
+                        [ "register-role"
+                        , platform
+                        , org
+                        , repo
+                        , username
+                        , roleStr
+                        ]
+            requestChange address tokenId key "" operation
+
+-- validation <- liftIO $ inspectRepoRoleForUser user rep role
+-- case validation of
+--     RepoRoleValidated ->
+--         makeMPFSChange
+--     notValidated -> error $ emitRepoRoleMsg notValidated

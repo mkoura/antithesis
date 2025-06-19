@@ -1,63 +1,68 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Anti.Server
     ( appDummy
-    , dummyTxId
+    , dummyWithUnsignedTx
     )
 where
 
-import Oracle.Token.API (tokenApi)
-import Oracle.Types (RequestRefs)
-import Types (Request (..), TokenId)
-import Data.Aeson (ToJSON (..), Value, object, (.=))
+import Data.Aeson (ToJSON (..), Value)
 import Network.Wai (Application)
+import Oracle.Token.API (tokenApi)
 import Servant (serve, (:<|>) (..))
 import Servant.Server (Handler)
+import Types
+    ( Address,
+      Operation,
+      TokenId,
+      WithUnsignedTx(..),
+      RequestRefId,
+      TxHash(..),
+      SignedTx )
 
 appDummy :: Application
 appDummy =
     serve
         tokenApi
-        ( postRequestDummy
-            :<|> retractRequestDummy
-            :<|> postTokenDummy
-            :<|> deleteTokenDummy
-            :<|> getTokenDummy
-            :<|> updateTokenDummy
+        ( requestChange
+            :<|> retractChange
+            :<|> updateToken
+            :<|> getToken
             :<|> facts
+            :<|> submitTransaction
         )
 
+dummyWithUnsignedTx :: WithUnsignedTx
+dummyWithUnsignedTx =
+    WithUnsignedTx
+        { unsignedTransaction = "dummyUnsignedTransaction"
+        , value = Nothing
+        }
+
+requestChange
+    :: Address
+    -> TokenId
+    -> String
+    -> String
+    -> Operation
+    -> Handler WithUnsignedTx
+requestChange _ _ _ _ _ = return dummyWithUnsignedTx
+
+retractChange :: Address -> RequestRefId -> Handler WithUnsignedTx
+retractChange _ _ = return dummyWithUnsignedTx
+
+updateToken
+    :: Address -> TokenId -> [RequestRefId] -> Handler WithUnsignedTx
+updateToken _ _ _ = return dummyWithUnsignedTx
+
+getToken :: TokenId -> Handler Value
+getToken _ = pure $ toJSON ()
+
 facts :: TokenId -> Handler Value
-facts _ = return $ toJSON ([] :: [()])
+facts _ = pure $ toJSON ()
 
-retractRequestDummy :: [Char] -> Int -> Handler Value
-retractRequestDummy _txHash _outputIndex = do
-    return dummyTxId
-
-updateTokenDummy :: TokenId -> RequestRefs -> Handler Value
-updateTokenDummy _ _ = do
-    return dummyTxId
-
-deleteTokenDummy :: TokenId -> Handler Value
-deleteTokenDummy _ = return dummyTxId
-
-postTokenDummy :: Handler Value
-postTokenDummy = return dummyTokenId
-
-getTokenDummy :: TokenId -> Handler Value
-getTokenDummy _ = return dummyTokenId
-
-dummyTokenId :: Value
-dummyTokenId = object ["tokenId" .= ("dummyTokenId" :: String)]
-
-dummyTxId :: Value
-dummyTxId = object ["txId " .= ("dummyTxId" :: String)]
-
-postRequestDummy :: TokenId -> Request -> Handler Value
-postRequestDummy _tokenId = \case
-    Request
-        { key = _
-        , value = _
-        , operation = _
-        } -> do return dummyTxId
+submitTransaction
+    :: SignedTx -> Handler TxHash
+submitTransaction _ = do
+    return $ TxHash "dummyTxHash"

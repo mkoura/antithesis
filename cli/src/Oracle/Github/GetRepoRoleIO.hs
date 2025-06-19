@@ -33,16 +33,21 @@ downloadCodeownersFile (Username user) repo = do
         200 ->
             pure
                 $ ResponseCodeownersFile (response ^. Wreq.responseBody)
-        _ -> error $ "There is no CODEOWNERS file in "
-               <> show (organization repo) <> "/"
-               <> show (project repo) <> " github repository, which is required to "
-               <> "verify the role of " <> user
-               <> "in the repository."
+        _ ->
+            error
+                $ "There is no CODEOWNERS file in "
+                    <> show (organization repo)
+                    <> "/"
+                    <> show (project repo)
+                    <> " github repository, which is required to "
+                    <> "verify the role of "
+                    <> user
+                    <> "in the repository."
   where
     headers = Wreq.defaults
     endpoint =
         "https://raw.githubusercontent.com/"
-        <> organization repo
-        <> "/"
-        <> project repo
-        <> "/master/CODEOWNERS"
+            <> organization repo
+            <> "/"
+            <> project repo
+            <> "/master/CODEOWNERS"

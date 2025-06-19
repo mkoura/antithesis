@@ -1,14 +1,15 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Options (parseArgs) where
 
+import qualified Data.Text as T
 import Options.Applicative
     ( Alternative (..)
     , Parser
     , ReadM
-    , auto
     , command
     , defaultPrefs
     , execParserPure
@@ -33,19 +34,16 @@ import Options.Applicative.Types (readerAsk)
 import Types
     ( Command (..)
     , Directory (..)
-    , Host (..)
     , Options (Options)
     , OracleCommand (..)
-    , OutputReference (..)
     , Platform (..)
-    , Port (..)
     , PublicKeyHash (..)
     , Repository (Repository)
+    , RequestRefId (..)
     , RequesterCommand (..)
     , Role (..)
     , SHA1 (..)
     , TokenCommand (..)
-    , TokenId (..)
     , UserCommand (..)
     , Username (..)
     )
@@ -104,7 +102,6 @@ requestTestOptions =
         <*> commitOption
         <*> directoryOption
         <*> usernameOption
-        <*> tokenIdOption
 
 usernameOption :: Parser Username
 usernameOption =
@@ -132,7 +129,6 @@ addPublicKeyOptions =
         <$> platformOption
         <*> usernameOption
         <*> pubkeyhashOption
-        <*> tokenIdOption
 
 removePublicKeyOptions :: Parser RequesterCommand
 removePublicKeyOptions =
@@ -140,7 +136,6 @@ removePublicKeyOptions =
         <$> platformOption
         <*> usernameOption
         <*> pubkeyhashOption
-        <*> tokenIdOption
 
 roleOption :: Parser Role
 roleOption =
@@ -159,7 +154,6 @@ addRoleOptions =
         <*> repositoryOption
         <*> roleOption
         <*> usernameOption
-        <*> tokenIdOption
 
 removeRoleOptions :: Parser RequesterCommand
 removeRoleOptions =
@@ -168,17 +162,6 @@ removeRoleOptions =
         <*> repositoryOption
         <*> roleOption
         <*> usernameOption
-        <*> tokenIdOption
-
-tokenIdOption :: Parser TokenId
-tokenIdOption =
-    TokenId
-        <$> strOption
-            ( long "token-id"
-                <> short 't'
-                <> metavar "TOKEN_ID"
-                <> help "The token ID"
-            )
 
 retractRequestOptions :: Parser RequesterCommand
 retractRequestOptions =
@@ -203,7 +186,7 @@ requesterCommandParser =
             <> command
                 "get-facts"
                 ( info
-                    (GetFacts <$> tokenIdOption)
+                    (pure GetFacts)
                     (progDesc "Get token facts")
                 )
             <> command
@@ -232,7 +215,7 @@ requesterCommandParser =
                 )
         )
 
-outputReferenceParser :: Parser OutputReference
+outputReferenceParser :: Parser RequestRefId
 outputReferenceParser =
     option parseOutputReference
         $ short 'o'
@@ -240,60 +223,40 @@ outputReferenceParser =
             <> metavar "OUTPUT_REF"
             <> help "The transaction hash and index for the output reference"
 
-parseOutputReference :: ReadM OutputReference
+parseOutputReference :: ReadM RequestRefId
 parseOutputReference = do
     s <- readerAsk
     case break (== '-') s of
-        (txHash, '-' : indexStr) -> do
-            index <- case reads indexStr of
+        (_txHash, '-' : indexStr) -> do
+            _index :: Int <- case reads indexStr of
                 [(i, "")] -> pure i
                 _ ->
                     fail
                         "Invalid index format. Use 'txHash-index' where index is an integer."
             pure
-                $ OutputReference
-                    { outputReferenceTx = txHash
-                    , outputReferenceIndex = index
-                    }
+                $ RequestRefId
+                $ T.pack s
         _ -> fail "Invalid output reference format. Use 'txHash-index'"
 
 tokenCommandParser :: Parser TokenCommand
 tokenCommandParser =
     hsubparser
         ( command
-            "create"
+            "get"
             ( info
-                (pure CreateToken <**> helper)
-                (progDesc "Create a new token")
+                (pure GetToken <**> helper)
+                (progDesc "Get a token")
             )
-            <> command
-                "delete"
-                ( info
-                    (deleteTokenOptions <**> helper)
-                    (progDesc "Delete a token")
-                )
-            <> command
-                "get"
-                ( info
-                    (GetToken <$> tokenIdOption <**> helper)
-                    (progDesc "Get a token")
-                )
             <> command
                 "update"
                 ( info
                     ( UpdateToken
-                        <$> tokenIdOption
-                        <*> many outputReferenceParser
+                        <$> many outputReferenceParser
                         <**> helper
                     )
                     (progDesc "Update a token")
                 )
         )
-
-deleteTokenOptions :: Parser TokenCommand
-deleteTokenOptions =
-    DeleteToken
-        <$> tokenIdOption
 
 commandParser :: Parser Command
 commandParser =
@@ -334,35 +297,8 @@ userCommandParser =
             )
         )
 
-hostOption :: Parser Host
-hostOption =
-    Host
-        <$> strOption
-            ( long "host"
-                <> short 'h'
-                <> metavar "HOST"
-                <> value "localhost"
-                <> help "The host to connect to (defaults to \"localhost\")"
-            )
-
-portOption :: Parser Port
-portOption =
-    Port
-        <$> option
-            auto
-            ( long "port"
-                <> short 'p'
-                <> metavar "PORT"
-                <> value 3000
-                <> help "The port to connect to (defaults to 8080)"
-            )
-
 optionsParser :: Parser Options
-optionsParser =
-    Options
-        <$> hostOption
-        <*> portOption
-        <*> commandParser
+optionsParser = Options <$> commandParser
 
 parseArgs :: [String] -> IO Options
 parseArgs args = handleParseResult $ execParserPure defaultPrefs opts args

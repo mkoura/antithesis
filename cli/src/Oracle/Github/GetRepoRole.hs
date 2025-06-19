@@ -39,24 +39,24 @@ emitRepoRoleMsg = \case
 analyzeResponseCodeownersFile
     :: Role -> Username -> IO.ResponseCodeownersFile -> RepoRoleValidation
 analyzeResponseCodeownersFile (Role role) (Username user) (IO.ResponseCodeownersFile file)
-    | null lineWithRole  = NoRoleEntryInCodeowners
+    | null lineWithRole = NoRoleEntryInCodeowners
     | users == [Nothing] = NoUsersAssignedToRoleInCodeowners
-    | foundUser == [ [] ] = NoUserInCodeowners
+    | foundUser == [[]] = NoUserInCodeowners
     | otherwise = RepoRoleValidated
   where
     linefeed = 10
-    fileLines = BS.splitWith (==linefeed) $ BC.toStrict file
+    fileLines = BS.splitWith (== linefeed) $ BC.toStrict file
     strBS = BC.pack role
     lineWithRole = L.filter (BS.isPrefixOf strBS) fileLines
     colon = BC.pack $ role <> ": "
     getUsersWithRole = BS.stripPrefix colon
     users =
-        getUsersWithRole <$>
-        L.take 1 lineWithRole
+        getUsersWithRole
+            <$> L.take 1 lineWithRole
     space = 32
     foundUser =
-        L.filter (== (BC.pack $ "@" <> user)) . BS.split space <$>
-        catMaybes users
+        L.filter (== (BC.pack $ "@" <> user)) . BS.split space
+            <$> catMaybes users
 
 inspectRepoRoleForUserTemplate
     :: Username

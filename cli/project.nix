@@ -1,4 +1,4 @@
-{ CHaP, system, version, indexState, haskell-nix, pkgs, ... }:
+{ CHaP, version, indexState, pkgs }:
 
 let
   libOverlay = { lib, pkgs, ... }: {
@@ -23,10 +23,8 @@ let
     };
     withHoogle = true;
     buildInputs = [
-      pkgs.just
       pkgs.gitAndTools.git
-      pkgs.haskellPackages.ghcid
-      pkgs.haskellPackages.hlint
+      pkgs.just
     ];
     shellHook = ''
       echo "Entering shell for anti CLI development"

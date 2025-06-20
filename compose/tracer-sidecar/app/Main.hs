@@ -1,59 +1,34 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings     #-}
 
 
-{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use :" #-}
 
 module Main where
 
-import Cardano.Antithesis.LogMessage
-import Cardano.Antithesis.Sdk
-import Cardano.Antithesis.Sidecar
+import           Cardano.Antithesis.LogMessage
+import           Cardano.Antithesis.Sdk
+import           Cardano.Antithesis.Sidecar
 
-import qualified Data.ByteString.Char8 as B8
-import qualified Data.ByteString.Lazy as BL
+import qualified Data.ByteString.Char8         as B8
+import qualified Data.ByteString.Lazy          as BL
 
-import Control.Concurrent
-    ( forkIO
-    , modifyMVar_
-    , newMVar
-    , threadDelay
-    )
-import Control.Monad
-    ( filterM
-    , forM
-    , forM_
-    , forever
-    , unless
-    )
-import Data.Aeson
-    ( Value (Null)
-    , eitherDecode
-    )
-import System.Directory
-    ( doesDirectoryExist
-    , doesFileExist
-    , listDirectory
-    )
-import System.Environment
-    ( getArgs
-    , getEnv
-    )
-import System.FilePath
-    ( takeExtension
-    , (</>)
-    )
-import System.IO
-    ( BufferMode (LineBuffering, NoBuffering)
-    , IOMode (ReadMode)
-    , hIsEOF
-    , hSetBuffering
-    , stdout
-    , withFile
-    )
+import           Control.Concurrent            (forkIO, modifyMVar_, newMVar,
+                                                threadDelay)
+import           Control.Monad                 (filterM, forM, forM_, forever,
+                                                unless)
+import           Data.Aeson                    (ToJSON (toJSON), Value (Null),
+                                                eitherDecode)
+import           System.Directory              (doesDirectoryExist,
+                                                doesFileExist, listDirectory)
+import           System.Environment            (getArgs, getEnv)
+import           System.FilePath               (takeExtension, (</>))
+import           System.IO                     (BufferMode (LineBuffering, NoBuffering),
+                                                IOMode (ReadMode), hIsEOF,
+                                                hSetBuffering, stdout, withFile)
 
 -- main ------------------------------------------------------------------------
 
@@ -71,7 +46,7 @@ main = do
 
     (nPools :: Int) <- read <$> getEnv "POOLS"
 
-    writeSdkJsonl $ alwaysDeclaration "finds all node log files"
+    writeSdkJsonl $ sometimesTracesDeclaration "finds all node log files"
 
     files <- waitFor (jsonFiles dir) $ \files -> do
         threadDelay 2000000 -- allow log files to be created
@@ -79,9 +54,13 @@ main = do
             [ "Looking for " <> show nPools <> " log files, found "
                 <> show (length files) <> ":"
             ] ++ map ("- " <>) files
-        return $ length files == nPools
+        let details = toJSON files
+        let cond = length files == nPools
+        unless cond $
+            writeSdkJsonl $ sometimesFailed "finds all node log files" details
+        return cond
 
-    writeSdkJsonl $ alwaysReached "finds all node log files" Null
+    writeSdkJsonl $ sometimesTracesReached "finds all node log files"
 
     putStrLn $ "Observing .json files: " <> show files
 

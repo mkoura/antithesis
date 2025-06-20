@@ -55,6 +55,24 @@ sometimesTracesDeclaration label = [aesonQQ|
     }
     |]
 
+-- FIXME: Too much boilerplate, should probably add Haskell types now
+sometimesFailed :: Text -> Value -> Value
+sometimesFailed label details = [aesonQQ|
+    {
+      "antithesis_assert": {
+        "id":           #{label},
+        "message":      #{label},
+        "condition":    false,
+        "display_type": "Sometimes",
+        "hit":          true,
+        "must_hit":     true,
+        "assert_type":  "sometimes",
+        "location": #{dummyLocation},
+        "details": #{details}
+      }
+    }
+    |]
+
 sometimesTracesReached :: Text -> Value
 sometimesTracesReached label = [aesonQQ|
     {

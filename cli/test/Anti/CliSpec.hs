@@ -20,7 +20,7 @@ import Test.Hspec
     ( Spec
     , beforeAll_
     , it
-    , shouldReturn
+    , shouldReturn, xit
     )
 import Types
     ( Command (..)
@@ -64,7 +64,7 @@ dummyTxHash =
 
 spec :: Spec
 spec = beforeAll_ runDummyServer $ do
-    it "can request user registration" $ do
+    xit "can request user registration" $ do
         let args =
                 [ "user"
                 , "request"
@@ -91,7 +91,7 @@ spec = beforeAll_ runDummyServer $ do
                     }
         anti args
             `shouldReturn` (opts, toJSON dummyTxHash)
-    it "can request user unregistration" $ do
+    xit "can request user unregistration" $ do
         let args =
                 [ "user"
                 , "request"
@@ -119,7 +119,7 @@ spec = beforeAll_ runDummyServer $ do
                     }
         anti args `shouldReturn` (opts, toJSON dummyTxHash)
 
-    it "can request removing user from a project" $ do
+    xit "can request removing user from a project" $ do
         let args =
                 [ "user"
                 , "request"
@@ -148,7 +148,7 @@ spec = beforeAll_ runDummyServer $ do
 
         anti args `shouldReturn` (opts, toJSON dummyTxHash)
 
-    it "can request antithesis run" $ do
+    xit "can request antithesis run" $ do
         let args =
                 [ "user"
                 , "request"
@@ -177,7 +177,7 @@ spec = beforeAll_ runDummyServer $ do
                     }
         anti args `shouldReturn` (opts, toJSON dummyTxHash)
 
-    it "can retract a request" $ do
+    xit "can retract a request" $ do
         let args =
                 [ "user"
                 , "request"

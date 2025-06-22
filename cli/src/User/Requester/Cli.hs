@@ -18,7 +18,7 @@ import Oracle.Token.API
     , retractChange
     )
 import Servant.Client (ClientM)
-import Submitting (submitting)
+import Submitting (submittingFake)
 import Types
     ( Directory (..)
     , Operation (..)
@@ -31,10 +31,9 @@ import Types
     , TokenId
     , Username (..)
     , Wallet (..)
-    , WithTxHash
+    , WithUnsignedTx
     )
 
-import Control.Monad.IO.Class (MonadIO (..))
 import qualified Data.ByteString.Lazy.Char8 as BL
 import qualified Data.Text as T
 
@@ -69,7 +68,7 @@ requesterCmd wallet tokenId command = do
                         username
                         commit
                         directory
-        RetractRequest refId -> fmap toJSON $ submitting wallet $ \address ->
+        RetractRequest refId -> fmap toJSON $ submittingFake wallet $ \address ->
             retractChange address refId
         GetFacts -> getTokenFacts tokenId
 
@@ -88,7 +87,7 @@ requestTestCLI
     -> Username
     -> SHA1
     -> Directory
-    -> ClientM WithTxHash
+    -> ClientM WithUnsignedTx -- WithTxHash
 requestTestCLI
     wallet
     tokenId
@@ -97,7 +96,7 @@ requestTestCLI
     (Username username)
     (SHA1 sha1)
     (Directory directory) = do
-        submitting wallet $ \address -> do
+        submittingFake wallet $ \address -> do
             let key =
                     mkKey
                         [ "request-test-run"
@@ -123,7 +122,7 @@ manageUser
     -> Username
     -> PublicKeyHash
     -> Operation
-    -> ClientM WithTxHash
+    -> ClientM WithUnsignedTx -- WithTxHash
 manageUser
     wallet
     tokenId
@@ -131,7 +130,7 @@ manageUser
     (Username username)
     (PublicKeyHash pubkeyhash)
     operation =
-        submitting wallet $ \address -> do
+        submittingFake wallet $ \address -> do
             let
                 key =
                     mkKey
@@ -140,9 +139,7 @@ manageUser
                         , username
                         , pubkeyhash
                         ]
-            r <- requestChange address tokenId key "" operation
-            liftIO $ print r
-            return r
+            requestChange address tokenId key "" operation
 
 -- validation <- liftIO $ inspectPublicKey user pubkey
 -- case validation of
@@ -158,7 +155,7 @@ manageRole
     -> Username
     -> Role
     -> Operation
-    -> ClientM WithTxHash
+    -> ClientM WithUnsignedTx -- WithTxHash
 manageRole
     wallet
     tokenId
@@ -167,7 +164,7 @@ manageRole
     (Username username)
     (Role roleStr)
     operation =
-        submitting wallet $ \address -> do
+        submittingFake wallet $ \address -> do
             let key =
                     mkKey
                         [ "register-role"

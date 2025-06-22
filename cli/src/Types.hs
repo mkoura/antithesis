@@ -50,6 +50,7 @@ import Text.Read (readMaybe)
 
 import qualified Data.Text as T
 
+-- TxHash-OutputIndex
 newtype RequestRefId = RequestRefId
     { requestId :: Text
     }

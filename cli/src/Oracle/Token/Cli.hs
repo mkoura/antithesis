@@ -12,7 +12,7 @@ import Oracle.Token.API
     )
 
 import Servant.Client (ClientM)
-import Submitting (submitting)
+import Submitting (submittingFake)
 import Types
     ( TokenCommand (..)
     , TokenId
@@ -24,7 +24,7 @@ tokenCmd wallet tk command = do
     case command of
         GetToken -> getToken tk
         UpdateToken reqs -> fmap toJSON
-            $ submitting wallet
+            $ submittingFake wallet
             $ \address -> updateToken address tk reqs
 
 -- updateToken tk $ RequestRefs reqs

@@ -25,6 +25,7 @@ import Cardano.Ledger.Core
 import Cardano.Ledger.Credential (Credential (..))
 import Control.Lens (to, (^.))
 import Control.Monad (void)
+import Control.Monad.IO.Class (MonadIO (..))
 import Core.Types
     ( Address (..)
     , CageDatum (..)
@@ -37,7 +38,7 @@ import Core.Types
     , RequestRefId (RequestRefId)
     , TokenId (..)
     , Username (..)
-    , Wallet
+    , Wallet (..)
     , WithUnsignedTx (WithUnsignedTx)
     )
 import Data.Bifunctor (first)
@@ -63,7 +64,9 @@ import Network.HTTP.Client (newManager)
 import Network.HTTP.Client.TLS (tlsManagerSettings)
 import PlutusTx (Data, fromData)
 import Servant.Client (ClientM, mkClientEnv, parseBaseUrl, runClientM)
-import Test.Hspec (SpecWith, beforeAll, describe, it, shouldBe, xit)
+import Submitting (walletFromMnemonic)
+import System.Environment (getEnv)
+import Test.Hspec (SpecWith, beforeAll, describe, it, shouldBe)
 import Text.JSON.Canonical (JSString, JSValue (..), fromJSString)
 import User.Cli (UserCommand (..), userCmd)
 import User.Requester.Cli (RequesterCommand (..), requesterCmd)
@@ -227,9 +230,9 @@ spec = do
                                 , operation = Update "oldValue" "newValue"
                                 }
                         }
-            xit "can submit a request-insert tx" $ \(Call call) -> do
-                wallet :: Wallet <- loadFundedWallet
+            it "can submit a request-insert tx" $ \(Call call) -> do
                 call $ do
+                    wallet <- liftIO loadFundedWallet
                     v <-
                         requesterCmd wallet antiTokenId
                             $ RegisterUser
@@ -253,4 +256,9 @@ spec = do
                             }
 
 loadFundedWallet :: IO Wallet
-loadFundedWallet = undefined
+loadFundedWallet =
+    either (error . show) id
+        . walletFromMnemonic
+        . T.words
+        . T.pack
+        <$> getEnv "ANTI_TEST_MNEMONIC"

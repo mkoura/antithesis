@@ -13,7 +13,7 @@ import Core.Types
     , TokenId
     , Username (..)
     , Wallet (..)
-    , WithUnsignedTx
+    , WithTxHash
     )
 import Data.Binary.Builder (toLazyByteString)
 import Data.ByteString.Lazy.Char8 qualified as BL
@@ -26,9 +26,11 @@ import MPFS.API
     , requestDelete
     , requestInsert
     )
-import Network.HTTP.Types (encodePathSegmentsRelative)
+import Network.HTTP.Types
+    ( encodePathSegmentsRelative
+    )
 import Servant.Client (ClientM)
-import Submitting (submittingFake)
+import Submitting (submitting)
 import Text.JSON.Canonical (JSValue (..), ToJSON (..), toJSString)
 import User.Types (RegisterPublicKey (..))
 
@@ -107,7 +109,7 @@ requestTestRun
     -> Username
     -> SHA1
     -> Directory
-    -> ClientM (WithUnsignedTx JSValue) -- WithTxHash
+    -> ClientM WithTxHash
 requestTestRun
     wallet
     tokenId
@@ -120,7 +122,7 @@ requestTestRun
             object
                 [ "state" .= ("pending" :: Text)
                 ]
-        submittingFake wallet $ \address -> do
+        submitting wallet $ \address -> do
             let key =
                     JSString
                         $ toJSString
@@ -144,7 +146,7 @@ manageUser
     -> Username
     -> PublicKeyHash
     -> Operation
-    -> ClientM (WithUnsignedTx JSValue) -- WithTxHash
+    -> ClientM WithTxHash
 manageUser
     wallet
     tokenId
@@ -152,7 +154,7 @@ manageUser
     (Username username)
     (PublicKeyHash pubkeyhash)
     operation =
-        submittingFake wallet $ \address -> do
+        submitting wallet $ \address -> do
             let
                 key =
                     JSString
@@ -176,7 +178,7 @@ manageRole
     -> Username
     -> Role
     -> Operation
-    -> ClientM (WithUnsignedTx JSValue) -- WithTxHash
+    -> ClientM WithTxHash
 manageRole
     wallet
     tokenId
@@ -185,7 +187,7 @@ manageRole
     (Username username)
     (Role roleStr)
     operation =
-        submittingFake wallet $ \address -> do
+        submitting wallet $ \address -> do
             let key =
                     JSString
                         $ toJSString

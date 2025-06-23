@@ -20,6 +20,7 @@ module Core.Types
     , Wallet (..)
     , RequestRefId (..)
     , SignedTx (..)
+    , SignTxError (..)
     , UnsignedTx (..)
     , TxHash (..)
     , Owner (..)
@@ -29,6 +30,7 @@ module Core.Types
     , Change (..)
     ) where
 
+import Control.Exception (Exception)
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Base16 (encode)
 import Data.ByteString.Char8 qualified as B
@@ -270,6 +272,7 @@ newtype Host = Host String
     deriving (Eq, Show)
 
 newtype Address = Address Text
+    deriving (Eq, Show)
 
 instance FromHttpApiData Address where
     parseUrlPiece addr =
@@ -371,7 +374,14 @@ instance Monad m => ToJSON m WithTxHash where
             , "value" .= value
             ]
 
+data SignTxError
+    = InvalidTx
+    | InvalidHex
+    deriving (Show, Eq)
+
+instance Exception SignTxError
+
 data Wallet = Wallet
     { address :: Address
-    , sign :: UnsignedTx -> SignedTx
+    , sign :: UnsignedTx -> Either SignTxError SignedTx
     }

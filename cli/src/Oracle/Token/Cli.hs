@@ -10,7 +10,7 @@ import MPFS.API
     )
 
 import Servant.Client (ClientM)
-import Submitting (submittingFake)
+import Submitting (submitting)
 import Text.JSON.Canonical (JSValue, ToJSON (..))
 
 data TokenCommand
@@ -25,6 +25,6 @@ tokenCmd wallet tk command = do
     case command of
         GetToken -> getToken tk
         UpdateToken reqs -> do
-            result <- submittingFake wallet $ \address ->
+            result <- submitting wallet $ \address ->
                 updateToken address tk reqs
             toJSON result

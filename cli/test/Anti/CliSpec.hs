@@ -1,3 +1,5 @@
+{-# LANGUAGE QuasiQuotes #-}
+
 module Anti.CliSpec
     ( spec
     , runDummyServer
@@ -20,6 +22,8 @@ import Core.Types
     , SHA1 (..)
     , Username (..)
     )
+import Data.Aeson (encodeFile)
+import Data.Aeson.QQ
 import Lib.JSON (object, (.=))
 import Network.Wai.Handler.Warp (run)
 import Options (Options (..))
@@ -43,8 +47,17 @@ runDummyServer = do
     _ <- async $ do
         run 8084 appDummy
     threadDelay 1000000
+
+    let walletFile = "/tmp/anti-test-wallet.json"
+    encodeFile
+        walletFile
+        [aesonQQ| {
+        "mnemonic": ["very", "actress", "black", "another", "choice", "cry", "consider", "agree", "sudden", "garage", "error", "transfer"]
+        } |]
+
     setEnv "ANTI_MPFS_HOST" "http://localhost:8084"
     setEnv "ANTI_TOKEN_ID" "dummyTokenId"
+    setEnv "ANTI_WALLET_FILE" walletFile
     return ()
 
 anti :: [String] -> IO (Options, JSValue)

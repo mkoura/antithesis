@@ -137,7 +137,7 @@ type RequestUpdate =
 type RetractChange =
     "transaction"
         :> Capture "address" Address
-        :> "retract-request"
+        :> "retract-change"
         :> Capture "requestId" RequestRefId
         :> Get '[JSON] (WithUnsignedTx Value)
 
@@ -165,7 +165,7 @@ type SubmitTransaction =
         :> Post '[JSON] TxHash
 
 type WaitNBlocks =
-    "wait-n-blocks"
+    "wait"
         :> Capture "n" Int
         :> Get '[JSON] Value
 

@@ -14,7 +14,7 @@ import MPFS.API
     , retractChange
     )
 import Servant.Client (ClientM)
-import Submitting (submittingFake)
+import Submitting (submitting)
 import Text.JSON.Canonical (JSValue, ToJSON (..))
 import User.Requester.Cli (RequesterCommand, requesterCmd)
 
@@ -35,6 +35,6 @@ userCmd :: Wallet -> TokenId -> UserCommand -> ClientM JSValue
 userCmd wallet tokenId command = do
     case command of
         UserRequesterCommand requesterCommand -> requesterCmd wallet tokenId requesterCommand
-        RetractRequest refId -> toJSON <=< submittingFake wallet $ \address ->
+        RetractRequest refId -> toJSON <=< submitting wallet $ \address ->
             retractChange address refId
         GetFacts -> getTokenFacts tokenId

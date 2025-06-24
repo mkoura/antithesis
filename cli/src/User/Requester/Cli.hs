@@ -1,5 +1,6 @@
 module User.Requester.Cli
     ( requesterCmd
+    , RequesterCommand (..)
     ) where
 
 import Data.Aeson (ToJSON (..), Value (..), encode, object, (.=))
@@ -19,7 +20,6 @@ import Types
     , Platform (..)
     , PublicKeyHash (..)
     , Repository (..)
-    , RequesterCommand (..)
     , Role (..)
     , SHA1 (..)
     , TokenId
@@ -29,6 +29,37 @@ import Types
     )
 
 data Operation = Insert | Delete
+    deriving (Eq, Show)
+data RequesterCommand
+    = RegisterPublicKey
+        { platform :: Platform
+        , username :: Username
+        , pubkeyhash :: PublicKeyHash
+        }
+    | UnregisterPublicKey
+        { platform :: Platform
+        , username :: Username
+        , pubkeyhash :: PublicKeyHash
+        }
+    | RegisterRole
+        { platform :: Platform
+        , repository :: Repository
+        , role :: Role
+        , username :: Username
+        }
+    | UnregisterRole
+        { platform :: Platform
+        , repository :: Repository
+        , role :: Role
+        , username :: Username
+        }
+    | RequestTest
+        { platform :: Platform
+        , repository :: Repository
+        , commit :: SHA1
+        , directory :: Directory
+        , username :: Username
+        }
     deriving (Eq, Show)
 
 requesterCmd :: Wallet -> TokenId -> RequesterCommand -> ClientM Value

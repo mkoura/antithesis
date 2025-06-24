@@ -1,15 +1,9 @@
 {-# LANGUAGE StrictData #-}
 
 module Types
-    ( Command (..)
-    , UserCommand (..)
-    , RequesterCommand (..)
-    , OracleCommand (..)
-    , TokenCommand (..)
-    , Directory (..)
+    ( Directory (..)
     , Host (..)
     , Operation (..)
-    , Options (..)
     , OutputReference (..)
     , Platform (..)
     , Port (..)
@@ -225,69 +219,6 @@ newtype Port = Port Int
     deriving (Eq, Show)
 
 newtype Host = Host String
-    deriving (Eq, Show)
-
-newtype Options = Options
-    { command :: Command
-    }
-    deriving (Eq, Show)
-
-data Command
-    = UserCommand UserCommand
-    | OracleCommand OracleCommand
-    deriving (Eq, Show)
-
-newtype OracleCommand
-    = OracleTokenCommand TokenCommand
-    deriving (Eq, Show)
-
-data TokenCommand
-    = GetToken
-    | UpdateToken
-        { requests :: [RequestRefId]
-        }
-    deriving (Eq, Show)
-
-data UserCommand
-    = UserRequesterCommand RequesterCommand
-    | RetractRequest
-        { outputReference :: RequestRefId
-        }
-    | GetFacts
-        {
-        }
-    deriving (Eq, Show)
-
-data RequesterCommand
-    = RegisterPublicKey
-        { platform :: Platform
-        , username :: Username
-        , pubkeyhash :: PublicKeyHash
-        }
-    | UnregisterPublicKey
-        { platform :: Platform
-        , username :: Username
-        , pubkeyhash :: PublicKeyHash
-        }
-    | RegisterRole
-        { platform :: Platform
-        , repository :: Repository
-        , role :: Role
-        , username :: Username
-        }
-    | UnregisterRole
-        { platform :: Platform
-        , repository :: Repository
-        , role :: Role
-        , username :: Username
-        }
-    | RequestTest
-        { platform :: Platform
-        , repository :: Repository
-        , commit :: SHA1
-        , directory :: Directory
-        , username :: Username
-        }
     deriving (Eq, Show)
 
 newtype Address = Address Text

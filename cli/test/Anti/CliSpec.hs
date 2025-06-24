@@ -7,11 +7,15 @@ where
 
 import Anti.Server (appDummy)
 import App (server)
+import Cli (Command (..))
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async (async)
 import Data.Aeson (ToJSON (..), Value, (.=))
 import Data.Aeson.Types (object)
 import Network.Wai.Handler.Warp (run)
+import Options (Options (..))
+import Oracle.Cli (OracleCommand (..))
+import Oracle.Token.Cli (TokenCommand (..))
 import System.Environment (setEnv, withArgs)
 import Test.Hspec
     ( Spec
@@ -21,21 +25,17 @@ import Test.Hspec
     , xit
     )
 import Types
-    ( Command (..)
-    , Directory (..)
-    , Options (..)
-    , OracleCommand (..)
+    ( Directory (..)
     , Platform (..)
     , PublicKeyHash (..)
     , Repository (..)
     , RequestRefId (..)
-    , RequesterCommand (..)
     , Role (..)
     , SHA1 (..)
-    , TokenCommand (..)
-    , UserCommand (..)
     , Username (..)
     )
+import User.Cli (UserCommand (..))
+import User.Requester.Cli (RequesterCommand (..))
 
 runDummyServer :: IO ()
 runDummyServer = do
@@ -76,7 +76,7 @@ spec = beforeAll_ runDummyServer $ do
                 ]
         let opts =
                 Options
-                    { command =
+                    { optionsCommand =
                         UserCommand
                             $ UserRequesterCommand
                                 RegisterPublicKey
@@ -104,7 +104,7 @@ spec = beforeAll_ runDummyServer $ do
 
         let opts =
                 Options
-                    { command =
+                    { optionsCommand =
                         UserCommand
                             $ UserRequesterCommand
                                 UnregisterPublicKey
@@ -133,7 +133,7 @@ spec = beforeAll_ runDummyServer $ do
                 ]
         let opts =
                 Options
-                    { command =
+                    { optionsCommand =
                         UserCommand
                             $ UserRequesterCommand
                                 UnregisterRole
@@ -162,7 +162,7 @@ spec = beforeAll_ runDummyServer $ do
                 ]
         let opts =
                 Options
-                    { command =
+                    { optionsCommand =
                         UserCommand
                             $ UserRequesterCommand
                                 RequestTest
@@ -185,9 +185,9 @@ spec = beforeAll_ runDummyServer $ do
                 ]
         let opts =
                 Options
-                    { command =
+                    { optionsCommand =
                         UserCommand
-                            RetractRequest
+                            $ RetractRequest
                                 { outputReference =
                                     RequestRefId
                                         "9114528e2343e6fcf3c92de71364275227e6b16d-0"
@@ -203,7 +203,7 @@ spec = beforeAll_ runDummyServer $ do
                 ]
         let opts =
                 Options
-                    { command =
+                    { optionsCommand =
                         OracleCommand $ OracleTokenCommand GetToken
                     }
         anti args

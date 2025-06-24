@@ -82,6 +82,7 @@ library
     Cli
     MPFS.API
     Options
+    Oracle.Cli
     Oracle.Github.CommonIO
     Oracle.Github.GetRepoRole
     Oracle.Github.GetRepoRoleIO

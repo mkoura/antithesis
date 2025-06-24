@@ -1,7 +1,8 @@
 {-# LANGUAGE DerivingStrategies #-}
 
-module Options (parseArgs) where
+module Options (parseArgs, Options (..)) where
 
+import Cli (Command (..))
 import Data.Text qualified as T
 import Options.Applicative
     ( Alternative (..)
@@ -28,22 +29,25 @@ import Options.Applicative
     , (<**>)
     )
 import Options.Applicative.Types (readerAsk)
+import Oracle.Cli (OracleCommand (..))
+import Oracle.Token.Cli (TokenCommand (..))
 import Types
-    ( Command (..)
-    , Directory (..)
-    , Options (Options)
-    , OracleCommand (..)
+    ( Directory (..)
     , Platform (..)
     , PublicKeyHash (..)
-    , Repository (Repository)
+    , Repository (..)
     , RequestRefId (..)
-    , RequesterCommand (..)
     , Role (..)
     , SHA1 (..)
-    , TokenCommand (..)
-    , UserCommand (..)
     , Username (..)
     )
+import User.Cli (UserCommand (..))
+import User.Requester.Cli (RequesterCommand (..))
+
+newtype Options = Options
+    { optionsCommand :: Command
+    }
+    deriving (Eq, Show)
 
 platformOption :: Parser Platform
 platformOption =

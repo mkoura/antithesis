@@ -10,7 +10,7 @@ import Network.HTTP.Client
     , newManager
     )
 import Network.HTTP.Client.TLS (tlsManagerSettings)
-import Options (parseArgs)
+import Options (Options (..), parseArgs)
 import Servant.Client
     ( BaseUrl (..)
     , ClientError
@@ -22,7 +22,6 @@ import Servant.Client
 import System.Environment (getArgs, getEnv)
 import Types
     ( Address (Address)
-    , Options (Options)
     , TokenId (..)
     , Wallet (..)
     )

@@ -1,5 +1,6 @@
 module Oracle.Token.Cli
     ( tokenCmd
+    , TokenCommand (..)
     ) where
 
 import Data.Aeson (ToJSON (..), Value)
@@ -11,10 +12,17 @@ import MPFS.API
 import Servant.Client (ClientM)
 import Submitting (submittingFake)
 import Types
-    ( TokenCommand (..)
+    ( RequestRefId
     , TokenId
     , Wallet
     )
+
+data TokenCommand
+    = GetToken
+    | UpdateToken
+        { requests :: [RequestRefId]
+        }
+    deriving (Eq, Show)
 
 tokenCmd :: Wallet -> TokenId -> TokenCommand -> ClientM Value
 tokenCmd wallet tk command = do

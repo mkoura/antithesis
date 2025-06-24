@@ -103,6 +103,7 @@ library
   build-depends:
     , aeson
     , base
+    , base16-bytestring
     , binary
     , bytestring
     , http-client
@@ -110,6 +111,7 @@ library
     , http-types
     , lens
     , optparse-applicative
+    , plutus-tx
     , servant
     , servant-client
     , text

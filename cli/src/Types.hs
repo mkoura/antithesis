@@ -27,6 +27,9 @@ module Types
     , SignedTx (..)
     , UnsignedTx (..)
     , TxHash (..)
+    , Owner (..)
+    , Key (..)
+    , CageDatum (..)
     ) where
 
 import Data.Aeson
@@ -40,11 +43,15 @@ import Data.Aeson
     , (.:)
     , (.:?)
     )
+import Data.ByteString.Base16 (encode)
+import Data.ByteString.Char8 (ByteString)
+import Data.ByteString.Char8 qualified as B
 import Data.Text (Text)
+import Data.Text qualified as T
+import PlutusTx (Data (..), builtinDataToData)
+import PlutusTx.IsData.Class
 import Servant.API (FromHttpApiData (..), ToHttpApiData (..))
 import Text.Read (readMaybe)
-
-import qualified Data.Text as T
 
 -- TxHash-OutputIndex
 newtype RequestRefId = RequestRefId
@@ -63,6 +70,13 @@ instance FromHttpApiData RequestRefId where
 newtype TokenId = TokenId String
     deriving (Eq, Show)
 
+instance FromData TokenId where
+    fromBuiltinData = parse . builtinDataToData
+      where
+        parse = \case
+            Constr 0 [B b] -> Just (TokenId $ B.unpack $ encode b)
+            _ -> Nothing
+
 instance ToHttpApiData TokenId where
     toUrlPiece (TokenId tokenId) = T.pack tokenId
 
@@ -71,6 +85,80 @@ instance FromHttpApiData TokenId where
         case T.unpack tokenId of
             "" -> Left "TokenId cannot be empty"
             _ -> Right (TokenId (T.unpack tokenId))
+
+newtype Owner = Owner String
+    deriving (Eq, Show)
+
+instance FromData Owner where
+    fromBuiltinData = parse . builtinDataToData
+      where
+        parse = \case
+            B b -> Just (Owner $ B.unpack $ encode b)
+            _ -> Nothing
+
+newtype Key = Key String
+    deriving (Eq, Show)
+
+instance FromData Key where
+    fromBuiltinData = parse . builtinDataToData
+      where
+        parse = \case
+            B b -> Just (Key $ B.unpack b)
+            _ -> Nothing
+
+data Operation
+    = Insert ByteString
+    | Delete ByteString
+    | Update ByteString ByteString
+    deriving (Eq, Show)
+
+instance FromData Operation where
+    fromBuiltinData = parse . builtinDataToData
+      where
+        parse = \case
+            Constr 0 [B b] -> Just (Insert b)
+            Constr 1 [B b] -> Just (Delete b)
+            Constr 2 [B old, B new] -> Just (Update old new)
+            _ -> Nothing
+
+newtype Root = Root String
+    deriving (Eq, Show)
+
+instance FromData Root where
+    fromBuiltinData = parse . builtinDataToData
+      where
+        parse = \case
+            B b -> Just (Root $ B.unpack $ encode b)
+            _ -> Nothing
+
+data CageDatum
+    = RequestDatum
+        { tokenId :: TokenId
+        , owner :: Owner
+        , key :: Key
+        , value :: Operation
+        }
+    | StateDatum
+        { owner :: Owner
+        , root :: Root
+        }
+    deriving (Eq, Show)
+
+instance FromData CageDatum where
+    fromBuiltinData = parse . builtinDataToData
+      where
+        parse = \case
+            Constr 0 [tokenIdD, ownerD, keyD, valueD] ->
+                RequestDatum
+                    <$> fromData tokenIdD
+                    <*> fromData ownerD
+                    <*> fromData keyD
+                    <*> fromData valueD
+            Constr 1 [ownerD, rootD] ->
+                StateDatum
+                    <$> fromData ownerD
+                    <*> fromData rootD
+            _ -> Nothing
 
 newtype Platform = Platform String
     deriving (Eq, Show)

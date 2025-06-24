@@ -10,19 +10,21 @@ import Oracle.Token.API (tokenApi)
 import Servant (serve, (:<|>) (..))
 import Servant.Server (Handler)
 import Types
-    ( Address,
-      Operation,
-      TokenId,
-      WithUnsignedTx(..),
-      RequestRefId,
-      TxHash(..),
-      SignedTx )
+    ( Address
+    , RequestRefId
+    , SignedTx
+    , TokenId
+    , TxHash (..)
+    , WithUnsignedTx (..)
+    )
 
 appDummy :: Application
 appDummy =
     serve
         tokenApi
-        ( requestChange
+        ( requestInsert
+            :<|> requestDelete
+            :<|> requestUpdate
             :<|> retractChange
             :<|> updateToken
             :<|> getToken
@@ -37,14 +39,28 @@ dummyWithUnsignedTx =
         , value = Nothing
         }
 
-requestChange
+requestInsert
     :: Address
     -> TokenId
     -> String
     -> String
-    -> Operation
     -> Handler WithUnsignedTx
-requestChange _ _ _ _ _ = return dummyWithUnsignedTx
+requestInsert _ _ _ _ = return dummyWithUnsignedTx
+requestDelete
+    :: Address
+    -> TokenId
+    -> String
+    -> String
+    -> Handler WithUnsignedTx
+requestDelete _ _ _ _ = return dummyWithUnsignedTx
+requestUpdate
+    :: Address
+    -> TokenId
+    -> String
+    -> String
+    -> String
+    -> Handler WithUnsignedTx
+requestUpdate _ _ _ _ _ = return dummyWithUnsignedTx
 
 retractChange :: Address -> RequestRefId -> Handler WithUnsignedTx
 retractChange _ _ = return dummyWithUnsignedTx

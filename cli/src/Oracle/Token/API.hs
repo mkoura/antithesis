@@ -1,7 +1,9 @@
 module Oracle.Token.API
     ( tokenApi
     , TokenAPI
-    , requestChange
+    , requestInsert
+    , requestDelete
+    , requestUpdate
     , retractChange
     , updateToken
     , getToken
@@ -26,7 +28,6 @@ import Servant.API
 import Servant.Client (ClientM, client)
 import Types
     ( Address
-    , Operation
     , RequestRefId
     , SignedTx
     , TokenId
@@ -34,14 +35,32 @@ import Types
     , WithUnsignedTx
     )
 
-type RequestChange =
+type RequestInsert =
     "transaction"
         :> Capture "address" Address
-        :> "request-change"
+        :> "request-insert"
         :> Capture "tokenId" TokenId
         :> QueryParam' '[Required] "key" String
         :> QueryParam' '[Required] "value" String
-        :> QueryParam' '[Required] "operation" Operation
+        :> Get '[JSON] WithUnsignedTx
+
+type RequestDelete =
+    "transaction"
+        :> Capture "address" Address
+        :> "request-delete"
+        :> Capture "tokenId" TokenId
+        :> QueryParam' '[Required] "key" String
+        :> QueryParam' '[Required] "value" String
+        :> Get '[JSON] WithUnsignedTx
+
+type RequestUpdate =
+    "transaction"
+        :> Capture "address" Address
+        :> "request-update"
+        :> Capture "tokenId" TokenId
+        :> QueryParam' '[Required] "key" String
+        :> QueryParam' '[Required] "oldValue" String
+        :> QueryParam' '[Required] "newValue" String
         :> Get '[JSON] WithUnsignedTx
 
 type RetractChange =
@@ -75,7 +94,9 @@ type SubmitTransaction =
         :> Post '[JSON] TxHash
 
 type TokenAPI =
-    RequestChange
+    RequestInsert
+        :<|> RequestDelete
+        :<|> RequestUpdate
         :<|> RetractChange
         :<|> UpdateToken
         :<|> GetToken
@@ -85,12 +106,24 @@ type TokenAPI =
 tokenApi :: Proxy TokenAPI
 tokenApi = Proxy
 
-requestChange
+requestInsert
     :: Address
     -> TokenId
     -> String
     -> String
-    -> Operation
+    -> ClientM WithUnsignedTx
+requestDelete
+    :: Address
+    -> TokenId
+    -> String
+    -> String
+    -> ClientM WithUnsignedTx
+requestUpdate
+    :: Address
+    -> TokenId
+    -> String
+    -> String
+    -> String
     -> ClientM WithUnsignedTx
 retractChange :: Address -> RequestRefId -> ClientM WithUnsignedTx
 updateToken
@@ -98,7 +131,9 @@ updateToken
 getToken :: TokenId -> ClientM Value
 getTokenFacts :: TokenId -> ClientM Value
 submitTransaction :: SignedTx -> ClientM TxHash
-requestChange
+requestInsert
+    :<|> requestDelete
+    :<|> requestUpdate
     :<|> retractChange
     :<|> updateToken
     :<|> getToken

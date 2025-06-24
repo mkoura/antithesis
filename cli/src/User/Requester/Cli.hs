@@ -4,18 +4,20 @@ module User.Requester.Cli
 
 import Data.Aeson (ToJSON (..), Value (..), encode, object, (.=))
 import Data.Binary.Builder (toLazyByteString)
+import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.Text (Text)
+import Data.Text qualified as T
 import Network.HTTP.Types (encodePathSegmentsRelative)
 import Oracle.Token.API
     ( getTokenFacts
-    , requestChange
+    , requestDelete
+    , requestInsert
     , retractChange
     )
 import Servant.Client (ClientM)
 import Submitting (submittingFake)
 import Types
     ( Directory (..)
-    , Operation (..)
     , Platform (..)
     , PublicKeyHash (..)
     , Repository (..)
@@ -29,7 +31,7 @@ import Types
     )
 
 data Operation = Insert | Delete
-import qualified Data.Text as T
+    deriving (Eq, Show)
 
 requesterCmd :: Wallet -> TokenId -> RequesterCommand -> ClientM Value
 requesterCmd wallet tokenId command = do
@@ -107,7 +109,7 @@ requestTestCLI
                         $ object
                             [ "state" .= ("pending" :: Text)
                             ]
-            requestChange address tokenId key value Insert
+            requestInsert address tokenId key value
 
 manageUser
     :: Wallet
@@ -133,13 +135,10 @@ manageUser
                         , username
                         , pubkeyhash
                         ]
-            requestChange address tokenId key "" operation
-
--- validation <- liftIO $ inspectPublicKey user pubkey
--- case validation of
---     PublicKeyValidated ->
---         makeMPFSChange
---     notValidated -> error $ emitPublicKeyMsg notValidated
+                value = mempty
+            case operation of
+                Insert -> requestInsert address tokenId key value
+                Delete -> requestDelete address tokenId key value
 
 manageRole
     :: Wallet
@@ -168,10 +167,7 @@ manageRole
                         , username
                         , roleStr
                         ]
-            requestChange address tokenId key "" operation
-
--- validation <- liftIO $ inspectRepoRoleForUser user rep role
--- case validation of
---     RepoRoleValidated ->
---         makeMPFSChange
---     notValidated -> error $ emitRepoRoleMsg notValidated
+                value = mempty
+            case operation of
+                Insert -> requestInsert address tokenId key value
+                Delete -> requestDelete address tokenId key value

@@ -11,20 +11,14 @@ import Types
     ( Command (..)
     , OracleCommand (..)
     , TokenId
-    , UserCommand (..)
     , Wallet
     )
-import User.Requester.Cli
-    ( requesterCmd
-    )
+import User.Cli (userCmd)
 
 cmd :: Wallet -> TokenId -> Command -> ClientM Value
 cmd wallet tk command = do
     case command of
-        UserCommand userCommand ->
-            case userCommand of
-                UserRequesterCommand requesterCommand ->
-                    requesterCmd wallet tk requesterCommand
+        UserCommand userCommand -> userCmd wallet tk userCommand
         OracleCommand oracleCommand ->
             case oracleCommand of
                 OracleTokenCommand tokenCommand ->

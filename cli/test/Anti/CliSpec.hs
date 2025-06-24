@@ -187,12 +187,11 @@ spec = beforeAll_ runDummyServer $ do
                 Options
                     { command =
                         UserCommand
-                            $ UserRequesterCommand
-                                RetractRequest
-                                    { outputReference =
-                                        RequestRefId
-                                            "9114528e2343e6fcf3c92de71364275227e6b16d-0"
-                                    }
+                            RetractRequest
+                                { outputReference =
+                                    RequestRefId
+                                        "9114528e2343e6fcf3c92de71364275227e6b16d-0"
+                                }
                     }
         anti args `shouldReturn` (opts, toJSON dummyTxHash)
 

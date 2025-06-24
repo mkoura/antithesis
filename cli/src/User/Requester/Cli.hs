@@ -8,10 +8,8 @@ import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.Text (Text)
 import Data.Text qualified as T
 import MPFS.API
-    ( getTokenFacts
-    , requestDelete
+    ( requestDelete
     , requestInsert
-    , retractChange
     )
 import Network.HTTP.Types (encodePathSegmentsRelative)
 import Servant.Client (ClientM)
@@ -56,7 +54,7 @@ requesterCmd wallet tokenId command = do
             , directory
             } ->
                 toJSON
-                    <$> requestTestCLI
+                    <$> requestTestRun
                         wallet
                         tokenId
                         platform
@@ -64,9 +62,6 @@ requesterCmd wallet tokenId command = do
                         username
                         commit
                         directory
-        RetractRequest refId -> fmap toJSON $ submittingFake wallet $ \address ->
-            retractChange address refId
-        GetFacts -> getTokenFacts tokenId
 
 mkKey :: [String] -> String
 mkKey =
@@ -75,7 +70,7 @@ mkKey =
         . encodePathSegmentsRelative
         . fmap T.pack
 
-requestTestCLI
+requestTestRun
     :: Wallet
     -> TokenId
     -> Platform
@@ -84,7 +79,7 @@ requestTestCLI
     -> SHA1
     -> Directory
     -> ClientM WithUnsignedTx -- WithTxHash
-requestTestCLI
+requestTestRun
     wallet
     tokenId
     (Platform platform)

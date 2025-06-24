@@ -248,8 +248,14 @@ data TokenCommand
         }
     deriving (Eq, Show)
 
-newtype UserCommand
+data UserCommand
     = UserRequesterCommand RequesterCommand
+    | RetractRequest
+        { outputReference :: RequestRefId
+        }
+    | GetFacts
+        {
+        }
     deriving (Eq, Show)
 
 data RequesterCommand
@@ -281,12 +287,6 @@ data RequesterCommand
         , commit :: SHA1
         , directory :: Directory
         , username :: Username
-        }
-    | RetractRequest
-        { outputReference :: RequestRefId
-        }
-    | GetFacts
-        {
         }
     deriving (Eq, Show)
 

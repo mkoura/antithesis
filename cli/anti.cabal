@@ -91,6 +91,7 @@ library
     Oracle.Types
     Submitting
     Types
+    User.Cli
     User.Requester.Cli
 
   -- Modules included in this library but not exported.

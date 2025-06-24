@@ -160,7 +160,7 @@ removeRoleOptions =
         <*> roleOption
         <*> usernameOption
 
-retractRequestOptions :: Parser RequesterCommand
+retractRequestOptions :: Parser UserCommand
 retractRequestOptions =
     RetractRequest
         <$> outputReferenceParser
@@ -174,18 +174,6 @@ requesterCommandParser =
                 requestTestOptions
                 (progDesc "Request a test on a specific platform")
             )
-            <> command
-                "retract"
-                ( info
-                    retractRequestOptions
-                    (progDesc "Retract a request")
-                )
-            <> command
-                "get-facts"
-                ( info
-                    (pure GetFacts)
-                    (progDesc "Get token facts")
-                )
             <> command
                 "register-public-key"
                 ( info
@@ -292,6 +280,18 @@ userCommandParser =
                 (UserRequesterCommand <$> requesterCommandParser <**> helper)
                 (progDesc "Allow users to send requests")
             )
+            <> command
+                "retract"
+                ( info
+                    retractRequestOptions
+                    (progDesc "Retract a request")
+                )
+            <> command
+                "get-facts"
+                ( info
+                    (pure GetFacts)
+                    (progDesc "Get token facts")
+                )
         )
 
 optionsParser :: Parser Options

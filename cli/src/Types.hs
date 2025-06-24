@@ -15,7 +15,6 @@ module Types
     , Port (..)
     , PublicKeyHash (..)
     , Repository (..)
-    , Request (..)
     , Role (..)
     , SHA1 (..)
     , TokenId (..)
@@ -105,53 +104,6 @@ data Repository = Repository
     , project :: String
     }
     deriving (Eq, Show)
-
-data Request = Request
-    { key :: String
-    , value :: String
-    , operation :: Operation
-    }
-    deriving (Eq, Show)
-
-instance ToJSON Request where
-    toJSON (Request{key, value, operation}) =
-        object
-            [ "key" .= key
-            , "value" .= value
-            , "operation" .= operation
-            ]
-
-instance FromJSON Request where
-    parseJSON = withObject "Request" $ \v ->
-        Request
-            <$> v .: "key"
-            <*> v .: "value"
-            <*> v .: "operation"
-
-data Operation = Insert | Delete
-    deriving (Eq, Show)
-
-instance ToHttpApiData Operation where
-    toUrlPiece Insert = "insert"
-    toUrlPiece Delete = "delete"
-
-instance FromHttpApiData Operation where
-    parseUrlPiece v =
-        case v of
-            "insert" -> Right Insert
-            "delete" -> Right Delete
-            _ -> Left $ "Invalid operation: " <> v
-
-instance ToJSON Operation where
-    toJSON Insert = String "insert"
-    toJSON Delete = String "delete"
-
-instance FromJSON Operation where
-    parseJSON = withText "Operation" $ \v ->
-        case v of
-            "insert" -> pure Insert
-            "delete" -> pure Delete
-            _ -> fail $ "Invalid operation: " ++ T.unpack v
 
 data OutputReference = OutputReference
     { outputReferenceTx :: String

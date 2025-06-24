@@ -7,6 +7,10 @@ index-state:
 packages:
     .
 
+constraints:
+    cardano-ledger-api >=1.11.0.0 && <1.12
+
+
 repository cardano-haskell-packages
   url: https://chap.intersectmbo.org/
   secure: True

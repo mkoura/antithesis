@@ -100,7 +100,6 @@ library
     , servant-client
     , text
     , wreq
-    , cardano-ledger-api  >=1.11.0.0  && <1.12
 
   -- Directories containing source files.
   hs-source-dirs:   src

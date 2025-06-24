@@ -80,13 +80,13 @@ library
   exposed-modules:
     App
     Cli
+    MPFS.API
     Options
     Oracle.Github.CommonIO
     Oracle.Github.GetRepoRole
     Oracle.Github.GetRepoRoleIO
     Oracle.Github.ListPublicKeys
     Oracle.Github.ListPublicKeysIO
-    Oracle.Token.API
     Oracle.Token.Cli
     Oracle.Types
     Submitting

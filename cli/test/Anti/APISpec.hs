@@ -32,15 +32,15 @@ import Data.ByteString.Lazy qualified as BL
 import Data.Sequence.Strict qualified as Seq
 import Data.Text (Text)
 import Data.Text.Encoding qualified as T
-import Network.HTTP.Client (newManager)
-import Network.HTTP.Client.TLS (tlsManagerSettings)
-import Oracle.Token.API
+import MPFS.API
     ( getToken
     , getTokenFacts
     , requestDelete
     , requestInsert
     , requestUpdate
     )
+import Network.HTTP.Client (newManager)
+import Network.HTTP.Client.TLS (tlsManagerSettings)
 import PlutusTx (Data, fromData)
 import Servant.Client (ClientM, mkClientEnv, parseBaseUrl, runClientM)
 import Test.Hspec (SpecWith, beforeAll, describe, it, shouldBe)
@@ -123,7 +123,7 @@ getFirstOutput dtx = case dtx
 spec :: SpecWith ()
 spec = do
     beforeAll setup $ do
-        describe "Oracle.Token.API" $ do
+        describe "MPFS.API" $ do
             it "can retrieve config" $ \(Call call) -> do
                 res <- call $ getToken antiTokenId
                 case res of

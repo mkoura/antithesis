@@ -1,4 +1,4 @@
-module Oracle.Token.API
+module MPFS.API
     ( tokenApi
     , TokenAPI
     , requestInsert

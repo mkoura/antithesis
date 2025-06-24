@@ -3,7 +3,7 @@ module Oracle.Token.Cli
     ) where
 
 import Data.Aeson (ToJSON (..), Value)
-import Oracle.Token.API
+import MPFS.API
     ( getToken
     , updateToken
     )

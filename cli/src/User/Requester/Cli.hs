@@ -7,13 +7,13 @@ import Data.Binary.Builder (toLazyByteString)
 import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.Text (Text)
 import Data.Text qualified as T
-import Network.HTTP.Types (encodePathSegmentsRelative)
-import Oracle.Token.API
+import MPFS.API
     ( getTokenFacts
     , requestDelete
     , requestInsert
     , retractChange
     )
+import Network.HTTP.Types (encodePathSegmentsRelative)
 import Servant.Client (ClientM)
 import Submitting (submittingFake)
 import Types

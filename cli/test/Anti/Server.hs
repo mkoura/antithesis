@@ -5,8 +5,8 @@ module Anti.Server
 where
 
 import Data.Aeson (ToJSON (..), Value)
+import MPFS.API (tokenApi)
 import Network.Wai (Application)
-import Oracle.Token.API (tokenApi)
 import Servant (serve, (:<|>) (..))
 import Servant.Server (Handler)
 import Types

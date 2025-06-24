@@ -3,6 +3,11 @@ module User.Cli
     , UserCommand (..)
     ) where
 
+import Core.Types
+    ( RequestRefId
+    , TokenId
+    , Wallet (..)
+    )
 import Data.Aeson (ToJSON (..), Value (..))
 import MPFS.API
     ( getTokenFacts
@@ -10,11 +15,6 @@ import MPFS.API
     )
 import Servant.Client (ClientM)
 import Submitting (submittingFake)
-import Types
-    ( RequestRefId
-    , TokenId
-    , Wallet (..)
-    )
 import User.Requester.Cli (RequesterCommand, requesterCmd)
 
 data Operation = Insert | Delete

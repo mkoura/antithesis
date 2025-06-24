@@ -1,8 +1,18 @@
 {-# LANGUAGE DerivingStrategies #-}
 
-module Options (parseArgs, Options (..)) where
+module Core.Options (parseArgs, Options (..)) where
 
 import Cli (Command (..))
+import Core.Types
+    ( Directory (..)
+    , Platform (..)
+    , PublicKeyHash (..)
+    , Repository (..)
+    , RequestRefId (..)
+    , Role (..)
+    , SHA1 (..)
+    , Username (..)
+    )
 import Data.Text qualified as T
 import Options.Applicative
     ( Alternative (..)
@@ -31,16 +41,6 @@ import Options.Applicative
 import Options.Applicative.Types (readerAsk)
 import Oracle.Cli (OracleCommand (..))
 import Oracle.Token.Cli (TokenCommand (..))
-import Types
-    ( Directory (..)
-    , Platform (..)
-    , PublicKeyHash (..)
-    , Repository (..)
-    , RequestRefId (..)
-    , Role (..)
-    , SHA1 (..)
-    , Username (..)
-    )
 import User.Cli (UserCommand (..))
 import User.Requester.Cli (RequesterCommand (..))
 

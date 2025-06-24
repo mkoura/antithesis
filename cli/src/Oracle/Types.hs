@@ -4,6 +4,7 @@ module Oracle.Types
     ( RequestRefs (..)
     ) where
 
+import Core.Types (OutputReference)
 import Data.Aeson
     ( FromJSON (parseJSON)
     , KeyValue ((.=))
@@ -12,7 +13,6 @@ import Data.Aeson
     , withObject
     , (.:)
     )
-import Types (OutputReference)
 
 newtype RequestRefs = RequestRefs
     { outputReferences :: [OutputReference]

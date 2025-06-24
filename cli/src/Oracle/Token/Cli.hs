@@ -9,13 +9,13 @@ import MPFS.API
     , updateToken
     )
 
-import Servant.Client (ClientM)
-import Submitting (submittingFake)
-import Types
+import Core.Types
     ( RequestRefId
     , TokenId
     , Wallet
     )
+import Servant.Client (ClientM)
+import Submitting (submittingFake)
 
 data TokenCommand
     = GetToken

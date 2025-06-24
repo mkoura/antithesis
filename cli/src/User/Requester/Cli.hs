@@ -3,6 +3,18 @@ module User.Requester.Cli
     , RequesterCommand (..)
     ) where
 
+import Core.Types
+    ( Directory (..)
+    , Platform (..)
+    , PublicKeyHash (..)
+    , Repository (..)
+    , Role (..)
+    , SHA1 (..)
+    , TokenId
+    , Username (..)
+    , Wallet (..)
+    , WithUnsignedTx
+    )
 import Data.Aeson (ToJSON (..), Value (..), encode, object, (.=))
 import Data.Binary.Builder (toLazyByteString)
 import Data.ByteString.Lazy.Char8 qualified as BL
@@ -15,18 +27,6 @@ import MPFS.API
 import Network.HTTP.Types (encodePathSegmentsRelative)
 import Servant.Client (ClientM)
 import Submitting (submittingFake)
-import Types
-    ( Directory (..)
-    , Platform (..)
-    , PublicKeyHash (..)
-    , Repository (..)
-    , Role (..)
-    , SHA1 (..)
-    , TokenId
-    , Username (..)
-    , Wallet (..)
-    , WithUnsignedTx
-    )
 
 data Operation = Insert | Delete
     deriving (Eq, Show)

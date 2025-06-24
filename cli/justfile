@@ -13,10 +13,15 @@ test:
   #!/usr/bin/env bash
   cabal test
 
+build:
+    #!/usr/bin/env bash
+    cabal build
+    
 CI:
   #!/usr/bin/env bash
   set -euo pipefail
   cabal-fmt -c anti.cabal
   fourmolu -m check src app test
   hlint -c src app test
+  just build
   just test

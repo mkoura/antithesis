@@ -1,6 +1,6 @@
 {-# LANGUAGE StrictData #-}
 
-module Types
+module Core.Types
     ( Directory (..)
     , Host (..)
     , Operation (..)

@@ -7,13 +7,13 @@ module Oracle.Github.ListPublicKeys
     , emitPublicKeyMsg
     ) where
 
+import Core.Types (PublicKeyHash (..), Username)
 import Data.List qualified as L
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Oracle.Github.CommonIO qualified as IO
 import Oracle.Github.ListPublicKeysIO qualified as IO
-import Types (PublicKeyHash (..), Username)
 
 data PublicKeyValidation
     = PublicKeyValidated

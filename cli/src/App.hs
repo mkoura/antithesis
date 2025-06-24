@@ -1,6 +1,12 @@
 module App (server) where
 
 import Cli (cmd)
+import Core.Options (Options (..), parseArgs)
+import Core.Types
+    ( Address (Address)
+    , TokenId (..)
+    , Wallet (..)
+    )
 import Data.Aeson (Value)
 import Network.HTTP.Client
     ( ManagerSettings (..)
@@ -10,7 +16,6 @@ import Network.HTTP.Client
     , newManager
     )
 import Network.HTTP.Client.TLS (tlsManagerSettings)
-import Options (Options (..), parseArgs)
 import Servant.Client
     ( BaseUrl (..)
     , ClientError
@@ -20,11 +25,6 @@ import Servant.Client
     , runClientM
     )
 import System.Environment (getArgs, getEnv)
-import Types
-    ( Address (Address)
-    , TokenId (..)
-    , Wallet (..)
-    )
 
 server :: IO (Options, Either ClientError Value)
 server = do

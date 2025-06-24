@@ -11,6 +11,14 @@ module MPFS.API
     , submitTransaction
     ) where
 
+import Core.Types
+    ( Address
+    , RequestRefId
+    , SignedTx
+    , TokenId
+    , TxHash
+    , WithUnsignedTx
+    )
 import Data.Aeson (Value)
 import Data.Data (Proxy (..))
 import Servant.API
@@ -26,14 +34,6 @@ import Servant.API
     , type (:>)
     )
 import Servant.Client (ClientM, client)
-import Types
-    ( Address
-    , RequestRefId
-    , SignedTx
-    , TokenId
-    , TxHash
-    , WithUnsignedTx
-    )
 
 type RequestInsert =
     "transaction"

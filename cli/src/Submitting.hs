@@ -4,13 +4,13 @@ module Submitting
     )
 where
 
-import Servant.Client (ClientM)
-import Types
+import Core.Types
     ( Address
     , Wallet (..)
     , WithTxHash
     , WithUnsignedTx (..)
     )
+import Servant.Client (ClientM)
 
 type Submitting =
     Wallet

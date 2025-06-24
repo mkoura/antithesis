@@ -24,6 +24,15 @@ import Cardano.Ledger.Core
     )
 import Cardano.Ledger.Credential (Credential (..))
 import Control.Lens (to, (^.))
+import Core.Types
+    ( Address (..)
+    , CageDatum (..)
+    , Key (..)
+    , Operation (..)
+    , Owner (..)
+    , TokenId (..)
+    , WithUnsignedTx (WithUnsignedTx)
+    )
 import Data.Aeson (Value (..))
 import Data.Aeson.KeyMap ((!?))
 import Data.ByteString.Base16
@@ -44,15 +53,6 @@ import Network.HTTP.Client.TLS (tlsManagerSettings)
 import PlutusTx (Data, fromData)
 import Servant.Client (ClientM, mkClientEnv, parseBaseUrl, runClientM)
 import Test.Hspec (SpecWith, beforeAll, describe, it, shouldBe)
-import Types
-    ( Address (..)
-    , CageDatum (..)
-    , Key (..)
-    , Operation (..)
-    , Owner (..)
-    , TokenId (..)
-    , WithUnsignedTx (WithUnsignedTx)
-    )
 
 mpfsPolicyId :: String
 mpfsPolicyId = "c1e392ee7da9415f946de9d2aef9607322b47d6e84e8142ef0c340bf"

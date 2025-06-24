@@ -3,10 +3,10 @@ module Oracle.Cli
     , oracleCmd
     ) where
 
+import Core.Types (TokenId, Wallet)
 import Data.Aeson (Value)
 import Oracle.Token.Cli (TokenCommand, tokenCmd)
 import Servant.Client (ClientM)
-import Types (TokenId, Wallet)
 
 newtype OracleCommand
     = OracleTokenCommand TokenCommand

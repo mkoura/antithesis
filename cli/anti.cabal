@@ -80,8 +80,9 @@ library
   exposed-modules:
     App
     Cli
+    Core.Options
+    Core.Types
     MPFS.API
-    Options
     Oracle.Cli
     Oracle.Github.CommonIO
     Oracle.Github.GetRepoRole
@@ -91,7 +92,6 @@ library
     Oracle.Token.Cli
     Oracle.Types
     Submitting
-    Types
     User.Cli
     User.Requester.Cli
 

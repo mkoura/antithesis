@@ -7,12 +7,12 @@ module Oracle.Github.GetRepoRole
     , emitRepoRoleMsg
     ) where
 
+import Core.Types (Repository, Role (..), Username (..))
 import Data.ByteString qualified as BS
 import Data.ByteString.Char8 qualified as BC
 import Data.List qualified as L
 import Data.Maybe (catMaybes)
 import Oracle.Github.GetRepoRoleIO qualified as IO
-import Types (Repository, Role (..), Username (..))
 
 data RepoRoleValidation
     = RepoRoleValidated

@@ -4,12 +4,7 @@ module Anti.Server
     )
 where
 
-import Data.Aeson (ToJSON (..), Value)
-import MPFS.API (tokenApi)
-import Network.Wai (Application)
-import Servant (serve, (:<|>) (..))
-import Servant.Server (Handler)
-import Types
+import Core.Types
     ( Address
     , RequestRefId
     , SignedTx
@@ -17,6 +12,11 @@ import Types
     , TxHash (..)
     , WithUnsignedTx (..)
     )
+import Data.Aeson (ToJSON (..), Value)
+import MPFS.API (tokenApi)
+import Network.Wai (Application)
+import Servant (serve, (:<|>) (..))
+import Servant.Server (Handler)
 
 appDummy :: Application
 appDummy =

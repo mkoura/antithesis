@@ -3,13 +3,13 @@ module Cli
     , Command (..)
     ) where
 
-import Data.Aeson (Value)
-import Oracle.Cli (OracleCommand (..), oracleCmd)
-import Servant.Client (ClientM)
-import Types
+import Core.Types
     ( TokenId
     , Wallet
     )
+import Data.Aeson (Value)
+import Oracle.Cli (OracleCommand (..), oracleCmd)
+import Servant.Client (ClientM)
 import User.Cli (UserCommand, userCmd)
 
 data Command

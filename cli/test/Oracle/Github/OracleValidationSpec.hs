@@ -3,6 +3,12 @@ module Oracle.Github.OracleValidationSpec
     )
 where
 
+import Core.Types
+    ( PublicKeyHash (..)
+    , Repository (..)
+    , Role (..)
+    , Username (..)
+    )
 import Data.ByteString qualified as BS
 import Data.ByteString.Char8 qualified as BC
 import Oracle.Github.CommonIO
@@ -26,12 +32,6 @@ import Test.Hspec
     ( Spec
     , it
     , shouldReturn
-    )
-import Types
-    ( PublicKeyHash (..)
-    , Repository (..)
-    , Role (..)
-    , Username (..)
     )
 
 mockedAccessToken :: IO GithubAccessToken

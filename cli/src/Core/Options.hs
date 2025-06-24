@@ -1,8 +1,17 @@
 {-# LANGUAGE DerivingStrategies #-}
 
-module Core.Options (parseArgs, Options (..)) where
+module Core.Options
+    ( platformOption
+    , repositoryOption
+    , commitOption
+    , directoryOption
+    , usernameOption
+    , pubkeyhashOption
+    , roleOption
+    , outputReferenceParser
+    )
+where
 
-import Cli (Command (..))
 import Core.Types
     ( Directory (..)
     , Platform (..)
@@ -15,39 +24,18 @@ import Core.Types
     )
 import Data.Text qualified as T
 import Options.Applicative
-    ( Alternative (..)
-    , Parser
+    ( Parser
     , ReadM
-    , command
-    , defaultPrefs
-    , execParserPure
-    , fullDesc
-    , handleParseResult
-    , header
     , help
-    , helper
-    , hsubparser
-    , info
     , long
     , maybeReader
     , metavar
     , option
-    , progDesc
     , short
     , strOption
     , value
-    , (<**>)
     )
 import Options.Applicative.Types (readerAsk)
-import Oracle.Cli (OracleCommand (..))
-import Oracle.Token.Cli (TokenCommand (..))
-import User.Cli (UserCommand (..))
-import User.Requester.Cli (RequesterCommand (..))
-
-newtype Options = Options
-    { optionsCommand :: Command
-    }
-    deriving (Eq, Show)
 
 platformOption :: Parser Platform
 platformOption =
@@ -95,15 +83,6 @@ directoryOption =
                 <> help "The directory to run in (defaults to \".\")"
             )
 
-requestTestOptions :: Parser RequesterCommand
-requestTestOptions =
-    RequestTest
-        <$> platformOption
-        <*> repositoryOption
-        <*> commitOption
-        <*> directoryOption
-        <*> usernameOption
-
 usernameOption :: Parser Username
 usernameOption =
     Username
@@ -124,20 +103,6 @@ pubkeyhashOption =
                 <> help "The public key hash for the user"
             )
 
-addPublicKeyOptions :: Parser RequesterCommand
-addPublicKeyOptions =
-    RegisterPublicKey
-        <$> platformOption
-        <*> usernameOption
-        <*> pubkeyhashOption
-
-removePublicKeyOptions :: Parser RequesterCommand
-removePublicKeyOptions =
-    UnregisterPublicKey
-        <$> platformOption
-        <*> usernameOption
-        <*> pubkeyhashOption
-
 roleOption :: Parser Role
 roleOption =
     Role
@@ -147,62 +112,6 @@ roleOption =
                 <> metavar "ROLE"
                 <> help "The role to assign to the user (e.g., maintainer, contributor)"
             )
-
-addRoleOptions :: Parser RequesterCommand
-addRoleOptions =
-    RegisterRole
-        <$> platformOption
-        <*> repositoryOption
-        <*> roleOption
-        <*> usernameOption
-
-removeRoleOptions :: Parser RequesterCommand
-removeRoleOptions =
-    UnregisterRole
-        <$> platformOption
-        <*> repositoryOption
-        <*> roleOption
-        <*> usernameOption
-
-retractRequestOptions :: Parser UserCommand
-retractRequestOptions =
-    RetractRequest
-        <$> outputReferenceParser
-
-requesterCommandParser :: Parser RequesterCommand
-requesterCommandParser =
-    hsubparser
-        ( command
-            "test"
-            ( info
-                requestTestOptions
-                (progDesc "Request a test on a specific platform")
-            )
-            <> command
-                "register-public-key"
-                ( info
-                    addPublicKeyOptions
-                    (progDesc "Register a user public key")
-                )
-            <> command
-                "unregister-public-key"
-                ( info
-                    removePublicKeyOptions
-                    (progDesc "Unregister a user public key")
-                )
-            <> command
-                "register-role"
-                ( info
-                    addRoleOptions
-                    (progDesc "Add a user to a repository")
-                )
-            <> command
-                "unregister-role"
-                ( info
-                    removeRoleOptions
-                    (progDesc "Remove a user from a repository")
-                )
-        )
 
 outputReferenceParser :: Parser RequestRefId
 outputReferenceParser =
@@ -226,88 +135,3 @@ parseOutputReference = do
                 $ RequestRefId
                 $ T.pack s
         _ -> fail "Invalid output reference format. Use 'txHash-index'"
-
-tokenCommandParser :: Parser TokenCommand
-tokenCommandParser =
-    hsubparser
-        ( command
-            "get"
-            ( info
-                (pure GetToken <**> helper)
-                (progDesc "Get a token")
-            )
-            <> command
-                "update"
-                ( info
-                    ( UpdateToken
-                        <$> many outputReferenceParser
-                        <**> helper
-                    )
-                    (progDesc "Update a token")
-                )
-        )
-
-commandParser :: Parser Command
-commandParser =
-    hsubparser
-        ( command
-            "oracle"
-            ( info
-                (OracleCommand <$> oracleCommandParser <**> helper)
-                (progDesc "Oracle services")
-            )
-            <> command
-                "user"
-                ( info
-                    (UserCommand <$> userCommandParser <**> helper)
-                    (progDesc "Manage user requests")
-                )
-        )
-
-oracleCommandParser :: Parser OracleCommand
-oracleCommandParser =
-    hsubparser
-        ( command
-            "token"
-            ( info
-                (OracleTokenCommand <$> tokenCommandParser <**> helper)
-                (progDesc "Manage tokens")
-            )
-        )
-
-userCommandParser :: Parser UserCommand
-userCommandParser =
-    hsubparser
-        ( command
-            "request"
-            ( info
-                (UserRequesterCommand <$> requesterCommandParser <**> helper)
-                (progDesc "Allow users to send requests")
-            )
-            <> command
-                "retract"
-                ( info
-                    retractRequestOptions
-                    (progDesc "Retract a request")
-                )
-            <> command
-                "get-facts"
-                ( info
-                    (pure GetFacts)
-                    (progDesc "Get token facts")
-                )
-        )
-
-optionsParser :: Parser Options
-optionsParser = Options <$> commandParser
-
-parseArgs :: [String] -> IO Options
-parseArgs args = handleParseResult $ execParserPure defaultPrefs opts args
-  where
-    opts =
-        info
-            (optionsParser <**> helper)
-            ( fullDesc
-                <> progDesc "Antithesis CLI"
-                <> header "anti - A tool for managing Antithesis test runs"
-            )

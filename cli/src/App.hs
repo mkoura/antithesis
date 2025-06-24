@@ -1,7 +1,6 @@
 module App (server) where
 
 import Cli (cmd)
-import Core.Options (Options (..), parseArgs)
 import Core.Types
     ( Address (Address)
     , TokenId (..)
@@ -16,6 +15,7 @@ import Network.HTTP.Client
     , newManager
     )
 import Network.HTTP.Client.TLS (tlsManagerSettings)
+import Options (Options (..), parseArgs)
 import Servant.Client
     ( BaseUrl (..)
     , ClientError

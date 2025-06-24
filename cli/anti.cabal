@@ -83,17 +83,22 @@ library
     Core.Options
     Core.Types
     MPFS.API
+    Options
     Oracle.Cli
     Oracle.Github.CommonIO
     Oracle.Github.GetRepoRole
     Oracle.Github.GetRepoRoleIO
     Oracle.Github.ListPublicKeys
     Oracle.Github.ListPublicKeysIO
+    Oracle.Options
     Oracle.Token.Cli
+    Oracle.Token.Options
     Oracle.Types
     Submitting
     User.Cli
+    User.Options
     User.Requester.Cli
+    User.Requester.Options
 
   -- Modules included in this library but not exported.
   -- other-modules:

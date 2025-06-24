@@ -158,6 +158,7 @@ test-suite anti-test
 
   -- Modules included in this executable, other than Main.
   other-modules:
+    Anti.APISpec
     Anti.CliSpec
     Anti.Server
     Oracle.Github.OracleValidationSpec
@@ -180,8 +181,20 @@ test-suite anti-test
     , anti
     , async
     , base
+    , base16-bytestring
     , bytestring
+    , cardano-ledger-alonzo
+    , cardano-ledger-api
+    , cardano-ledger-babbage
+    , cardano-ledger-binary
+    , cardano-ledger-core
+    , cardano-strict-containers
     , hspec
+    , http-client
+    , http-client-tls
+    , lens
+    , plutus-tx
+    , servant-client
     , servant-server
     , text
     , wai

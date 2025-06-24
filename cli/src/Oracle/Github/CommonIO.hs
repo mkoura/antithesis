@@ -6,10 +6,9 @@ module Oracle.Github.CommonIO
     ) where
 
 import Data.ByteString (ByteString)
+import Data.ByteString.Char8 qualified as BC
 import Data.Maybe (fromMaybe)
 import System.Environment (lookupEnv)
-
-import qualified Data.ByteString.Char8 as BC
 
 newtype GithubAccessToken = GithubAccessToken
     { tokenPayload :: ByteString

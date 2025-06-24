@@ -28,7 +28,7 @@ import Types
     , WithUnsignedTx
     )
 
-import qualified Data.ByteString.Lazy.Char8 as BL
+data Operation = Insert | Delete
 import qualified Data.Text as T
 
 requesterCmd :: Wallet -> TokenId -> RequesterCommand -> ClientM Value

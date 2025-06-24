@@ -10,10 +10,9 @@ import Control.Lens ((&), (.~), (^.))
 import Data.Aeson (FromJSON)
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import Network.Wreq qualified as Wreq
 import Oracle.Github.CommonIO (GithubAccessToken (..))
 import Types (Username (..))
-
-import qualified Network.Wreq as Wreq
 
 -- https://docs.github.com/en/rest/users/keys?apiVersion=2022-11-28#list-public-keys-for-a-user
 data ResponsePublicKey = ResponsePublicKey

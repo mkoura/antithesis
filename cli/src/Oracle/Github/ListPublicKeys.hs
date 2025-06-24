@@ -1,6 +1,3 @@
-{-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StrictData #-}
 
 module Oracle.Github.ListPublicKeys
@@ -10,14 +7,13 @@ module Oracle.Github.ListPublicKeys
     , emitPublicKeyMsg
     ) where
 
+import Data.List qualified as L
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
+import Data.Text qualified as T
+import Oracle.Github.CommonIO qualified as IO
+import Oracle.Github.ListPublicKeysIO qualified as IO
 import Types (PublicKeyHash (..), Username)
-
-import qualified Data.List as L
-import qualified Data.Text as T
-import qualified Oracle.Github.CommonIO as IO
-import qualified Oracle.Github.ListPublicKeysIO as IO
 
 data PublicKeyValidation
     = PublicKeyValidated

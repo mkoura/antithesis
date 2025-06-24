@@ -9,9 +9,8 @@ module Oracle.Github.GetRepoRoleIO
 import Control.Lens ((^.))
 import Data.ByteString.Lazy (ByteString)
 import GHC.Generics (Generic)
+import Network.Wreq qualified as Wreq
 import Types (Repository (..), Username (..))
-
-import qualified Network.Wreq as Wreq
 
 -- In order to verify the role of the userX CODEOWNERS file is downloaded with
 -- the expectation there a line:

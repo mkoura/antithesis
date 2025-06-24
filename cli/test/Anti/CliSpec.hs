@@ -17,7 +17,8 @@ import Test.Hspec
     ( Spec
     , beforeAll_
     , it
-    , shouldReturn, xit
+    , shouldReturn
+    , xit
     )
 import Types
     ( Command (..)

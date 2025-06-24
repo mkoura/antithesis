@@ -20,6 +20,7 @@ let
       haskell-language-server = { index-state = indexState; };
       hoogle = { index-state = indexState; };
       fourmolu = { index-state = indexState; };
+      hlint = { index-state = indexState; };
     };
     withHoogle = true;
     buildInputs = [

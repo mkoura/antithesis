@@ -2,8 +2,8 @@ module Main (main) where
 
 import Data.Aeson (encode)
 
-import qualified App as Anti
-import qualified Data.ByteString.Lazy.Char8 as BL
+import App qualified as Anti
+import Data.ByteString.Lazy.Char8 qualified as BL
 
 main :: IO ()
 main = do

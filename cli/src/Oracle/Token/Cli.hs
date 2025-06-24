@@ -1,6 +1,3 @@
-{-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE RankNTypes #-}
-
 module Oracle.Token.Cli
     ( tokenCmd
     ) where

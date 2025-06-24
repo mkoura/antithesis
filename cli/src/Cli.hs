@@ -1,6 +1,3 @@
-{-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE RankNTypes #-}
-
 module Cli
     ( cmd
     ) where

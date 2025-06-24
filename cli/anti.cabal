@@ -58,6 +58,20 @@ common warnings
     -Wname-shadowing -Wdeferred-out-of-scope-variables
     -Wpartial-type-signatures -Wredundant-constraints
 
+  default-extensions:
+    DataKinds
+    DuplicateRecordFields
+    ImportQualifiedPost
+    LambdaCase
+    NamedFieldPuns
+    OverloadedStrings
+    RankNTypes
+    RecordWildCards
+    ScopedTypeVariables
+    TupleSections
+    TypeApplications
+    TypeOperators
+
 library
   -- Import common warning flags.
   import:           warnings
@@ -68,10 +82,10 @@ library
     Cli
     Options
     Oracle.Github.CommonIO
-    Oracle.Github.ListPublicKeysIO
-    Oracle.Github.ListPublicKeys
-    Oracle.Github.GetRepoRoleIO
     Oracle.Github.GetRepoRole
+    Oracle.Github.GetRepoRoleIO
+    Oracle.Github.ListPublicKeys
+    Oracle.Github.ListPublicKeysIO
     Oracle.Token.API
     Oracle.Token.Cli
     Oracle.Types

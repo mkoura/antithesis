@@ -1,6 +1,3 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TypeOperators #-}
-
 module Oracle.Token.API
     ( tokenApi
     , TokenAPI

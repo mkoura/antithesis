@@ -1,9 +1,3 @@
-{-# LANGUAGE BlockArguments #-}
-{-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
-
 module User.Requester.Cli
     ( requesterCmd
     ) where

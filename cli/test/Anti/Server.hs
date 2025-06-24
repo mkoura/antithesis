@@ -1,6 +1,3 @@
-{-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE OverloadedStrings #-}
-
 module Anti.Server
     ( appDummy
     , dummyWithUnsignedTx

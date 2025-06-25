@@ -13,6 +13,7 @@ import Text.JSON.Canonical
     ( FromJSON (fromJSON)
     , JSValue (JSNum, JSObject, JSString)
     , ReportSchemaErrors (..)
+    , expectedButGotValue
     , fromJSString
     )
 
@@ -31,7 +32,7 @@ getStringField key mapping = do
     value <- getField key mapping
     case value of
         JSString jsString -> pure $ fromJSString jsString
-        _ -> expected ("a stringy " <> key) $ Just "got something else"
+        other -> expectedButGotValue ("a string " <> key) other
 
 getIntegralField
     :: (ReportSchemaErrors m, Num a)
@@ -42,7 +43,7 @@ getIntegralField key mapping = do
     value <- getField key mapping
     case value of
         JSNum n -> pure $ fromIntegral n
-        _ -> expected ("an integer " <> key) $ Just "got something else"
+        other -> expectedButGotValue ("an integral " <> key) other
 
 getStringMapField
     :: ReportSchemaErrors m
@@ -55,4 +56,4 @@ getStringMapField key mapping = do
         JSObject _ -> do
             objMapping :: Map String JSValue <- fromJSON value
             pure objMapping
-        _ -> expected ("a map " <> key) $ Just "got something else"
+        other -> expectedButGotValue ("a mapping " <> key) other

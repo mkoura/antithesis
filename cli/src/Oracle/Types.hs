@@ -37,7 +37,6 @@ data RequestChange = RequestChange
     }
     deriving (Eq, Show)
 
-
 data MPFSRequest = MPFSRequest
     { outputRefId :: OutputReference
     , change :: RequestChange

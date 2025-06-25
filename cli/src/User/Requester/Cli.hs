@@ -30,15 +30,13 @@ import Network.HTTP.Types (encodePathSegmentsRelative)
 import Servant.Client (ClientM)
 import Submitting (submittingFake)
 import Text.JSON.Canonical (JSValue, ToJSON (..), renderCanonicalJSON)
+import User.Types (RegisterPublicKey (..))
 
 data Operation = Insert | Delete
     deriving (Eq, Show)
+
 data RequesterCommand
-    = RegisterPublicKey
-        { platform :: Platform
-        , username :: Username
-        , pubkeyhash :: PublicKeyHash
-        }
+    = RegisterUser RegisterPublicKey
     | UnregisterPublicKey
         { platform :: Platform
         , username :: Username
@@ -69,7 +67,7 @@ requesterCmd
     :: Wallet -> TokenId -> RequesterCommand -> ClientM JSValue
 requesterCmd wallet tokenId command = do
     case command of
-        RegisterPublicKey{platform, username, pubkeyhash} ->
+        RegisterUser RegisterPublicKey{platform, username, pubkeyhash} ->
             manageUser wallet tokenId platform username pubkeyhash Insert
                 >>= toJSON
         UnregisterPublicKey{platform, username, pubkeyhash} ->

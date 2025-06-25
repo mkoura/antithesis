@@ -9,12 +9,14 @@ module User.Types
     , Reason (..)
     , Phase (..)
     , URL (..)
+    , RegisterPublicKey (..)
     )
 where
 
 import Core.Types
     ( Directory (..)
     , Platform (..)
+    , PublicKeyHash (..)
     , Repository (..)
     , SHA1 (..)
     , Username (..)
@@ -230,3 +232,36 @@ instance (Monad m, ReportSchemaErrors m) => FromJSON m (TestRunState RunningT) w
         expectedButGotValue
             "an object representing an accepted phase"
             other
+
+data RegisterPublicKey = RegisterPublicKey
+    { platform :: Platform
+    , username :: Username
+    , pubkeyhash :: PublicKeyHash
+    }
+    deriving (Eq, Show)
+
+instance Monad m => ToJSON m RegisterPublicKey where
+    toJSON
+        ( RegisterPublicKey
+                (Platform platform)
+                (Username user)
+                (PublicKeyHash pubkeyhash)
+            ) = toJSON $ Map.fromList
+                [ ("platform" :: String, JSString $ toJSString platform)
+                , ("user", JSString $ toJSString user)
+                , ("publickeyhash", JSString $ toJSString pubkeyhash)
+                ]
+
+instance (Monad m, ReportSchemaErrors m) => FromJSON m RegisterPublicKey where
+    fromJSON obj@(JSObject _) = do
+        mapping <- fromJSON obj
+        platform <- getStringField "platform" mapping
+        user <- getStringField "user" mapping
+        pubkeyhash <- getStringField "publickeyhash" mapping
+        pure
+            $ RegisterPublicKey
+                { platform = Platform platform
+                , username = Username user
+                , pubkeyhash = PublicKeyHash pubkeyhash
+                }
+    fromJSON _ = expected "object" $ Just "something else"

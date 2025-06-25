@@ -31,5 +31,3 @@ tokenCmd wallet tk command = do
         UpdateToken reqs -> fmap toJSON
             $ submittingFake wallet
             $ \address -> updateToken address tk reqs
-
--- updateToken tk $ RequestRefs reqs

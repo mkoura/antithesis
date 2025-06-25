@@ -4,7 +4,6 @@ module Core.Types
     ( Directory (..)
     , Host (..)
     , Operation (..)
-    , OutputReference (..)
     , Platform (..)
     , Port (..)
     , PublicKeyHash (..)
@@ -30,10 +29,9 @@ import Data.Aeson
     ( FromJSON (parseJSON)
     , KeyValue ((.=))
     , ToJSON (toJSON)
-    , Value (String)
+    , Value
     , object
     , withObject
-    , withText
     , (.:)
     , (.:?)
     )
@@ -45,7 +43,6 @@ import Data.Text qualified as T
 import PlutusTx (Data (..), builtinDataToData)
 import PlutusTx.IsData.Class
 import Servant.API (FromHttpApiData (..), ToHttpApiData (..))
-import Text.Read (readMaybe)
 
 -- TxHash-OutputIndex
 newtype RequestRefId = RequestRefId
@@ -163,15 +160,6 @@ newtype PublicKeyHash = PublicKeyHash String
 newtype SHA1 = SHA1 String
     deriving (Eq, Show)
 
-newtype TxId = TxId String
-    deriving (Eq, Show)
-
-instance FromJSON TxId where
-    parseJSON = withText "TxId" $ \v ->
-        case readMaybe (T.unpack v) of
-            Just txId -> pure (TxId txId)
-            Nothing -> fail $ "Invalid TxId: " ++ T.unpack v
-
 newtype Role = Role String
     deriving (Eq, Show)
 
@@ -186,34 +174,6 @@ data Repository = Repository
     , project :: String
     }
     deriving (Eq, Show)
-
-data OutputReference = OutputReference
-    { outputReferenceTx :: String
-    , outputReferenceIndex :: Int
-    }
-    deriving (Eq, Show)
-
-instance ToJSON OutputReference where
-    toJSON (OutputReference{outputReferenceTx, outputReferenceIndex}) =
-        String
-            $ T.pack outputReferenceTx
-                <> "-"
-                <> T.pack (show outputReferenceIndex)
-
-instance FromJSON OutputReference where
-    parseJSON = withText "OutputReference" $ \v -> do
-        let parts = T.splitOn "-" v
-        case parts of
-            [tx, index] -> do
-                case readMaybe (T.unpack index) of
-                    Just i ->
-                        pure
-                            $ OutputReference
-                                { outputReferenceTx = T.unpack tx
-                                , outputReferenceIndex = i
-                                }
-                    Nothing -> fail $ "Invalid index: " ++ T.unpack index
-            _ -> fail $ "Invalid output reference format: " ++ T.unpack v
 
 newtype Port = Port Int
     deriving (Eq, Show)

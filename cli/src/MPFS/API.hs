@@ -9,6 +9,9 @@ module MPFS.API
     , getToken
     , getTokenFacts
     , submitTransaction
+    , RequestInsertBody (..)
+    , RequestDeleteBody (..)
+    , RequestUpdateBody (..)
     ) where
 
 import Core.Types
@@ -19,49 +22,92 @@ import Core.Types
     , TxHash
     , WithUnsignedTx
     )
-import Data.Aeson (Value)
+import Data.Aeson
+    ( FromJSON (..)
+    , ToJSON (..)
+    , Value
+    , object
+    , withObject
+    , (.:)
+    , (.=)
+    )
 import Data.Data (Proxy (..))
 import Servant.API
     ( Capture
     , Get
     , JSON
     , Post
-    , QueryParam'
     , QueryParams
     , ReqBody
-    , Required
     , (:<|>) (..)
     , type (:>)
     )
 import Servant.Client (ClientM, client)
+
+data RequestInsertBody = RequestInsertBody
+    { key :: String
+    , value :: String
+    }
+
+instance ToJSON RequestInsertBody where
+    toJSON (RequestInsertBody k v) = object ["key" .= k, "value" .= v]
+
+instance FromJSON RequestInsertBody where
+    parseJSON = withObject "RequestInsertBody" $ \o ->
+        RequestInsertBody <$> o .: "key" <*> o .: "value"
+
+data RequestDeleteBody = RequestDeleteBody
+    { key :: String
+    , value :: String
+    }
+
+instance ToJSON RequestDeleteBody where
+    toJSON (RequestDeleteBody k v) = object ["key" .= k, "value" .= v]
+
+instance FromJSON RequestDeleteBody where
+    parseJSON = withObject "RequestDeleteBody" $ \o ->
+        RequestDeleteBody <$> o .: "key" <*> o .: "value"
+
+data RequestUpdateBody = RequestUpdateBody
+    { key :: String
+    , oldValue :: String
+    , newValue :: String
+    }
+
+instance ToJSON RequestUpdateBody where
+    toJSON (RequestUpdateBody k old new) =
+        object ["key" .= k, "oldValue" .= old, "newValue" .= new]
+
+instance FromJSON RequestUpdateBody where
+    parseJSON = withObject "RequestUpdateBody" $ \o ->
+        RequestUpdateBody
+            <$> o .: "key"
+            <*> o .: "oldValue"
+            <*> o .: "newValue"
 
 type RequestInsert =
     "transaction"
         :> Capture "address" Address
         :> "request-insert"
         :> Capture "tokenId" TokenId
-        :> QueryParam' '[Required] "key" String
-        :> QueryParam' '[Required] "value" String
-        :> Get '[JSON] WithUnsignedTx
+        :> ReqBody '[JSON] RequestInsertBody
+        :> Post '[JSON] WithUnsignedTx
 
 type RequestDelete =
     "transaction"
         :> Capture "address" Address
         :> "request-delete"
         :> Capture "tokenId" TokenId
-        :> QueryParam' '[Required] "key" String
-        :> QueryParam' '[Required] "value" String
-        :> Get '[JSON] WithUnsignedTx
+        :> ReqBody '[JSON] RequestDeleteBody
+        :> Post '[JSON] WithUnsignedTx
 
 type RequestUpdate =
     "transaction"
         :> Capture "address" Address
         :> "request-update"
         :> Capture "tokenId" TokenId
-        :> QueryParam' '[Required] "key" String
-        :> QueryParam' '[Required] "oldValue" String
-        :> QueryParam' '[Required] "newValue" String
-        :> Get '[JSON] WithUnsignedTx
+        :> ReqBody '[JSON] RequestUpdateBody
+        :> Post '[JSON] WithUnsignedTx
 
 type RetractChange =
     "transaction"
@@ -109,21 +155,17 @@ tokenApi = Proxy
 requestInsert
     :: Address
     -> TokenId
-    -> String
-    -> String
+    -> RequestInsertBody
     -> ClientM WithUnsignedTx
 requestDelete
     :: Address
     -> TokenId
-    -> String
-    -> String
+    -> RequestDeleteBody
     -> ClientM WithUnsignedTx
 requestUpdate
     :: Address
     -> TokenId
-    -> String
-    -> String
-    -> String
+    -> RequestUpdateBody
     -> ClientM WithUnsignedTx
 retractChange :: Address -> RequestRefId -> ClientM WithUnsignedTx
 updateToken

@@ -21,7 +21,9 @@ import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.Text (Text)
 import Data.Text qualified as T
 import MPFS.API
-    ( requestDelete
+    ( RequestDeleteBody (..)
+    , RequestInsertBody (..)
+    , requestDelete
     , requestInsert
     )
 import Network.HTTP.Types (encodePathSegmentsRelative)
@@ -135,7 +137,7 @@ requestTestRun
                         $ object
                             [ "state" .= ("pending" :: Text)
                             ]
-            requestInsert address tokenId key value
+            requestInsert address tokenId $ RequestInsertBody key value
 
 manageUser
     :: Wallet
@@ -163,8 +165,8 @@ manageUser
                         ]
                 value = mempty
             case operation of
-                Insert -> requestInsert address tokenId key value
-                Delete -> requestDelete address tokenId key value
+                Insert -> requestInsert address tokenId $ RequestInsertBody key value
+                Delete -> requestDelete address tokenId $ RequestDeleteBody key value
 
 manageRole
     :: Wallet
@@ -195,5 +197,5 @@ manageRole
                         ]
                 value = mempty
             case operation of
-                Insert -> requestInsert address tokenId key value
-                Delete -> requestDelete address tokenId key value
+                Insert -> requestInsert address tokenId $ RequestInsertBody key value
+                Delete -> requestDelete address tokenId $ RequestDeleteBody key value

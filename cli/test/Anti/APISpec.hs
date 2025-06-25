@@ -42,7 +42,10 @@ import Data.Sequence.Strict qualified as Seq
 import Data.Text (Text)
 import Data.Text.Encoding qualified as T
 import MPFS.API
-    ( getToken
+    ( RequestDeleteBody (RequestDeleteBody)
+    , RequestInsertBody (RequestInsertBody)
+    , RequestUpdateBody (RequestUpdateBody)
+    , getToken
     , getTokenFacts
     , requestDelete
     , requestInsert
@@ -145,6 +148,7 @@ spec = do
                         $ requestInsert
                             fundedTestsAddress
                             antiTokenId
+                        $ RequestInsertBody
                             "key"
                             "value"
                 let dtx = deserializeTx tx
@@ -164,6 +168,7 @@ spec = do
                         $ requestDelete
                             fundedTestsAddress
                             antiTokenId
+                        $ RequestDeleteBody
                             "key"
                             "value"
                 let dtx = deserializeTx tx
@@ -183,6 +188,7 @@ spec = do
                         $ requestUpdate
                             fundedTestsAddress
                             antiTokenId
+                        $ RequestUpdateBody
                             "key"
                             "oldValue"
                             "newValue"

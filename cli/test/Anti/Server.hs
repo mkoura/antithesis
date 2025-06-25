@@ -13,7 +13,12 @@ import Core.Types
     , WithUnsignedTx (..)
     )
 import Data.Aeson (ToJSON (..), Value)
-import MPFS.API (tokenApi)
+import MPFS.API
+    ( RequestDeleteBody
+    , RequestInsertBody
+    , RequestUpdateBody
+    , tokenApi
+    )
 import Network.Wai (Application)
 import Servant (serve, (:<|>) (..))
 import Servant.Server (Handler)
@@ -42,25 +47,21 @@ dummyWithUnsignedTx =
 requestInsert
     :: Address
     -> TokenId
-    -> String
-    -> String
+    -> RequestInsertBody
     -> Handler WithUnsignedTx
-requestInsert _ _ _ _ = return dummyWithUnsignedTx
+requestInsert _ _ _ = return dummyWithUnsignedTx
 requestDelete
     :: Address
     -> TokenId
-    -> String
-    -> String
+    -> RequestDeleteBody
     -> Handler WithUnsignedTx
-requestDelete _ _ _ _ = return dummyWithUnsignedTx
+requestDelete _ _ _ = return dummyWithUnsignedTx
 requestUpdate
     :: Address
     -> TokenId
-    -> String
-    -> String
-    -> String
+    -> RequestUpdateBody
     -> Handler WithUnsignedTx
-requestUpdate _ _ _ _ _ = return dummyWithUnsignedTx
+requestUpdate _ _ _ = return dummyWithUnsignedTx
 
 retractChange :: Address -> RequestRefId -> Handler WithUnsignedTx
 retractChange _ _ = return dummyWithUnsignedTx

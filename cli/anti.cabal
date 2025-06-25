@@ -61,6 +61,7 @@ common warnings
   default-extensions:
     DataKinds
     DuplicateRecordFields
+    GADTs
     ImportQualifiedPost
     LambdaCase
     NamedFieldPuns
@@ -99,6 +100,7 @@ library
     User.Options
     User.Requester.Cli
     User.Requester.Options
+    User.Types
 
   -- Modules included in this library but not exported.
   -- other-modules:
@@ -113,6 +115,8 @@ library
     , base16-bytestring
     , binary
     , bytestring
+    , canonical-json
+    , containers
     , http-client
     , http-client-tls
     , http-types

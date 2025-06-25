@@ -94,12 +94,12 @@ setup :: IO Call
 setup = do
     url <- parseBaseUrl host
     nm <- newManager tlsManagerSettings
-    let call f = do
+    let call :: ClientM a -> IO a
+        call f = do
             r <- runClientM f (mkClientEnv nm url)
             case r of
                 Left err -> error $ "API call failed: " ++ show err
                 Right res -> return res
-
     return $ Call call
 
 getFirstOutput :: AlonzoTx ConwayEra -> Maybe (String, Data)

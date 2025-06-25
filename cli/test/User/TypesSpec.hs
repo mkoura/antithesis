@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module User.TypesSpec
@@ -19,7 +20,9 @@ import Text.JSON.Canonical
     , ToJSON (..)
     )
 import User.Types
-    ( TestRun
+    ( Duration (Duration)
+    , Reason (..)
+    , TestRun
         ( TestRun
         , commitId
         , directory
@@ -28,6 +31,7 @@ import User.Types
         , requester
         , testRunIndex
         )
+    , TestRunState (..)
     )
 
 instance ReportSchemaErrors IO where
@@ -38,6 +42,12 @@ instance ReportSchemaErrors IO where
                 ++ ", but got: "
                 ++ got
     expected expct Nothing = fail $ "Expected: " ++ expct
+
+roundTrip :: (ToJSON IO a, FromJSON IO a, Show a, Eq a) => a -> IO ()
+roundTrip value = do
+    encoded <- toJSON value
+    decoded <- fromJSON encoded
+    decoded `shouldBe` value
 
 spec :: Spec
 spec = do
@@ -56,6 +66,18 @@ spec = do
                         , requester = Username "tester"
                         , testRunIndex = 1
                         }
-            encoded <- toJSON testRun
-            decoded <- fromJSON encoded
-            decoded `shouldBe` testRun
+            roundTrip testRun
+
+    describe "TestRunState" $ do
+        it "roundtrips on the JSON instance" $ do
+            let pending = Pending $ Duration 4
+            roundTrip pending
+            let rejected =
+                    Rejected
+                        pending
+                        [UnacceptableDuration, UnacceptableCommit]
+            roundTrip rejected
+            let accepted = Accepted pending
+            roundTrip accepted
+            let finished = Finished accepted $ Duration 4
+            roundTrip finished

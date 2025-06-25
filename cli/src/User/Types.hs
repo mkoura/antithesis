@@ -33,6 +33,7 @@ data TestRun = TestRun
     , testRunIndex :: Int
     , requester :: Username
     }
+    deriving (Eq, Show)
 
 instance Monad m => ToJSON m TestRun where
     toJSON

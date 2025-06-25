@@ -173,6 +173,7 @@ test-suite anti-test
     Anti.CliSpec
     Anti.Server
     Oracle.Github.OracleValidationSpec
+    User.TypesSpec
 
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:
@@ -194,6 +195,7 @@ test-suite anti-test
     , base
     , base16-bytestring
     , bytestring
+    , canonical-json
     , cardano-ledger-alonzo
     , cardano-ledger-api
     , cardano-ledger-babbage

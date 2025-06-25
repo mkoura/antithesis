@@ -83,6 +83,7 @@ library
     Cli
     Core.Options
     Core.Types
+    Lib.JSON
     MPFS.API
     Options
     Oracle.Cli

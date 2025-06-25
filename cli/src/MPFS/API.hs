@@ -9,6 +9,7 @@ module MPFS.API
     , getToken
     , getTokenFacts
     , submitTransaction
+    , waitNBlocks
     , RequestInsertBody (..)
     , RequestDeleteBody (..)
     , RequestUpdateBody (..)
@@ -139,6 +140,11 @@ type SubmitTransaction =
         :> ReqBody '[JSON] SignedTx
         :> Post '[JSON] TxHash
 
+type WaitNBlocks =
+    "wait-n-blocks"
+        :> Capture "n" Int
+        :> Get '[JSON] Value
+
 type TokenAPI =
     RequestInsert
         :<|> RequestDelete
@@ -148,6 +154,7 @@ type TokenAPI =
         :<|> GetToken
         :<|> GetTokenFacts
         :<|> SubmitTransaction
+        :<|> WaitNBlocks
 
 tokenApi :: Proxy TokenAPI
 tokenApi = Proxy
@@ -173,6 +180,7 @@ updateToken
 getToken :: TokenId -> ClientM Value
 getTokenFacts :: TokenId -> ClientM Value
 submitTransaction :: SignedTx -> ClientM TxHash
+waitNBlocks :: Int -> ClientM Value
 requestInsert
     :<|> requestDelete
     :<|> requestUpdate
@@ -180,5 +188,6 @@ requestInsert
     :<|> updateToken
     :<|> getToken
     :<|> getTokenFacts
-    :<|> submitTransaction =
+    :<|> submitTransaction
+    :<|> waitNBlocks =
         client tokenApi

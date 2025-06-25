@@ -24,13 +24,19 @@ import Cardano.Ledger.Core
     )
 import Cardano.Ledger.Credential (Credential (..))
 import Control.Lens (to, (^.))
+import Control.Monad (void)
 import Core.Types
     ( Address (..)
     , CageDatum (..)
     , Key (..)
     , Operation (..)
     , Owner (..)
+    , Platform (..)
+    , PublicKeyHash (PublicKeyHash)
+    , RequestRefId (RequestRefId)
     , TokenId (..)
+    , Username (..)
+    , Wallet
     , WithUnsignedTx (WithUnsignedTx)
     )
 import Data.Aeson (Value (..))
@@ -50,12 +56,15 @@ import MPFS.API
     , requestDelete
     , requestInsert
     , requestUpdate
+    , waitNBlocks
     )
 import Network.HTTP.Client (newManager)
 import Network.HTTP.Client.TLS (tlsManagerSettings)
 import PlutusTx (Data, fromData)
 import Servant.Client (ClientM, mkClientEnv, parseBaseUrl, runClientM)
-import Test.Hspec (SpecWith, beforeAll, describe, it, shouldBe)
+import Test.Hspec (SpecWith, beforeAll, describe, it, shouldBe, xit)
+import User.Cli (UserCommand (..), userCmd)
+import User.Requester.Cli (RequesterCommand (..), requesterCmd)
 
 mpfsPolicyId :: String
 mpfsPolicyId = "c1e392ee7da9415f946de9d2aef9607322b47d6e84e8142ef0c340bf"
@@ -203,3 +212,27 @@ spec = do
                         , key = Key "key"
                         , value = Update "oldValue" "newValue"
                         }
+            xit "can submit a request-insert tx" $ \(Call call) -> do
+                wallet :: Wallet <- loadFundedWallet
+                call $ do
+                    v <-
+                        requesterCmd wallet antiTokenId
+                            $ RegisterPublicKey
+                                { platform = Platform "test-platform"
+                                , username = Username "test-user"
+                                , pubkeyhash = PublicKeyHash "test-pubkeyhash"
+                                }
+                    let txHash = case v of
+                            Object obj -> case obj !? "txHash" of
+                                Just (String requestTxHash) -> requestTxHash
+                                _ -> error "Key 'txHash' is missing"
+                            _ -> error "Response is not an object"
+                    _ <- waitNBlocks 1
+                    void
+                        $ userCmd wallet antiTokenId
+                        $ RetractRequest
+                            { outputReference = RequestRefId $ txHash <> "-0"
+                            }
+
+loadFundedWallet :: IO Wallet
+loadFundedWallet = undefined

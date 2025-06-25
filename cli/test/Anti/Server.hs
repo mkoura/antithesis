@@ -35,6 +35,7 @@ appDummy =
             :<|> getToken
             :<|> facts
             :<|> submitTransaction
+            :<|> const (pure $ toJSON ())
         )
 
 dummyWithUnsignedTx :: WithUnsignedTx

@@ -1,6 +1,7 @@
 module Submitting
     ( submittingFake
     , Submitting
+    , submitting
     )
 where
 
@@ -16,6 +17,9 @@ type Submitting =
     Wallet
     -> (Address -> ClientM WithUnsignedTx)
     -> ClientM WithTxHash
+
+submitting :: Submitting
+submitting = undefined
 
 submittingFake
     :: Wallet

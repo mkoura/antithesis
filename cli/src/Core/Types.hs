@@ -313,5 +313,5 @@ instance ToJSON WithTxHash where
 
 data Wallet = Wallet
     { address :: Address
-    , sign :: Text -> Text
+    , sign :: UnsignedTx -> SignedTx
     }

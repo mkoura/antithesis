@@ -3,19 +3,24 @@ module Lib.JSON
     , getStringField
     , getIntegralField
     , getStringMapField
-    , ReportSchemaErrors (..)
+    , object
+    , intJSON
+    , stringJSON
+    , getListField
     )
 where
 
+import Control.Monad ((<=<))
+import Data.Functor ((<&>))
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Text.JSON.Canonical
     ( FromJSON (fromJSON)
-    , JSValue (JSNum, JSObject, JSString)
+    , Int54
     , ReportSchemaErrors (..)
-    , expectedButGotValue
-    , fromJSString
+    , ToJSON (..)
     )
+import Text.JSON.Canonical.Types (JSValue)
 
 getField
     :: ReportSchemaErrors m => String -> Map String JSValue -> m JSValue
@@ -28,32 +33,35 @@ getStringField
     => String
     -> Map String JSValue
     -> m String
-getStringField key mapping = do
-    value <- getField key mapping
-    case value of
-        JSString jsString -> pure $ fromJSString jsString
-        other -> expectedButGotValue ("a string " <> key) other
+getStringField key mapping = getField key mapping >>= fromJSON
+
+getListField
+    :: ReportSchemaErrors m
+    => String
+    -> Map String JSValue
+    -> m [JSValue]
+getListField key mapping = getField key mapping >>= fromJSON
 
 getIntegralField
     :: (ReportSchemaErrors m, Num a)
     => String
     -> Map String JSValue
     -> m a
-getIntegralField key mapping = do
-    value <- getField key mapping
-    case value of
-        JSNum n -> pure $ fromIntegral n
-        other -> expectedButGotValue ("an integral " <> key) other
+getIntegralField key mapping =
+    getField key mapping >>= fromJSON @_ @Int54 <&> fromIntegral
 
 getStringMapField
     :: ReportSchemaErrors m
     => String
     -> Map String JSValue
     -> m (Map String JSValue)
-getStringMapField key mapping = do
-    value <- getField key mapping
-    case value of
-        JSObject _ -> do
-            objMapping :: Map String JSValue <- fromJSON value
-            pure objMapping
-        other -> expectedButGotValue ("a mapping " <> key) other
+getStringMapField key mapping = getField key mapping >>= fromJSON
+
+object :: (Monad m, ToJSON m a) => [(String, m a)] -> m JSValue
+object xs = toJSON <=< sequence $ Map.fromList xs
+
+intJSON :: (Monad m, Integral a) => a -> m JSValue
+intJSON = toJSON @_ @Int54 . fromIntegral
+
+stringJSON :: Monad m => String -> m JSValue
+stringJSON = toJSON

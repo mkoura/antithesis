@@ -33,6 +33,7 @@ import Data.Aeson
     , (.=)
     )
 import Data.Data (Proxy (..))
+import Lib.JSON (fromAesonThrow)
 import Servant.API
     ( Capture
     , Get
@@ -44,6 +45,7 @@ import Servant.API
     , type (:>)
     )
 import Servant.Client (ClientM, client)
+import Text.JSON.Canonical (JSValue)
 
 data RequestInsertBody = RequestInsertBody
     { key :: String
@@ -163,32 +165,73 @@ requestInsert
     :: Address
     -> TokenId
     -> RequestInsertBody
-    -> ClientM (WithUnsignedTx Value)
+    -> ClientM (WithUnsignedTx JSValue)
+requestInsert address tokenId body =
+    fmap fromAesonThrow <$> requestInsert' address tokenId body
 requestDelete
     :: Address
     -> TokenId
     -> RequestDeleteBody
-    -> ClientM (WithUnsignedTx Value)
+    -> ClientM (WithUnsignedTx JSValue)
+requestDelete address tokenId body =
+    fmap fromAesonThrow <$> requestDelete' address tokenId body
 requestUpdate
     :: Address
     -> TokenId
     -> RequestUpdateBody
-    -> ClientM (WithUnsignedTx Value)
+    -> ClientM (WithUnsignedTx JSValue)
+requestUpdate address tokenId body =
+    fmap fromAesonThrow <$> requestUpdate' address tokenId body
 retractChange
-    :: Address -> RequestRefId -> ClientM (WithUnsignedTx Value)
+    :: Address -> RequestRefId -> ClientM (WithUnsignedTx JSValue)
+retractChange address requestId =
+    fmap fromAesonThrow <$> retractChange' address requestId
 updateToken
-    :: Address -> TokenId -> [RequestRefId] -> ClientM (WithUnsignedTx Value)
-getToken :: TokenId -> ClientM Value
-getTokenFacts :: TokenId -> ClientM Value
+    :: Address
+    -> TokenId
+    -> [RequestRefId]
+    -> ClientM (WithUnsignedTx JSValue)
+updateToken address tokenId requests =
+    fmap fromAesonThrow <$> updateToken' address tokenId requests
+getToken :: TokenId -> ClientM JSValue
+getToken tokenId = fromAesonThrow <$> getToken' tokenId
+getTokenFacts :: TokenId -> ClientM JSValue
+getTokenFacts tokenId = fromAesonThrow <$> getTokenFacts' tokenId
 submitTransaction :: SignedTx -> ClientM TxHash
-waitNBlocks :: Int -> ClientM Value
-requestInsert
-    :<|> requestDelete
-    :<|> requestUpdate
-    :<|> retractChange
-    :<|> updateToken
-    :<|> getToken
-    :<|> getTokenFacts
-    :<|> submitTransaction
-    :<|> waitNBlocks =
+submitTransaction = submitTransaction'
+waitNBlocks :: Int -> ClientM JSValue
+waitNBlocks n = fromAesonThrow <$> waitNBlocks' n
+
+requestInsert'
+    :: Address
+    -> TokenId
+    -> RequestInsertBody
+    -> ClientM (WithUnsignedTx Value)
+requestDelete'
+    :: Address
+    -> TokenId
+    -> RequestDeleteBody
+    -> ClientM (WithUnsignedTx Value)
+requestUpdate'
+    :: Address
+    -> TokenId
+    -> RequestUpdateBody
+    -> ClientM (WithUnsignedTx Value)
+retractChange'
+    :: Address -> RequestRefId -> ClientM (WithUnsignedTx Value)
+updateToken'
+    :: Address -> TokenId -> [RequestRefId] -> ClientM (WithUnsignedTx Value)
+getToken' :: TokenId -> ClientM Value
+getTokenFacts' :: TokenId -> ClientM Value
+submitTransaction' :: SignedTx -> ClientM TxHash
+waitNBlocks' :: Int -> ClientM Value
+requestInsert'
+    :<|> requestDelete'
+    :<|> requestUpdate'
+    :<|> retractChange'
+    :<|> updateToken'
+    :<|> getToken'
+    :<|> getTokenFacts'
+    :<|> submitTransaction'
+    :<|> waitNBlocks' =
         client tokenApi

@@ -20,8 +20,7 @@ import Core.Types
     , SHA1 (..)
     , Username (..)
     )
-import Data.Aeson (ToJSON (..), Value, (.=))
-import Data.Aeson.Types (object)
+import Lib.JSON (object, (.=))
 import Network.Wai.Handler.Warp (run)
 import Options (Options (..))
 import Oracle.Cli (OracleCommand (..))
@@ -34,6 +33,7 @@ import Test.Hspec
     , shouldReturn
     , xit
     )
+import Text.JSON.Canonical (JSValue (JSArray, JSNull))
 import User.Cli (UserCommand (..))
 import User.Requester.Cli (RequesterCommand (..))
 
@@ -46,7 +46,7 @@ runDummyServer = do
     setEnv "ANTI_TOKEN_ID" "dummyTokenId"
     return ()
 
-anti :: [String] -> IO (Options, Value)
+anti :: [String] -> IO (Options, JSValue)
 anti args = do
     -- Simulate the command line arguments
     -- Call the main function with the simulated arguments
@@ -55,13 +55,14 @@ anti args = do
         (_, Left err) -> error $ "Error: " ++ show err
         (o, Right result) -> return (o, result)
 
-dummyTxHash :: Value
+dummyTxHash :: Monad m => m JSValue
 dummyTxHash =
     object
-        ["txHash" .= ("dummyTransactionId" :: String), "value" .= toJSON ()]
+        ["txHash" .= ("dummyTransactionId" :: String), "value" .= JSNull]
 
 spec :: Spec
 spec = beforeAll_ runDummyServer $ do
+    dummyTxHashJSON <- dummyTxHash
     xit "can request user registration" $ do
         let args =
                 [ "user"
@@ -87,8 +88,9 @@ spec = beforeAll_ runDummyServer $ do
                                             "AAAAC3NzaC1lZDI1NTE5AAAAIO773JHqlyLm5XzOjSe+Q5yFJyLFuMLL6+n63t4t7HR8"
                                     }
                     }
+
         anti args
-            `shouldReturn` (opts, toJSON dummyTxHash)
+            `shouldReturn` (opts, dummyTxHashJSON)
     xit "can request user unregistration" $ do
         let args =
                 [ "user"
@@ -115,7 +117,7 @@ spec = beforeAll_ runDummyServer $ do
                                             "607a0d8a64616a407537edf0d9b59cf4cb509c556f6d2de4250ce15df2"
                                     }
                     }
-        anti args `shouldReturn` (opts, toJSON dummyTxHash)
+        anti args `shouldReturn` (opts, dummyTxHashJSON)
 
     xit "can request removing user from a project" $ do
         let args =
@@ -144,7 +146,7 @@ spec = beforeAll_ runDummyServer $ do
                                     }
                     }
 
-        anti args `shouldReturn` (opts, toJSON dummyTxHash)
+        anti args `shouldReturn` (opts, dummyTxHashJSON)
 
     xit "can request antithesis run" $ do
         let args =
@@ -173,7 +175,7 @@ spec = beforeAll_ runDummyServer $ do
                                     , directory = Directory "."
                                     }
                     }
-        anti args `shouldReturn` (opts, toJSON dummyTxHash)
+        anti args `shouldReturn` (opts, dummyTxHashJSON)
 
     xit "can retract a request" $ do
         let args =
@@ -193,7 +195,7 @@ spec = beforeAll_ runDummyServer $ do
                                         "9114528e2343e6fcf3c92de71364275227e6b16d-0"
                                 }
                     }
-        anti args `shouldReturn` (opts, toJSON dummyTxHash)
+        anti args `shouldReturn` (opts, dummyTxHashJSON)
 
     it "can get a token" $ do
         let args =
@@ -208,5 +210,5 @@ spec = beforeAll_ runDummyServer $ do
                     }
         anti args
             `shouldReturn` ( opts
-                           , toJSON ()
+                           , JSArray []
                            )

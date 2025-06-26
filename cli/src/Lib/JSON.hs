@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveFunctor #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 module Lib.JSON
     ( getField
@@ -10,29 +11,41 @@ module Lib.JSON
     , stringJSON
     , getListField
     , jsonToString
-    , toAeson
     , CanonicalJSON (..)
     , CanonicalJSONError (..)
     , runIdentityCanonicalJSON
+    , withObject
+    , (.:)
+    , (.=)
+    , (.:?)
+    , fromAeson
+    , fromAesonThrow
+    , toAeson
+    , runCanonicalJSONThrow
     )
 where
 
 import Control.Monad ((<=<))
-import Data.Aeson (Value)
-import Data.Aeson.Decoding (decode)
+import Data.Aeson (Value, decode, encode)
+import Data.Bifunctor (first)
 import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.Functor ((<&>))
 import Data.Functor.Identity (Identity (..))
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
+import Data.Text (Text)
+import Data.Text qualified as T
 import Text.JSON.Canonical
     ( FromJSON (fromJSON)
     , Int54
+    , JSValue (..)
     , ReportSchemaErrors (..)
     , ToJSON (..)
+    , expectedButGotValue
+    , fromJSString
+    , parseCanonicalJSON
     , renderCanonicalJSON
     )
-import Text.JSON.Canonical.Types (JSValue)
 
 getField
     :: ReportSchemaErrors m => String -> Map String JSValue -> m JSValue
@@ -97,6 +110,12 @@ newtype CanonicalJSON m a = CanonicalJSON
     {runCanonicalJSON :: m (Either CanonicalJSONError a)}
     deriving (Functor)
 
+runCanonicalJSONThrow :: Monad m => CanonicalJSON m a -> m a
+runCanonicalJSONThrow (CanonicalJSON x) = do
+    result <- x
+    case result of
+        Left err -> error $ "CanonicalJSON error: " ++ show err
+        Right value -> pure value
 instance Applicative m => Applicative (CanonicalJSON m) where
     pure x = CanonicalJSON $ pure $ Right x
     CanonicalJSON f <*> CanonicalJSON x = CanonicalJSON $ liftA2 (<*>) f x
@@ -118,3 +137,57 @@ instance Monad m => ReportSchemaErrors (CanonicalJSON m) where
 runIdentityCanonicalJSON
     :: CanonicalJSON Identity a -> Either CanonicalJSONError a
 runIdentityCanonicalJSON (CanonicalJSON x) = runIdentity x
+
+withObject
+    :: (ReportSchemaErrors m)
+    => String
+    -> (Map String JSValue -> m a)
+    -> JSValue
+    -> m a
+withObject _ f (JSObject mapping) =
+    f $ Map.fromList $ mapping <&> first fromJSString
+withObject name _ v = expectedButGotValue name v
+
+(.:)
+    :: (ReportSchemaErrors m, FromJSON m a)
+    => Map String JSValue
+    -> String
+    -> m a
+mapping .: key = getField key mapping >>= fromJSON
+
+(.:?)
+    :: (ReportSchemaErrors m, FromJSON m a)
+    => Map String JSValue
+    -> String
+    -> m (Maybe a)
+mapping .:? key = getField key mapping >>= fromJSON <&> Just
+
+(.=) :: ToJSON m a => String -> a -> (String, m JSValue)
+key .= value = (key, toJSON value)
+
+instance Monad m => ToJSON m Text where
+    toJSON = toJSON . T.unpack
+
+instance (Monad m, ReportSchemaErrors m) => FromJSON m Text where
+    fromJSON = fmap T.pack . fromJSON
+
+instance (Monad m, ToJSON m a) => ToJSON m (Maybe a) where
+    toJSON Nothing = pure JSNull
+    toJSON (Just a) = toJSON a
+
+instance (ReportSchemaErrors m, FromJSON m a) => FromJSON m (Maybe a) where
+    fromJSON JSNull = pure Nothing
+    fromJSON v = Just <$> fromJSON v
+
+fromAeson :: Value -> Either String JSValue
+fromAeson = parseCanonicalJSON . encode
+
+fromAesonThrow :: Value -> JSValue
+fromAesonThrow value =
+    case fromAeson value of
+        Left err ->
+            error $ "Failed to convert Aeson Value to JSValue: " ++ err
+        Right jsValue -> jsValue
+
+instance Applicative m => ToJSON m Value where
+    toJSON = pure . fromAesonThrow

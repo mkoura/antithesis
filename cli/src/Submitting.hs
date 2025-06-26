@@ -24,8 +24,8 @@ submitting = undefined
 
 submittingFake
     :: Wallet
-    -> (Address -> ClientM (WithUnsignedTx Value))
-    -> ClientM (WithUnsignedTx Value)
+    -> (Address -> ClientM (WithUnsignedTx a))
+    -> ClientM (WithUnsignedTx a)
 submittingFake Wallet{address, sign = _sign} action = do
     r@(WithUnsignedTx _unsignedTx _v) <- action address
     -- let signedTx = sign unsignedTx

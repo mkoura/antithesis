@@ -157,10 +157,10 @@ executable anti
 
   -- Other library packages from which modules are imported.
   build-depends:
-    , aeson
     , anti
     , base
     , bytestring
+    , canonical-json
 
   -- Directories containing source files.
   hs-source-dirs:   app

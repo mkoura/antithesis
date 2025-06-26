@@ -15,11 +15,11 @@ import Core.Types
     , Wallet (..)
     , WithUnsignedTx
     )
-import Data.Aeson (ToJSON (..), Value (..), encode, object, (.=))
 import Data.Binary.Builder (toLazyByteString)
 import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.Text (Text)
 import Data.Text qualified as T
+import Lib.JSON (object, (.=))
 import MPFS.API
     ( RequestDeleteBody (..)
     , RequestInsertBody (..)
@@ -29,6 +29,7 @@ import MPFS.API
 import Network.HTTP.Types (encodePathSegmentsRelative)
 import Servant.Client (ClientM)
 import Submitting (submittingFake)
+import Text.JSON.Canonical (JSValue, ToJSON (..), renderCanonicalJSON)
 
 data Operation = Insert | Delete
     deriving (Eq, Show)
@@ -64,21 +65,22 @@ data RequesterCommand
         }
     deriving (Eq, Show)
 
-requesterCmd :: Wallet -> TokenId -> RequesterCommand -> ClientM Value
+requesterCmd
+    :: Wallet -> TokenId -> RequesterCommand -> ClientM JSValue
 requesterCmd wallet tokenId command = do
     case command of
         RegisterPublicKey{platform, username, pubkeyhash} ->
-            toJSON
-                <$> manageUser wallet tokenId platform username pubkeyhash Insert
+            manageUser wallet tokenId platform username pubkeyhash Insert
+                >>= toJSON
         UnregisterPublicKey{platform, username, pubkeyhash} ->
-            toJSON
-                <$> manageUser wallet tokenId platform username pubkeyhash Delete
+            manageUser wallet tokenId platform username pubkeyhash Delete
+                >>= toJSON
         RegisterRole{platform, repository, username, role} ->
-            toJSON
-                <$> manageRole wallet tokenId platform repository username role Insert
+            manageRole wallet tokenId platform repository username role Insert
+                >>= toJSON
         UnregisterRole{platform, repository, username, role} ->
-            toJSON
-                <$> manageRole wallet tokenId platform repository username role Delete
+            manageRole wallet tokenId platform repository username role Delete
+                >>= toJSON
         RequestTest
             { platform
             , repository
@@ -86,15 +88,15 @@ requesterCmd wallet tokenId command = do
             , commit
             , directory
             } ->
-                toJSON
-                    <$> requestTestRun
-                        wallet
-                        tokenId
-                        platform
-                        repository
-                        username
-                        commit
-                        directory
+                requestTestRun
+                    wallet
+                    tokenId
+                    platform
+                    repository
+                    username
+                    commit
+                    directory
+                    >>= toJSON
 
 mkKey :: [String] -> String
 mkKey =
@@ -111,7 +113,7 @@ requestTestRun
     -> Username
     -> SHA1
     -> Directory
-    -> ClientM (WithUnsignedTx Value) -- WithTxHash
+    -> ClientM (WithUnsignedTx JSValue) -- WithTxHash
 requestTestRun
     wallet
     tokenId
@@ -120,6 +122,10 @@ requestTestRun
     (Username username)
     (SHA1 sha1)
     (Directory directory) = do
+        valueV <-
+            object
+                [ "state" .= ("pending" :: Text)
+                ]
         submittingFake wallet $ \address -> do
             let key =
                     mkKey
@@ -133,11 +139,9 @@ requestTestRun
                         ]
                 value =
                     BL.unpack
-                        $ encode
-                        $ object
-                            [ "state" .= ("pending" :: Text)
-                            ]
-            requestInsert address tokenId $ RequestInsertBody key value
+                        $ renderCanonicalJSON valueV
+            requestInsert address tokenId
+                $ RequestInsertBody key value
 
 manageUser
     :: Wallet
@@ -146,7 +150,7 @@ manageUser
     -> Username
     -> PublicKeyHash
     -> Operation
-    -> ClientM (WithUnsignedTx Value) -- WithTxHash
+    -> ClientM (WithUnsignedTx JSValue) -- WithTxHash
 manageUser
     wallet
     tokenId
@@ -176,7 +180,7 @@ manageRole
     -> Username
     -> Role
     -> Operation
-    -> ClientM (WithUnsignedTx Value) -- WithTxHash
+    -> ClientM (WithUnsignedTx JSValue) -- WithTxHash
 manageRole
     wallet
     tokenId

@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE StrictData #-}
 
 module Core.Types
@@ -25,24 +26,22 @@ module Core.Types
     , CageDatum (..)
     ) where
 
-import Data.Aeson
-    ( FromJSON (parseJSON)
-    , KeyValue ((.=))
-    , ToJSON (toJSON)
-    , Value
-    , object
-    , withObject
-    , (.:)
-    , (.:?)
-    )
+import Data.Aeson qualified as Aeson
 import Data.ByteString.Base16 (encode)
 import Data.ByteString.Char8 (ByteString)
 import Data.ByteString.Char8 qualified as B
 import Data.Text (Text)
 import Data.Text qualified as T
+import Lib.JSON (object, withObject, (.:), (.=))
 import PlutusTx (Data (..), builtinDataToData)
 import PlutusTx.IsData.Class
 import Servant.API (FromHttpApiData (..), ToHttpApiData (..))
+import Text.JSON.Canonical
+    ( FromJSON (..)
+    , JSValue
+    , ReportSchemaErrors
+    , ToJSON (..)
+    )
 
 -- TxHash-OutputIndex
 newtype RequestRefId = RequestRefId
@@ -197,30 +196,29 @@ newtype SignedTx = SignedTx
     }
     deriving (Show)
 
-instance ToJSON SignedTx where
-    toJSON (SignedTx signedTransaction) =
-        object
-            [ "signedTransaction" .= signedTransaction
-            ]
-
-instance FromJSON SignedTx where
-    parseJSON = withObject "SignedTx" $ \v ->
+instance Aeson.FromJSON SignedTx where
+    parseJSON = Aeson.withObject "SignedTx" $ \v ->
         SignedTx
-            <$> v .: "signedTransaction"
+            <$> v Aeson..: "signedTransaction"
 
+instance Aeson.ToJSON SignedTx where
+    toJSON (SignedTx signedTransaction) =
+        Aeson.object
+            [ "signedTransaction" Aeson..= signedTransaction
+            ]
 newtype UnsignedTx = UnsignedTx
     { unsignedTransaction :: Text
     }
     deriving (Show)
 
-instance ToJSON UnsignedTx where
+instance Monad m => ToJSON m UnsignedTx where
     toJSON (UnsignedTx unsignedTransaction) =
         object
             [ "unsignedTransaction" .= unsignedTransaction
             ]
 
-instance FromJSON UnsignedTx where
-    parseJSON = withObject "UnsignedTx" $ \v ->
+instance ReportSchemaErrors m => FromJSON m UnsignedTx where
+    fromJSON = withObject "UnsignedTx" $ \v ->
         UnsignedTx
             <$> v .: "unsignedTransaction"
 
@@ -228,43 +226,56 @@ data WithUnsignedTx a = WithUnsignedTx
     { unsignedTransaction :: Text
     , value :: Maybe a
     }
-    deriving (Show)
+    deriving (Show, Functor, Eq)
 
-instance ToJSON a => ToJSON (WithUnsignedTx a) where
+instance (ToJSON m a, Monad m) => ToJSON m (WithUnsignedTx a) where
     toJSON (WithUnsignedTx unsignedTransaction value) =
         object
             [ "unsignedTransaction" .= unsignedTransaction
             , "value" .= value
             ]
 
-instance FromJSON a => FromJSON (WithUnsignedTx a) where
-    parseJSON = withObject "WithUnsignedTx" $ \v ->
+instance (Aeson.FromJSON a) => Aeson.FromJSON (WithUnsignedTx a) where
+    parseJSON = Aeson.withObject "WithUnsignedTx" $ \v ->
         WithUnsignedTx
-            <$> v .: "unsignedTransaction"
-            <*> v .:? "value"
+            <$> v Aeson..: "unsignedTransaction"
+            <*> v Aeson..:? "value"
+
+instance (Aeson.ToJSON a) => Aeson.ToJSON (WithUnsignedTx a) where
+    toJSON (WithUnsignedTx unsignedTransaction value) =
+        Aeson.object
+            [ "unsignedTransaction" Aeson..= unsignedTransaction
+            , "value" Aeson..= value
+            ]
 
 newtype TxHash = TxHash
     { txHash :: Text
     }
     deriving (Eq, Show)
 
-instance FromJSON TxHash where
-    parseJSON = withObject "TxHash" $ \v ->
+instance Aeson.FromJSON TxHash where
+    parseJSON = Aeson.withObject "TxHash" $ \v ->
         TxHash
-            <$> v .: "txHash"
+            <$> v Aeson..: "txHash"
 
-instance ToJSON TxHash where
+instance Aeson.ToJSON TxHash where
+    toJSON (TxHash txHash) =
+        Aeson.object
+            [ "txHash" Aeson..= txHash
+            ]
+
+instance Monad m => ToJSON m TxHash where
     toJSON (TxHash txHash) =
         object
             [ "txHash" .= txHash
             ]
 data WithTxHash = WithTxHash
     { txHash :: Text
-    , value :: Maybe Value
+    , value :: Maybe JSValue
     }
     deriving (Show)
 
-instance ToJSON WithTxHash where
+instance Monad m => ToJSON m WithTxHash where
     toJSON (WithTxHash txHash value) =
         object
             [ "txHash" .= txHash

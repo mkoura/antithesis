@@ -39,13 +39,13 @@ import Core.Types
     , Wallet
     , WithUnsignedTx (WithUnsignedTx)
     )
-import Data.Aeson (Value (..))
-import Data.Aeson.KeyMap ((!?))
+import Data.Bifunctor (first)
 import Data.ByteString.Base16
 import Data.ByteString.Char8 qualified as B
 import Data.ByteString.Lazy qualified as BL
 import Data.Sequence.Strict qualified as Seq
 import Data.Text (Text)
+import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import MPFS.API
     ( RequestDeleteBody (RequestDeleteBody)
@@ -63,6 +63,7 @@ import Network.HTTP.Client.TLS (tlsManagerSettings)
 import PlutusTx (Data, fromData)
 import Servant.Client (ClientM, mkClientEnv, parseBaseUrl, runClientM)
 import Test.Hspec (SpecWith, beforeAll, describe, it, shouldBe, xit)
+import Text.JSON.Canonical (JSString, JSValue (..), fromJSString)
 import User.Cli (UserCommand (..), userCmd)
 import User.Requester.Cli (RequesterCommand (..), requesterCmd)
 
@@ -74,7 +75,7 @@ antiTokenId =
     TokenId
         "1547b8cb65b187b4b735f00ab4e874084c1947afb11f3a28439fff694adb0e10"
 
-antiTokenOwner :: Text
+antiTokenOwner :: String
 antiTokenOwner = "455dbd55e5cd29ec3239af931eecb30cb295e7f64053ebaae6c496b1"
 
 fundedTestsAddress :: Address
@@ -132,6 +133,8 @@ getFirstOutput dtx = case dtx
                 )
     _ -> error "No outputs found or output is not a BabbageTxOut"
 
+(!?) :: [(JSString, JSValue)] -> String -> Maybe JSValue
+(!?) = flip lookup . fmap (first fromJSString)
 spec :: SpecWith ()
 spec = do
     beforeAll setup $ do
@@ -139,17 +142,17 @@ spec = do
             it "can retrieve config" $ \(Call call) -> do
                 res <- call $ getToken antiTokenId
                 case res of
-                    Object obj -> case obj !? "state" of
-                        Just (Object state) -> case state !? "owner" of
-                            Just (String antiTokenOwner') ->
-                                antiTokenOwner' `shouldBe` antiTokenOwner
+                    JSObject obj -> case obj !? "state" of
+                        Just (JSObject state) -> case state !? "owner" of
+                            Just (JSString antiTokenOwner') ->
+                                fromJSString antiTokenOwner' `shouldBe` antiTokenOwner
                             _ -> error "Field 'ewner' is missing or not a string"
                         _ -> error "Field 'state' is missing or not an object"
                     _ -> error "Response is not an object"
             it "can retrieve token facts" $ \(Call call) -> do
                 res <- call $ getTokenFacts antiTokenId
                 case res of
-                    Object _obj -> return () -- Add your logic here to handle the object
+                    JSObject _obj -> return () -- Add your logic here to handle the object
                     _ -> error "Response is not an object"
             it "can retrieve a request-insert tx" $ \(Call call) -> do
                 WithUnsignedTx tx _ <-
@@ -223,15 +226,17 @@ spec = do
                                 , pubkeyhash = PublicKeyHash "test-pubkeyhash"
                                 }
                     let txHash = case v of
-                            Object obj -> case obj !? "txHash" of
-                                Just (String requestTxHash) -> requestTxHash
+                            JSObject obj -> case obj !? "txHash" of
+                                Just (JSString requestTxHash) -> fromJSString requestTxHash
                                 _ -> error "Key 'txHash' is missing"
                             _ -> error "Response is not an object"
                     _ <- waitNBlocks 1
                     void
                         $ userCmd wallet antiTokenId
                         $ RetractRequest
-                            { outputReference = RequestRefId $ txHash <> "-0"
+                            { outputReference =
+                                RequestRefId
+                                    $ T.pack txHash <> "-0"
                             }
 
 loadFundedWallet :: IO Wallet

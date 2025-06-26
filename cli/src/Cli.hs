@@ -7,9 +7,9 @@ import Core.Types
     ( TokenId
     , Wallet
     )
-import Data.Aeson (Value)
 import Oracle.Cli (OracleCommand (..), oracleCmd)
 import Servant.Client (ClientM)
+import Text.JSON.Canonical (JSValue)
 import User.Cli (UserCommand, userCmd)
 
 data Command
@@ -17,7 +17,7 @@ data Command
     | OracleCommand OracleCommand
     deriving (Eq, Show)
 
-cmd :: Wallet -> TokenId -> Command -> ClientM Value
+cmd :: Wallet -> TokenId -> Command -> ClientM JSValue
 cmd wallet tk command = do
     case command of
         UserCommand userCommand -> userCmd wallet tk userCommand

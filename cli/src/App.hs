@@ -7,7 +7,6 @@ import Core.Types
     , TokenId (..)
     , Wallet (..)
     )
-import Data.Aeson (Value)
 import Network.HTTP.Client
     ( ManagerSettings (..)
     , Request (requestBody)
@@ -26,8 +25,9 @@ import Servant.Client
     , runClientM
     )
 import System.Environment (getArgs, getEnv)
+import Text.JSON.Canonical (JSValue)
 
-server :: IO (Options, Either ClientError Value)
+server :: IO (Options, Either ClientError JSValue)
 server = do
     args <- getArgs
     o@(Options command) <- parseArgs args

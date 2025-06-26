@@ -3,18 +3,19 @@ module User.Cli
     , UserCommand (..)
     ) where
 
+import Control.Monad ((<=<))
 import Core.Types
     ( RequestRefId
     , TokenId
     , Wallet (..)
     )
-import Data.Aeson (ToJSON (..), Value (..))
 import MPFS.API
     ( getTokenFacts
     , retractChange
     )
 import Servant.Client (ClientM)
 import Submitting (submittingFake)
+import Text.JSON.Canonical (JSValue, ToJSON (..))
 import User.Requester.Cli (RequesterCommand, requesterCmd)
 
 data Operation = Insert | Delete
@@ -30,10 +31,10 @@ data UserCommand
         }
     deriving (Eq, Show)
 
-userCmd :: Wallet -> TokenId -> UserCommand -> ClientM Value
+userCmd :: Wallet -> TokenId -> UserCommand -> ClientM JSValue
 userCmd wallet tokenId command = do
     case command of
         UserRequesterCommand requesterCommand -> requesterCmd wallet tokenId requesterCommand
-        RetractRequest refId -> fmap toJSON $ submittingFake wallet $ \address ->
+        RetractRequest refId -> toJSON <=< submittingFake wallet $ \address ->
             retractChange address refId
         GetFacts -> getTokenFacts tokenId

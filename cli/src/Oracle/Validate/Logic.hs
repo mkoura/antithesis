@@ -5,9 +5,13 @@ module Oracle.Validate.Logic
     ( validateMPFSRequestTemplate
     , validateMPFSRequest
     , ValidationResult (..)
+    , toJSONValidationResult
     ) where
 
 import Core.Types (Key (..), PublicKeyHash, Username)
+import Lib.JSON
+    ( stringJSON
+    )
 import MPFS.Types (MPFSOperation (..), MPFSRequest)
 import Oracle.Github.ListPublicKeys
     ( PublicKeyValidation (..)
@@ -28,6 +32,12 @@ data ValidationResult
     | CannotValidate
     | NotEvaluated
     deriving (Eq, Show)
+
+toJSONValidationResult :: Monad m => ValidationResult -> m JSValue
+toJSONValidationResult Validated = stringJSON "validated"
+toJSONValidationResult NotValidated = stringJSON "not validated"
+toJSONValidationResult CannotValidate = stringJSON "cannot validate"
+toJSONValidationResult NotEvaluated = stringJSON "not evaluated"
 
 instance ReportSchemaErrors IO where
     expected expct (Just got) =

@@ -9,7 +9,11 @@ import Control.Monad.IO.Class
     ( liftIO
     )
 import Core.Types
-    ( TokenId
+    ( RequestRefId (..)
+    , TokenId
+    )
+import Lib.JSON
+    ( stringJSON
     )
 import MPFS.API
     ( getToken
@@ -17,16 +21,21 @@ import MPFS.API
 import MPFS.Types
     ( MPFSGetToken
     , MPFSRequest (..)
-    , MPFSRequestChange (..)
-    , MPFSTokenState (..)
+    )
+import Oracle.Validate.Logic
+    ( toJSONValidationResult
+    , validateMPFSRequest
     )
 import Servant.Client (ClientM)
 import Text.JSON.Canonical
     ( FromJSON (..)
-    , JSValue
+    , JSValue (..)
     , ReportSchemaErrors (..)
+    , mkObject
+    , toJSString
     )
 
+import Data.Text qualified as T
 import MPFS.Types qualified as MPFS
 
 data ValidateCommand
@@ -49,5 +58,14 @@ validateCmd tk command = do
         ValidateRequests -> do
             canonicalJSON <- getToken tk
             resp <- fromJSON @_ @MPFSGetToken canonicalJSON
-            let requestsToValidate = MPFS.requests resp
-            undefined
+            JSArray <$> mapM constructRes (MPFS.requests resp)
+  where
+    constructRes request@MPFSRequest{requestOutput} = liftIO $ do
+        validationRes <- validateMPFSRequest request
+        createPairResJSValue (requestOutput, validationRes)
+
+    createPairResJSValue ((RequestRefId ref), validation) =
+        mkObject
+            [ (toJSString "reference", stringJSON $ T.unpack ref)
+            , (toJSString "validationResult", toJSONValidationResult validation)
+            ]

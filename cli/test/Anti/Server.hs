@@ -38,7 +38,7 @@ appDummy =
             :<|> const (pure $ toJSON ())
         )
 
-dummyWithUnsignedTx :: WithUnsignedTx
+dummyWithUnsignedTx :: WithUnsignedTx Value
 dummyWithUnsignedTx =
     WithUnsignedTx
         { unsignedTransaction = "dummyUnsignedTransaction"
@@ -49,26 +49,27 @@ requestInsert
     :: Address
     -> TokenId
     -> RequestInsertBody
-    -> Handler WithUnsignedTx
+    -> Handler (WithUnsignedTx Value)
 requestInsert _ _ _ = return dummyWithUnsignedTx
 requestDelete
     :: Address
     -> TokenId
     -> RequestDeleteBody
-    -> Handler WithUnsignedTx
+    -> Handler (WithUnsignedTx Value)
 requestDelete _ _ _ = return dummyWithUnsignedTx
 requestUpdate
     :: Address
     -> TokenId
     -> RequestUpdateBody
-    -> Handler WithUnsignedTx
+    -> Handler (WithUnsignedTx Value)
 requestUpdate _ _ _ = return dummyWithUnsignedTx
 
-retractChange :: Address -> RequestRefId -> Handler WithUnsignedTx
+retractChange
+    :: Address -> RequestRefId -> Handler (WithUnsignedTx Value)
 retractChange _ _ = return dummyWithUnsignedTx
 
 updateToken
-    :: Address -> TokenId -> [RequestRefId] -> Handler WithUnsignedTx
+    :: Address -> TokenId -> [RequestRefId] -> Handler (WithUnsignedTx Value)
 updateToken _ _ _ = return dummyWithUnsignedTx
 
 getToken :: TokenId -> Handler Value

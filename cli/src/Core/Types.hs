@@ -224,20 +224,20 @@ instance FromJSON UnsignedTx where
         UnsignedTx
             <$> v .: "unsignedTransaction"
 
-data WithUnsignedTx = WithUnsignedTx
+data WithUnsignedTx a = WithUnsignedTx
     { unsignedTransaction :: Text
-    , value :: Maybe Value
+    , value :: Maybe a
     }
     deriving (Show)
 
-instance ToJSON WithUnsignedTx where
+instance ToJSON a => ToJSON (WithUnsignedTx a) where
     toJSON (WithUnsignedTx unsignedTransaction value) =
         object
             [ "unsignedTransaction" .= unsignedTransaction
             , "value" .= value
             ]
 
-instance FromJSON WithUnsignedTx where
+instance FromJSON a => FromJSON (WithUnsignedTx a) where
     parseJSON = withObject "WithUnsignedTx" $ \v ->
         WithUnsignedTx
             <$> v .: "unsignedTransaction"

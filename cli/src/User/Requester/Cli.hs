@@ -111,7 +111,7 @@ requestTestRun
     -> Username
     -> SHA1
     -> Directory
-    -> ClientM WithUnsignedTx -- WithTxHash
+    -> ClientM (WithUnsignedTx Value) -- WithTxHash
 requestTestRun
     wallet
     tokenId
@@ -146,7 +146,7 @@ manageUser
     -> Username
     -> PublicKeyHash
     -> Operation
-    -> ClientM WithUnsignedTx -- WithTxHash
+    -> ClientM (WithUnsignedTx Value) -- WithTxHash
 manageUser
     wallet
     tokenId
@@ -176,7 +176,7 @@ manageRole
     -> Username
     -> Role
     -> Operation
-    -> ClientM WithUnsignedTx -- WithTxHash
+    -> ClientM (WithUnsignedTx Value) -- WithTxHash
 manageRole
     wallet
     tokenId

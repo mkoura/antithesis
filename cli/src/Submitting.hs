@@ -11,11 +11,12 @@ import Core.Types
     , WithTxHash
     , WithUnsignedTx (..)
     )
+import Data.Aeson (Value)
 import Servant.Client (ClientM)
 
 type Submitting =
     Wallet
-    -> (Address -> ClientM WithUnsignedTx)
+    -> (Address -> ClientM (WithUnsignedTx Value))
     -> ClientM WithTxHash
 
 submitting :: Submitting
@@ -23,8 +24,8 @@ submitting = undefined
 
 submittingFake
     :: Wallet
-    -> (Address -> ClientM WithUnsignedTx)
-    -> ClientM WithUnsignedTx
+    -> (Address -> ClientM (WithUnsignedTx Value))
+    -> ClientM (WithUnsignedTx Value)
 submittingFake Wallet{address, sign = _sign} action = do
     r@(WithUnsignedTx _unsignedTx _v) <- action address
     -- let signedTx = sign unsignedTx

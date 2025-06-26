@@ -92,7 +92,7 @@ type RequestInsert =
         :> "request-insert"
         :> Capture "tokenId" TokenId
         :> ReqBody '[JSON] RequestInsertBody
-        :> Post '[JSON] WithUnsignedTx
+        :> Post '[JSON] (WithUnsignedTx Value)
 
 type RequestDelete =
     "transaction"
@@ -100,7 +100,7 @@ type RequestDelete =
         :> "request-delete"
         :> Capture "tokenId" TokenId
         :> ReqBody '[JSON] RequestDeleteBody
-        :> Post '[JSON] WithUnsignedTx
+        :> Post '[JSON] (WithUnsignedTx Value)
 
 type RequestUpdate =
     "transaction"
@@ -108,21 +108,21 @@ type RequestUpdate =
         :> "request-update"
         :> Capture "tokenId" TokenId
         :> ReqBody '[JSON] RequestUpdateBody
-        :> Post '[JSON] WithUnsignedTx
+        :> Post '[JSON] (WithUnsignedTx Value)
 
 type RetractChange =
     "transaction"
         :> Capture "address" Address
         :> "retract-request"
         :> Capture "requestId" RequestRefId
-        :> Get '[JSON] WithUnsignedTx
+        :> Get '[JSON] (WithUnsignedTx Value)
 
 type UpdateToken =
     "transaction"
         :> Capture "address" Address
         :> Capture "tokenId" TokenId
         :> QueryParams "request" RequestRefId
-        :> Get '[JSON] WithUnsignedTx
+        :> Get '[JSON] (WithUnsignedTx Value)
 
 type GetToken =
     "token"
@@ -163,20 +163,21 @@ requestInsert
     :: Address
     -> TokenId
     -> RequestInsertBody
-    -> ClientM WithUnsignedTx
+    -> ClientM (WithUnsignedTx Value)
 requestDelete
     :: Address
     -> TokenId
     -> RequestDeleteBody
-    -> ClientM WithUnsignedTx
+    -> ClientM (WithUnsignedTx Value)
 requestUpdate
     :: Address
     -> TokenId
     -> RequestUpdateBody
-    -> ClientM WithUnsignedTx
-retractChange :: Address -> RequestRefId -> ClientM WithUnsignedTx
+    -> ClientM (WithUnsignedTx Value)
+retractChange
+    :: Address -> RequestRefId -> ClientM (WithUnsignedTx Value)
 updateToken
-    :: Address -> TokenId -> [RequestRefId] -> ClientM WithUnsignedTx
+    :: Address -> TokenId -> [RequestRefId] -> ClientM (WithUnsignedTx Value)
 getToken :: TokenId -> ClientM Value
 getTokenFacts :: TokenId -> ClientM Value
 submitTransaction :: SignedTx -> ClientM TxHash

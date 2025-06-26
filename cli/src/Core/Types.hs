@@ -57,6 +57,14 @@ instance FromHttpApiData RequestRefId where
         case rid of
             "" -> Left "RequestRefId cannot be empty"
             _ -> Right (RequestRefId rid)
+
+instance Aeson.ToJSON RequestRefId where
+    toJSON (RequestRefId ref) = Aeson.String ref
+
+instance Aeson.FromJSON RequestRefId where
+    parseJSON = Aeson.withText "RequestRefId" $ \txt ->
+        pure $ RequestRefId txt
+
 newtype TokenId = TokenId String
     deriving (Eq, Show)
 

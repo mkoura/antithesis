@@ -66,6 +66,7 @@ import Test.Hspec (SpecWith, beforeAll, describe, it, shouldBe, xit)
 import Text.JSON.Canonical (JSString, JSValue (..), fromJSString)
 import User.Cli (UserCommand (..), userCmd)
 import User.Requester.Cli (RequesterCommand (..), requesterCmd)
+import User.Types (RegisterPublicKey (..))
 
 mpfsPolicyId :: String
 mpfsPolicyId = "c1e392ee7da9415f946de9d2aef9607322b47d6e84e8142ef0c340bf"
@@ -220,6 +221,7 @@ spec = do
                 call $ do
                     v <-
                         requesterCmd wallet antiTokenId
+                            $ RegisterUser
                             $ RegisterPublicKey
                                 { platform = Platform "test-platform"
                                 , username = Username "test-user"

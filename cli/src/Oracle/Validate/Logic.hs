@@ -5,22 +5,17 @@ module Oracle.Validate.Logic
     , ValidationResult (..)
     ) where
 
-import Core.Types (Key (..), OutputReference)
-import Oracle.Types (MPFSRequest)
-import Oracle.Types qualified as Oracle
+import Network.HTTP.Client (Request)
+import Servant.Client (ClientM)
 
 data ValidationResult
-    = Validated OutputReference
+    = Validated
     | NotValidated
     | CannotValidate
+    | NotEvaluated
     deriving (Eq, Show)
 
 validateMPFSRequest
-    :: MPFSRequest
-    -> (Key -> IO ValidationResult)
-    -> IO (OutputReference, ValidationResult)
-validateMPFSRequest request validateKeyAction = do
-    let key = Oracle.key . Oracle.change $ request
-        ref = Oracle.outputRefId request
-    validateRes <- validateKeyAction key
-    pure (ref, validateRes)
+    :: Request
+    -> ClientM ValidationResult
+validateMPFSRequest _request = pure NotEvaluated

@@ -30,7 +30,6 @@ import Network.HTTP.Types (encodePathSegmentsRelative)
 import Servant.Client (ClientM)
 import Submitting (submittingFake)
 import Text.JSON.Canonical (JSValue, ToJSON (..), renderCanonicalJSON)
-import User.Types (RegisterPublicKey (..))
 import User.Types (RegisterPublicKey (..), UnregisterPublicKey (..))
 
 data Operation = Insert | Delete

@@ -103,6 +103,7 @@ library
     Oracle.Token.Cli
     Oracle.Token.Options
     Oracle.Types
+    Oracle.Validate
     Submitting
     User.Cli
     User.Options

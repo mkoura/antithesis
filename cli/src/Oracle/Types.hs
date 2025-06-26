@@ -3,6 +3,7 @@
 module Oracle.Types
     ( RequestRefs (..)
     , MPFSRequest (..)
+    , RequestChange (..)
     ) where
 
 import Core.Types (Key, Operation, OutputReference, Owner)

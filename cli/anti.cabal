@@ -60,15 +60,22 @@ common warnings
 
   default-extensions:
     DataKinds
+    DerivingStrategies
+    DerivingVia
     DuplicateRecordFields
+    FlexibleContexts
+    FlexibleInstances
     GADTs
+    GeneralizedNewtypeDeriving
     ImportQualifiedPost
     LambdaCase
+    MultiParamTypeClasses
     NamedFieldPuns
     OverloadedStrings
     RankNTypes
     RecordWildCards
     ScopedTypeVariables
+    StandaloneDeriving
     TupleSections
     TypeApplications
     TypeOperators

@@ -24,6 +24,7 @@ module Lib.JSON
     , runCanonicalJSONThrow
     , toAesonString
     , fromAesonString
+    , parseJSValue
     )
 where
 
@@ -32,6 +33,7 @@ import Data.Aeson (Value, decode, encode)
 import Data.Aeson qualified as Aeson
 import Data.Aeson.Types qualified as AesonInternal
 import Data.Bifunctor (first)
+import Data.ByteString
 import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.Functor ((<&>))
 import Data.Functor.Identity (Identity (..))
@@ -207,3 +209,9 @@ fromAesonString = Aeson.withText "JSValue" $ \v ->
     case parseCanonicalJSON (BL.fromStrict $ T.encodeUtf8 v) of
         Left err -> fail $ "Failed to parse value: " ++ err
         Right jsValue -> pure jsValue
+
+parseJSValue :: ByteString -> (JSValue -> a) -> Maybe a
+parseJSValue b constructor =
+    case parseCanonicalJSON (BL.fromStrict b) of
+        Left _ -> Nothing
+        Right jsValue -> Just (constructor jsValue)

@@ -54,43 +54,43 @@ import Text.JSON.Canonical
     )
 
 data RequestInsertBody = RequestInsertBody
-    { key :: String
+    { key :: JSValue
     , value :: JSValue
     }
 
 instance ToJSON RequestInsertBody where
     toJSON (RequestInsertBody k v) =
         object
-            [ "key" .= k
+            [ "key" .= toAesonString k
             , "value" .= toAesonString v
             ]
 
 instance FromJSON RequestInsertBody where
     parseJSON = withObject "RequestInsertBody" $ \o ->
         RequestInsertBody
-            <$> o .: "key"
+            <$> (o .: "key" >>= fromAesonString)
             <*> (o .: "value" >>= fromAesonString)
 
 data RequestDeleteBody = RequestDeleteBody
-    { key :: String
+    { key :: JSValue
     , value :: JSValue
     }
 
 instance ToJSON RequestDeleteBody where
     toJSON (RequestDeleteBody k v) =
         object
-            [ "key" .= k
+            [ "key" .= toAesonString k
             , "value" .= toAesonString v
             ]
 
 instance FromJSON RequestDeleteBody where
     parseJSON = withObject "RequestDeleteBody" $ \o ->
         RequestDeleteBody
-            <$> o .: "key"
+            <$> (o .: "key" >>= fromAesonString)
             <*> (o .: "value" >>= fromAesonString)
 
 data RequestUpdateBody = RequestUpdateBody
-    { key :: String
+    { key :: JSValue
     , oldValue :: JSValue
     , newValue :: JSValue
     }
@@ -98,7 +98,7 @@ data RequestUpdateBody = RequestUpdateBody
 instance ToJSON RequestUpdateBody where
     toJSON (RequestUpdateBody k old new) =
         object
-            [ "key" .= k
+            [ "key" .= toAesonString k
             , "oldValue" .= toAesonString old
             , "newValue" .= toAesonString new
             ]
@@ -106,7 +106,7 @@ instance ToJSON RequestUpdateBody where
 instance FromJSON RequestUpdateBody where
     parseJSON = withObject "RequestUpdateBody" $ \o ->
         RequestUpdateBody
-            <$> o .: "key"
+            <$> (o .: "key" >>= fromAesonString)
             <*> (o .: "oldValue" >>= fromAesonString)
             <*> (o .: "newValue" >>= fromAesonString)
 

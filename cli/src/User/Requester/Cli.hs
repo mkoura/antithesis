@@ -29,7 +29,7 @@ import MPFS.API
 import Network.HTTP.Types (encodePathSegmentsRelative)
 import Servant.Client (ClientM)
 import Submitting (submittingFake)
-import Text.JSON.Canonical (JSValue (..), ToJSON (..))
+import Text.JSON.Canonical (JSValue (..), ToJSON (..), toJSString)
 import User.Types (RegisterPublicKey (..), UnregisterPublicKey (..))
 
 data Operation = Insert | Delete
@@ -122,15 +122,17 @@ requestTestRun
                 ]
         submittingFake wallet $ \address -> do
             let key =
-                    mkKey
-                        [ "request-test-run"
-                        , platform
-                        , org
-                        , repo
-                        , username
-                        , sha1
-                        , directory
-                        ]
+                    JSString
+                        $ toJSString
+                        $ mkKey
+                            [ "request-test-run"
+                            , platform
+                            , org
+                            , repo
+                            , username
+                            , sha1
+                            , directory
+                            ]
 
             requestInsert address tokenId
                 $ RequestInsertBody key valueV
@@ -153,12 +155,14 @@ manageUser
         submittingFake wallet $ \address -> do
             let
                 key =
-                    mkKey
-                        [ "register-user"
-                        , platform
-                        , username
-                        , pubkeyhash
-                        ]
+                    JSString
+                        $ toJSString
+                        $ mkKey
+                            [ "register-user"
+                            , platform
+                            , username
+                            , pubkeyhash
+                            ]
                 value = JSNull
             case operation of
                 Insert -> requestInsert address tokenId $ RequestInsertBody key value
@@ -183,14 +187,16 @@ manageRole
     operation =
         submittingFake wallet $ \address -> do
             let key =
-                    mkKey
-                        [ "register-role"
-                        , platform
-                        , org
-                        , repo
-                        , username
-                        , roleStr
-                        ]
+                    JSString
+                        $ toJSString
+                        $ mkKey
+                            [ "register-role"
+                            , platform
+                            , org
+                            , repo
+                            , username
+                            , roleStr
+                            ]
                 value = JSNull
             case operation of
                 Insert -> requestInsert address tokenId $ RequestInsertBody key value

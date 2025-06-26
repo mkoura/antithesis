@@ -161,7 +161,8 @@ spec = do
                         $ requestInsert
                             fundedTestsAddress
                             antiTokenId
-                        $ RequestInsertBody "key"
+                        $ RequestInsertBody
+                            (JSString "key")
                         $ JSString "value"
                 let dtx = deserializeTx tx
                 Just (policyId', datum) <- pure $ getFirstOutput dtx
@@ -171,7 +172,7 @@ spec = do
                     `shouldBe` RequestDatum
                         { tokenId = antiTokenId
                         , owner = testUTxOOwner
-                        , key = Key "key"
+                        , key = Key $ JSString "key"
                         , value = Insert $ JSString "value"
                         }
             it "can retrieve a request-delete tx" $ \(Call call) -> do
@@ -180,7 +181,7 @@ spec = do
                         $ requestDelete
                             fundedTestsAddress
                             antiTokenId
-                        $ RequestDeleteBody "key" (JSString "value")
+                        $ RequestDeleteBody (JSString "key") (JSString "value")
                 let dtx = deserializeTx tx
                 Just (policyId', datum) <- pure $ getFirstOutput dtx
                 Just (Just (cageDatum :: CageDatum)) <- pure $ fromData datum
@@ -189,7 +190,7 @@ spec = do
                     `shouldBe` RequestDatum
                         { tokenId = antiTokenId
                         , owner = testUTxOOwner
-                        , key = Key "key"
+                        , key = Key $ JSString "key"
                         , value = Delete $ JSString "value"
                         }
             it "can retrieve a request-update tx" $ \(Call call) -> do
@@ -199,7 +200,7 @@ spec = do
                             fundedTestsAddress
                             antiTokenId
                         $ RequestUpdateBody
-                            "key"
+                            (JSString "key")
                             (JSString "oldValue")
                             (JSString "newValue")
                 let dtx = deserializeTx tx
@@ -210,7 +211,7 @@ spec = do
                     `shouldBe` RequestDatum
                         { tokenId = antiTokenId
                         , owner = testUTxOOwner
-                        , key = Key "key"
+                        , key = Key $ JSString "key"
                         , value =
                             Update
                                 (JSString "oldValue")

@@ -28,12 +28,10 @@ module Core.Types
 
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Base16 (encode)
-import Data.ByteString.Char8 (ByteString)
 import Data.ByteString.Char8 qualified as B
-import Data.ByteString.Lazy qualified as BL
 import Data.Text (Text)
 import Data.Text qualified as T
-import Lib.JSON (object, withObject, (.:), (.=))
+import Lib.JSON (object, parseJSValue, withObject, (.:), (.=))
 import PlutusTx (Data (..), builtinDataToData)
 import PlutusTx.IsData.Class
 import Servant.API (FromHttpApiData (..), ToHttpApiData (..))
@@ -42,7 +40,6 @@ import Text.JSON.Canonical
     , JSValue
     , ReportSchemaErrors
     , ToJSON (..)
-    , parseCanonicalJSON
     )
 
 -- TxHash-OutputIndex
@@ -96,14 +93,14 @@ instance FromData Owner where
             B b -> Just (Owner $ B.unpack $ encode b)
             _ -> Nothing
 
-newtype Key = Key String
+newtype Key = Key JSValue
     deriving (Eq, Show)
 
 instance FromData Key where
     fromBuiltinData = parse . builtinDataToData
       where
         parse = \case
-            B b -> Just (Key $ B.unpack b)
+            B b -> parseJSValue b Key
             _ -> Nothing
 
 data Operation
@@ -115,11 +112,6 @@ data Operation
 instance FromData Operation where
     fromBuiltinData = parse . builtinDataToData
       where
-        parseJSValue :: ByteString -> (JSValue -> a) -> Maybe a
-        parseJSValue b constructor =
-            case parseCanonicalJSON (BL.fromStrict b) of
-                Left _ -> Nothing
-                Right jsValue -> Just (constructor jsValue)
         parse = \case
             Constr 0 [B b] -> parseJSValue b Insert
             Constr 1 [B b] -> parseJSValue b Delete

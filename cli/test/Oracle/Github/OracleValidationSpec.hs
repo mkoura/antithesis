@@ -125,7 +125,7 @@ spec = do
     it "should download CODEOWNERS file from repo with trunk" $ do
         downloadCodeownersFile
             (Repository "cardano-foundation" "hal-fixture-tan")
-            `shouldReturn` (ResponseCodeownersFile "* @notunrandom\n")
+            `shouldReturn` ResponseCodeownersFile "* @notunrandom\n"
 
     it "should throw if missing CODEOWNERS file" $ do
         downloadCodeownersFile

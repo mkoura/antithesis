@@ -9,6 +9,7 @@ where
 import Core.Types
     ( Directory (Directory)
     , Platform (Platform)
+    , PublicKeyHash (..)
     , Repository (Repository, organization, project)
     , SHA1 (SHA1)
     , Username (Username)
@@ -22,6 +23,7 @@ import Text.JSON.Canonical
 import User.Types
     ( Duration (Duration)
     , Reason (..)
+    , RegisterPublicKey (..)
     , TestRun
         ( TestRun
         , commitId
@@ -33,6 +35,7 @@ import User.Types
         )
     , TestRunState (..)
     , URL (..)
+    , UnregisterPublicKey (..)
     )
 
 instance ReportSchemaErrors IO where
@@ -82,3 +85,27 @@ spec = do
             roundTrip accepted
             let finished = Finished accepted (Duration 4) (URL "")
             roundTrip finished
+
+    describe "RegisterPublicKey" $ do
+        it "roundtrips on the JSON instance" $ do
+            let registerPubKey =
+                    RegisterPublicKey
+                        { platform = Platform "github"
+                        , username = Username "tester"
+                        , pubkeyhash =
+                            PublicKeyHash
+                                "AAAAC3NzaC1lZDI1NTE5AAAAIO773JHqlyLm5XzOjSe+Q5yFJyLFuMLL6+n63t4t7HR8"
+                        }
+            roundTrip registerPubKey
+
+    describe "UnregisterPublicKey" $ do
+        it "roundtrips on the JSON instance" $ do
+            let unregisterPubKey =
+                    UnregisterPublicKey
+                        { platform = Platform "github"
+                        , username = Username "tester"
+                        , pubkeyhash =
+                            PublicKeyHash
+                                "AAAAC3NzaC1lZDI1NTE5AAAAIO773JHqlyLm5XzOjSe+Q5yFJyLFuMLL6+n63t4t7HR8"
+                        }
+            roundTrip unregisterPubKey

@@ -22,6 +22,7 @@ import Core.Types
     , SHA1 (..)
     , Username (..)
     )
+import Data.Map.Strict qualified as Map
 import Lib.JSON
     ( getField
     , getIntegralField
@@ -39,6 +40,7 @@ import Text.JSON.Canonical
     , ToJSON (..)
     , expectedButGotValue
     , fromJSString
+    , toJSString
     )
 
 data TestRun = TestRun
@@ -267,7 +269,10 @@ instance (Monad m, ReportSchemaErrors m) => FromJSON m RegisterPublicKey where
                 , username = Username user
                 , pubkeyhash = PublicKeyHash pubkeyhash
                 }
-    fromJSON _ = expected "object" $ Just "something else"
+    fromJSON r =
+        expectedButGotValue
+            "an object representing an accepted phase"
+            r
 
 data UnregisterPublicKey = UnregisterPublicKey
     { platform :: Platform
@@ -302,4 +307,7 @@ instance (Monad m, ReportSchemaErrors m) => FromJSON m UnregisterPublicKey where
                 , username = Username user
                 , pubkeyhash = PublicKeyHash pubkeyhash
                 }
-    fromJSON _ = expected "object" $ Just "something else"
+    fromJSON r =
+        expectedButGotValue
+            "an object representing an accepted phase"
+            r

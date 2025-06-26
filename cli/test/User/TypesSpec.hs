@@ -32,6 +32,7 @@ import User.Types
         , testRunIndex
         )
     , TestRunState (..)
+    , URL (..)
     )
 
 instance ReportSchemaErrors IO where
@@ -79,5 +80,5 @@ spec = do
             roundTrip rejected
             let accepted = Accepted pending
             roundTrip accepted
-            let finished = Finished accepted $ Duration 4
+            let finished = Finished accepted (Duration 4) (URL "")
             roundTrip finished

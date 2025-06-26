@@ -7,6 +7,8 @@ module User.Types
     , TestRunState (..)
     , Duration (..)
     , Reason (..)
+    , Phase (..)
+    , URL (..)
     )
 where
 
@@ -103,6 +105,9 @@ newtype Duration = Duration Int
 
 data Phase = PendingT | DoneT | RunningT
 
+newtype URL = URL String
+    deriving (Show, Eq)
+
 data Reason
     = UnacceptableDuration
     | UnacceptablePlatform
@@ -138,7 +143,8 @@ data TestRunState a where
     Pending :: Duration -> TestRunState PendingT
     Rejected :: TestRunState PendingT -> [Reason] -> TestRunState DoneT
     Accepted :: TestRunState PendingT -> TestRunState RunningT
-    Finished :: TestRunState RunningT -> Duration -> TestRunState DoneT
+    Finished
+        :: TestRunState RunningT -> Duration -> URL -> TestRunState DoneT
 
 deriving instance Eq (TestRunState a)
 deriving instance Show (TestRunState a)
@@ -159,11 +165,12 @@ instance Monad m => ToJSON m (TestRunState a) where
             [ ("phase", stringJSON "accepted")
             , ("pending", toJSON pending)
             ]
-    toJSON (Finished running duration) =
+    toJSON (Finished running duration url) =
         object
             [ ("phase", stringJSON "finished")
             , ("running", toJSON running)
             , ("duration", intJSON $ case duration of Duration d -> d)
+            , ("url", stringJSON $ case url of URL u -> u)
             ]
 
 instance (Monad m, ReportSchemaErrors m) => FromJSON m (TestRunState PendingT) where
@@ -196,7 +203,8 @@ instance (Monad m, ReportSchemaErrors m) => FromJSON m (TestRunState DoneT) wher
             "finished" -> do
                 running <- getField "running" mapping >>= fromJSON
                 duration <- getIntegralField "duration" mapping
-                pure $ Finished running (Duration duration)
+                url <- getStringField "url" mapping
+                pure $ Finished running (Duration duration) (URL url)
             _ ->
                 expectedButGotValue
                     "a rejected phase"

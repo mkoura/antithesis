@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveFunctor #-}
+
 module Lib.JSON
     ( getField
     , getStringField
@@ -7,11 +9,20 @@ module Lib.JSON
     , intJSON
     , stringJSON
     , getListField
+    , jsonToString
+    , toAeson
+    , CanonicalJSON (..)
+    , CanonicalJSONError (..)
+    , runIdentityCanonicalJSON
     )
 where
 
 import Control.Monad ((<=<))
+import Data.Aeson (Value)
+import Data.Aeson.Decoding (decode)
+import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.Functor ((<&>))
+import Data.Functor.Identity (Identity (..))
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Text.JSON.Canonical
@@ -19,6 +30,7 @@ import Text.JSON.Canonical
     , Int54
     , ReportSchemaErrors (..)
     , ToJSON (..)
+    , renderCanonicalJSON
     )
 import Text.JSON.Canonical.Types (JSValue)
 
@@ -65,3 +77,44 @@ intJSON = toJSON @_ @Int54 . fromIntegral
 
 stringJSON :: Monad m => String -> m JSValue
 stringJSON = toJSON
+
+jsonToString :: JSValue -> String
+jsonToString = BL.unpack . renderCanonicalJSON
+
+-- TODO: do the conversion in a more efficient way
+toAeson :: JSValue -> Maybe Value
+toAeson = decode . renderCanonicalJSON
+
+data CanonicalJSONError = CanonicalJSONError
+    { expectedValue :: String
+    , gotValue :: Maybe String
+    }
+    deriving (Show, Eq)
+
+-- >>> import Data.Functor.Identity
+-- >>> pure 1 :: CanonicalJSON Identity Int
+newtype CanonicalJSON m a = CanonicalJSON
+    {runCanonicalJSON :: m (Either CanonicalJSONError a)}
+    deriving (Functor)
+
+instance Applicative m => Applicative (CanonicalJSON m) where
+    pure x = CanonicalJSON $ pure $ Right x
+    CanonicalJSON f <*> CanonicalJSON x = CanonicalJSON $ liftA2 (<*>) f x
+
+instance Monad m => Monad (CanonicalJSON m) where
+    CanonicalJSON x >>= f = CanonicalJSON $ do
+        result <- x
+        case result of
+            Left err -> pure $ Left err
+            Right value -> runCanonicalJSON $ f value
+
+instance Monad m => ReportSchemaErrors (CanonicalJSON m) where
+    expected expectedValue gotValue =
+        CanonicalJSON
+            $ pure
+            $ Left
+            $ CanonicalJSONError{expectedValue, gotValue}
+
+runIdentityCanonicalJSON
+    :: CanonicalJSON Identity a -> Either CanonicalJSONError a
+runIdentityCanonicalJSON (CanonicalJSON x) = runIdentity x

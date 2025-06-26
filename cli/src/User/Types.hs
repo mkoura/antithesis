@@ -247,11 +247,13 @@ instance Monad m => ToJSON m RegisterPublicKey where
                 (Platform platform)
                 (Username user)
                 (PublicKeyHash pubkeyhash)
-            ) = toJSON $ Map.fromList
-                [ ("platform" :: String, JSString $ toJSString platform)
-                , ("user", JSString $ toJSString user)
-                , ("publickeyhash", JSString $ toJSString pubkeyhash)
-                ]
+            ) =
+            toJSON
+                $ Map.fromList
+                    [ ("platform" :: String, JSString $ toJSString platform)
+                    , ("user", JSString $ toJSString user)
+                    , ("publickeyhash", JSString $ toJSString pubkeyhash)
+                    ]
 
 instance (Monad m, ReportSchemaErrors m) => FromJSON m RegisterPublicKey where
     fromJSON obj@(JSObject _) = do
@@ -280,11 +282,13 @@ instance Monad m => ToJSON m UnregisterPublicKey where
                 (Platform platform)
                 (Username user)
                 (PublicKeyHash pubkeyhash)
-            ) = toJSON $ Map.fromList
-                [ ("platform" :: String, JSString $ toJSString platform)
-                , ("user", JSString $ toJSString user)
-                , ("publickeyhash", JSString $ toJSString pubkeyhash)
-                ]
+            ) =
+            toJSON
+                $ Map.fromList
+                    [ ("platform" :: String, JSString $ toJSString platform)
+                    , ("user", JSString $ toJSString user)
+                    , ("publickeyhash", JSString $ toJSString pubkeyhash)
+                    ]
 
 instance (Monad m, ReportSchemaErrors m) => FromJSON m UnregisterPublicKey where
     fromJSON obj@(JSObject _) = do

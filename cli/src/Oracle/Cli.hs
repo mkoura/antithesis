@@ -5,11 +5,13 @@ module Oracle.Cli
 
 import Core.Types (TokenId, Wallet)
 import Oracle.Token.Cli (TokenCommand, tokenCmd)
+import Oracle.Validate.Cli (ValidateCommand, validateCmd)
 import Servant.Client (ClientM)
 import Text.JSON.Canonical (JSValue)
 
-newtype OracleCommand
+data OracleCommand
     = OracleTokenCommand TokenCommand
+    | OracleValidateCommand ValidateCommand
     deriving (Eq, Show)
 
 oracleCmd :: Wallet -> TokenId -> OracleCommand -> ClientM JSValue
@@ -19,3 +21,7 @@ oracleCmd wallet tk = \case
             wallet
             tk
             tokenCommand
+    OracleValidateCommand validateCommand ->
+        validateCmd
+            tk
+            validateCommand

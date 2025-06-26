@@ -1,17 +1,19 @@
 {-# LANGUAGE StrictData #-}
 
-module Oracle.Validate
+module Oracle.Validate.Logic
     ( validateMPFSRequest
     , ValidationResult (..)
     ) where
 
-import Core.Types (Key(..), OutputReference)
+import Core.Types (Key (..), OutputReference)
 import Oracle.Types (MPFSRequest)
-import qualified Oracle.Types as Oracle
+import Oracle.Types qualified as Oracle
 
-data ValidationResult =
-    Validated OutputReference | NotValidated | CannotValidate
-   deriving (Eq, Show)
+data ValidationResult
+    = Validated OutputReference
+    | NotValidated
+    | CannotValidate
+    deriving (Eq, Show)
 
 validateMPFSRequest
     :: MPFSRequest

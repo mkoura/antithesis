@@ -32,19 +32,21 @@ import User.Types (RegisterPublicKey (..), UnregisterPublicKey (..))
 
 addPublicKeyOptions :: Parser RequesterCommand
 addPublicKeyOptions =
-    RegisterUser <$>
-    (RegisterPublicKey
-        <$> platformOption
-        <*> usernameOption
-        <*> pubkeyhashOption)
+    RegisterUser
+        <$> ( RegisterPublicKey
+                <$> platformOption
+                <*> usernameOption
+                <*> pubkeyhashOption
+            )
 
 removePublicKeyOptions :: Parser RequesterCommand
 removePublicKeyOptions =
-    UnregisterUser <$>
-    (UnregisterPublicKey
-        <$> platformOption
-        <*> usernameOption
-        <*> pubkeyhashOption)
+    UnregisterUser
+        <$> ( UnregisterPublicKey
+                <$> platformOption
+                <*> usernameOption
+                <*> pubkeyhashOption
+            )
 
 addRoleOptions :: Parser RequesterCommand
 addRoleOptions =

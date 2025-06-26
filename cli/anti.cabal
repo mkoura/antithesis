@@ -92,6 +92,7 @@ library
     Core.Types
     Lib.JSON
     MPFS.API
+    MPFS.Types
     Options
     Oracle.Cli
     Oracle.Github.CommonIO
@@ -184,6 +185,7 @@ test-suite anti-test
     Anti.CliSpec
     Anti.Server
     Lib.JSONSpec
+    MPFS.TypesSpec
     Oracle.Github.OracleValidationSpec
     User.TypesSpec
 

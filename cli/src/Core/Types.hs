@@ -23,7 +23,9 @@ module Core.Types
     , TxHash (..)
     , Owner (..)
     , Key (..)
+    , Val (..)
     , CageDatum (..)
+    , Root (..)
     ) where
 
 import Data.Aeson qualified as Aeson
@@ -101,6 +103,16 @@ instance FromData Key where
       where
         parse = \case
             B b -> parseJSValue b Key
+            _ -> Nothing
+
+newtype Val = Val JSValue
+    deriving (Eq, Show)
+
+instance FromData Val where
+    fromBuiltinData = parse . builtinDataToData
+      where
+        parse = \case
+            B b -> parseJSValue b Val
             _ -> Nothing
 
 data Operation

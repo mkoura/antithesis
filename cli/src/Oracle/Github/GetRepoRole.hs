@@ -58,13 +58,12 @@ inspectRepoRoleForUserTemplate
     :: Username
     -> Repository
     -> Role
-    -> ( Username
-         -> Repository
+    -> ( Repository
          -> IO IO.ResponseCodeownersFile
        )
     -> IO RepoRoleValidation
 inspectRepoRoleForUserTemplate username repo roleExpected downloadCodeownersFile = do
-    resp <- downloadCodeownersFile username repo
+    resp <- downloadCodeownersFile repo
     pure $ analyzeResponseCodeownersFile roleExpected username resp
 
 inspectRepoRoleForUser

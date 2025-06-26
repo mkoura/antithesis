@@ -6,8 +6,8 @@ module Oracle.Github.GetRepoRoleIO
     , downloadCodeownersFile
     ) where
 
-import Control.Lens ((^.))
-import Core.Types (Repository (..), Username (..))
+import Control.Lens ((&), (.~), (^.))
+import Core.Types (Repository (..))
 import Data.ByteString.Lazy (ByteString)
 import GHC.Generics (Generic)
 import Network.Wreq qualified as Wreq
@@ -21,10 +21,9 @@ newtype ResponseCodeownersFile = ResponseCodeownersFile
     deriving (Eq, Generic, Show)
 
 downloadCodeownersFile
-    :: Username
-    -> Repository
+    :: Repository
     -> IO ResponseCodeownersFile
-downloadCodeownersFile (Username user) repo = do
+downloadCodeownersFile repo = do
     response <- Wreq.getWith headers endpoint
     case response ^. Wreq.responseStatus . Wreq.statusCode of
         200 ->
@@ -37,14 +36,15 @@ downloadCodeownersFile (Username user) repo = do
                     <> "/"
                     <> show (project repo)
                     <> " github repository, which is required to "
-                    <> "verify the role of "
-                    <> user
-                    <> "in the repository."
+                    <> "verify the role of user in the repository."
   where
-    headers = Wreq.defaults
+    headers =
+        Wreq.defaults
+            & Wreq.header "Accept" .~ ["application/vnd.github.raw+json"]
+            & Wreq.header "X-GitHub-Api-Version" .~ ["2022-11-28"]
     endpoint =
-        "https://raw.githubusercontent.com/"
+        "https://api.github.com/repos/"
             <> organization repo
             <> "/"
             <> project repo
-            <> "/master/CODEOWNERS"
+            <> "/contents/CODEOWNERS"

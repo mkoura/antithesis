@@ -20,6 +20,7 @@ import Oracle.Github.GetRepoRole
     )
 import Oracle.Github.GetRepoRoleIO
     ( ResponseCodeownersFile (..)
+    , downloadCodeownersFile
     )
 import Oracle.Github.ListPublicKeys
     ( PublicKeyValidation (..)
@@ -30,8 +31,10 @@ import Oracle.Github.ListPublicKeysIO
     )
 import Test.Hspec
     ( Spec
+    , anyException
     , it
     , shouldReturn
+    , shouldThrow
     )
 
 mockedAccessToken :: IO GithubAccessToken
@@ -109,8 +112,28 @@ spec = do
                 okExpectedEd25519PubKeyOfUser
         `shouldReturn` PublicKeyValidated
 
+    it "should download CODEOWNERS file from repo with main" $ do
+        downloadCodeownersFile
+            (Repository "cardano-foundation" "hal-fixture-sin")
+            `shouldReturn` ResponseCodeownersFile "* @notunrandom\n"
+
+    it "should download CODEOWNERS file from repo with master" $ do
+        downloadCodeownersFile
+            (Repository "cardano-foundation" "hal-fixture-cos")
+            `shouldReturn` ResponseCodeownersFile "* @notunrandom\n"
+
+    it "should download CODEOWNERS file from repo with trunk" $ do
+        downloadCodeownersFile
+            (Repository "cardano-foundation" "hal-fixture-tan")
+            `shouldReturn` (ResponseCodeownersFile "* @notunrandom\n")
+
+    it "should throw if missing CODEOWNERS file" $ do
+        downloadCodeownersFile
+            (Repository "cardano-foundation" "hal-fixture-sec")
+            `shouldThrow` anyException
+
     it "CODEOWNERS does not have role entry" $ do
-        let noRoleEntry _ _ =
+        let noRoleEntry _ =
                 pure
                     $ ResponseCodeownersFile
                     $ BS.fromStrict
@@ -127,7 +150,7 @@ spec = do
             `shouldReturn` NoRoleEntryInCodeowners
 
     it "CODEOWNERS does not have users assigned" $ do
-        let noRoleEntry _ _ =
+        let noRoleEntry _ =
                 pure
                     $ ResponseCodeownersFile
                     $ BS.fromStrict
@@ -146,7 +169,7 @@ spec = do
             `shouldReturn` NoUsersAssignedToRoleInCodeowners
 
     it "CODEOWNERS does have other users assigned" $ do
-        let noRoleEntry _ _ =
+        let noRoleEntry _ =
                 pure
                     $ ResponseCodeownersFile
                     $ BS.fromStrict
@@ -165,7 +188,7 @@ spec = do
             `shouldReturn` NoUserInCodeowners
 
     it "CODEOWNERS does have user assigned" $ do
-        let noRoleEntry _ _ =
+        let noRoleEntry _ =
                 pure
                     $ ResponseCodeownersFile
                     $ BS.fromStrict

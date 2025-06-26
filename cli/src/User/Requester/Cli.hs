@@ -29,7 +29,7 @@ import MPFS.API
 import Network.HTTP.Types (encodePathSegmentsRelative)
 import Servant.Client (ClientM)
 import Submitting (submittingFake)
-import Text.JSON.Canonical (JSValue, ToJSON (..), renderCanonicalJSON)
+import Text.JSON.Canonical (JSValue (..), ToJSON (..))
 import User.Types (RegisterPublicKey (..), UnregisterPublicKey (..))
 
 data Operation = Insert | Delete
@@ -131,11 +131,9 @@ requestTestRun
                         , sha1
                         , directory
                         ]
-                value =
-                    BL.unpack
-                        $ renderCanonicalJSON valueV
+
             requestInsert address tokenId
-                $ RequestInsertBody key value
+                $ RequestInsertBody key valueV
 
 manageUser
     :: Wallet
@@ -161,7 +159,7 @@ manageUser
                         , username
                         , pubkeyhash
                         ]
-                value = mempty
+                value = JSNull
             case operation of
                 Insert -> requestInsert address tokenId $ RequestInsertBody key value
                 Delete -> requestDelete address tokenId $ RequestDeleteBody key value
@@ -193,7 +191,7 @@ manageRole
                         , username
                         , roleStr
                         ]
-                value = mempty
+                value = JSNull
             case operation of
                 Insert -> requestInsert address tokenId $ RequestInsertBody key value
                 Delete -> requestDelete address tokenId $ RequestDeleteBody key value

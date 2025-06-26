@@ -30,6 +30,7 @@ import Data.Aeson qualified as Aeson
 import Data.ByteString.Base16 (encode)
 import Data.ByteString.Char8 (ByteString)
 import Data.ByteString.Char8 qualified as B
+import Data.ByteString.Lazy qualified as BL
 import Data.Text (Text)
 import Data.Text qualified as T
 import Lib.JSON (object, withObject, (.:), (.=))
@@ -41,6 +42,7 @@ import Text.JSON.Canonical
     , JSValue
     , ReportSchemaErrors
     , ToJSON (..)
+    , parseCanonicalJSON
     )
 
 -- TxHash-OutputIndex
@@ -105,18 +107,24 @@ instance FromData Key where
             _ -> Nothing
 
 data Operation
-    = Insert ByteString
-    | Delete ByteString
-    | Update ByteString ByteString
+    = Insert JSValue
+    | Delete JSValue
+    | Update JSValue JSValue
     deriving (Eq, Show)
 
 instance FromData Operation where
     fromBuiltinData = parse . builtinDataToData
       where
+        parseJSValue :: ByteString -> (JSValue -> a) -> Maybe a
+        parseJSValue b constructor =
+            case parseCanonicalJSON (BL.fromStrict b) of
+                Left _ -> Nothing
+                Right jsValue -> Just (constructor jsValue)
         parse = \case
-            Constr 0 [B b] -> Just (Insert b)
-            Constr 1 [B b] -> Just (Delete b)
-            Constr 2 [B old, B new] -> Just (Update old new)
+            Constr 0 [B b] -> parseJSValue b Insert
+            Constr 1 [B b] -> parseJSValue b Delete
+            Constr 2 [B old, B new] ->
+                parseJSValue old Update >>= parseJSValue new
             _ -> Nothing
 
 newtype Root = Root String

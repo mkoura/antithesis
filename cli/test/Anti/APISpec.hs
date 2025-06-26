@@ -161,9 +161,8 @@ spec = do
                         $ requestInsert
                             fundedTestsAddress
                             antiTokenId
-                        $ RequestInsertBody
-                            "key"
-                            "value"
+                        $ RequestInsertBody "key"
+                        $ JSString "value"
                 let dtx = deserializeTx tx
                 Just (policyId', datum) <- pure $ getFirstOutput dtx
                 Just (Just (cageDatum :: CageDatum)) <- pure $ fromData datum
@@ -173,7 +172,7 @@ spec = do
                         { tokenId = antiTokenId
                         , owner = testUTxOOwner
                         , key = Key "key"
-                        , value = Insert "value"
+                        , value = Insert $ JSString "value"
                         }
             it "can retrieve a request-delete tx" $ \(Call call) -> do
                 WithUnsignedTx tx _ <-
@@ -181,9 +180,7 @@ spec = do
                         $ requestDelete
                             fundedTestsAddress
                             antiTokenId
-                        $ RequestDeleteBody
-                            "key"
-                            "value"
+                        $ RequestDeleteBody "key" (JSString "value")
                 let dtx = deserializeTx tx
                 Just (policyId', datum) <- pure $ getFirstOutput dtx
                 Just (Just (cageDatum :: CageDatum)) <- pure $ fromData datum
@@ -193,7 +190,7 @@ spec = do
                         { tokenId = antiTokenId
                         , owner = testUTxOOwner
                         , key = Key "key"
-                        , value = Delete "value"
+                        , value = Delete $ JSString "value"
                         }
             it "can retrieve a request-update tx" $ \(Call call) -> do
                 WithUnsignedTx tx _ <-
@@ -203,8 +200,8 @@ spec = do
                             antiTokenId
                         $ RequestUpdateBody
                             "key"
-                            "oldValue"
-                            "newValue"
+                            (JSString "oldValue")
+                            (JSString "newValue")
                 let dtx = deserializeTx tx
                 Just (policyId', datum) <- pure $ getFirstOutput dtx
                 Just (Just (cageDatum :: CageDatum)) <- pure $ fromData datum
@@ -214,7 +211,10 @@ spec = do
                         { tokenId = antiTokenId
                         , owner = testUTxOOwner
                         , key = Key "key"
-                        , value = Update "oldValue" "newValue"
+                        , value =
+                            Update
+                                (JSString "oldValue")
+                                (JSString "newValue")
                         }
             xit "can submit a request-insert tx" $ \(Call call) -> do
                 wallet :: Wallet <- loadFundedWallet

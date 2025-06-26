@@ -22,11 +22,15 @@ module Lib.JSON
     , fromAesonThrow
     , toAeson
     , runCanonicalJSONThrow
+    , toAesonString
+    , fromAesonString
     )
 where
 
 import Control.Monad ((<=<))
 import Data.Aeson (Value, decode, encode)
+import Data.Aeson qualified as Aeson
+import Data.Aeson.Types qualified as AesonInternal
 import Data.Bifunctor (first)
 import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.Functor ((<&>))
@@ -35,6 +39,7 @@ import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Text.Encoding qualified as T
 import Text.JSON.Canonical
     ( FromJSON (fromJSON)
     , Int54
@@ -95,8 +100,10 @@ jsonToString :: JSValue -> String
 jsonToString = BL.unpack . renderCanonicalJSON
 
 -- TODO: do the conversion in a more efficient way
-toAeson :: JSValue -> Maybe Value
-toAeson = decode . renderCanonicalJSON
+toAeson :: JSValue -> Value
+toAeson jsv = case decode $ renderCanonicalJSON jsv of
+    Nothing -> error $ "Failed to convert JSValue to Aeson Value: " ++ show jsv
+    Just value -> value
 
 data CanonicalJSONError = CanonicalJSONError
     { expectedValue :: String
@@ -191,3 +198,12 @@ fromAesonThrow value =
 
 instance Applicative m => ToJSON m Value where
     toJSON = pure . fromAesonThrow
+
+toAesonString :: JSValue -> Value
+toAesonString = Aeson.String . T.decodeUtf8 . BL.toStrict . renderCanonicalJSON
+
+fromAesonString :: Value -> AesonInternal.Parser JSValue
+fromAesonString = Aeson.withText "JSValue" $ \v ->
+    case parseCanonicalJSON (BL.fromStrict $ T.encodeUtf8 v) of
+        Left err -> fail $ "Failed to parse value: " ++ err
+        Right jsValue -> pure jsValue

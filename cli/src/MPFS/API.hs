@@ -26,14 +26,18 @@ import Core.Types
 import Data.Aeson
     ( FromJSON (..)
     , ToJSON (..)
-    , Value
+    , Value (..)
     , object
     , withObject
     , (.:)
     , (.=)
     )
 import Data.Data (Proxy (..))
-import Lib.JSON (fromAesonThrow)
+import Lib.JSON
+    ( fromAesonString
+    , fromAesonThrow
+    , toAesonString
+    )
 import Servant.API
     ( Capture
     , Get
@@ -45,48 +49,66 @@ import Servant.API
     , type (:>)
     )
 import Servant.Client (ClientM, client)
-import Text.JSON.Canonical (JSValue)
+import Text.JSON.Canonical
+    ( JSValue
+    )
 
 data RequestInsertBody = RequestInsertBody
     { key :: String
-    , value :: String
+    , value :: JSValue
     }
 
 instance ToJSON RequestInsertBody where
-    toJSON (RequestInsertBody k v) = object ["key" .= k, "value" .= v]
+    toJSON (RequestInsertBody k v) =
+        object
+            [ "key" .= k
+            , "value" .= toAesonString v
+            ]
 
 instance FromJSON RequestInsertBody where
     parseJSON = withObject "RequestInsertBody" $ \o ->
-        RequestInsertBody <$> o .: "key" <*> o .: "value"
+        RequestInsertBody
+            <$> o .: "key"
+            <*> (o .: "value" >>= fromAesonString)
 
 data RequestDeleteBody = RequestDeleteBody
     { key :: String
-    , value :: String
+    , value :: JSValue
     }
 
 instance ToJSON RequestDeleteBody where
-    toJSON (RequestDeleteBody k v) = object ["key" .= k, "value" .= v]
+    toJSON (RequestDeleteBody k v) =
+        object
+            [ "key" .= k
+            , "value" .= toAesonString v
+            ]
 
 instance FromJSON RequestDeleteBody where
     parseJSON = withObject "RequestDeleteBody" $ \o ->
-        RequestDeleteBody <$> o .: "key" <*> o .: "value"
+        RequestDeleteBody
+            <$> o .: "key"
+            <*> (o .: "value" >>= fromAesonString)
 
 data RequestUpdateBody = RequestUpdateBody
     { key :: String
-    , oldValue :: String
-    , newValue :: String
+    , oldValue :: JSValue
+    , newValue :: JSValue
     }
 
 instance ToJSON RequestUpdateBody where
     toJSON (RequestUpdateBody k old new) =
-        object ["key" .= k, "oldValue" .= old, "newValue" .= new]
+        object
+            [ "key" .= k
+            , "oldValue" .= toAesonString old
+            , "newValue" .= toAesonString new
+            ]
 
 instance FromJSON RequestUpdateBody where
     parseJSON = withObject "RequestUpdateBody" $ \o ->
         RequestUpdateBody
             <$> o .: "key"
-            <*> o .: "oldValue"
-            <*> o .: "newValue"
+            <*> (o .: "oldValue" >>= fromAesonString)
+            <*> (o .: "newValue" >>= fromAesonString)
 
 type RequestInsert =
     "transaction"

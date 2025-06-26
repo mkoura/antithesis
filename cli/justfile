@@ -7,7 +7,7 @@ format:
 
 hlint:
   #!/usr/bin/env bash
-  hlint src
+  hlint app src test
 
 test:
   #!/usr/bin/env bash
@@ -15,7 +15,7 @@ test:
 
 build:
     #!/usr/bin/env bash
-    cabal build
+    cabal build all
 
 CI:
   #!/usr/bin/env bash

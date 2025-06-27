@@ -35,7 +35,7 @@ import Text.JSON.Canonical
     )
 
 data MPFSRequestChange = MPFSRequestChange
-    { key :: Key
+    { key :: Key JSValue
     , value :: Val
     , operation :: MPFSOperation
     }

@@ -27,6 +27,7 @@ module Core.Types
     , Val (..)
     , CageDatum (..)
     , Root (..)
+    , Change (..)
     ) where
 
 import Data.Aeson qualified as Aeson
@@ -102,10 +103,10 @@ instance FromData Owner where
             B b -> Just (Owner $ B.unpack $ encode b)
             _ -> Nothing
 
-newtype Key = Key JSValue
+newtype Key a = Key a
     deriving (Eq, Show)
 
-instance FromData Key where
+instance FromJSON Maybe a => FromData (Key a) where
     fromBuiltinData = parse . builtinDataToData
       where
         parse = \case
@@ -150,12 +151,17 @@ instance FromData Root where
             B b -> Just (Root $ B.unpack $ encode b)
             _ -> Nothing
 
-data CageDatum a
+data Change k v = Change
+    { key :: Key k
+    , operation :: Operation v
+    }
+    deriving (Eq, Show)
+
+data CageDatum k v
     = RequestDatum
         { tokenId :: TokenId
         , owner :: Owner
-        , key :: Key
-        , value :: Operation a
+        , change :: Change k v
         }
     | StateDatum
         { owner :: Owner
@@ -163,7 +169,7 @@ data CageDatum a
         }
     deriving (Eq, Show)
 
-instance FromJSON Maybe a => FromData (CageDatum a) where
+instance (FromJSON Maybe k, FromJSON Maybe v) => FromData (CageDatum k v) where
     fromBuiltinData = parse . builtinDataToData
       where
         parse = \case
@@ -171,8 +177,7 @@ instance FromJSON Maybe a => FromData (CageDatum a) where
                 RequestDatum
                     <$> fromData tokenIdD
                     <*> fromData ownerD
-                    <*> fromData keyD
-                    <*> fromData valueD
+                    <*> (Change <$> fromData keyD <*> fromData valueD)
             Constr 1 [ownerD, rootD] ->
                 StateDatum
                     <$> fromData ownerD

@@ -28,6 +28,7 @@ import Control.Monad (void)
 import Core.Types
     ( Address (..)
     , CageDatum (..)
+    , Change (..)
     , Key (..)
     , Operation (..)
     , Owner (..)
@@ -166,14 +167,18 @@ spec = do
                         $ JSString "value"
                 let dtx = deserializeTx tx
                 Just (policyId', datum) <- pure $ getFirstOutput dtx
-                Just (Just (cageDatum :: CageDatum String)) <- pure $ fromData datum
+                Just (Just (cageDatum :: CageDatum String String)) <-
+                    pure $ fromData datum
                 policyId' `shouldBe` mpfsPolicyId
                 cageDatum
                     `shouldBe` RequestDatum
                         { tokenId = antiTokenId
                         , owner = testUTxOOwner
-                        , key = Key $ JSString "key"
-                        , value = Insert "value"
+                        , change =
+                            Change
+                                { key = Key "key"
+                                , operation = Insert "value"
+                                }
                         }
             it "can retrieve a request-delete tx" $ \(Call call) -> do
                 WithUnsignedTx tx _ <-
@@ -184,14 +189,18 @@ spec = do
                         $ RequestDeleteBody (JSString "key") (JSString "value")
                 let dtx = deserializeTx tx
                 Just (policyId', datum) <- pure $ getFirstOutput dtx
-                Just (Just (cageDatum :: CageDatum String)) <- pure $ fromData datum
+                Just (Just (cageDatum :: CageDatum String String)) <-
+                    pure $ fromData datum
                 policyId' `shouldBe` mpfsPolicyId
                 cageDatum
                     `shouldBe` RequestDatum
                         { tokenId = antiTokenId
                         , owner = testUTxOOwner
-                        , key = Key $ JSString "key"
-                        , value = Delete "value"
+                        , change =
+                            Change
+                                { key = Key "key"
+                                , operation = Delete "value"
+                                }
                         }
             it "can retrieve a request-update tx" $ \(Call call) -> do
                 WithUnsignedTx tx _ <-
@@ -205,17 +214,18 @@ spec = do
                             (JSString "newValue")
                 let dtx = deserializeTx tx
                 Just (policyId', datum) <- pure $ getFirstOutput dtx
-                Just (Just (cageDatum :: CageDatum String)) <- pure $ fromData datum
+                Just (Just (cageDatum :: CageDatum String String)) <-
+                    pure $ fromData datum
                 policyId' `shouldBe` mpfsPolicyId
                 cageDatum
                     `shouldBe` RequestDatum
                         { tokenId = antiTokenId
                         , owner = testUTxOOwner
-                        , key = Key $ JSString "key"
-                        , value =
-                            Update
-                                "oldValue"
-                                "newValue"
+                        , change =
+                            Change
+                                { key = Key "key"
+                                , operation = Update "oldValue" "newValue"
+                                }
                         }
             xit "can submit a request-insert tx" $ \(Call call) -> do
                 wallet :: Wallet <- loadFundedWallet

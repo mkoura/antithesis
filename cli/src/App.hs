@@ -2,10 +2,7 @@ module App (server) where
 
 import Cli (cmd)
 import Core.Types
-    ( Address (Address)
-    , SignedTx (SignedTx)
-    , TokenId (..)
-    , Wallet (..)
+    ( TokenId (..)
     )
 import Network.HTTP.Client
     ( ManagerSettings (..)

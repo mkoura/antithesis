@@ -60,7 +60,11 @@ import MPFS.API
     , requestUpdate
     , waitNBlocks
     )
-import Network.HTTP.Client (newManager)
+import Network.HTTP.Client
+    ( ManagerSettings (managerResponseTimeout)
+    , newManager
+    , responseTimeoutMicro
+    )
 import Network.HTTP.Client.TLS (tlsManagerSettings)
 import PlutusTx (Data, fromData)
 import Servant.Client (ClientM, mkClientEnv, parseBaseUrl, runClientM)
@@ -111,7 +115,11 @@ deserializeTx tx = case decode (T.encodeUtf8 tx) of
 setup :: IO Call
 setup = do
     url <- parseBaseUrl host
-    nm <- newManager tlsManagerSettings
+    nm <-
+        newManager
+            $ tlsManagerSettings
+                { managerResponseTimeout = responseTimeoutMicro $ 60 * 1000000
+                }
     let call :: ClientM a -> IO a
         call f = do
             r <- runClientM f (mkClientEnv nm url)

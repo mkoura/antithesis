@@ -11,7 +11,7 @@ import Core.Types (RequestRefId)
 import Lib.JSON
     ( stringJSON
     )
-import Oracle.Types (Request (..), RequestMap (..))
+import Oracle.Types (Request (..), RequestZoo (..))
 import Text.JSON.Canonical
     ( JSValue (..)
     )
@@ -31,9 +31,13 @@ toJSONValidationResult NotEvaluated = stringJSON "not evaluated"
 
 validateRequest
     :: Applicative m
-    => RequestMap
+    => RequestZoo
     -> m (RequestRefId, ValidationResult)
 validateRequest (RegisterUserRequest (Request refId _owner _change)) =
-    pure (refId, Validated)
+    pure (refId, NotEvaluated)
 validateRequest (UnregisterUserRequest (Request refId _owner _change)) =
-    pure (refId, Validated)
+    pure (refId, NotEvaluated)
+validateRequest (RegisterRoleRequest (Request refId _owner _change)) =
+    pure (refId, NotEvaluated)
+validateRequest (UnregisterRoleRequest (Request refId _owner _change)) =
+    pure (refId, NotEvaluated)

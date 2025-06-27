@@ -4,13 +4,13 @@ module Oracle.Types
     ( Request (..)
     , Token (..)
     , TokenState (..)
-    , RequestMap (..)
+    , RequestZoo (..)
     ) where
 
 import Core.Types (Change, Owner, RequestRefId, Root)
 import Lib.JSON
 import Text.JSON.Canonical
-import User.Types (RegisterPublicKey)
+import User.Types (RegisterPublicKey, RegisterRole)
 
 data Request k v = Request
     { outputRefId :: RequestRefId
@@ -60,13 +60,17 @@ instance ReportSchemaErrors m => FromJSON m TokenState where
         owner <- v .: "owner"
         pure $ TokenState{tokenRoot = root, tokenOwner = owner}
 
-data RequestMap where
-    RegisterUserRequest :: Request RegisterPublicKey String -> RequestMap
+data RequestZoo where
+    RegisterUserRequest :: Request RegisterPublicKey String -> RequestZoo
     UnregisterUserRequest
-        :: Request RegisterPublicKey String -> RequestMap
+        :: Request RegisterPublicKey String -> RequestZoo
+    RegisterRoleRequest
+        :: Request RegisterRole String -> RequestZoo
+    UnregisterRoleRequest
+        :: Request RegisterRole String -> RequestZoo
 
-instance (ReportSchemaErrors m) => FromJSON m RequestMap where
-    fromJSON = withObject "RequestMap" $ \v -> do
+instance (ReportSchemaErrors m) => FromJSON m RequestZoo where
+    fromJSON = withObject "RequestZoo" $ \v -> do
         requestType <- v .: "type"
         case requestType of
             JSString "register-user" -> do
@@ -75,9 +79,9 @@ instance (ReportSchemaErrors m) => FromJSON m RequestMap where
             JSString "unregister-user" -> do
                 req <- v .: "request"
                 pure $ UnregisterUserRequest req
-            _ -> expectedButGotValue "RequestMap" requestType
+            _ -> expectedButGotValue "RequestZoo" requestType
 
-instance Monad m => ToJSON m RequestMap where
+instance Monad m => ToJSON m RequestZoo where
     toJSON (RegisterUserRequest req) =
         object
             [ "type" .= ("register-user" :: String)
@@ -88,11 +92,21 @@ instance Monad m => ToJSON m RequestMap where
             [ "type" .= ("unregister-user" :: String)
             , "request" .= req
             ]
+    toJSON (RegisterRoleRequest req) =
+        object
+            [ "type" .= ("register-role" :: String)
+            , "request" .= req
+            ]
+    toJSON (UnregisterRoleRequest req) =
+        object
+            [ "type" .= ("unregister-role" :: String)
+            , "request" .= req
+            ]
 
 data Token = Token
     { tokenRefId :: RequestRefId
     , tokenState :: TokenState
-    , tokenRequests :: [RequestMap]
+    , tokenRequests :: [RequestZoo]
     }
 
 instance Monad m => ToJSON m Token where

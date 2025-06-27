@@ -10,6 +10,7 @@ module User.Types
     , Phase (..)
     , URL (..)
     , RegisterPublicKey (..)
+    , RegisterRole (..)
     )
 where
 
@@ -31,6 +32,7 @@ import Lib.JSON
     , intJSON
     , object
     , stringJSON
+    , (.:)
     )
 import Text.JSON.Canonical
     ( FromJSON (..)
@@ -67,7 +69,7 @@ instance Monad m => ToJSON m TestRun where
                 ,
                     ( "repository"
                     , object
-                        [ ("owner", stringJSON owner)
+                        [ ("organization", stringJSON owner)
                         , ("repo", stringJSON repo)
                         ]
                     )
@@ -83,7 +85,7 @@ instance (Monad m, ReportSchemaErrors m) => FromJSON m TestRun where
         platform <- getStringField "platform" mapping
         repository <- do
             repoMapping <- getStringMapField "repository" mapping
-            owner <- getStringField "owner" repoMapping
+            owner <- getStringField "organization" repoMapping
             repo <- getStringField "repo" repoMapping
             pure $ Repository{organization = owner, project = repo}
         directory <- getStringField "directory" mapping
@@ -272,3 +274,50 @@ instance (Monad m, ReportSchemaErrors m) => FromJSON m RegisterPublicKey where
         expectedButGotValue
             "an object representing an accepted phase"
             r
+
+data RegisterRole = RegisterRole
+    { platform :: Platform
+    , repository :: Repository
+    , username :: Username
+    }
+    deriving (Eq, Show)
+
+instance ReportSchemaErrors m => FromJSON m RegisterRole where
+    fromJSON obj@(JSObject _) = do
+        mapping <- fromJSON obj
+        platform <- mapping .: "platform"
+        repository <- do
+            repoMapping <- mapping .: "repository"
+            owner <- repoMapping .: "organization"
+            repo <- repoMapping .: "project"
+            pure $ Repository{organization = owner, project = repo}
+        user <- mapping .: "user"
+        pure
+            $ RegisterRole
+                { platform = Platform platform
+                , repository = repository
+                , username = Username user
+                }
+    fromJSON r =
+        expectedButGotValue
+            "an object representing a register role"
+            r
+
+instance Monad m => ToJSON m RegisterRole where
+    toJSON
+        ( RegisterRole
+                (Platform platform)
+                (Repository owner repo)
+                (Username user)
+            ) =
+            object
+                [ ("platform", stringJSON platform)
+                ,
+                    ( "repository"
+                    , object
+                        [ ("organization", stringJSON owner)
+                        , ("project", stringJSON repo)
+                        ]
+                    )
+                , ("user", stringJSON user)
+                ]

@@ -60,11 +60,11 @@ validateCmd tk command = do
             resp <- fromJSON @_ @MPFSGetToken canonicalJSON
             JSArray <$> mapM constructRes (MPFS.requests resp)
   where
-    constructRes request@MPFSRequest{requestOutput} = liftIO $ do
+    constructRes request@MPFSRequest{requestOutput} = do
         validationRes <- validateMPFSRequest request
         createPairResJSValue (requestOutput, validationRes)
 
-    createPairResJSValue ((RequestRefId ref), validation) =
+    createPairResJSValue (RequestRefId ref, validation) =
         mkObject
             [ (toJSString "reference", stringJSON $ T.unpack ref)
             , (toJSString "validationResult", toJSONValidationResult validation)

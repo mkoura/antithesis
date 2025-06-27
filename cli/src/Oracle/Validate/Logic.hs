@@ -8,11 +8,13 @@ module Oracle.Validate.Logic
     , toJSONValidationResult
     ) where
 
+import Control.Monad.IO.Class (MonadIO (..))
 import Core.Types (Key (..), PublicKeyHash, Username)
 import Lib.JSON
     ( stringJSON
     )
 import MPFS.Types (MPFSOperation (..), MPFSRequest)
+import MPFS.Types qualified as MPFS
 import Oracle.Github.ListPublicKeys
     ( PublicKeyValidation (..)
     , inspectPublicKey
@@ -23,8 +25,6 @@ import Text.JSON.Canonical
     , ReportSchemaErrors (..)
     )
 import User.Types (RegisterPublicKey (..), UnregisterPublicKey (..))
-
-import MPFS.Types qualified as MPFS
 
 data ValidationResult
     = Validated
@@ -39,25 +39,19 @@ toJSONValidationResult NotValidated = stringJSON "not validated"
 toJSONValidationResult CannotValidate = stringJSON "cannot validate"
 toJSONValidationResult NotEvaluated = stringJSON "not evaluated"
 
-instance ReportSchemaErrors IO where
-    expected expct (Just got) =
-        fail
-            $ "Expected: "
-                ++ expct
-                ++ ", but got: "
-                ++ got
-    expected expct Nothing = fail $ "Expected: " ++ expct
-
-parseRegisterPubKey :: JSValue -> IO RegisterPublicKey
+parseRegisterPubKey
+    :: ReportSchemaErrors m => JSValue -> m RegisterPublicKey
 parseRegisterPubKey = fromJSON @_ @RegisterPublicKey
 
-parseUnregisterPubKey :: JSValue -> IO UnregisterPublicKey
+parseUnregisterPubKey
+    :: ReportSchemaErrors m => JSValue -> m UnregisterPublicKey
 parseUnregisterPubKey = fromJSON @_ @UnregisterPublicKey
 
 validateMPFSRequestTemplate
-    :: MPFSRequest
-    -> (Username -> PublicKeyHash -> IO PublicKeyValidation)
-    -> IO ValidationResult
+    :: (ReportSchemaErrors m)
+    => MPFSRequest
+    -> (Username -> PublicKeyHash -> m PublicKeyValidation)
+    -> m ValidationResult
 validateMPFSRequestTemplate request validatePubKey = do
     let (Key key) = MPFS.key $ MPFS.change request
         op = MPFS.operation $ MPFS.change request
@@ -82,7 +76,8 @@ validateMPFSRequestTemplate request validatePubKey = do
             pure NotEvaluated
 
 validateMPFSRequest
-    :: MPFSRequest
-    -> IO ValidationResult
+    :: (MonadIO m, ReportSchemaErrors m)
+    => MPFSRequest
+    -> m ValidationResult
 validateMPFSRequest request =
-    validateMPFSRequestTemplate request inspectPublicKey
+    validateMPFSRequestTemplate request $ \u r -> liftIO $ inspectPublicKey u r

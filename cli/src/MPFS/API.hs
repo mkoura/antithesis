@@ -13,6 +13,7 @@ module MPFS.API
     , RequestInsertBody (..)
     , RequestDeleteBody (..)
     , RequestUpdateBody (..)
+    , getTransaction
     ) where
 
 import Core.Types
@@ -43,8 +44,10 @@ import Servant.API
     , Get
     , JSON
     , Post
+    , QueryParam'
     , QueryParams
     , ReqBody
+    , Required
     , (:<|>) (..)
     , type (:>)
     )
@@ -169,6 +172,11 @@ type WaitNBlocks =
         :> Capture "n" Int
         :> Get '[JSON] Value
 
+type GetTransaction =
+    "transaction"
+        :> QueryParam' '[Required] "txHash" TxHash
+        :> Get '[JSON] Value
+
 type TokenAPI =
     RequestInsert
         :<|> RequestDelete
@@ -179,6 +187,7 @@ type TokenAPI =
         :<|> GetTokenFacts
         :<|> SubmitTransaction
         :<|> WaitNBlocks
+        :<|> GetTransaction
 
 tokenApi :: Proxy TokenAPI
 tokenApi = Proxy
@@ -223,6 +232,8 @@ submitTransaction :: SignedTx -> ClientM TxHash
 submitTransaction = submitTransaction'
 waitNBlocks :: Int -> ClientM JSValue
 waitNBlocks n = fromAesonThrow <$> waitNBlocks' n
+getTransaction :: TxHash -> ClientM JSValue
+getTransaction txHash = fromAesonThrow <$> getTransaction' txHash
 
 requestInsert'
     :: Address
@@ -247,6 +258,7 @@ getToken' :: TokenId -> ClientM Value
 getTokenFacts' :: TokenId -> ClientM Value
 submitTransaction' :: SignedTx -> ClientM TxHash
 waitNBlocks' :: Int -> ClientM Value
+getTransaction' :: TxHash -> ClientM Value
 requestInsert'
     :<|> requestDelete'
     :<|> requestUpdate'
@@ -255,5 +267,6 @@ requestInsert'
     :<|> getToken'
     :<|> getTokenFacts'
     :<|> submitTransaction'
-    :<|> waitNBlocks' =
+    :<|> waitNBlocks'
+    :<|> getTransaction' =
         client tokenApi

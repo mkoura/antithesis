@@ -36,6 +36,7 @@ appDummy =
             :<|> facts
             :<|> submitTransaction
             :<|> const (pure $ toJSON ())
+            :<|> const (pure $ toJSON ())
         )
 
 dummyWithUnsignedTx :: WithUnsignedTx Value

@@ -221,6 +221,7 @@ test-suite anti-test
     , cardano-ledger-binary
     , cardano-ledger-core
     , cardano-strict-containers
+    , exceptions
     , hspec
     , http-client
     , http-client-tls

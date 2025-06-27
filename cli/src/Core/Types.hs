@@ -345,6 +345,14 @@ newtype TxHash = TxHash
     }
     deriving (Eq, Show)
 
+instance FromHttpApiData TxHash where
+    parseUrlPiece txHash =
+        if T.null txHash
+            then Left "TxHash cannot be empty"
+            else Right (TxHash{txHash})
+
+instance ToHttpApiData TxHash where
+    toUrlPiece (TxHash txHash) = txHash
 instance Aeson.FromJSON TxHash where
     parseJSON = Aeson.withObject "TxHash" $ \v ->
         TxHash

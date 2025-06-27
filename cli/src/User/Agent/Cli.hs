@@ -1,5 +1,6 @@
 module User.Agent.Cli
     ( AgentCommand (..)
+    , AgentCommandCore (..)
     , agentCmd
     )
 where

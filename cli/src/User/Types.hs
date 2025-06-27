@@ -1,3 +1,4 @@
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE StandaloneDeriving #-}
@@ -10,7 +11,8 @@ module User.Types
     , Phase (..)
     , URL (..)
     , RegisterPublicKey (..)
-    , RegisterRole (..)
+    , RegisterRoleKey (..)
+    , Direction (..)
     )
 where
 
@@ -237,10 +239,14 @@ instance ReportSchemaErrors m => FromJSON m (TestRunState RunningT) where
             "an object representing an accepted phase"
             other
 
+data Direction = Insert | Delete
+    deriving (Eq, Show)
+
 data RegisterPublicKey = RegisterPublicKey
     { platform :: Platform
     , username :: Username
     , pubkeyhash :: PublicKeyHash
+    , direction :: Direction
     }
     deriving (Eq, Show)
 
@@ -250,10 +256,17 @@ instance Monad m => ToJSON m RegisterPublicKey where
                 (Platform platform)
                 (Username user)
                 (PublicKeyHash pubkeyhash)
+                direction
             ) =
             toJSON
                 $ Map.fromList
-                    [ ("platform" :: String, JSString $ toJSString platform)
+                    [
+                        ( "type"
+                        , JSString $ toJSString $ case direction of
+                            Insert -> "register-user"
+                            Delete -> "unregister-user"
+                        )
+                    , ("platform" :: String, JSString $ toJSString platform)
                     , ("user", JSString $ toJSString user)
                     , ("publickeyhash", JSString $ toJSString pubkeyhash)
                     ]
@@ -261,6 +274,11 @@ instance Monad m => ToJSON m RegisterPublicKey where
 instance (Monad m, ReportSchemaErrors m) => FromJSON m RegisterPublicKey where
     fromJSON obj@(JSObject _) = do
         mapping <- fromJSON obj
+        requestType <- mapping .: "type"
+        direction <- case requestType of
+            JSString "register-user" -> pure Insert
+            JSString "unregister-user" -> pure Delete
+            _ -> expectedButGotValue "a register user request" obj
         platform <- getStringField "platform" mapping
         user <- getStringField "user" mapping
         pubkeyhash <- getStringField "publickeyhash" mapping
@@ -269,22 +287,29 @@ instance (Monad m, ReportSchemaErrors m) => FromJSON m RegisterPublicKey where
                 { platform = Platform platform
                 , username = Username user
                 , pubkeyhash = PublicKeyHash pubkeyhash
+                , direction
                 }
     fromJSON r =
         expectedButGotValue
             "an object representing an accepted phase"
             r
 
-data RegisterRole = RegisterRole
+data RegisterRoleKey = RegisterRoleKey
     { platform :: Platform
     , repository :: Repository
     , username :: Username
+    , direction :: Direction
     }
     deriving (Eq, Show)
 
-instance ReportSchemaErrors m => FromJSON m RegisterRole where
+instance ReportSchemaErrors m => FromJSON m RegisterRoleKey where
     fromJSON obj@(JSObject _) = do
         mapping <- fromJSON obj
+        requestType <- mapping .: "type"
+        direction <- case requestType of
+            JSString "register-role" -> pure Insert
+            JSString "unregister-role" -> pure Delete
+            _ -> expectedButGotValue "a register role request" obj
         platform <- mapping .: "platform"
         repository <- do
             repoMapping <- mapping .: "repository"
@@ -293,25 +318,33 @@ instance ReportSchemaErrors m => FromJSON m RegisterRole where
             pure $ Repository{organization = owner, project = repo}
         user <- mapping .: "user"
         pure
-            $ RegisterRole
+            $ RegisterRoleKey
                 { platform = Platform platform
                 , repository = repository
                 , username = Username user
+                , direction
                 }
     fromJSON r =
         expectedButGotValue
             "an object representing a register role"
             r
 
-instance Monad m => ToJSON m RegisterRole where
+instance Monad m => ToJSON m RegisterRoleKey where
     toJSON
-        ( RegisterRole
+        ( RegisterRoleKey
                 (Platform platform)
                 (Repository owner repo)
                 (Username user)
+                direction
             ) =
             object
-                [ ("platform", stringJSON platform)
+                [
+                    ( "type"
+                    , stringJSON $ case direction of
+                        Insert -> "register-role"
+                        Delete -> "unregister-role"
+                    )
+                , ("platform", stringJSON platform)
                 ,
                     ( "repository"
                     , object

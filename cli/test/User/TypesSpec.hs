@@ -21,7 +21,8 @@ import Text.JSON.Canonical
     , ToJSON (..)
     )
 import User.Types
-    ( Duration (Duration)
+    ( Direction (..)
+    , Duration (Duration)
     , Reason (..)
     , RegisterPublicKey (..)
     , TestRun
@@ -94,6 +95,7 @@ spec = do
                         , pubkeyhash =
                             PublicKeyHash
                                 "AAAAC3NzaC1lZDI1NTE5AAAAIO773JHqlyLm5XzOjSe+Q5yFJyLFuMLL6+n63t4t7HR8"
+                        , direction = Insert
                         }
             roundTrip registerPubKey
 
@@ -106,5 +108,6 @@ spec = do
                         , pubkeyhash =
                             PublicKeyHash
                                 "AAAAC3NzaC1lZDI1NTE5AAAAIO773JHqlyLm5XzOjSe+Q5yFJyLFuMLL6+n63t4t7HR8"
+                        , direction = Delete
                         }
             roundTrip unregisterPubKey

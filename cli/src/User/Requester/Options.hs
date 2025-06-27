@@ -3,9 +3,7 @@
 module User.Requester.Options
     ( requesterCommandParser
     , addPublicKeyOptions
-    , removePublicKeyOptions
     , addRoleOptions
-    , removeRoleOptions
     , retractRequestOptions
     ) where
 
@@ -16,7 +14,6 @@ import Core.Options
     , platformOption
     , pubkeyhashOption
     , repositoryOption
-    , roleOption
     , usernameOption
     )
 import Options.Applicative
@@ -28,7 +25,13 @@ import Options.Applicative
     )
 import User.Cli (UserCommand (..))
 import User.Requester.Cli (RequesterCommand (..))
-import User.Types (RegisterPublicKey (..))
+import User.Types
+    ( Direction (..)
+    , Duration (..)
+    , RegisterPublicKey (..)
+    , RegisterRoleKey (..)
+    , TestRun (..)
+    )
 
 addPublicKeyOptions :: Parser RequesterCommand
 addPublicKeyOptions =
@@ -37,32 +40,38 @@ addPublicKeyOptions =
                 <$> platformOption
                 <*> usernameOption
                 <*> pubkeyhashOption
+                <*> pure Insert
             )
 
 removePublicKeyOptions :: Parser RequesterCommand
 removePublicKeyOptions =
-    UnregisterUser
+    RegisterUser
         <$> ( RegisterPublicKey
                 <$> platformOption
                 <*> usernameOption
                 <*> pubkeyhashOption
+                <*> pure Delete
             )
 
 addRoleOptions :: Parser RequesterCommand
 addRoleOptions =
     RegisterRole
-        <$> platformOption
-        <*> repositoryOption
-        <*> roleOption
-        <*> usernameOption
+        <$> ( RegisterRoleKey
+                <$> platformOption
+                <*> repositoryOption
+                <*> usernameOption
+                <*> pure Insert
+            )
 
 removeRoleOptions :: Parser RequesterCommand
 removeRoleOptions =
-    UnregisterRole
-        <$> platformOption
-        <*> repositoryOption
-        <*> roleOption
-        <*> usernameOption
+    RegisterRole
+        <$> ( RegisterRoleKey
+                <$> platformOption
+                <*> repositoryOption
+                <*> usernameOption
+                <*> pure Delete
+            )
 
 retractRequestOptions :: Parser UserCommand
 retractRequestOptions =
@@ -107,8 +116,12 @@ requesterCommandParser =
 requestTestOptions :: Parser RequesterCommand
 requestTestOptions =
     RequestTest
-        <$> platformOption
-        <*> repositoryOption
-        <*> commitOption
-        <*> directoryOption
-        <*> usernameOption
+        <$> ( TestRun
+                <$> platformOption
+                <*> repositoryOption
+                <*> directoryOption
+                <*> commitOption
+                <*> pure 1
+                <*> usernameOption
+            )
+        <*> pure (Duration 3)

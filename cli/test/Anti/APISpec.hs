@@ -75,6 +75,7 @@ import Text.JSON.Canonical (JSString, JSValue (..), fromJSString)
 import User.Cli (UserCommand (..), userCmd)
 import User.Requester.Cli (RequesterCommand (..), requesterCmd)
 import User.Types (RegisterPublicKey (..))
+import User.Types qualified as Direction (Direction (..))
 
 mpfsPolicyId :: String
 mpfsPolicyId = "c1e392ee7da9415f946de9d2aef9607322b47d6e84e8142ef0c340bf"
@@ -118,7 +119,7 @@ setup = do
     nm <-
         newManager
             $ tlsManagerSettings
-                { managerResponseTimeout = responseTimeoutMicro $ 60 * 1000000
+                { managerResponseTimeout = responseTimeoutMicro $ 90 * 1000000
                 }
     let call :: ClientM a -> IO a
         call f = do
@@ -248,6 +249,7 @@ spec = do
                                 { platform = Platform "test-platform"
                                 , username = Username "test-user"
                                 , pubkeyhash = PublicKeyHash "test-pubkeyhash"
+                                , direction = Direction.Insert
                                 }
                     let txHash = case v of
                             JSObject obj -> case obj !? "txHash" of

@@ -18,7 +18,6 @@ import Core.Types
     , PublicKeyHash (..)
     , Repository (..)
     , RequestRefId (..)
-    , Role (..)
     , SHA1 (..)
     , Username (..)
     )
@@ -40,7 +39,13 @@ import Test.Hspec
 import Text.JSON.Canonical (JSValue (JSArray, JSNull))
 import User.Cli (UserCommand (..))
 import User.Requester.Cli (RequesterCommand (..))
-import User.Types (RegisterPublicKey (..))
+import User.Types
+    ( Direction (..)
+    , Duration (..)
+    , RegisterPublicKey (..)
+    , RegisterRoleKey (..)
+    , TestRun (..)
+    )
 
 runDummyServer :: IO ()
 runDummyServer = do
@@ -101,6 +106,7 @@ spec = beforeAll_ runDummyServer $ do
                                     , pubkeyhash =
                                         PublicKeyHash
                                             "AAAAC3NzaC1lZDI1NTE5AAAAIO773JHqlyLm5XzOjSe+Q5yFJyLFuMLL6+n63t4t7HR8"
+                                    , direction = Insert
                                     }
                     }
 
@@ -124,13 +130,14 @@ spec = beforeAll_ runDummyServer $ do
                     { optionsCommand =
                         UserCommand
                             $ UserRequesterCommand
-                            $ UnregisterUser
+                            $ RegisterUser
                                 RegisterPublicKey
                                     { platform = Platform "github"
                                     , username = Username "bob"
                                     , pubkeyhash =
                                         PublicKeyHash
                                             "607a0d8a64616a407537edf0d9b59cf4cb509c556f6d2de4250ce15df2"
+                                    , direction = Delete
                                     }
                     }
         anti args `shouldReturn` (opts, dummyTxHashJSON)
@@ -154,12 +161,13 @@ spec = beforeAll_ runDummyServer $ do
                     { optionsCommand =
                         UserCommand
                             $ UserRequesterCommand
-                                UnregisterRole
-                                    { platform = Platform "github"
-                                    , repository = Repository "cardano-foundation" "antithesis"
-                                    , role = Role "maintainer"
-                                    , username = Username "bob"
-                                    }
+                            $ RegisterRole
+                            $ RegisterRoleKey
+                                { platform = Platform "github"
+                                , repository = Repository "cardano-foundation" "antithesis"
+                                , username = Username "bob"
+                                , direction = Delete
+                                }
                     }
 
         anti args `shouldReturn` (opts, dummyTxHashJSON)
@@ -183,13 +191,16 @@ spec = beforeAll_ runDummyServer $ do
                     { optionsCommand =
                         UserCommand
                             $ UserRequesterCommand
-                                RequestTest
+                            $ RequestTest
+                                TestRun
                                     { platform = Platform "github"
                                     , repository = Repository "cardano-foundation" "antithesis"
-                                    , username = Username "bob"
-                                    , commit = SHA1 "9114528e2343e6fcf3c92de71364275227e6b16d"
+                                    , requester = Username "bob"
+                                    , commitId = SHA1 "9114528e2343e6fcf3c92de71364275227e6b16d"
                                     , directory = Directory "."
+                                    , testRunIndex = 0
                                     }
+                            $ Duration 4
                     }
         anti args `shouldReturn` (opts, dummyTxHashJSON)
 

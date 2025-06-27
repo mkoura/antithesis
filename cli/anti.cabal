@@ -125,7 +125,6 @@ library
     , aeson
     , base
     , base16-bytestring      ^>=1.0.2.0
-    , binary
     , bytestring
     , canonical-json
     , cardano-addresses      ^>=4.0.0
@@ -137,7 +136,6 @@ library
     , containers             ^>=0.6.8
     , http-client
     , http-client-tls
-    , http-types
     , lens
     , optparse-applicative
     , plutus-tx

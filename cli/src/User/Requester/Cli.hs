@@ -1,205 +1,90 @@
+{-# LANGUAGE DuplicateRecordFields #-}
+
 module User.Requester.Cli
     ( requesterCmd
     , RequesterCommand (..)
     ) where
 
 import Core.Types
-    ( Directory (..)
-    , Platform (..)
-    , PublicKeyHash (..)
-    , Repository (..)
-    , Role (..)
-    , SHA1 (..)
-    , TokenId
-    , Username (..)
+    ( TokenId
     , Wallet (..)
     , WithTxHash
     )
-import Data.Binary.Builder (toLazyByteString)
-import Data.ByteString.Lazy.Char8 qualified as BL
-import Data.Text (Text)
-import Data.Text qualified as T
-import Lib.JSON (object, (.=))
 import MPFS.API
     ( RequestDeleteBody (..)
     , RequestInsertBody (..)
     , requestDelete
     , requestInsert
     )
-import Network.HTTP.Types
-    ( encodePathSegmentsRelative
-    )
 import Servant.Client (ClientM)
 import Submitting (submitting)
-import Text.JSON.Canonical (JSValue (..), ToJSON (..), toJSString)
-import User.Types (RegisterPublicKey (..))
-
-data Operation = Insert | Delete
-    deriving (Eq, Show)
+import Text.JSON.Canonical (JSValue (..), ToJSON (..))
+import User.Agent.Cli
+    ( AgentCommand (..)
+    , AgentCommandCore (..)
+    , agentCmd
+    )
+import User.Types
+    ( Direction (..)
+    , Duration
+    , RegisterPublicKey (..)
+    , RegisterRoleKey (..)
+    , TestRun (..)
+    )
 
 data RequesterCommand
     = RegisterUser RegisterPublicKey
-    | UnregisterUser RegisterPublicKey
-    | RegisterRole
-        { platform :: Platform
-        , repository :: Repository
-        , role :: Role
-        , username :: Username
-        }
-    | UnregisterRole
-        { platform :: Platform
-        , repository :: Repository
-        , role :: Role
-        , username :: Username
-        }
-    | RequestTest
-        { platform :: Platform
-        , repository :: Repository
-        , commit :: SHA1
-        , directory :: Directory
-        , username :: Username
-        }
+    | RegisterRole RegisterRoleKey
+    | RequestTest TestRun Duration
     deriving (Eq, Show)
 
 requesterCmd
     :: Wallet -> TokenId -> RequesterCommand -> ClientM JSValue
 requesterCmd wallet tokenId command = do
     case command of
-        RegisterUser RegisterPublicKey{platform, username, pubkeyhash} ->
-            manageUser wallet tokenId platform username pubkeyhash Insert
-                >>= toJSON
-        UnregisterUser RegisterPublicKey{platform, username, pubkeyhash} ->
-            manageUser wallet tokenId platform username pubkeyhash Delete
-                >>= toJSON
-        RegisterRole{platform, repository, username, role} ->
-            manageRole wallet tokenId platform repository username role Insert
-                >>= toJSON
-        UnregisterRole{platform, repository, username, role} ->
-            manageRole wallet tokenId platform repository username role Delete
-                >>= toJSON
-        RequestTest
-            { platform
-            , repository
-            , username
-            , commit
-            , directory
-            } ->
-                requestTestRun
-                    wallet
-                    tokenId
-                    platform
-                    repository
-                    username
-                    commit
-                    directory
-                    >>= toJSON
-
-mkKey :: [String] -> String
-mkKey =
-    BL.unpack
-        . toLazyByteString
-        . encodePathSegmentsRelative
-        . fmap T.pack
-
-requestTestRun
-    :: Wallet
-    -> TokenId
-    -> Platform
-    -> Repository
-    -> Username
-    -> SHA1
-    -> Directory
-    -> ClientM WithTxHash
-requestTestRun
-    wallet
-    tokenId
-    (Platform platform)
-    (Repository org repo)
-    (Username username)
-    (SHA1 sha1)
-    (Directory directory) = do
-        valueV <-
-            object
-                [ "state" .= ("pending" :: Text)
-                ]
-        submitting wallet $ \address -> do
-            let key =
-                    JSString
-                        $ toJSString
-                        $ mkKey
-                            [ "request-test-run"
-                            , platform
-                            , org
-                            , repo
-                            , username
-                            , sha1
-                            , directory
-                            ]
-
-            requestInsert address tokenId
-                $ RequestInsertBody key valueV
+        RegisterUser request ->
+            manageUser wallet tokenId request >>= toJSON
+        RegisterRole request ->
+            manageRole wallet tokenId request >>= toJSON
+        RequestTest testRun duration ->
+            agentCmd wallet tokenId (AgentCommand $ Create testRun duration)
 
 manageUser
     :: Wallet
     -> TokenId
-    -> Platform
-    -> Username
-    -> PublicKeyHash
-    -> Operation
+    -> RegisterPublicKey
     -> ClientM WithTxHash
 manageUser
     wallet
     tokenId
-    (Platform platform)
-    (Username username)
-    (PublicKeyHash pubkeyhash)
-    operation =
+    request@RegisterPublicKey{direction} =
         submitting wallet $ \address -> do
-            let
-                key =
-                    JSString
-                        $ toJSString
-                        $ mkKey
-                            [ "register-user"
-                            , platform
-                            , username
-                            , pubkeyhash
-                            ]
-                value = JSNull
-            case operation of
-                Insert -> requestInsert address tokenId $ RequestInsertBody key value
-                Delete -> requestDelete address tokenId $ RequestDeleteBody key value
+            key <- toJSON request
+            value <- toJSON ("" :: String)
+            case direction of
+                Insert ->
+                    requestInsert address tokenId
+                        $ RequestInsertBody{key = key, value = value}
+                Delete ->
+                    requestDelete address tokenId
+                        $ RequestDeleteBody{key = key, value = value}
 
 manageRole
     :: Wallet
     -> TokenId
-    -> Platform
-    -> Repository
-    -> Username
-    -> Role
-    -> Operation
+    -> RegisterRoleKey
     -> ClientM WithTxHash
 manageRole
     wallet
     tokenId
-    (Platform platform)
-    (Repository org repo)
-    (Username username)
-    (Role roleStr)
-    operation =
+    request@RegisterRoleKey{direction} =
         submitting wallet $ \address -> do
-            let key =
-                    JSString
-                        $ toJSString
-                        $ mkKey
-                            [ "register-role"
-                            , platform
-                            , org
-                            , repo
-                            , username
-                            , roleStr
-                            ]
-                value = JSNull
-            case operation of
-                Insert -> requestInsert address tokenId $ RequestInsertBody key value
-                Delete -> requestDelete address tokenId $ RequestDeleteBody key value
+            key <- toJSON request
+            value <- toJSON ("" :: String)
+            case direction of
+                Insert ->
+                    requestInsert address tokenId
+                        $ RequestInsertBody{key = key, value = value}
+                Delete ->
+                    requestDelete address tokenId
+                        $ RequestDeleteBody{key = key, value = value}

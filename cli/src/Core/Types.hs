@@ -24,7 +24,6 @@ module Core.Types
     , TxHash (..)
     , Owner (..)
     , Key (..)
-    , Val (..)
     , CageDatum (..)
     , Root (..)
     , Change (..)
@@ -47,9 +46,10 @@ import PlutusTx.IsData.Class
 import Servant.API (FromHttpApiData (..), ToHttpApiData (..))
 import Text.JSON.Canonical
     ( FromJSON (..)
-    , JSValue
+    , JSValue (..)
     , ReportSchemaErrors
     , ToJSON (..)
+    , expectedButGotValue
     )
 
 -- TxHash-OutputIndex
@@ -66,6 +66,12 @@ instance FromHttpApiData RequestRefId where
         case rid of
             "" -> Left "RequestRefId cannot be empty"
             _ -> Right (RequestRefId rid)
+
+instance Monad m => ToJSON m RequestRefId where
+    toJSON (RequestRefId ref) = toJSON ref
+
+instance ReportSchemaErrors m => FromJSON m RequestRefId where
+    fromJSON v = RequestRefId <$> fromJSON v
 
 instance Aeson.ToJSON RequestRefId where
     toJSON (RequestRefId ref) = Aeson.String ref
@@ -96,6 +102,12 @@ instance FromHttpApiData TokenId where
 newtype Owner = Owner String
     deriving (Eq, Show)
 
+instance Monad m => ToJSON m Owner where
+    toJSON (Owner owner) = toJSON owner
+
+instance ReportSchemaErrors m => FromJSON m Owner where
+    fromJSON v = Owner <$> fromJSON v
+
 instance FromData Owner where
     fromBuiltinData = parse . builtinDataToData
       where
@@ -112,16 +124,11 @@ instance FromJSON Maybe a => FromData (Key a) where
         parse = \case
             B b -> Key <$> parseJSValue b
             _ -> Nothing
+instance ToJSON m a => ToJSON m (Key a) where
+    toJSON (Key key) = toJSON key
 
-newtype Val = Val JSValue
-    deriving (Eq, Show)
-
-instance FromData Val where
-    fromBuiltinData = parse . builtinDataToData
-      where
-        parse = \case
-            B b -> Val <$> parseJSValue b
-            _ -> Nothing
+instance (FromJSON m a, Functor m) => FromJSON m (Key a) where
+    fromJSON v = Key <$> fromJSON v
 
 data Operation a
     = Insert a
@@ -141,6 +148,29 @@ instance FromJSON Maybe a => FromData (Operation a) where
                 Just (Update oldVal newVal)
             _ -> Nothing
 
+instance (ToJSON m a, Monad m) => ToJSON m (Operation a) where
+    toJSON (Insert a) =
+        object
+            ["operation" .= ("insert" :: String), "value" .= a]
+    toJSON (Delete a) =
+        object
+            ["operation" .= ("delete" :: String), "value" .= a]
+    toJSON (Update old new) =
+        object
+            [ "operation" .= ("update" :: String)
+            , "oldValue" .= old
+            , "newValue" .= new
+            ]
+
+instance (ReportSchemaErrors m, FromJSON m a) => FromJSON m (Operation a) where
+    fromJSON = withObject "Operation" $ \v -> do
+        op <- v .: "operation"
+        case op of
+            JSString "insert" -> Insert <$> v .: "value"
+            JSString "delete" -> Delete <$> v .: "value"
+            JSString "update" -> Update <$> v .: "oldValue" <*> v .: "newValue"
+            _ -> expectedButGotValue "Operation" op
+
 newtype Root = Root String
     deriving (Eq, Show)
 
@@ -151,11 +181,36 @@ instance FromData Root where
             B b -> Just (Root $ B.unpack $ encode b)
             _ -> Nothing
 
+instance Monad m => ToJSON m Root where
+    toJSON (Root root) = toJSON root
+
+instance (ReportSchemaErrors m) => FromJSON m Root where
+    fromJSON v = Root <$> fromJSON v
+
 data Change k v = Change
     { key :: Key k
     , operation :: Operation v
     }
     deriving (Eq, Show)
+
+instance
+    (FromJSON m k, FromJSON m v, ReportSchemaErrors m)
+    => FromJSON m (Change k v)
+    where
+    fromJSON = withObject "Change" $ \v -> do
+        key <- v .: "key"
+        operation <- v .: "operation"
+        pure $ Change key operation
+
+instance
+    (Monad m, ToJSON m k, ToJSON m v)
+    => ToJSON m (Change k v)
+    where
+    toJSON (Change key operation) =
+        object
+            [ "key" .= key
+            , "operation" .= operation
+            ]
 
 data CageDatum k v
     = RequestDatum

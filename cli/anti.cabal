@@ -185,7 +185,6 @@ test-suite anti-test
     Anti.CliSpec
     Anti.Server
     Lib.JSONSpec
-    MPFS.TypesSpec
     Oracle.Github.OracleValidationSpec
     User.TypesSpec
 

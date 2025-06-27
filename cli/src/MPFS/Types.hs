@@ -1,19 +1,14 @@
 {-# LANGUAGE StrictData #-}
 
 module MPFS.Types
-    ( MPFSRequest (..)
-    , MPFSRequestChange (..)
-    , MPFSTokenState (..)
+    ( MPFSTokenState (..)
     , MPFSGetToken (..)
-    , MPFSOperation (..)
     ) where
 
 import Core.Types
-    ( Key (..)
-    , Owner (..)
+    ( Owner (..)
     , RequestRefId (..)
     , Root (..)
-    , Val (..)
     )
 import Data.Map.Strict qualified as Map
 import Data.Text qualified as T
@@ -30,23 +25,9 @@ import Text.JSON.Canonical
     , ReportSchemaErrors
     , ToJSON (..)
     , expectedButGotValue
-    , fromJSString
     , toJSString
     )
-
-data MPFSRequestChange = MPFSRequestChange
-    { key :: Key JSValue
-    , value :: Val
-    , operation :: MPFSOperation
-    }
-    deriving (Eq, Show)
-
-data MPFSRequest = MPFSRequest
-    { requestOutput :: RequestRefId
-    , change :: MPFSRequestChange
-    , owner :: Owner
-    }
-    deriving (Eq, Show)
+import Oracle.Types (Request)
 
 data MPFSTokenState = MPFSTokenState
     { owner :: Owner
@@ -57,88 +38,9 @@ data MPFSTokenState = MPFSTokenState
 data MPFSGetToken = MPFSGetToken
     { outputRefId :: RequestRefId
     , state :: MPFSTokenState
-    , requests :: [MPFSRequest]
+    , requests :: [Request JSValue JSValue]
     }
     deriving (Eq, Show)
-
-data MPFSOperation
-    = InsertOp
-    | DeleteOp
-    | UpdateOp
-    deriving (Eq, Show)
-
-toJSONOperation :: MPFSOperation -> JSValue
-toJSONOperation InsertOp = JSString $ toJSString "insert"
-toJSONOperation DeleteOp = JSString $ toJSString "delete"
-toJSONOperation UpdateOp = JSString $ toJSString "update"
-
-fromJSONOperation
-    :: (ReportSchemaErrors m) => JSValue -> m MPFSOperation
-fromJSONOperation (JSString jsString) = do
-    let op = fromJSString jsString
-    case op of
-        "insert" -> pure InsertOp
-        "delete" -> pure DeleteOp
-        "update" -> pure UpdateOp
-        _ -> expectedButGotValue "a valid operation" (JSString jsString)
-fromJSONOperation other =
-    expectedButGotValue "a string representing an operation" other
-
-instance Monad m => ToJSON m MPFSRequestChange where
-    toJSON
-        ( MPFSRequestChange
-                (Key key)
-                (Val val)
-                op
-            ) =
-            toJSON
-                $ Map.fromList
-                    [ ("key" :: String, key)
-                    , ("value", val)
-                    , ("operation", toJSONOperation op)
-                    ]
-
-instance (Monad m, ReportSchemaErrors m) => FromJSON m MPFSRequestChange where
-    fromJSON obj@(JSObject _) = do
-        mapping <- fromJSON obj
-        key <- getField "key" mapping
-        val <- getField "value" mapping
-        op <- fromJSONOperation <$> getField "operation" mapping
-        MPFSRequestChange (Key key) (Val val) <$> op
-    fromJSON r =
-        expectedButGotValue
-            "an object representing a MPFS request change"
-            r
-
-instance Monad m => ToJSON m MPFSRequest where
-    toJSON
-        ( MPFSRequest
-                (RequestRefId ref)
-                change
-                (Owner owner)
-            ) =
-            object
-                [ ("outputRefId", stringJSON $ T.unpack ref)
-                , ("change", toJSON change)
-                , ("owner", stringJSON owner)
-                ]
-
-instance (Monad m, ReportSchemaErrors m) => FromJSON m MPFSRequest where
-    fromJSON obj@(JSObject _) = do
-        mapping <- fromJSON obj
-        ref <- getStringField "outputRefId" mapping
-        owner <- getStringField "owner" mapping
-        change <- getField "change" mapping >>= fromJSON
-        pure
-            $ MPFSRequest
-                { requestOutput = RequestRefId $ T.pack ref
-                , change = change
-                , owner = Owner owner
-                }
-    fromJSON r =
-        expectedButGotValue
-            "an object representing a MPFS request"
-            r
 
 instance Monad m => ToJSON m MPFSTokenState where
     toJSON
@@ -167,7 +69,7 @@ instance (Monad m, ReportSchemaErrors m) => FromJSON m MPFSTokenState where
             "an object representing token state"
             r
 
-instance Monad m => ToJSON m MPFSGetToken where
+instance ReportSchemaErrors m => ToJSON m MPFSGetToken where
     toJSON
         ( MPFSGetToken
                 (RequestRefId ref)

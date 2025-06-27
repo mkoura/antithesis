@@ -10,7 +10,6 @@ module User.Types
     , Phase (..)
     , URL (..)
     , RegisterPublicKey (..)
-    , UnregisterPublicKey (..)
     )
 where
 
@@ -265,44 +264,6 @@ instance (Monad m, ReportSchemaErrors m) => FromJSON m RegisterPublicKey where
         pubkeyhash <- getStringField "publickeyhash" mapping
         pure
             $ RegisterPublicKey
-                { platform = Platform platform
-                , username = Username user
-                , pubkeyhash = PublicKeyHash pubkeyhash
-                }
-    fromJSON r =
-        expectedButGotValue
-            "an object representing an accepted phase"
-            r
-
-data UnregisterPublicKey = UnregisterPublicKey
-    { platform :: Platform
-    , username :: Username
-    , pubkeyhash :: PublicKeyHash
-    }
-    deriving (Eq, Show)
-
-instance Monad m => ToJSON m UnregisterPublicKey where
-    toJSON
-        ( UnregisterPublicKey
-                (Platform platform)
-                (Username user)
-                (PublicKeyHash pubkeyhash)
-            ) =
-            toJSON
-                $ Map.fromList
-                    [ ("platform" :: String, JSString $ toJSString platform)
-                    , ("user", JSString $ toJSString user)
-                    , ("publickeyhash", JSString $ toJSString pubkeyhash)
-                    ]
-
-instance (Monad m, ReportSchemaErrors m) => FromJSON m UnregisterPublicKey where
-    fromJSON obj@(JSObject _) = do
-        mapping <- fromJSON obj
-        platform <- getStringField "platform" mapping
-        user <- getStringField "user" mapping
-        pubkeyhash <- getStringField "publickeyhash" mapping
-        pure
-            $ UnregisterPublicKey
                 { platform = Platform platform
                 , username = Username user
                 , pubkeyhash = PublicKeyHash pubkeyhash

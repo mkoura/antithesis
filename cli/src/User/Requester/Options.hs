@@ -28,7 +28,7 @@ import Options.Applicative
     )
 import User.Cli (UserCommand (..))
 import User.Requester.Cli (RequesterCommand (..))
-import User.Types (RegisterPublicKey (..), UnregisterPublicKey (..))
+import User.Types (RegisterPublicKey (..))
 
 addPublicKeyOptions :: Parser RequesterCommand
 addPublicKeyOptions =
@@ -42,7 +42,7 @@ addPublicKeyOptions =
 removePublicKeyOptions :: Parser RequesterCommand
 removePublicKeyOptions =
     UnregisterUser
-        <$> ( UnregisterPublicKey
+        <$> ( RegisterPublicKey
                 <$> platformOption
                 <*> usernameOption
                 <*> pubkeyhashOption

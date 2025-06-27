@@ -35,7 +35,6 @@ import User.Types
         )
     , TestRunState (..)
     , URL (..)
-    , UnregisterPublicKey (..)
     )
 
 instance ReportSchemaErrors IO where
@@ -101,7 +100,7 @@ spec = do
     describe "UnregisterPublicKey" $ do
         it "roundtrips on the JSON instance" $ do
             let unregisterPubKey =
-                    UnregisterPublicKey
+                    RegisterPublicKey
                         { platform = Platform "github"
                         , username = Username "tester"
                         , pubkeyhash =

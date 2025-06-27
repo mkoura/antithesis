@@ -36,7 +36,7 @@ import Test.Hspec
 import Text.JSON.Canonical (JSValue (JSArray, JSNull))
 import User.Cli (UserCommand (..))
 import User.Requester.Cli (RequesterCommand (..))
-import User.Types (RegisterPublicKey (..), UnregisterPublicKey (..))
+import User.Types (RegisterPublicKey (..))
 
 runDummyServer :: IO ()
 runDummyServer = do
@@ -112,7 +112,7 @@ spec = beforeAll_ runDummyServer $ do
                         UserCommand
                             $ UserRequesterCommand
                             $ UnregisterUser
-                                UnregisterPublicKey
+                                RegisterPublicKey
                                     { platform = Platform "github"
                                     , username = Username "bob"
                                     , pubkeyhash =

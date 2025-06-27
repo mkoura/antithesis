@@ -1,3 +1,4 @@
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
@@ -210,8 +211,15 @@ fromAesonString = Aeson.withText "JSValue" $ \v ->
         Left err -> fail $ "Failed to parse value: " ++ err
         Right jsValue -> pure jsValue
 
-parseJSValue :: ByteString -> (JSValue -> a) -> Maybe a
-parseJSValue b constructor =
-    case parseCanonicalJSON (BL.fromStrict b) of
-        Left _ -> Nothing
-        Right jsValue -> Just (constructor jsValue)
+instance {-# OVERLAPPING #-} ReportSchemaErrors Maybe where
+    expected _expectedValue _gotValue = Nothing
+
+parseJSValue
+    :: FromJSON Maybe a
+    => StrictByteString
+    -> Maybe a
+parseJSValue b = do
+    js <- case parseCanonicalJSON (BL.fromStrict b) of
+        Left _err -> Nothing
+        Right js -> Just js
+    fromJSON js

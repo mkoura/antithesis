@@ -166,14 +166,14 @@ spec = do
                         $ JSString "value"
                 let dtx = deserializeTx tx
                 Just (policyId', datum) <- pure $ getFirstOutput dtx
-                Just (Just (cageDatum :: CageDatum)) <- pure $ fromData datum
+                Just (Just (cageDatum :: CageDatum String)) <- pure $ fromData datum
                 policyId' `shouldBe` mpfsPolicyId
                 cageDatum
                     `shouldBe` RequestDatum
                         { tokenId = antiTokenId
                         , owner = testUTxOOwner
                         , key = Key $ JSString "key"
-                        , value = Insert $ JSString "value"
+                        , value = Insert "value"
                         }
             it "can retrieve a request-delete tx" $ \(Call call) -> do
                 WithUnsignedTx tx _ <-
@@ -184,14 +184,14 @@ spec = do
                         $ RequestDeleteBody (JSString "key") (JSString "value")
                 let dtx = deserializeTx tx
                 Just (policyId', datum) <- pure $ getFirstOutput dtx
-                Just (Just (cageDatum :: CageDatum)) <- pure $ fromData datum
+                Just (Just (cageDatum :: CageDatum String)) <- pure $ fromData datum
                 policyId' `shouldBe` mpfsPolicyId
                 cageDatum
                     `shouldBe` RequestDatum
                         { tokenId = antiTokenId
                         , owner = testUTxOOwner
                         , key = Key $ JSString "key"
-                        , value = Delete $ JSString "value"
+                        , value = Delete "value"
                         }
             it "can retrieve a request-update tx" $ \(Call call) -> do
                 WithUnsignedTx tx _ <-
@@ -205,7 +205,7 @@ spec = do
                             (JSString "newValue")
                 let dtx = deserializeTx tx
                 Just (policyId', datum) <- pure $ getFirstOutput dtx
-                Just (Just (cageDatum :: CageDatum)) <- pure $ fromData datum
+                Just (Just (cageDatum :: CageDatum String)) <- pure $ fromData datum
                 policyId' `shouldBe` mpfsPolicyId
                 cageDatum
                     `shouldBe` RequestDatum
@@ -214,8 +214,8 @@ spec = do
                         , key = Key $ JSString "key"
                         , value =
                             Update
-                                (JSString "oldValue")
-                                (JSString "newValue")
+                                "oldValue"
+                                "newValue"
                         }
             xit "can submit a request-insert tx" $ \(Call call) -> do
                 wallet :: Wallet <- loadFundedWallet

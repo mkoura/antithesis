@@ -6,10 +6,10 @@ module Oracle.Types
 
 import Core.Types (Key, Operation, Owner, RequestRefId)
 
-data Request = Request
+data Request v = Request
     { ref :: RequestRefId
     , owner :: Owner
     , key :: Key
-    , operation :: Operation
+    , operation :: Operation v
     }
     deriving (Show, Eq)

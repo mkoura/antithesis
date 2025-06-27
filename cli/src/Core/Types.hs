@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE StrictData #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Core.Types
     ( Directory (..)
@@ -33,7 +34,13 @@ import Data.ByteString.Base16 (encode)
 import Data.ByteString.Char8 qualified as B
 import Data.Text (Text)
 import Data.Text qualified as T
-import Lib.JSON (object, parseJSValue, withObject, (.:), (.=))
+import Lib.JSON
+    ( object
+    , parseJSValue
+    , withObject
+    , (.:)
+    , (.=)
+    )
 import PlutusTx (Data (..), builtinDataToData)
 import PlutusTx.IsData.Class
 import Servant.API (FromHttpApiData (..), ToHttpApiData (..))
@@ -102,7 +109,7 @@ instance FromData Key where
     fromBuiltinData = parse . builtinDataToData
       where
         parse = \case
-            B b -> parseJSValue b Key
+            B b -> Key <$> parseJSValue b
             _ -> Nothing
 
 newtype Val = Val JSValue
@@ -112,23 +119,25 @@ instance FromData Val where
     fromBuiltinData = parse . builtinDataToData
       where
         parse = \case
-            B b -> parseJSValue b Val
+            B b -> Val <$> parseJSValue b
             _ -> Nothing
 
-data Operation
-    = Insert JSValue
-    | Delete JSValue
-    | Update JSValue JSValue
+data Operation a
+    = Insert a
+    | Delete a
+    | Update a a
     deriving (Eq, Show)
 
-instance FromData Operation where
+instance FromJSON Maybe a => FromData (Operation a) where
     fromBuiltinData = parse . builtinDataToData
       where
         parse = \case
-            Constr 0 [B b] -> parseJSValue b Insert
-            Constr 1 [B b] -> parseJSValue b Delete
-            Constr 2 [B old, B new] ->
-                parseJSValue old Update >>= parseJSValue new
+            Constr 0 [B b] -> Insert <$> parseJSValue b
+            Constr 1 [B b] -> Delete <$> parseJSValue b
+            Constr 2 [B old, B new] -> do
+                oldVal <- parseJSValue old
+                newVal <- parseJSValue new
+                Just (Update oldVal newVal)
             _ -> Nothing
 
 newtype Root = Root String
@@ -141,12 +150,12 @@ instance FromData Root where
             B b -> Just (Root $ B.unpack $ encode b)
             _ -> Nothing
 
-data CageDatum
+data CageDatum a
     = RequestDatum
         { tokenId :: TokenId
         , owner :: Owner
         , key :: Key
-        , value :: Operation
+        , value :: Operation a
         }
     | StateDatum
         { owner :: Owner
@@ -154,7 +163,7 @@ data CageDatum
         }
     deriving (Eq, Show)
 
-instance FromData CageDatum where
+instance FromJSON Maybe a => FromData (CageDatum a) where
     fromBuiltinData = parse . builtinDataToData
       where
         parse = \case

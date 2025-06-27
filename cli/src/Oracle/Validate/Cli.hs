@@ -24,7 +24,6 @@ import MPFS.API
 import Oracle.Types (Token (..))
 import Oracle.Validate.Logic
     ( ValidationResult
-    , toJSONValidationResult
     , validateRequest
     )
 import Servant.Client (ClientM)
@@ -62,5 +61,5 @@ mkResult :: Monad m => RequestRefId -> ValidationResult -> m JSValue
 mkResult (RequestRefId ref) validation =
     mkObject
         [ (toJSString "reference", stringJSON $ T.unpack ref)
-        , (toJSString "validation", toJSONValidationResult validation)
+        , (toJSString "validation", toJSON validation)
         ]

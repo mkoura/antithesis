@@ -3,7 +3,6 @@
 
 module Oracle.Validate.Logic
     ( ValidationResult (..)
-    , toJSONValidationResult
     , validateRequest
     ) where
 
@@ -12,9 +11,7 @@ import Lib.JSON
     ( stringJSON
     )
 import Oracle.Types (Request (..), RequestZoo (..))
-import Text.JSON.Canonical
-    ( JSValue (..)
-    )
+import Text.JSON.Canonical.Class (ToJSON (..))
 
 data ValidationResult
     = Validated
@@ -23,11 +20,12 @@ data ValidationResult
     | NotEvaluated
     deriving (Eq, Show)
 
-toJSONValidationResult :: Monad m => ValidationResult -> m JSValue
-toJSONValidationResult Validated = stringJSON "validated"
-toJSONValidationResult NotValidated = stringJSON "not validated"
-toJSONValidationResult CannotValidate = stringJSON "cannot validate"
-toJSONValidationResult NotEvaluated = stringJSON "not evaluated"
+instance Monad m => ToJSON m ValidationResult where
+    toJSON = \case
+        Validated -> stringJSON "validated"
+        NotValidated -> stringJSON "not validated"
+        CannotValidate -> stringJSON "cannot validate"
+        NotEvaluated -> stringJSON "not evaluated"
 
 validateRequest
     :: Applicative m

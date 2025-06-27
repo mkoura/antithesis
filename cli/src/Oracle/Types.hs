@@ -2,39 +2,118 @@
 
 module Oracle.Types
     ( Request (..)
+    , Token (..)
+    , TokenState (..)
+    , RequestMap (..)
     ) where
 
-import Core.Types (Key, Operation, Owner, RequestRefId)
+import Core.Types (Change, Owner, RequestRefId, Root)
 import Lib.JSON
 import Text.JSON.Canonical
+import User.Types (RegisterPublicKey)
 
 data Request k v = Request
-    { ref :: RequestRefId
+    { outputRefId :: RequestRefId
     , owner :: Owner
-    , key :: Key k
-    , operation :: Operation v
+    , change :: Change k v
     }
     deriving (Show, Eq)
 
-instance
-    (Monad m, ToJSON m (Key k), ToJSON m (Operation v))
-    => ToJSON m (Request k v)
-    where
-    toJSON (Request ref owner key operation) =
+instance (Monad m, ToJSON m k, ToJSON m v) => ToJSON m (Request k v) where
+    toJSON (Request refId owner change) =
         object
-            [ "ref" .= ref
+            [ "outputRefId" .= refId
             , "owner" .= owner
-            , "key" .= key
-            , "operation" .= operation
+            , "change" .= change
             ]
 
 instance
-    (ReportSchemaErrors m, FromJSON m (Key k), FromJSON m (Operation v))
+    (ReportSchemaErrors m, FromJSON m k, FromJSON m v)
     => FromJSON m (Request k v)
     where
-    fromJSON = withObject "Request" $ \v ->
-        Request
-            <$> v .: "ref"
-            <*> v .: "owner"
-            <*> v .: "key"
-            <*> v .: "operation"
+    fromJSON = withObject "Request" $ \v -> do
+        refId <- v .: "outputRefId"
+        owner <- v .: "owner"
+        change <- v .: "change"
+        pure
+            $ Request
+                { outputRefId = refId
+                , owner = owner
+                , change = change
+                }
+
+data TokenState = TokenState
+    { tokenRoot :: Root
+    , tokenOwner :: Owner
+    }
+
+instance Monad m => ToJSON m TokenState where
+    toJSON (TokenState root owner) =
+        object
+            [ "root" .= root
+            , "owner" .= owner
+            ]
+
+instance ReportSchemaErrors m => FromJSON m TokenState where
+    fromJSON = withObject "TokenState" $ \v -> do
+        root <- v .: "root"
+        owner <- v .: "owner"
+        pure $ TokenState{tokenRoot = root, tokenOwner = owner}
+
+data RequestMap where
+    RegisterUserRequest :: Request RegisterPublicKey String -> RequestMap
+    UnregisterUserRequest
+        :: Request RegisterPublicKey String -> RequestMap
+
+instance (ReportSchemaErrors m) => FromJSON m RequestMap where
+    fromJSON = withObject "RequestMap" $ \v -> do
+        requestType <- v .: "type"
+        case requestType of
+            JSString "register-user" -> do
+                req <- v .: "request"
+                pure $ RegisterUserRequest req
+            JSString "unregister-user" -> do
+                req <- v .: "request"
+                pure $ UnregisterUserRequest req
+            _ -> expectedButGotValue "RequestMap" requestType
+
+instance Monad m => ToJSON m RequestMap where
+    toJSON (RegisterUserRequest req) =
+        object
+            [ "type" .= ("register-user" :: String)
+            , "request" .= req
+            ]
+    toJSON (UnregisterUserRequest req) =
+        object
+            [ "type" .= ("unregister-user" :: String)
+            , "request" .= req
+            ]
+
+data Token = Token
+    { tokenRefId :: RequestRefId
+    , tokenState :: TokenState
+    , tokenRequests :: [RequestMap]
+    }
+
+instance Monad m => ToJSON m Token where
+    toJSON (Token refId state requests) =
+        object
+            [ "outputRefId" .= refId
+            , "state" .= state
+            , "requests" .= requests
+            ]
+
+instance
+    ReportSchemaErrors m
+    => FromJSON m Token
+    where
+    fromJSON = withObject "Token" $ \v -> do
+        refId <- v .: "outputRefId"
+        state <- v .: "state"
+        requests <- v .: "requests"
+        pure
+            $ Token
+                { tokenRefId = refId
+                , tokenState = state
+                , tokenRequests = requests
+                }

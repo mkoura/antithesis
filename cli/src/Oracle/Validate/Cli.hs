@@ -3,69 +3,64 @@
 module Oracle.Validate.Cli
     ( validateCmd
     , ValidateCommand (..)
+    , Parsing (..)
     ) where
 
-import Control.Monad.IO.Class
-    ( liftIO
-    )
+import Control.Monad (forM)
+import Control.Monad.Trans.Maybe (MaybeT (..))
 import Core.Types
     ( RequestRefId (..)
     , TokenId
     )
+import Data.Functor ((<&>))
+import Data.Text qualified as T
 import Lib.JSON
-    ( stringJSON
+    ( Parsing (..)
+    , stringJSON
     )
 import MPFS.API
     ( getToken
     )
-import MPFS.Types
-    ( MPFSGetToken
-    , MPFSRequest (..)
-    )
+import Oracle.Types (Token (..))
 import Oracle.Validate.Logic
-    ( toJSONValidationResult
-    , validateMPFSRequest
+    ( ValidationResult
+    , toJSONValidationResult
+    , validateRequest
     )
 import Servant.Client (ClientM)
 import Text.JSON.Canonical
     ( FromJSON (..)
     , JSValue (..)
-    , ReportSchemaErrors (..)
+    , ToJSON (..)
     , mkObject
     , toJSString
     )
-
-import Data.Text qualified as T
-import MPFS.Types qualified as MPFS
 
 data ValidateCommand
     = ValidateRequests
     deriving (Eq, Show)
 
-instance ReportSchemaErrors ClientM where
-    expected expct (Just got) =
-        liftIO
-            $ fail
-            $ "Expected: "
-                ++ expct
-                ++ ", but got: "
-                ++ got
-    expected expct Nothing = liftIO $ fail $ "Expected: " ++ expct
-
 validateCmd :: TokenId -> ValidateCommand -> ClientM JSValue
 validateCmd tk command = do
-    case command of
+    rus <- case command of
         ValidateRequests -> do
             canonicalJSON <- getToken tk
-            resp <- fromJSON @_ @MPFSGetToken canonicalJSON
-            JSArray <$> mapM constructRes (MPFS.requests resp)
-  where
-    constructRes request@MPFSRequest{requestOutput} = do
-        validationRes <- validateMPFSRequest request
-        createPairResJSValue (requestOutput, validationRes)
+            requests <- do
+                v <-
+                    runMaybeT
+                        $ runParsing
+                        $ fromJSON canonicalJSON
+                        <&> tokenRequests
+                case v of
+                    Nothing -> error "Failed to parse token"
+                    Just jsValue -> pure jsValue
+            forM requests $ \request -> do
+                validateRequest request >>= uncurry mkResult
+    toJSON rus
 
-    createPairResJSValue (RequestRefId ref, validation) =
-        mkObject
-            [ (toJSString "reference", stringJSON $ T.unpack ref)
-            , (toJSString "validationResult", toJSONValidationResult validation)
-            ]
+mkResult :: Monad m => RequestRefId -> ValidationResult -> m JSValue
+mkResult (RequestRefId ref) validation =
+    mkObject
+        [ (toJSString "reference", stringJSON $ T.unpack ref)
+        , (toJSString "validation", toJSONValidationResult validation)
+        ]

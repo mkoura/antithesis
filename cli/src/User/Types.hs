@@ -177,7 +177,7 @@ instance Monad m => ToJSON m (TestRunState a) where
             , ("url", stringJSON $ case url of URL u -> u)
             ]
 
-instance (Monad m, ReportSchemaErrors m) => FromJSON m (TestRunState PendingT) where
+instance ReportSchemaErrors m => FromJSON m (TestRunState PendingT) where
     fromJSON obj@(JSObject _) = do
         mapping <- fromJSON obj
         phase <- getStringField "phase" mapping
@@ -194,7 +194,7 @@ instance (Monad m, ReportSchemaErrors m) => FromJSON m (TestRunState PendingT) w
             "an object representing a pending phase"
             other
 
-instance (Monad m, ReportSchemaErrors m) => FromJSON m (TestRunState DoneT) where
+instance ReportSchemaErrors m => FromJSON m (TestRunState DoneT) where
     fromJSON obj@(JSObject _) = do
         mapping <- fromJSON obj
         phase <- getStringField "phase" mapping
@@ -218,7 +218,7 @@ instance (Monad m, ReportSchemaErrors m) => FromJSON m (TestRunState DoneT) wher
             "an object representing a rejected phase"
             other
 
-instance (Monad m, ReportSchemaErrors m) => FromJSON m (TestRunState RunningT) where
+instance ReportSchemaErrors m => FromJSON m (TestRunState RunningT) where
     fromJSON obj@(JSObject _) = do
         mapping <- fromJSON obj
         phase <- getStringField "phase" mapping

@@ -26,10 +26,12 @@ module Lib.JSON
     , toAesonString
     , fromAesonString
     , parseJSValue
+    , Parsing (..)
     )
 where
 
-import Control.Monad ((<=<))
+import Control.Monad (MonadPlus (..), (<=<))
+import Control.Monad.Trans.Maybe (MaybeT)
 import Data.Aeson (Value, decode, encode)
 import Data.Aeson qualified as Aeson
 import Data.Aeson.Types qualified as AesonInternal
@@ -223,3 +225,11 @@ parseJSValue b = do
         Left _err -> Nothing
         Right js -> Just js
     fromJSON js
+
+newtype Parsing m a = Parsing
+    { runParsing :: MaybeT m a
+    }
+    deriving (Functor, Applicative, Monad)
+
+instance Monad m => ReportSchemaErrors (Parsing m) where
+    expected _expct _actual = Parsing mzero

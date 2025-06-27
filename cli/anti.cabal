@@ -92,7 +92,6 @@ library
     Core.Types
     Lib.JSON
     MPFS.API
-    MPFS.Types
     Options
     Oracle.Cli
     Oracle.Github.CommonIO
@@ -138,6 +137,7 @@ library
     , servant
     , servant-client
     , text
+    , transformers
     , wreq
 
   -- Directories containing source files.

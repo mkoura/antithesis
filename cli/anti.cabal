@@ -107,6 +107,7 @@ library
     Oracle.Validate.Logic
     Oracle.Validate.Options
     Submitting
+    User.Agent.Cli
     User.Cli
     User.Options
     User.Requester.Cli

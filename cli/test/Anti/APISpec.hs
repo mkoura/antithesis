@@ -87,10 +87,10 @@ mpfsPolicyId = "c1e392ee7da9415f946de9d2aef9607322b47d6e84e8142ef0c340bf"
 antiTokenId :: TokenId
 antiTokenId =
     TokenId
-        "1547b8cb65b187b4b735f00ab4e874084c1947afb11f3a28439fff694adb0e10"
+        "865ebcf5e1d6bafcc121030a6e167474a426271d965b78e36d90485adf540575"
 
 antiTokenOwner :: String
-antiTokenOwner = "455dbd55e5cd29ec3239af931eecb30cb295e7f64053ebaae6c496b1"
+antiTokenOwner = "1f5cebecb4cd1cad6108a86014de9d8f23f9d4477bbddb3e1289b224"
 
 fundedTestsAddress :: Address
 fundedTestsAddress =
@@ -276,8 +276,8 @@ spec = do
                                 }
                         }
             it "can submit a request-insert tx" $ \(Call call, wait) -> do
+                wallet <- loadFundedWallet
                 call $ do
-                    wallet <- liftIO loadFundedWallet
                     insert <-
                         requesterCmd wallet antiTokenId
                             $ RegisterUser
@@ -291,8 +291,8 @@ spec = do
                     retractTx wallet insert >>= wait
                     pure ()
             it "can submit a request-delete tx" $ \(Call call, wait) -> do
+                wallet <- loadFundedWallet
                 call $ do
-                    wallet <- liftIO loadFundedWallet
                     deleteTx <-
                         requesterCmd wallet antiTokenId
                             $ RegisterUser

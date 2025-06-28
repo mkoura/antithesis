@@ -276,7 +276,7 @@ spec = do
                                 }
                         }
             it "can submit a request-insert tx" $ \(Call call, wait) -> do
-                wallet <- loadFundedWallet
+                wallet <- loadRequesterWallet
                 call $ do
                     insert <-
                         requesterCmd wallet antiTokenId
@@ -291,7 +291,7 @@ spec = do
                     retractTx wallet insert >>= wait
                     pure ()
             it "can submit a request-delete tx" $ \(Call call, wait) -> do
-                wallet <- loadFundedWallet
+                wallet <- loadRequesterWallet
                 call $ do
                     deleteTx <-
                         requesterCmd wallet antiTokenId
@@ -306,8 +306,8 @@ spec = do
                     retractTx wallet deleteTx >>= wait
                     pure ()
 
-loadFundedWallet :: IO Wallet
-loadFundedWallet =
+loadRequesterWallet :: IO Wallet
+loadRequesterWallet =
     either (error . show) id
         . walletFromMnemonic
         . T.words

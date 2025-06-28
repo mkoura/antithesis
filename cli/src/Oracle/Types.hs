@@ -10,7 +10,7 @@ module Oracle.Types
 import Core.Types (Change, Owner, RequestRefId, Root)
 import Lib.JSON
 import Text.JSON.Canonical
-import User.Types (RegisterPublicKey, RegisterRoleKey)
+import User.Types (RegisterRoleKey, RegisterUserKey)
 
 data Request k v = Request
     { outputRefId :: RequestRefId
@@ -61,9 +61,9 @@ instance ReportSchemaErrors m => FromJSON m TokenState where
         pure $ TokenState{tokenRoot = root, tokenOwner = owner}
 
 data RequestZoo where
-    RegisterUserRequest :: Request RegisterPublicKey String -> RequestZoo
+    RegisterUserRequest :: Request RegisterUserKey String -> RequestZoo
     UnregisterUserRequest
-        :: Request RegisterPublicKey String -> RequestZoo
+        :: Request RegisterUserKey String -> RequestZoo
     RegisterRoleRequest
         :: Request RegisterRoleKey String -> RequestZoo
     UnregisterRoleRequest

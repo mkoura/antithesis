@@ -27,13 +27,13 @@ import User.Agent.Cli
 import User.Types
     ( Direction (..)
     , Duration
-    , RegisterPublicKey (..)
     , RegisterRoleKey (..)
+    , RegisterUserKey (..)
     , TestRun (..)
     )
 
 data RequesterCommand
-    = RegisterUser RegisterPublicKey
+    = RegisterUser RegisterUserKey
     | RegisterRole RegisterRoleKey
     | RequestTest TestRun Duration
     deriving (Eq, Show)
@@ -52,12 +52,12 @@ requesterCmd wallet tokenId command = do
 manageUser
     :: Wallet
     -> TokenId
-    -> RegisterPublicKey
+    -> RegisterUserKey
     -> ClientM WithTxHash
 manageUser
     wallet
     tokenId
-    request@RegisterPublicKey{direction} =
+    request@RegisterUserKey{direction} =
         submitting wallet $ \address -> do
             key <- toJSON request
             value <- toJSON ("" :: String)

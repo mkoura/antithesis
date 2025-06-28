@@ -28,15 +28,15 @@ import User.Requester.Cli (RequesterCommand (..))
 import User.Types
     ( Direction (..)
     , Duration (..)
-    , RegisterPublicKey (..)
     , RegisterRoleKey (..)
+    , RegisterUserKey (..)
     , TestRun (..)
     )
 
 addPublicKeyOptions :: Parser RequesterCommand
 addPublicKeyOptions =
     RegisterUser
-        <$> ( RegisterPublicKey
+        <$> ( RegisterUserKey
                 <$> platformOption
                 <*> usernameOption
                 <*> pubkeyhashOption
@@ -46,7 +46,7 @@ addPublicKeyOptions =
 removePublicKeyOptions :: Parser RequesterCommand
 removePublicKeyOptions =
     RegisterUser
-        <$> ( RegisterPublicKey
+        <$> ( RegisterUserKey
                 <$> platformOption
                 <*> usernameOption
                 <*> pubkeyhashOption

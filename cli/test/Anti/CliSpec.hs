@@ -42,8 +42,8 @@ import User.Requester.Cli (RequesterCommand (..))
 import User.Types
     ( Direction (..)
     , Duration (..)
-    , RegisterPublicKey (..)
     , RegisterRoleKey (..)
+    , RegisterUserKey (..)
     , TestRun (..)
     )
 
@@ -100,7 +100,7 @@ spec = beforeAll_ runDummyServer $ do
                         UserCommand
                             $ UserRequesterCommand
                             $ RegisterUser
-                                RegisterPublicKey
+                                RegisterUserKey
                                     { platform = Platform "github"
                                     , username = Username "paolino"
                                     , pubkeyhash =
@@ -131,7 +131,7 @@ spec = beforeAll_ runDummyServer $ do
                         UserCommand
                             $ UserRequesterCommand
                             $ RegisterUser
-                                RegisterPublicKey
+                                RegisterUserKey
                                     { platform = Platform "github"
                                     , username = Username "bob"
                                     , pubkeyhash =

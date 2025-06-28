@@ -10,7 +10,7 @@ module User.Types
     , Reason (..)
     , Phase (..)
     , URL (..)
-    , RegisterPublicKey (..)
+    , RegisterUserKey (..)
     , RegisterRoleKey (..)
     , Direction (..)
     )
@@ -242,7 +242,7 @@ instance ReportSchemaErrors m => FromJSON m (TestRunState RunningT) where
 data Direction = Insert | Delete
     deriving (Eq, Show)
 
-data RegisterPublicKey = RegisterPublicKey
+data RegisterUserKey = RegisterUserKey
     { platform :: Platform
     , username :: Username
     , pubkeyhash :: PublicKeyHash
@@ -250,9 +250,9 @@ data RegisterPublicKey = RegisterPublicKey
     }
     deriving (Eq, Show)
 
-instance Monad m => ToJSON m RegisterPublicKey where
+instance Monad m => ToJSON m RegisterUserKey where
     toJSON
-        ( RegisterPublicKey
+        ( RegisterUserKey
                 (Platform platform)
                 (Username user)
                 (PublicKeyHash pubkeyhash)
@@ -271,7 +271,7 @@ instance Monad m => ToJSON m RegisterPublicKey where
                     , ("publickeyhash", JSString $ toJSString pubkeyhash)
                     ]
 
-instance (Monad m, ReportSchemaErrors m) => FromJSON m RegisterPublicKey where
+instance (Monad m, ReportSchemaErrors m) => FromJSON m RegisterUserKey where
     fromJSON obj@(JSObject _) = do
         mapping <- fromJSON obj
         requestType <- mapping .: "type"
@@ -283,7 +283,7 @@ instance (Monad m, ReportSchemaErrors m) => FromJSON m RegisterPublicKey where
         user <- getStringField "user" mapping
         pubkeyhash <- getStringField "publickeyhash" mapping
         pure
-            $ RegisterPublicKey
+            $ RegisterUserKey
                 { platform = Platform platform
                 , username = Username user
                 , pubkeyhash = PublicKeyHash pubkeyhash

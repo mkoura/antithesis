@@ -24,7 +24,7 @@ import Cardano.Ledger.Core
     )
 import Cardano.Ledger.Credential (Credential (..))
 import Control.Concurrent (threadDelay)
-import Control.Exception (throw, throwIO)
+import Control.Exception (throwIO)
 import Control.Lens (to, (^.))
 import Control.Monad (void)
 import Control.Monad.Catch (SomeException, catch)
@@ -63,7 +63,6 @@ import MPFS.API
     , requestDelete
     , requestInsert
     , requestUpdate
-    , waitNBlocks
     )
 import Network.HTTP.Client
     ( ManagerSettings (managerResponseTimeout)
@@ -75,11 +74,11 @@ import PlutusTx (Data, fromData)
 import Servant.Client (ClientM, mkClientEnv, parseBaseUrl, runClientM)
 import Submitting (walletFromMnemonic)
 import System.Environment (getEnv)
-import Test.Hspec (SpecWith, beforeAll, describe, it, shouldBe, xit)
+import Test.Hspec (SpecWith, beforeAll, describe, it, shouldBe)
 import Text.JSON.Canonical (JSString, JSValue (..), fromJSString)
 import User.Cli (UserCommand (..), userCmd)
 import User.Requester.Cli (RequesterCommand (..), requesterCmd)
-import User.Types (RegisterPublicKey (..))
+import User.Types (RegisterUserKey (..))
 import User.Types qualified as Direction (Direction (..))
 
 mpfsPolicyId :: String
@@ -282,7 +281,7 @@ spec = do
                     insert <-
                         requesterCmd wallet antiTokenId
                             $ RegisterUser
-                            $ RegisterPublicKey
+                            $ RegisterUserKey
                                 { platform = Platform "test-platform"
                                 , username = Username "test-user"
                                 , pubkeyhash = PublicKeyHash "test-pubkeyhash"
@@ -297,7 +296,7 @@ spec = do
                     deleteTx <-
                         requesterCmd wallet antiTokenId
                             $ RegisterUser
-                            $ RegisterPublicKey
+                            $ RegisterUserKey
                                 { platform = Platform "test-platform"
                                 , username = Username "test-user"
                                 , pubkeyhash = PublicKeyHash "test-pubkeyhash"

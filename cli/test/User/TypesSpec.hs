@@ -24,7 +24,7 @@ import User.Types
     ( Direction (..)
     , Duration (Duration)
     , Reason (..)
-    , RegisterPublicKey (..)
+    , RegisterUserKey (..)
     , TestRun
         ( TestRun
         , commitId
@@ -86,10 +86,10 @@ spec = do
             let finished = Finished accepted (Duration 4) (URL "")
             roundTrip finished
 
-    describe "RegisterPublicKey" $ do
+    describe "RegisterUserKey" $ do
         it "roundtrips on the JSON instance" $ do
             let registerPubKey =
-                    RegisterPublicKey
+                    RegisterUserKey
                         { platform = Platform "github"
                         , username = Username "tester"
                         , pubkeyhash =
@@ -102,7 +102,7 @@ spec = do
     describe "UnregisterPublicKey" $ do
         it "roundtrips on the JSON instance" $ do
             let unregisterPubKey =
-                    RegisterPublicKey
+                    RegisterUserKey
                         { platform = Platform "github"
                         , username = Username "tester"
                         , pubkeyhash =

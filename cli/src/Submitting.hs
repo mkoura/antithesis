@@ -116,7 +116,7 @@ instance FromJSON WalletDB
 instance ToJSON WalletDB
 
 data WalletError
-    = InvalidMnemonic
+    = InvalidMnemonic String
     | InvalidWalletFile
     deriving (Show, Eq)
 
@@ -134,7 +134,7 @@ readWallet walletFile = do
 walletFromMnemonic :: [Text] -> Either WalletError Wallet
 walletFromMnemonic mnemonicWords = do
     mnemonic <-
-        either (const $ Left InvalidMnemonic) Right
+        either (Left . InvalidMnemonic . show) Right
             $ mkSomeMnemonic @'[9, 12, 15, 18, 24] mnemonicWords
 
     let

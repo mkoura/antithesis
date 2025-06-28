@@ -306,10 +306,20 @@ spec = do
                     retractTx wallet deleteTx >>= wait
                     pure ()
 
+loadEnvWallet :: String -> IO Wallet
+loadEnvWallet envVar = do
+    mnemonic <- getEnv envVar
+    pure
+        $ either (error . show) id
+            . walletFromMnemonic
+            . T.words
+            . T.pack
+        $ mnemonic
+
 loadRequesterWallet :: IO Wallet
 loadRequesterWallet =
-    either (error . show) id
-        . walletFromMnemonic
-        . T.words
-        . T.pack
-        <$> getEnv "ANTI_TEST_MNEMONIC"
+    loadEnvWallet "ANTI_TEST_REQUESTER_MNEMONIC"
+
+loadOracleWallet :: IO Wallet
+loadOracleWallet =
+    loadEnvWallet "ANTI_TEST_ORACLE_MNEMONIC"

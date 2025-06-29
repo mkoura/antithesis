@@ -108,8 +108,6 @@ library
     Oracle.Validate.Options
     Submitting
     User.Agent.Cli
-    User.Cli
-    User.Options
     User.Requester.Cli
     User.Requester.Options
     User.Types

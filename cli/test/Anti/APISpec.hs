@@ -23,6 +23,7 @@ import Cardano.Ledger.Core
     , ScriptHash (..)
     )
 import Cardano.Ledger.Credential (Credential (..))
+import Cli (Command (..), cmd)
 import Control.Concurrent (threadDelay)
 import Control.Exception (throwIO)
 import Control.Lens (to, (^.))
@@ -76,7 +77,6 @@ import Submitting (walletFromMnemonic)
 import System.Environment (getEnv)
 import Test.Hspec (SpecWith, beforeAll, describe, it, shouldBe)
 import Text.JSON.Canonical (JSString, JSValue (..), fromJSString)
-import User.Cli (UserCommand (..), userCmd)
 import User.Requester.Cli (RequesterCommand (..), requesterCmd)
 import User.Types (RegisterUserKey (..))
 import User.Types qualified as Direction (Direction (..))
@@ -176,7 +176,7 @@ waitTx (Call call) obj = void $ go 600
 
 retractTx :: Wallet -> JSValue -> ClientM JSValue
 retractTx wallet obj = do
-    userCmd
+    cmd
         wallet
         antiTokenId
         $ RetractRequest
@@ -320,6 +320,6 @@ loadRequesterWallet :: IO Wallet
 loadRequesterWallet =
     loadEnvWallet "ANTI_TEST_REQUESTER_MNEMONIC"
 
-loadOracleWallet :: IO Wallet
-loadOracleWallet =
+_loadOracleWallet :: IO Wallet
+_loadOracleWallet =
     loadEnvWallet "ANTI_TEST_ORACLE_MNEMONIC"

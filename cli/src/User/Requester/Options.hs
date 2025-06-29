@@ -4,13 +4,11 @@ module User.Requester.Options
     ( requesterCommandParser
     , addPublicKeyOptions
     , addRoleOptions
-    , retractRequestOptions
     ) where
 
 import Core.Options
     ( commitOption
     , directoryOption
-    , outputReferenceParser
     , platformOption
     , pubkeyhashOption
     , repositoryOption
@@ -23,7 +21,6 @@ import Options.Applicative
     , info
     , progDesc
     )
-import User.Cli (UserCommand (..))
 import User.Requester.Cli (RequesterCommand (..))
 import User.Types
     ( Direction (..)
@@ -73,19 +70,14 @@ removeRoleOptions =
                 <*> pure Delete
             )
 
-retractRequestOptions :: Parser UserCommand
-retractRequestOptions =
-    RetractRequest
-        <$> outputReferenceParser
-
 requesterCommandParser :: Parser RequesterCommand
 requesterCommandParser =
     hsubparser
         ( command
-            "test"
+            "create-test"
             ( info
                 requestTestOptions
-                (progDesc "Request a test on a specific platform")
+                (progDesc "Request an antithesis test run")
             )
             <> command
                 "register-public-key"

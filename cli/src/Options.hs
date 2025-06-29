@@ -7,6 +7,7 @@ module Options
     ) where
 
 import Cli (Command (..))
+import Core.Options (outputReferenceParser)
 import Options.Applicative
     ( Parser
     , command
@@ -22,7 +23,7 @@ import Options.Applicative
     , (<**>)
     )
 import Oracle.Options (oracleCommandParser)
-import User.Options (userCommandParser)
+import User.Requester.Options (requesterCommandParser)
 
 newtype Options = Options
     { optionsCommand :: Command
@@ -35,14 +36,26 @@ commandParser =
         ( command
             "oracle"
             ( info
-                (OracleCommand <$> oracleCommandParser <**> helper)
+                (OracleCommand <$> oracleCommandParser)
                 (progDesc "Oracle services")
             )
             <> command
-                "user"
+                "requester"
                 ( info
-                    (UserCommand <$> userCommandParser <**> helper)
-                    (progDesc "Manage user requests")
+                    (RequesterCommand <$> requesterCommandParser)
+                    (progDesc "Allow users to send requests")
+                )
+            <> command
+                "retract"
+                ( info
+                    retractRequestOptions
+                    (progDesc "Retract a request")
+                )
+            <> command
+                "get-facts"
+                ( info
+                    (pure GetFacts)
+                    (progDesc "Get token facts")
                 )
         )
 
@@ -59,3 +72,8 @@ parseArgs args = handleParseResult $ execParserPure defaultPrefs opts args
                 <> progDesc "Antithesis CLI"
                 <> header "anti - A tool for managing Antithesis test runs"
             )
+
+retractRequestOptions :: Parser Command
+retractRequestOptions =
+    RetractRequest
+        <$> outputReferenceParser

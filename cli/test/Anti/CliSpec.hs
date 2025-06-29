@@ -37,7 +37,6 @@ import Test.Hspec
     , xit
     )
 import Text.JSON.Canonical (JSValue (JSArray, JSNull))
-import User.Cli (UserCommand (..))
 import User.Requester.Cli (RequesterCommand (..))
 import User.Types
     ( Direction (..)
@@ -77,15 +76,14 @@ anti args = do
 dummyTxHash :: Monad m => m JSValue
 dummyTxHash =
     object
-        ["txHash" .= ("dummyTransactionId" :: String), "value" .= JSNull]
+        ["txHash" .= ("dummyTxHash" :: String), "value" .= JSNull]
 
 spec :: Spec
 spec = beforeAll_ runDummyServer $ do
     dummyTxHashJSON <- dummyTxHash
-    xit "can request user registration" $ do
+    it "can request user registration" $ do
         let args =
-                [ "user"
-                , "request"
+                [ "requester"
                 , "register-public-key"
                 , "--platform"
                 , "github"
@@ -97,8 +95,7 @@ spec = beforeAll_ runDummyServer $ do
         let opts =
                 Options
                     { optionsCommand =
-                        UserCommand
-                            $ UserRequesterCommand
+                        RequesterCommand
                             $ RegisterUser
                                 RegisterUserKey
                                     { platform = Platform "github"
@@ -112,10 +109,9 @@ spec = beforeAll_ runDummyServer $ do
 
         anti args
             `shouldReturn` (opts, dummyTxHashJSON)
-    xit "can request user unregistration" $ do
+    it "can request user unregistration" $ do
         let args =
-                [ "user"
-                , "request"
+                [ "requester"
                 , "unregister-public-key"
                 , "--platform"
                 , "github"
@@ -128,8 +124,7 @@ spec = beforeAll_ runDummyServer $ do
         let opts =
                 Options
                     { optionsCommand =
-                        UserCommand
-                            $ UserRequesterCommand
+                        RequesterCommand
                             $ RegisterUser
                                 RegisterUserKey
                                     { platform = Platform "github"
@@ -142,25 +137,21 @@ spec = beforeAll_ runDummyServer $ do
                     }
         anti args `shouldReturn` (opts, dummyTxHashJSON)
 
-    xit "can request removing user from a project" $ do
+    it "can request removing user from a project" $ do
         let args =
-                [ "user"
-                , "request"
+                [ "requester"
                 , "unregister-role"
                 , "--platform"
                 , "github"
                 , "--repository"
                 , "cardano-foundation/antithesis"
-                , "--role"
-                , "maintainer"
                 , "--username"
                 , "bob"
                 ]
         let opts =
                 Options
                     { optionsCommand =
-                        UserCommand
-                            $ UserRequesterCommand
+                        RequesterCommand
                             $ RegisterRole
                             $ RegisterRoleKey
                                 { platform = Platform "github"
@@ -174,9 +165,8 @@ spec = beforeAll_ runDummyServer $ do
 
     xit "can request antithesis run" $ do
         let args =
-                [ "user"
-                , "request"
-                , "test"
+                [ "requester"
+                , "create-test"
                 , "--platform"
                 , "github"
                 , "--repository"
@@ -189,8 +179,7 @@ spec = beforeAll_ runDummyServer $ do
         let opts =
                 Options
                     { optionsCommand =
-                        UserCommand
-                            $ UserRequesterCommand
+                        RequesterCommand
                             $ RequestTest
                                 TestRun
                                     { platform = Platform "github"
@@ -204,23 +193,20 @@ spec = beforeAll_ runDummyServer $ do
                     }
         anti args `shouldReturn` (opts, dummyTxHashJSON)
 
-    xit "can retract a request" $ do
+    it "can retract a request" $ do
         let args =
-                [ "user"
-                , "request"
-                , "retract"
+                [ "retract"
                 , "--outref"
                 , "9114528e2343e6fcf3c92de71364275227e6b16d-0"
                 ]
         let opts =
                 Options
                     { optionsCommand =
-                        UserCommand
-                            $ RetractRequest
-                                { outputReference =
-                                    RequestRefId
-                                        "9114528e2343e6fcf3c92de71364275227e6b16d-0"
-                                }
+                        RetractRequest
+                            { outputReference =
+                                RequestRefId
+                                    "9114528e2343e6fcf3c92de71364275227e6b16d-0"
+                            }
                     }
         anti args `shouldReturn` (opts, dummyTxHashJSON)
 

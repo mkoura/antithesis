@@ -20,9 +20,8 @@ import Servant.Client (ClientM)
 import Submitting (submitting)
 import Text.JSON.Canonical (JSValue (..), ToJSON (..))
 import User.Agent.Cli
-    ( AgentCommand (AgentCommand)
-    , AgentCommandCore (Create)
-    , agentCmd
+    ( agentCmd
+    , create
     )
 import User.Types
     ( Direction (..)
@@ -47,13 +46,13 @@ requesterCmd wallet tokenId command = do
         RegisterRole request ->
             manageRole wallet tokenId request >>= toJSON
         RequestTest testRun duration ->
-            agentCmd wallet tokenId $ AgentCommand $ Create testRun duration
+            agentCmd wallet tokenId $ create testRun duration
 
 manageUser
     :: Wallet
     -> TokenId
     -> RegisterUserKey
-    -> ClientM WithTxHash
+    -> ClientM (WithTxHash JSValue)
 manageUser
     wallet
     tokenId
@@ -73,7 +72,7 @@ manageRole
     :: Wallet
     -> TokenId
     -> RegisterRoleKey
-    -> ClientM WithTxHash
+    -> ClientM (WithTxHash JSValue)
 manageRole
     wallet
     tokenId

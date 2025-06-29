@@ -369,14 +369,14 @@ instance Monad m => ToJSON m TxHash where
         object
             [ "txHash" .= txHash
             ]
-data WithTxHash = WithTxHash
-    { txHash :: Text
-    , value :: Maybe JSValue
+data WithTxHash a = WithTxHash
+    { txHash :: TxHash
+    , value :: Maybe a
     }
     deriving (Show)
 
-instance Monad m => ToJSON m WithTxHash where
-    toJSON (WithTxHash txHash value) =
+instance (Monad m, ToJSON m a) => ToJSON m (WithTxHash a) where
+    toJSON (WithTxHash (TxHash txHash) value) =
         object
             [ "txHash" .= txHash
             , "value" .= value

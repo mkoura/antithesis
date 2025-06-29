@@ -68,7 +68,6 @@ import Core.Types
     ( Address (..)
     , SignTxError (..)
     , SignedTx (..)
-    , TxHash (..)
     , UnsignedTx (..)
     , Wallet (..)
     , WithTxHash (WithTxHash)
@@ -98,12 +97,12 @@ import Text.JSON.Canonical (JSValue)
 submitting
     :: Wallet
     -> (Address -> ClientM (WithUnsignedTx JSValue))
-    -> ClientM WithTxHash
+    -> ClientM (WithTxHash JSValue)
 submitting Wallet{address, sign} action = do
     WithUnsignedTx unsignedTx value <- action address
     case sign $ UnsignedTx unsignedTx of
         Right (SignedTx signedTx) -> do
-            TxHash txHash <- submitTransaction $ SignedTx signedTx
+            txHash <- submitTransaction $ SignedTx signedTx
             return $ WithTxHash txHash value
         Left e -> liftIO $ throwIO e
 

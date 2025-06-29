@@ -34,9 +34,8 @@ import Test.Hspec
     , beforeAll_
     , it
     , shouldReturn
-    , xit
     )
-import Text.JSON.Canonical (JSValue (JSArray, JSNull))
+import Text.JSON.Canonical (Int54, JSValue (JSArray, JSNull))
 import User.Requester.Cli (RequesterCommand (..))
 import User.Types
     ( Direction (..)
@@ -163,7 +162,7 @@ spec = beforeAll_ runDummyServer $ do
 
         anti args `shouldReturn` (opts, dummyTxHashJSON)
 
-    xit "can request antithesis run" $ do
+    it "can request antithesis run" $ do
         let args =
                 [ "requester"
                 , "create-test"
@@ -187,11 +186,22 @@ spec = beforeAll_ runDummyServer $ do
                                     , requester = Username "bob"
                                     , commitId = SHA1 "9114528e2343e6fcf3c92de71364275227e6b16d"
                                     , directory = Directory "."
-                                    , testRunIndex = 0
+                                    , testRunIndex = 1
                                     }
-                            $ Duration 4
+                            $ Duration 3
                     }
-        anti args `shouldReturn` (opts, dummyTxHashJSON)
+
+        result <-
+            object
+                [ "txHash" .= ("dummyTxHash" :: String)
+                , (,) "value"
+                    $ object
+                        [ "duration" .= (3 :: Int54)
+                        , "phase" .= ("pending" :: String)
+                        ]
+                ]
+
+        anti args `shouldReturn` (opts, result)
 
     it "can retract a request" $ do
         let args =

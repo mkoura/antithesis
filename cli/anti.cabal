@@ -209,7 +209,6 @@ test-suite anti-test
     , aeson
     , aeson-qq                   ^>=0.8.4
     , anti
-    , async
     , base
     , base16-bytestring
     , bytestring
@@ -230,6 +229,5 @@ test-suite anti-test
     , servant-server
     , text
     , wai
-    , warp
 
   build-tool-depends: hspec-discover:hspec-discover

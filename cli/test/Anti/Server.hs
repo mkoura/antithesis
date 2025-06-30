@@ -27,7 +27,9 @@ appDummy :: Application
 appDummy =
     serve
         tokenApi
-        ( requestInsert
+        ( undefined
+            :<|> undefined
+            :<|> requestInsert
             :<|> requestDelete
             :<|> requestUpdate
             :<|> retractChange

@@ -23,8 +23,7 @@ import Options.Applicative
     )
 import User.Requester.Cli (RequesterCommand (..))
 import User.Types
-    ( Direction (..)
-    , Duration (..)
+    ( Duration (..)
     , RegisterRoleKey (..)
     , RegisterUserKey (..)
     , TestRun (..)
@@ -37,17 +36,15 @@ addPublicKeyOptions =
                 <$> platformOption
                 <*> usernameOption
                 <*> pubkeyhashOption
-                <*> pure Insert
             )
 
 removePublicKeyOptions :: Parser RequesterCommand
 removePublicKeyOptions =
-    RegisterUser
+    UnregisterUser
         <$> ( RegisterUserKey
                 <$> platformOption
                 <*> usernameOption
                 <*> pubkeyhashOption
-                <*> pure Delete
             )
 
 addRoleOptions :: Parser RequesterCommand
@@ -57,17 +54,15 @@ addRoleOptions =
                 <$> platformOption
                 <*> repositoryOption
                 <*> usernameOption
-                <*> pure Insert
             )
 
 removeRoleOptions :: Parser RequesterCommand
 removeRoleOptions =
-    RegisterRole
+    UnregisterRole
         <$> ( RegisterRoleKey
                 <$> platformOption
                 <*> repositoryOption
                 <*> usernameOption
-                <*> pure Delete
             )
 
 requesterCommandParser :: Parser RequesterCommand

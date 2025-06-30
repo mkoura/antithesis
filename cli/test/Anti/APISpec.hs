@@ -71,15 +71,23 @@ import Network.HTTP.Client
     , responseTimeoutMicro
     )
 import Network.HTTP.Client.TLS (tlsManagerSettings)
+import Oracle.Cli (OracleCommand (OracleTokenCommand), oracleCmd)
+import Oracle.Token.Cli (TokenCommand (..))
 import PlutusTx (Data, fromData)
 import Servant.Client (ClientM, mkClientEnv, parseBaseUrl, runClientM)
 import Submitting (walletFromMnemonic)
 import System.Environment (getEnv)
-import Test.Hspec (SpecWith, beforeAll, describe, it, shouldBe)
+import Test.Hspec
+    ( SpecWith
+    , beforeAll
+    , describe
+    , it
+    , shouldBe
+    , xit
+    )
 import Text.JSON.Canonical (JSString, JSValue (..), fromJSString)
 import User.Requester.Cli (RequesterCommand (..), requesterCmd)
 import User.Types (RegisterUserKey (..))
-import User.Types qualified as Direction (Direction (..))
 
 mpfsPolicyId :: String
 mpfsPolicyId = "c1e392ee7da9415f946de9d2aef9607322b47d6e84e8142ef0c340bf"
@@ -178,7 +186,7 @@ retractTx :: Wallet -> JSValue -> ClientM JSValue
 retractTx wallet obj = do
     cmd
         wallet
-        antiTokenId
+        (Just antiTokenId)
         $ RetractRequest
             { outputReference =
                 RequestRefId
@@ -285,7 +293,6 @@ spec = do
                                 { platform = Platform "test-platform"
                                 , username = Username "test-user"
                                 , pubkeyhash = PublicKeyHash "test-pubkeyhash"
-                                , direction = Direction.Insert
                                 }
                     wait insert
                     retractTx wallet insert >>= wait
@@ -300,10 +307,31 @@ spec = do
                                 { platform = Platform "test-platform"
                                 , username = Username "test-user"
                                 , pubkeyhash = PublicKeyHash "test-pubkeyhash"
-                                , direction = Direction.Delete
                                 }
                     wait deleteTx
                     retractTx wallet deleteTx >>= wait
+                    pure ()
+            xit "can update the anti token with a registered user" $ \(Call call, wait) -> do
+                wallet <- loadRequesterWallet
+                call $ do
+                    insertTx <-
+                        requesterCmd wallet antiTokenId
+                            $ RegisterUser
+                            $ RegisterUserKey
+                                { platform = Platform "test-platform"
+                                , username = Username "test-user"
+                                , pubkeyhash = PublicKeyHash "test-pubkeyhash"
+                                }
+                    wait insertTx
+                    updateTx <-
+                        oracleCmd wallet (Just antiTokenId)
+                            $ OracleTokenCommand
+                            $ UpdateToken
+                                [ RequestRefId
+                                    $ T.pack
+                                    $ txHash insertTx <> "-0"
+                                ]
+                    wait updateTx
                     pure ()
 
 loadEnvWallet :: String -> IO Wallet

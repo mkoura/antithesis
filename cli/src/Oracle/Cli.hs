@@ -14,14 +14,23 @@ data OracleCommand
     | OracleValidateCommand ValidateCommand
     deriving (Eq, Show)
 
-oracleCmd :: Wallet -> TokenId -> OracleCommand -> ClientM JSValue
-oracleCmd wallet tk = \case
+oracleCmd
+    :: Wallet -> Maybe TokenId -> OracleCommand -> ClientM JSValue
+oracleCmd wallet (Just tk) = \case
     OracleTokenCommand tokenCommand ->
         tokenCmd
             wallet
-            tk
+            (Just tk)
             tokenCommand
     OracleValidateCommand validateCommand ->
         validateCmd
             tk
             validateCommand
+oracleCmd wallet Nothing = \case
+    OracleTokenCommand tokenCommand ->
+        tokenCmd
+            wallet
+            Nothing
+            tokenCommand
+    OracleValidateCommand _validateCommand ->
+        error "TokenId is required for ValidateCommand"

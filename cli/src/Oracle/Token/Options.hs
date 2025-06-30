@@ -31,8 +31,13 @@ tokenCommandParser =
                 ( info
                     ( UpdateToken
                         <$> many outputReferenceParser
-                        <**> helper
                     )
                     (progDesc "Update a token")
+                )
+            <> command
+                "boot"
+                ( info
+                    (pure BootToken <**> helper)
+                    (progDesc "Boot a token")
                 )
         )

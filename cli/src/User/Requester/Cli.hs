@@ -24,8 +24,7 @@ import User.Agent.Cli
     , create
     )
 import User.Types
-    ( Direction (..)
-    , Duration
+    ( Duration
     , RegisterRoleKey (..)
     , RegisterUserKey (..)
     , TestRun (..)
@@ -33,7 +32,9 @@ import User.Types
 
 data RequesterCommand
     = RegisterUser RegisterUserKey
+    | UnregisterUser RegisterUserKey
     | RegisterRole RegisterRoleKey
+    | UnregisterRole RegisterRoleKey
     | RequestTest TestRun Duration
     deriving (Eq, Show)
 
@@ -42,48 +43,72 @@ requesterCmd
 requesterCmd wallet tokenId command = do
     case command of
         RegisterUser request ->
-            manageUser wallet tokenId request >>= toJSON
+            registerUser wallet tokenId request >>= toJSON
+        UnregisterUser request ->
+            unregisterUser wallet tokenId request >>= toJSON
         RegisterRole request ->
-            manageRole wallet tokenId request >>= toJSON
+            registerRole wallet tokenId request >>= toJSON
+        UnregisterRole request ->
+            unregisterRole wallet tokenId request >>= toJSON
         RequestTest testRun duration ->
             agentCmd wallet tokenId $ create testRun duration
 
-manageUser
+registerUser
     :: Wallet
     -> TokenId
     -> RegisterUserKey
     -> ClientM (WithTxHash JSValue)
-manageUser
+registerUser
     wallet
     tokenId
-    request@RegisterUserKey{direction} =
+    request =
         submitting wallet $ \address -> do
             key <- toJSON request
             value <- toJSON ("" :: String)
-            case direction of
-                Insert ->
-                    requestInsert address tokenId
-                        $ RequestInsertBody{key = key, value = value}
-                Delete ->
-                    requestDelete address tokenId
-                        $ RequestDeleteBody{key = key, value = value}
+            requestInsert address tokenId
+                $ RequestInsertBody{key = key, value = value}
 
-manageRole
+unregisterUser
+    :: Wallet
+    -> TokenId
+    -> RegisterUserKey
+    -> ClientM (WithTxHash JSValue)
+unregisterUser
+    wallet
+    tokenId
+    request =
+        submitting wallet $ \address -> do
+            key <- toJSON request
+            value <- toJSON ("" :: String)
+            requestDelete address tokenId
+                $ RequestDeleteBody{key = key, value = value}
+
+registerRole
     :: Wallet
     -> TokenId
     -> RegisterRoleKey
     -> ClientM (WithTxHash JSValue)
-manageRole
+registerRole
     wallet
     tokenId
-    request@RegisterRoleKey{direction} =
+    request =
         submitting wallet $ \address -> do
             key <- toJSON request
             value <- toJSON ("" :: String)
-            case direction of
-                Insert ->
-                    requestInsert address tokenId
-                        $ RequestInsertBody{key = key, value = value}
-                Delete ->
-                    requestDelete address tokenId
-                        $ RequestDeleteBody{key = key, value = value}
+            requestInsert address tokenId
+                $ RequestInsertBody{key = key, value = value}
+
+unregisterRole
+    :: Wallet
+    -> TokenId
+    -> RegisterRoleKey
+    -> ClientM (WithTxHash JSValue)
+unregisterRole
+    wallet
+    tokenId
+    request =
+        submitting wallet $ \address -> do
+            key <- toJSON request
+            value <- toJSON ("" :: String)
+            requestDelete address tokenId
+                $ RequestDeleteBody{key = key, value = value}

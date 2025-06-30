@@ -7,7 +7,14 @@ module Oracle.Types
     , RequestZoo (..)
     ) where
 
-import Core.Types (Change, Owner, RequestRefId, Root)
+import Control.Applicative (Alternative, (<|>))
+import Core.Types
+    ( Change (..)
+    , Operation (..)
+    , Owner
+    , RequestRefId
+    , Root
+    )
 import Lib.JSON
 import Text.JSON.Canonical
 import User.Types (RegisterRoleKey, RegisterUserKey)
@@ -69,17 +76,27 @@ data RequestZoo where
     UnregisterRoleRequest
         :: Request RegisterRoleKey String -> RequestZoo
 
-instance (ReportSchemaErrors m) => FromJSON m RequestZoo where
-    fromJSON = withObject "RequestZoo" $ \v -> do
-        requestType <- v .: "type"
-        case requestType of
-            JSString "register-user" -> do
-                req <- v .: "request"
-                pure $ RegisterUserRequest req
-            JSString "unregister-user" -> do
-                req <- v .: "request"
-                pure $ UnregisterUserRequest req
-            _ -> expectedButGotValue "RequestZoo" requestType
+parseRegisterUserKey
+    :: (ReportSchemaErrors m, Alternative m) => JSValue -> m RequestZoo
+parseRegisterUserKey v = do
+    r@(Request{change}) <- fromJSON v
+    case operation change of
+        Insert _ -> pure $ RegisterUserRequest r
+        Delete _ -> pure $ UnregisterUserRequest r
+        Update _ _ -> expected "insert or delete" $ Just "update"
+
+parseRegisterRoleKey
+    :: (Alternative m, ReportSchemaErrors m) => JSValue -> m RequestZoo
+parseRegisterRoleKey v = do
+    r@(Request{change}) <- fromJSON v
+    case operation change of
+        Insert _ -> pure $ RegisterRoleRequest r
+        Delete _ -> pure $ UnregisterRoleRequest r
+        Update _ _ -> expected "insert or delete" $ Just "update"
+
+instance (Alternative m, ReportSchemaErrors m) => FromJSON m RequestZoo where
+    fromJSON v = do
+        parseRegisterUserKey v <|> parseRegisterRoleKey v
 
 instance Monad m => ToJSON m RequestZoo where
     toJSON (RegisterUserRequest req) =
@@ -118,7 +135,7 @@ instance Monad m => ToJSON m Token where
             ]
 
 instance
-    ReportSchemaErrors m
+    (Alternative m, ReportSchemaErrors m)
     => FromJSON m Token
     where
     fromJSON = withObject "Token" $ \v -> do

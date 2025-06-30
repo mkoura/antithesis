@@ -21,8 +21,7 @@ import Text.JSON.Canonical
     , ToJSON (..)
     )
 import User.Types
-    ( Direction (..)
-    , Duration (Duration)
+    ( Duration (Duration)
     , Reason (..)
     , RegisterUserKey (..)
     , TestRun
@@ -95,19 +94,5 @@ spec = do
                         , pubkeyhash =
                             PublicKeyHash
                                 "AAAAC3NzaC1lZDI1NTE5AAAAIO773JHqlyLm5XzOjSe+Q5yFJyLFuMLL6+n63t4t7HR8"
-                        , direction = Insert
                         }
             roundTrip registerPubKey
-
-    describe "UnregisterPublicKey" $ do
-        it "roundtrips on the JSON instance" $ do
-            let unregisterPubKey =
-                    RegisterUserKey
-                        { platform = Platform "github"
-                        , username = Username "tester"
-                        , pubkeyhash =
-                            PublicKeyHash
-                                "AAAAC3NzaC1lZDI1NTE5AAAAIO773JHqlyLm5XzOjSe+Q5yFJyLFuMLL6+n63t4t7HR8"
-                        , direction = Delete
-                        }
-            roundTrip unregisterPubKey

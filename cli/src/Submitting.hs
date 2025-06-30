@@ -108,6 +108,7 @@ submitting Wallet{address, sign} action = do
 
 data WalletDB = WalletDB
     { mnemonic :: [Text]
+    , address :: Text
     }
     deriving (Eq, Generic)
 
@@ -116,7 +117,7 @@ instance ToJSON WalletDB
 
 data WalletError
     = InvalidMnemonic String
-    | InvalidWalletFile
+    | InvalidWalletFile String
     deriving (Show, Eq)
 
 instance Exception WalletError
@@ -126,7 +127,7 @@ readWallet
     -> IO Wallet
 readWallet walletFile = do
     WalletDB{mnemonic} <-
-        either (const $ throwIO InvalidWalletFile) pure
+        either (throwIO . InvalidWalletFile) pure
             =<< eitherDecodeFileStrict' walletFile
     either throwIO pure $ walletFromMnemonic mnemonic
 

@@ -21,3 +21,4 @@ cli/test.json
 cli/tx.json
 cli/mnemonics.json
 cli/mnemonics-oracle.json
+cli/tmp/wallet.json

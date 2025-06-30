@@ -30,6 +30,7 @@ module Lib.JSON
     )
 where
 
+import Control.Applicative (Alternative)
 import Control.Monad (MonadPlus (..), (<=<))
 import Control.Monad.Trans.Maybe (MaybeT)
 import Data.Aeson (Value, decode, encode)
@@ -229,7 +230,7 @@ parseJSValue b = do
 newtype Parsing m a = Parsing
     { runParsing :: MaybeT m a
     }
-    deriving (Functor, Applicative, Monad)
+    deriving (Functor, Applicative, Monad, Alternative)
 
 instance Monad m => ReportSchemaErrors (Parsing m) where
     expected _expct _actual = Parsing mzero

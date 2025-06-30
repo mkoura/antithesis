@@ -14,6 +14,8 @@ module MPFS.API
     , RequestDeleteBody (..)
     , RequestUpdateBody (..)
     , getTransaction
+    , bootToken
+    , endToken
     ) where
 
 import Core.Types
@@ -113,6 +115,19 @@ instance FromJSON RequestUpdateBody where
             <*> (o .: "oldValue" >>= fromAesonString)
             <*> (o .: "newValue" >>= fromAesonString)
 
+type BootToken =
+    "transaction"
+        :> Capture "address" Address
+        :> "boot-token"
+        :> Get '[JSON] (WithUnsignedTx Value)
+
+type EndToken =
+    "transaction"
+        :> Capture "address" Address
+        :> "end-token"
+        :> Capture "tokenId" TokenId
+        :> Get '[JSON] (WithUnsignedTx Value)
+
 type RequestInsert =
     "transaction"
         :> Capture "address" Address
@@ -147,6 +162,7 @@ type RetractChange =
 type UpdateToken =
     "transaction"
         :> Capture "address" Address
+        :> "update-token"
         :> Capture "tokenId" TokenId
         :> QueryParams "request" RequestRefId
         :> Get '[JSON] (WithUnsignedTx Value)
@@ -178,7 +194,9 @@ type GetTransaction =
         :> Get '[JSON] Value
 
 type TokenAPI =
-    RequestInsert
+    BootToken
+        :<|> EndToken
+        :<|> RequestInsert
         :<|> RequestDelete
         :<|> RequestUpdate
         :<|> RetractChange
@@ -192,6 +210,14 @@ type TokenAPI =
 tokenApi :: Proxy TokenAPI
 tokenApi = Proxy
 
+bootToken
+    :: Address -> ClientM (WithUnsignedTx JSValue)
+bootToken address =
+    fmap fromAesonThrow <$> bootToken' address
+endToken
+    :: Address -> TokenId -> ClientM (WithUnsignedTx JSValue)
+endToken address tokenId =
+    fmap fromAesonThrow <$> endToken' address tokenId
 requestInsert
     :: Address
     -> TokenId
@@ -259,7 +285,13 @@ getTokenFacts' :: TokenId -> ClientM Value
 submitTransaction' :: SignedTx -> ClientM TxHash
 waitNBlocks' :: Int -> ClientM Value
 getTransaction' :: TxHash -> ClientM Value
-requestInsert'
+bootToken'
+    :: Address -> ClientM (WithUnsignedTx Value)
+endToken'
+    :: Address -> TokenId -> ClientM (WithUnsignedTx Value)
+bootToken'
+    :<|> endToken'
+    :<|> requestInsert'
     :<|> requestDelete'
     :<|> requestUpdate'
     :<|> retractChange'

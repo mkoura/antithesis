@@ -391,5 +391,6 @@ instance Exception SignTxError
 
 data Wallet = Wallet
     { address :: Address
+    , pubKeyHash :: PublicKeyHash
     , sign :: UnsignedTx -> Either SignTxError SignedTx
     }

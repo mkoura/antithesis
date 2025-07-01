@@ -13,6 +13,7 @@ module Submitting
     ( submitting
     , readWallet
     , walletFromMnemonic
+    , writeWallet
     )
 where
 
@@ -22,6 +23,8 @@ import Cardano.Address.Derivation
     , deriveAccountPrivateKey
     , deriveAddressPrivateKey
     , genMasterKeyFromMnemonic
+    , pubToBytes
+    , xpubToPub
     )
 import Cardano.Address.Style.Shelley
     ( Credential (PaymentFromExtendedKey)
@@ -32,6 +35,8 @@ import Cardano.Address.Style.Shelley
     , paymentAddress
     )
 import Cardano.Crypto.DSIGN.Class qualified as Crypto
+import Cardano.Crypto.Hash (HashAlgorithm (..))
+import Cardano.Crypto.Hash.Blake2b
 import Cardano.Crypto.Util qualified as Crypto
 import Cardano.Crypto.Wallet (XPrv)
 import Cardano.Crypto.Wallet qualified as Crypto.HD
@@ -66,6 +71,7 @@ import Control.Lens ((%~))
 import Control.Monad.IO.Class (MonadIO (..))
 import Core.Types
     ( Address (..)
+    , PublicKeyHash (..)
     , SignTxError (..)
     , SignedTx (..)
     , UnsignedTx (..)
@@ -77,17 +83,22 @@ import Data.Aeson
     ( FromJSON
     , ToJSON
     , eitherDecodeFileStrict'
+    , encode
     )
 import Data.Bifunctor (first)
 import Data.ByteString (ByteString)
-import Data.ByteString qualified as BS
 import Data.ByteString.Base16 qualified as Base16
-import Data.ByteString.Lazy qualified as BL
+import Data.ByteString.Char8 qualified as BS
+import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.Function ((&))
 import Data.Maybe (fromMaybe)
+import Data.Proxy
+    ( Proxy (..)
+    )
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
+import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import GHC.Generics (Generic)
 import MPFS.API (submitTransaction)
@@ -107,8 +118,7 @@ submitting Wallet{address, sign} action = do
         Left e -> liftIO $ throwIO e
 
 data WalletDB = WalletDB
-    { mnemonic :: [Text]
-    , address :: Text
+    { mnemonics :: Text
     }
     deriving (Eq, Generic)
 
@@ -126,10 +136,15 @@ readWallet
     :: FilePath
     -> IO Wallet
 readWallet walletFile = do
-    WalletDB{mnemonic} <-
+    WalletDB{mnemonics} <-
         either (throwIO . InvalidWalletFile) pure
             =<< eitherDecodeFileStrict' walletFile
-    either throwIO pure $ walletFromMnemonic mnemonic
+    either throwIO pure $ walletFromMnemonic $ T.words mnemonics
+
+writeWallet :: FilePath -> [Text] -> IO ()
+writeWallet walletFile mnemonicWords = do
+    let walletDB = WalletDB{mnemonics = T.unwords mnemonicWords}
+    BL.writeFile walletFile $ encode walletDB
 
 walletFromMnemonic :: [Text] -> Either WalletError Wallet
 walletFromMnemonic mnemonicWords = do
@@ -138,23 +153,33 @@ walletFromMnemonic mnemonicWords = do
             $ mkSomeMnemonic @'[9, 12, 15, 18, 24] mnemonicWords
 
     let
-        rootXPrv :: Shelley 'RootK XPrv
-        rootXPrv = genMasterKeyFromMnemonic mnemonic mempty
+        rootXPrv96 :: Shelley 'RootK XPrv
+        rootXPrv96 = genMasterKeyFromMnemonic mnemonic mempty
 
-        accXPrv :: Shelley 'AccountK XPrv
-        accXPrv = deriveAccountPrivateKey rootXPrv minBound
+        accXPrv96 :: Shelley 'AccountK XPrv
+        accXPrv96 = deriveAccountPrivateKey rootXPrv96 minBound
 
-        addrXPrv :: Shelley 'PaymentK XPrv
-        addrXPrv = deriveAddressPrivateKey accXPrv UTxOExternal minBound
-        addrXPub = Crypto.HD.toXPub <$> addrXPrv
+        addrXPrv96 :: Shelley 'PaymentK XPrv
+        addrXPrv96 = deriveAddressPrivateKey accXPrv96 UTxOExternal minBound
+        addrXPub64 = Crypto.HD.toXPub <$> addrXPrv96
 
+        pubBytes32 = pubToBytes $ xpubToPub $ getKey addrXPub64
         tag = either (error . show) id $ mkNetworkDiscriminant 0
         addr =
             Address
                 $ bech32
                 $ paymentAddress tag
-                $ PaymentFromExtendedKey addrXPub
-    pure $ Wallet addr (signTx $ getKey addrXPrv)
+                $ PaymentFromExtendedKey addrXPub64
+    pure
+        $ Wallet
+            { address = addr
+            , sign = signTx $ getKey addrXPrv96
+            , pubKeyHash =
+                PublicKeyHash
+                    $ BS.unpack
+                    $ Base16.encode
+                    $ digest (Proxy @Blake2b_224) pubBytes32
+            }
 
 signTx :: XPrv -> UnsignedTx -> Either SignTxError SignedTx
 signTx xprv (UnsignedTx unsignedHex) = do

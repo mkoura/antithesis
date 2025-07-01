@@ -51,6 +51,7 @@ in {
   inherit project;
   inherit version;
   packages.anti = project.hsPkgs.anti.components.exes.anti;
+  packages.wallet = project.hsPkgs.anti.components.exes.wallet;
   packages.cardano-address = cardano-address;
   packages.cardano-node = cardano-node;
   packages.cardano-cli = cardano-cli;

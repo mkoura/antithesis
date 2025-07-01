@@ -312,19 +312,20 @@ spec = do
                     retractTx wallet deleteTx >>= wait
                     pure ()
             xit "can update the anti token with a registered user" $ \(Call call, wait) -> do
-                wallet <- loadRequesterWallet
+                requester <- loadRequesterWallet
+                oracle <- loadOracleWallet
                 call $ do
                     insertTx <-
-                        requesterCmd wallet antiTokenId
+                        requesterCmd requester antiTokenId
                             $ RegisterUser
                             $ RegisterUserKey
-                                { platform = Platform "test-platform"
-                                , username = Username "test-user"
-                                , pubkeyhash = PublicKeyHash "test-pubkeyhash"
+                                { platform = Platform "test-platform-2"
+                                , username = Username "test-user-2"
+                                , pubkeyhash = PublicKeyHash "test-pubkeyhash-2"
                                 }
                     wait insertTx
                     updateTx <-
-                        oracleCmd wallet (Just antiTokenId)
+                        oracleCmd oracle (Just antiTokenId)
                             $ OracleTokenCommand
                             $ UpdateToken
                                 [ RequestRefId
@@ -348,6 +349,8 @@ loadRequesterWallet :: IO Wallet
 loadRequesterWallet =
     loadEnvWallet "ANTI_TEST_REQUESTER_MNEMONIC"
 
-_loadOracleWallet :: IO Wallet
-_loadOracleWallet =
-    loadEnvWallet "ANTI_TEST_ORACLE_MNEMONIC"
+loadOracleWallet :: IO Wallet
+loadOracleWallet = do
+    w <- loadEnvWallet "ANTI_TEST_ORACLE_MNEMONIC"
+    print $ address w
+    return w

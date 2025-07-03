@@ -85,6 +85,12 @@ instance Aeson.FromJSON RequestRefId where
 newtype TokenId = TokenId String
     deriving (Eq, Show)
 
+instance Monad m => ToJSON m TokenId where
+    toJSON (TokenId tokenId) = toJSON tokenId
+
+instance ReportSchemaErrors m => FromJSON m TokenId where
+    fromJSON v = TokenId <$> fromJSON v
+
 instance FromData TokenId where
     fromBuiltinData = parse . builtinDataToData
       where

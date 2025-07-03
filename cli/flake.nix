@@ -19,16 +19,13 @@
       url = "github:intersectmbo/cardano-haskell-packages?ref=repo";
       flake = false;
     };
-    cardano-address-pkg = {
-      url = "github:intersectMBO/cardano-addresses?ref=4.0.0";
-    };
     cardano-node-runtime = {
       url = "github:IntersectMBO/cardano-node?ref=10.1.4";
     };
   };
 
   outputs = inputs@{ self, nixpkgs, flake-utils, haskellNix, CHaP, iohkNix
-    , cardano-address-pkg, cardano-node-runtime, ... }:
+    , cardano-node-runtime, ... }:
     let
       lib = nixpkgs.lib;
       version = self.dirtyShortRev or self.shortRev;
@@ -49,8 +46,6 @@
           cardano-node = node-pkgs.cardano-node;
           cardano-cli = node-pkgs.cardano-cli;
           cardano-submit-api = node-pkgs.cardano-submit-api;
-          cardano-address =
-            cardano-address-pkg.packages.${system}."cardano-addresses:exe:cardano-address";
           pkgs = import nixpkgs {
             overlays = [
               iohkNix.overlays.crypto # modified crypto libs
@@ -66,7 +61,6 @@
           inherit CHaP;
           inherit version;
           inherit pkgs;
-          inherit cardano-address;
           inherit cardano-node;
           inherit cardano-cli;
           inherit cardano-submit-api;

@@ -1,4 +1,4 @@
-{ CHaP, version, indexState, pkgs, cardano-address, cardano-node, cardano-cli
+{ CHaP, version, indexState, pkgs, cardano-node, cardano-cli
 , cardano-submit-api, ... }:
 
 let
@@ -27,7 +27,6 @@ let
     buildInputs = [
       pkgs.gitAndTools.git
       pkgs.just
-      cardano-address
       cardano-node
       cardano-cli
       cardano-submit-api
@@ -52,7 +51,6 @@ in {
   inherit version;
   packages.anti = project.hsPkgs.anti.components.exes.anti;
   packages.wallet = project.hsPkgs.anti.components.exes.wallet;
-  packages.cardano-address = cardano-address;
   packages.cardano-node = cardano-node;
   packages.cardano-cli = cardano-cli;
   packages.cardano-submit-api = cardano-submit-api;

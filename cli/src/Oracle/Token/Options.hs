@@ -1,5 +1,5 @@
 module Oracle.Token.Options
-    ( TokenCommand (..)
+    ( TokenCommand
     , tokenCommandParser
     )
 where
@@ -15,7 +15,12 @@ import Options.Applicative
     , progDesc
     , (<**>)
     )
-import Oracle.Token.Cli (TokenCommand (..))
+import Oracle.Token.Cli
+    ( TokenCommand
+    , bootTokenCmd
+    , getTokenCmd
+    , updateTokenCmd
+    )
 
 tokenCommandParser :: Parser TokenCommand
 tokenCommandParser =
@@ -23,13 +28,13 @@ tokenCommandParser =
         ( command
             "get"
             ( info
-                (pure GetToken <**> helper)
+                (pure getTokenCmd <**> helper)
                 (progDesc "Get a token")
             )
             <> command
                 "update"
                 ( info
-                    ( UpdateToken
+                    ( updateTokenCmd
                         <$> many outputReferenceParser
                     )
                     (progDesc "Update a token")
@@ -37,7 +42,7 @@ tokenCommandParser =
             <> command
                 "boot"
                 ( info
-                    (pure BootToken <**> helper)
+                    (pure bootTokenCmd <**> helper)
                     (progDesc "Boot a token")
                 )
         )

@@ -72,7 +72,11 @@ import Network.HTTP.Client
     )
 import Network.HTTP.Client.TLS (tlsManagerSettings)
 import Oracle.Cli (OracleCommand (OracleTokenCommand), oracleCmd)
-import Oracle.Token.Cli (TokenCommand (..))
+import Oracle.Token.Cli
+    ( TokenCommandCore (..)
+    , tokenCmdCore
+    , updateTokenCmd
+    )
 import PlutusTx (Data, fromData)
 import Servant.Client (ClientM, mkClientEnv, parseBaseUrl, runClientM)
 import Submitting (walletFromMnemonic)
@@ -327,7 +331,7 @@ spec = do
                     updateTx <-
                         oracleCmd oracle (Just antiTokenId)
                             $ OracleTokenCommand
-                            $ UpdateToken
+                            $ updateTokenCmd
                                 [ RequestRefId
                                     $ T.pack
                                     $ txHash insertTx <> "-0"

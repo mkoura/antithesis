@@ -23,7 +23,7 @@ import Data.Aeson.QQ (aesonQQ)
 import Lib.JSON (object, (.=))
 import Options (Options (..))
 import Oracle.Cli (OracleCommand (..))
-import Oracle.Token.Cli (TokenCommand (..))
+import Oracle.Token.Cli (getTokenCmd)
 import System.Environment (setEnv, withArgs)
 import Test.Hspec
     ( Spec
@@ -234,7 +234,7 @@ spec = beforeAll_ runDummyServer $ do
         let opts =
                 Options
                     { optionsCommand =
-                        OracleCommand $ OracleTokenCommand GetToken
+                        OracleCommand $ OracleTokenCommand getTokenCmd
                     }
         anti args
             `shouldReturn` ( opts

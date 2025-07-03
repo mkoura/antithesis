@@ -347,15 +347,15 @@ instance (Aeson.ToJSON a) => Aeson.ToJSON (WithUnsignedTx a) where
             ]
 
 newtype TxHash = TxHash
-    { txHash :: Text
+    { textOf :: Text
     }
     deriving (Eq, Show)
 
 instance FromHttpApiData TxHash where
-    parseUrlPiece txHash =
-        if T.null txHash
+    parseUrlPiece textOf =
+        if T.null textOf
             then Left "TxHash cannot be empty"
-            else Right (TxHash{txHash})
+            else Right (TxHash{textOf})
 
 instance ToHttpApiData TxHash where
     toUrlPiece (TxHash txHash) = txHash

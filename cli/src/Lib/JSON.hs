@@ -234,3 +234,10 @@ newtype Parsing m a = Parsing
 
 instance Monad m => ReportSchemaErrors (Parsing m) where
     expected _expct _actual = Parsing mzero
+
+instance Applicative m => ToJSON m () where
+    toJSON () = pure JSNull
+
+instance (ReportSchemaErrors m) => FromJSON m () where
+    fromJSON JSNull = pure ()
+    fromJSON v = expectedButGotValue "()" v

@@ -12,6 +12,7 @@ import Core.Types
 import Lib.JSON ()
 import MPFS.API
     ( bootToken
+    , endToken
     , getToken
     , updateToken
     )
@@ -41,6 +42,9 @@ tokenCmd wallet tokenId (AnyTokenCommand cmd) =
             result <- tokenCmdCore wallet Nothing BootToken
             toJSON result
         UpdateToken reqs -> tokenCmdCore wallet tokenId (UpdateToken reqs)
+        EndToken -> do
+            _ <- tokenCmdCore wallet tokenId EndToken
+            toJSON ()
 
 data TokenCommand = forall a. AnyTokenCommand (TokenCommandCore a)
 
@@ -51,13 +55,15 @@ instance Eq TokenCommand where
     AnyTokenCommand (UpdateToken reqs1) == AnyTokenCommand (UpdateToken reqs2) =
         reqs1 == reqs2
     _ == _ = False
+
 data TokenCommandCore a where
     GetToken :: TokenCommandCore JSValue
-    BootToken :: TokenCommandCore TokenId
+    BootToken :: TokenCommandCore (WithTxHash TokenId)
     UpdateToken
         :: { requests :: [RequestRefId]
            }
         -> TokenCommandCore JSValue
+    EndToken :: TokenCommandCore (WithTxHash ())
 
 deriving instance Show (TokenCommandCore a)
 deriving instance Eq (TokenCommandCore a)
@@ -72,13 +78,16 @@ tokenCmdCore wallet (Just tk) cmd = do
                 updateToken address tk reqs
             toJSON result
         BootToken -> error "BootToken command requires no TokenId"
+        EndToken -> do
+            WithTxHash txHash _ <- submitting wallet $ \address -> endToken address tk
+            pure $ WithTxHash txHash Nothing
 tokenCmdCore wallet Nothing cmd = case cmd of
     BootToken -> do
-        WithTxHash _ jTokenId <- submitting wallet
+        WithTxHash txHash jTokenId <- submitting wallet
             $ \address -> bootToken address
         case jTokenId of
             Just tkId -> case fromJSON tkId of
                 Nothing -> error "BootToken failed, TokenId is not valid JSON"
-                Just tokenId -> pure tokenId
+                Just tokenId -> pure $ WithTxHash txHash (Just tokenId)
             _ -> error "BootToken failed, no TokenId returned"
     _ -> error "TokenId is required for this command"

@@ -36,15 +36,18 @@ data Command
     deriving (Eq, Show)
 
 cmd :: Wallet -> Maybe TokenId -> Command -> ClientM JSValue
-cmd wallet (Just tokenId) command = do
+cmd wallet (Just tokenId) command =
     case command of
         RequesterCommand requesterCommand ->
             requesterCmd wallet tokenId requesterCommand
         OracleCommand oracleCommand -> oracleCmd wallet (Just tokenId) oracleCommand
         AgentCommand agentCommand -> agentCmd wallet tokenId agentCommand
+        GetFacts -> getTokenFacts tokenId
         RetractRequest refId -> toJSON <=< submitting wallet $ \address ->
             retractChange address refId
-        GetFacts -> getTokenFacts tokenId
-cmd wallet Nothing command = case command of
-    OracleCommand oracleCommand -> oracleCmd wallet Nothing oracleCommand
-    _ -> error "TokenId is required for this command"
+cmd wallet Nothing command =
+    case command of
+        RetractRequest refId -> toJSON <=< submitting wallet $ \address ->
+            retractChange address refId
+        OracleCommand oracleCommand -> oracleCmd wallet Nothing oracleCommand
+        _ -> error "TokenId is required for this command"

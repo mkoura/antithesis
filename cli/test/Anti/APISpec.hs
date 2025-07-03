@@ -44,7 +44,9 @@ import Core.Types
     , TxHash (TxHash)
     , Username (..)
     , Wallet (..)
+    , WithTxHash (..)
     , WithUnsignedTx (WithUnsignedTx)
+    , textOf
     )
 import Data.Bifunctor (first)
 import Data.ByteString.Base16
@@ -82,7 +84,9 @@ import Servant.Client (ClientM, mkClientEnv, parseBaseUrl, runClientM)
 import Submitting (walletFromMnemonic)
 import System.Environment (getEnv)
 import Test.Hspec
-    ( SpecWith
+    ( ActionWith
+    , SpecWith
+    , afterAll
     , beforeAll
     , describe
     , it
@@ -96,26 +100,26 @@ import User.Types (RegisterUserKey (..))
 mpfsPolicyId :: String
 mpfsPolicyId = "c1e392ee7da9415f946de9d2aef9607322b47d6e84e8142ef0c340bf"
 
-antiTokenId :: TokenId
-antiTokenId =
-    TokenId
-        "865ebcf5e1d6bafcc121030a6e167474a426271d965b78e36d90485adf540575"
+oracleOwner :: String
+oracleOwner = "1f5cebecb4cd1cad6108a86014de9d8f23f9d4477bbddb3e1289b224"
 
-antiTokenOwner :: String
-antiTokenOwner = "1f5cebecb4cd1cad6108a86014de9d8f23f9d4477bbddb3e1289b224"
+_oracleAddress :: Address
+_oracleAddress =
+    Address
+        "addr_test1vq04e6lvknx3ettppz5xq9x7nk8j87w5gaammke7z2ymyfqtkl4vv"
 
-fundedTestsAddress :: Address
-fundedTestsAddress =
+requesterAddress :: Address
+requesterAddress =
     Address
         "addr_test1qz6zuvdm0gu3q54pk50wjfjwyt4mwj6uaelzdfh9extxgn9jwpzyryhlkvscdgpkgefv78gkfa70p70tz04hjpeemjmsrd2jqm"
 
-testUTxOOwner :: Owner
-testUTxOOwner = Owner "b42e31bb7a391052a1b51ee9264e22ebb74b5cee7e26a6e5c996644c"
+requesterOwner :: Owner
+requesterOwner = Owner "b42e31bb7a391052a1b51ee9264e22ebb74b5cee7e26a6e5c996644c"
 
 host :: String
 host = "https://mpfs.plutimus.com"
 
-newtype Call = Call (forall a. ClientM a -> IO a)
+newtype Call = Call {calling :: forall a. ClientM a -> IO a}
 
 -- | CBOR deserialization of a tx in any era.
 deserializeTx :: Text -> AlonzoTx ConwayEra
@@ -129,7 +133,7 @@ deserializeTx tx = case decode (T.encodeUtf8 tx) of
         Left err -> error $ "Failed to decode full CBOR: " ++ show err
         Right tx' -> tx'
 
-setup :: IO (Call, JSValue -> ClientM ())
+setup :: IO (Call, JSValue -> ClientM (), TokenId)
 setup = do
     url <- parseBaseUrl host
     nm <-
@@ -143,7 +147,20 @@ setup = do
             case r of
                 Left err -> throwIO err
                 Right res -> return res
-    return (call, liftIO . waitTx call)
+    oracle <- loadOracleWallet
+    WithTxHash txHash mTokenId <- calling call $ do
+        tokenCmdCore oracle Nothing BootToken
+    liftIO $ waitTx call txHash
+    case mTokenId of
+        Nothing -> error "BootToken failed, no TokenId returned"
+        Just tokenId -> return (call, liftIO . waitTx call . getTxHash, tokenId)
+
+teardown :: ActionWith (Call, JSValue -> ClientM (), TokenId)
+teardown (call, _, tk) = do
+    wallet <- loadOracleWallet
+    WithTxHash txHash _ <- calling call $ do
+        tokenCmdCore wallet (Just tk) EndToken
+    liftIO $ waitTx call txHash
 
 getFirstOutput :: AlonzoTx ConwayEra -> Maybe (String, Data)
 getFirstOutput dtx = case dtx
@@ -166,22 +183,24 @@ getFirstOutput dtx = case dtx
 (!?) :: [(JSString, JSValue)] -> String -> Maybe JSValue
 (!?) = flip lookup . fmap (first fromJSString)
 
-txHash :: JSValue -> String
-txHash obj = case obj of
+getTxHash :: JSValue -> TxHash
+getTxHash obj = case obj of
     JSObject mapping -> case mapping !? "txHash" of
         Just (JSString requestTxHash) ->
-            fromJSString requestTxHash
+            TxHash
+                $ T.pack
+                $ fromJSString requestTxHash
         _ -> error "Key missing"
     _ -> error "Response is not an object"
 
-waitTx :: Call -> JSValue -> IO ()
-waitTx (Call call) obj = void $ go 600
+waitTx :: Call -> TxHash -> IO ()
+waitTx (Call call) txHash = void $ go 600
   where
     go :: Int -> IO JSValue
     go 0 = error "Transaction not found after waiting"
     go n =
         do
-            call (getTransaction (TxHash $ T.pack $ txHash obj))
+            call (getTransaction txHash)
             `catch` \(_ :: SomeException) -> do
                 liftIO $ threadDelay 1000000
                 go (n - 1)
@@ -190,38 +209,38 @@ retractTx :: Wallet -> JSValue -> ClientM JSValue
 retractTx wallet obj = do
     cmd
         wallet
-        (Just antiTokenId)
+        Nothing
         $ RetractRequest
             { outputReference =
                 RequestRefId
-                    $ T.pack (txHash obj) <> "-0"
+                    $ textOf (getTxHash obj) <> "-0"
             }
 
 spec :: SpecWith ()
 spec = do
-    beforeAll setup $ do
+    beforeAll setup $ afterAll teardown $ do
         describe "MPFS.API" $ do
-            it "can retrieve config" $ \(Call call, _) -> do
-                res <- call $ getToken antiTokenId
+            it "can retrieve config" $ \(Call call, _, tokenId) -> do
+                res <- call $ getToken tokenId
                 case res of
                     JSObject obj -> case obj !? "state" of
                         Just (JSObject state) -> case state !? "owner" of
                             Just (JSString antiTokenOwner') ->
-                                fromJSString antiTokenOwner' `shouldBe` antiTokenOwner
+                                fromJSString antiTokenOwner' `shouldBe` oracleOwner
                             _ -> error "Field 'ewner' is missing or not a string"
                         _ -> error "Field 'state' is missing or not an object"
                     _ -> error "Response is not an object"
-            it "can retrieve token facts" $ \(Call call, _) -> do
-                res <- call $ getTokenFacts antiTokenId
+            it "can retrieve token facts" $ \(Call call, _, tokenId) -> do
+                res <- call $ getTokenFacts tokenId
                 case res of
                     JSObject _obj -> return () -- Add your logic here to handle the object
                     _ -> error "Response is not an object"
-            it "can retrieve a request-insert tx" $ \(Call call, _) -> do
+            it "can retrieve a request-insert tx" $ \(Call call, _, tokenId) -> do
                 WithUnsignedTx tx _ <-
                     call
                         $ requestInsert
-                            fundedTestsAddress
-                            antiTokenId
+                            requesterAddress
+                            tokenId
                         $ RequestInsertBody
                             (JSString "key")
                         $ JSString "value"
@@ -232,20 +251,20 @@ spec = do
                 policyId' `shouldBe` mpfsPolicyId
                 cageDatum
                     `shouldBe` RequestDatum
-                        { tokenId = antiTokenId
-                        , owner = testUTxOOwner
+                        { tokenId = tokenId
+                        , owner = requesterOwner
                         , change =
                             Change
                                 { key = Key "key"
                                 , operation = Insert "value"
                                 }
                         }
-            it "can retrieve a request-delete tx" $ \(Call call, _) -> do
+            it "can retrieve a request-delete tx" $ \(Call call, _, tokenId) -> do
                 WithUnsignedTx tx _ <-
                     call
                         $ requestDelete
-                            fundedTestsAddress
-                            antiTokenId
+                            requesterAddress
+                            tokenId
                         $ RequestDeleteBody (JSString "key") (JSString "value")
                 let dtx = deserializeTx tx
                 Just (policyId', datum) <- pure $ getFirstOutput dtx
@@ -254,20 +273,20 @@ spec = do
                 policyId' `shouldBe` mpfsPolicyId
                 cageDatum
                     `shouldBe` RequestDatum
-                        { tokenId = antiTokenId
-                        , owner = testUTxOOwner
+                        { tokenId = tokenId
+                        , owner = requesterOwner
                         , change =
                             Change
                                 { key = Key "key"
                                 , operation = Delete "value"
                                 }
                         }
-            it "can retrieve a request-update tx" $ \(Call call, _) -> do
+            it "can retrieve a request-update tx" $ \(Call call, _, tokenId) -> do
                 WithUnsignedTx tx _ <-
                     call
                         $ requestUpdate
-                            fundedTestsAddress
-                            antiTokenId
+                            requesterAddress
+                            tokenId
                         $ RequestUpdateBody
                             (JSString "key")
                             (JSString "oldValue")
@@ -279,19 +298,19 @@ spec = do
                 policyId' `shouldBe` mpfsPolicyId
                 cageDatum
                     `shouldBe` RequestDatum
-                        { tokenId = antiTokenId
-                        , owner = testUTxOOwner
+                        { tokenId = tokenId
+                        , owner = requesterOwner
                         , change =
                             Change
                                 { key = Key "key"
                                 , operation = Update "oldValue" "newValue"
                                 }
                         }
-            it "can submit a request-insert tx" $ \(Call call, wait) -> do
+            it "can submit a request-insert tx" $ \(Call call, wait, tokenId) -> do
                 wallet <- loadRequesterWallet
                 call $ do
                     insert <-
-                        requesterCmd wallet antiTokenId
+                        requesterCmd wallet tokenId
                             $ RegisterUser
                             $ RegisterUserKey
                                 { platform = Platform "test-platform"
@@ -301,43 +320,44 @@ spec = do
                     wait insert
                     retractTx wallet insert >>= wait
                     pure ()
-            it "can submit a request-delete tx" $ \(Call call, wait) -> do
-                wallet <- loadRequesterWallet
-                call $ do
-                    deleteTx <-
-                        requesterCmd wallet antiTokenId
-                            $ RegisterUser
-                            $ RegisterUserKey
-                                { platform = Platform "test-platform"
-                                , username = Username "test-user"
-                                , pubkeyhash = PublicKeyHash "test-pubkeyhash"
-                                }
-                    wait deleteTx
-                    retractTx wallet deleteTx >>= wait
-                    pure ()
-            xit "can update the anti token with a registered user" $ \(Call call, wait) -> do
-                requester <- loadRequesterWallet
-                oracle <- loadOracleWallet
-                call $ do
-                    insertTx <-
-                        requesterCmd requester antiTokenId
-                            $ RegisterUser
-                            $ RegisterUserKey
-                                { platform = Platform "test-platform-2"
-                                , username = Username "test-user-2"
-                                , pubkeyhash = PublicKeyHash "test-pubkeyhash-2"
-                                }
-                    wait insertTx
-                    updateTx <-
-                        oracleCmd oracle (Just antiTokenId)
-                            $ OracleTokenCommand
-                            $ updateTokenCmd
-                                [ RequestRefId
-                                    $ T.pack
-                                    $ txHash insertTx <> "-0"
-                                ]
-                    wait updateTx
-                    pure ()
+            it "can submit a request-delete tx"
+                $ \(Call call, wait, tokenId) -> do
+                    wallet <- loadRequesterWallet
+                    call $ do
+                        deleteTx <-
+                            requesterCmd wallet tokenId
+                                $ RegisterUser
+                                $ RegisterUserKey
+                                    { platform = Platform "test-platform"
+                                    , username = Username "test-user"
+                                    , pubkeyhash = PublicKeyHash "test-pubkeyhash"
+                                    }
+                        wait deleteTx
+                        retractTx wallet deleteTx >>= wait
+                        pure ()
+            xit "can update the anti token with a registered user"
+                $ \(Call call, wait, tokenId) -> do
+                    requester <- loadRequesterWallet
+                    oracle <- loadOracleWallet
+                    call $ do
+                        insertTx <-
+                            requesterCmd requester tokenId
+                                $ RegisterUser
+                                $ RegisterUserKey
+                                    { platform = Platform "test-platform-2"
+                                    , username = Username "test-user-2"
+                                    , pubkeyhash = PublicKeyHash "test-pubkeyhash-2"
+                                    }
+                        wait insertTx
+                        updateTx <-
+                            oracleCmd oracle (Just tokenId)
+                                $ OracleTokenCommand
+                                $ updateTokenCmd
+                                    [ RequestRefId
+                                        $ textOf (getTxHash insertTx) <> "-0"
+                                    ]
+                        wait updateTx
+                        pure ()
 
 loadEnvWallet :: String -> IO Wallet
 loadEnvWallet envVar = do
@@ -355,6 +375,4 @@ loadRequesterWallet =
 
 loadOracleWallet :: IO Wallet
 loadOracleWallet = do
-    w <- loadEnvWallet "ANTI_TEST_ORACLE_MNEMONIC"
-    print $ address w
-    return w
+    loadEnvWallet "ANTI_TEST_ORACLE_MNEMONIC"

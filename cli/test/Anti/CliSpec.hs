@@ -19,7 +19,7 @@ import Core.Types
     , Username (..)
     )
 import Data.Aeson (encodeFile)
-import Data.Aeson.QQ
+import Data.Aeson.QQ (aesonQQ)
 import Lib.JSON (object, (.=))
 import Options (Options (..))
 import Oracle.Cli (OracleCommand (..))
@@ -45,10 +45,26 @@ runDummyServer = do
     let walletFile = "/tmp/anti-test-wallet.json"
     encodeFile
         walletFile
-        [aesonQQ| {
-        "mnemonic": ["very", "actress", "black", "another", "choice", "cry", "consider", "agree", "sudden", "garage", "error", "transfer"]
-        , "address" : "addr_test1vp46vqqjjw0d9hdjj26musy6udyph3jx55rdvepvrke4p6qsd5vhd"
-        } |]
+        [aesonQQ|
+        {
+            "mnemonic": [
+                "very",
+                "actress",
+                "black",
+                "another",
+                "choice",
+                "cry",
+                "consider",
+                "agree",
+                "sudden",
+                "garage",
+                "error",
+                "transfer"
+            ],
+            "address":
+                "addr_test1vp46vqqjjw0d9hdjj26musy6udyph3jx55rdvepvrke4p6qsd5vhd"
+        }
+        |]
 
     setEnv "ANTI_MPFS_HOST" "http://localhost:8084"
     setEnv "ANTI_TOKEN_ID" "dummyTokenId"

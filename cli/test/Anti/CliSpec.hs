@@ -20,10 +20,11 @@ import Core.Types
     )
 import Data.Aeson (encodeFile)
 import Data.Aeson.QQ (aesonQQ)
+import Lib.Box (Box (..))
 import Lib.JSON (object, (.=))
 import Options (Options (..))
 import Oracle.Cli (OracleCommand (..))
-import Oracle.Token.Cli (getTokenCmd)
+import Oracle.Token.Cli (TokenCommand (..))
 import System.Environment (setEnv, withArgs)
 import Test.Hspec
     ( Spec
@@ -71,7 +72,7 @@ runDummyServer = do
     setEnv "ANTI_WALLET_FILE" walletFile
     return ()
 
-anti :: [String] -> IO (Options, JSValue)
+anti :: [String] -> IO (Box Options, JSValue)
 anti args = do
     -- Simulate the command line arguments
     -- Call the main function with the simulated arguments
@@ -100,18 +101,19 @@ spec = beforeAll_ runDummyServer $ do
                 , "AAAAC3NzaC1lZDI1NTE5AAAAIO773JHqlyLm5XzOjSe+Q5yFJyLFuMLL6+n63t4t7HR8"
                 ]
         let opts =
-                Options
-                    { optionsCommand =
-                        RequesterCommand
-                            $ RegisterUser
-                                RegisterUserKey
-                                    { platform = Platform "github"
-                                    , username = Username "paolino"
-                                    , pubkeyhash =
-                                        PublicKeyHash
-                                            "AAAAC3NzaC1lZDI1NTE5AAAAIO773JHqlyLm5XzOjSe+Q5yFJyLFuMLL6+n63t4t7HR8"
-                                    }
-                    }
+                Box
+                    $ Options
+                        { optionsCommand =
+                            RequesterCommand
+                                $ RegisterUser
+                                    RegisterUserKey
+                                        { platform = Platform "github"
+                                        , username = Username "paolino"
+                                        , pubkeyhash =
+                                            PublicKeyHash
+                                                "AAAAC3NzaC1lZDI1NTE5AAAAIO773JHqlyLm5XzOjSe+Q5yFJyLFuMLL6+n63t4t7HR8"
+                                        }
+                        }
 
         anti args
             `shouldReturn` (opts, dummyTxHashJSON)
@@ -128,18 +130,19 @@ spec = beforeAll_ runDummyServer $ do
                 ]
 
         let opts =
-                Options
-                    { optionsCommand =
-                        RequesterCommand
-                            $ UnregisterUser
-                                RegisterUserKey
-                                    { platform = Platform "github"
-                                    , username = Username "bob"
-                                    , pubkeyhash =
-                                        PublicKeyHash
-                                            "607a0d8a64616a407537edf0d9b59cf4cb509c556f6d2de4250ce15df2"
-                                    }
-                    }
+                Box
+                    $ Options
+                        { optionsCommand =
+                            RequesterCommand
+                                $ UnregisterUser
+                                    RegisterUserKey
+                                        { platform = Platform "github"
+                                        , username = Username "bob"
+                                        , pubkeyhash =
+                                            PublicKeyHash
+                                                "607a0d8a64616a407537edf0d9b59cf4cb509c556f6d2de4250ce15df2"
+                                        }
+                        }
         anti args `shouldReturn` (opts, dummyTxHashJSON)
 
     xit "can request removing user from a project" $ do
@@ -154,16 +157,17 @@ spec = beforeAll_ runDummyServer $ do
                 , "bob"
                 ]
         let opts =
-                Options
-                    { optionsCommand =
-                        RequesterCommand
-                            $ RegisterRole
-                            $ RegisterRoleKey
-                                { platform = Platform "github"
-                                , repository = Repository "cardano-foundation" "antithesis"
-                                , username = Username "bob"
-                                }
-                    }
+                Box
+                    $ Options
+                        { optionsCommand =
+                            RequesterCommand
+                                $ RegisterRole
+                                $ RegisterRoleKey
+                                    { platform = Platform "github"
+                                    , repository = Repository "cardano-foundation" "antithesis"
+                                    , username = Username "bob"
+                                    }
+                        }
 
         anti args `shouldReturn` (opts, dummyTxHashJSON)
 
@@ -181,20 +185,21 @@ spec = beforeAll_ runDummyServer $ do
                 , "9114528e2343e6fcf3c92de71364275227e6b16d"
                 ]
         let opts =
-                Options
-                    { optionsCommand =
-                        RequesterCommand
-                            $ RequestTest
-                                TestRun
-                                    { platform = Platform "github"
-                                    , repository = Repository "cardano-foundation" "antithesis"
-                                    , requester = Username "bob"
-                                    , commitId = SHA1 "9114528e2343e6fcf3c92de71364275227e6b16d"
-                                    , directory = Directory "."
-                                    , testRunIndex = 1
-                                    }
-                            $ Duration 3
-                    }
+                Box
+                    $ Options
+                        { optionsCommand =
+                            RequesterCommand
+                                $ RequestTest
+                                    TestRun
+                                        { platform = Platform "github"
+                                        , repository = Repository "cardano-foundation" "antithesis"
+                                        , requester = Username "bob"
+                                        , commitId = SHA1 "9114528e2343e6fcf3c92de71364275227e6b16d"
+                                        , directory = Directory "."
+                                        , testRunIndex = 1
+                                        }
+                                $ Duration 3
+                        }
 
         result <-
             object
@@ -215,14 +220,15 @@ spec = beforeAll_ runDummyServer $ do
                 , "9114528e2343e6fcf3c92de71364275227e6b16d-0"
                 ]
         let opts =
-                Options
-                    { optionsCommand =
-                        RetractRequest
-                            { outputReference =
-                                RequestRefId
-                                    "9114528e2343e6fcf3c92de71364275227e6b16d-0"
-                            }
-                    }
+                Box
+                    $ Options
+                        { optionsCommand =
+                            RetractRequest
+                                { outputReference =
+                                    RequestRefId
+                                        "9114528e2343e6fcf3c92de71364275227e6b16d-0"
+                                }
+                        }
         anti args `shouldReturn` (opts, dummyTxHashJSON)
 
     xit "can get a token" $ do
@@ -232,10 +238,11 @@ spec = beforeAll_ runDummyServer $ do
                 , "get"
                 ]
         let opts =
-                Options
-                    { optionsCommand =
-                        OracleCommand $ OracleTokenCommand getTokenCmd
-                    }
+                Box
+                    $ Options
+                        { optionsCommand =
+                            OracleCommand $ OracleTokenCommand GetToken
+                        }
         anti args
             `shouldReturn` ( opts
                            , JSArray []

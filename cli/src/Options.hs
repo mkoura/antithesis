@@ -8,6 +8,7 @@ module Options
 
 import Cli (Command (..))
 import Core.Options (outputReferenceParser)
+import Lib.Box (Box (..), fmapBox)
 import Options.Applicative
     ( Parser
     , command
@@ -26,50 +27,50 @@ import Oracle.Options (oracleCommandParser)
 import User.Agent.Options (agentCommandParser)
 import User.Requester.Options (requesterCommandParser)
 
-newtype Options = Options
-    { optionsCommand :: Command
+newtype Options a = Options
+    { optionsCommand :: Command a
     }
     deriving (Eq, Show)
 
-commandParser :: Parser Command
-commandParser =
+commandParser :: (Box Command -> b) -> Parser b
+commandParser f =
     hsubparser
         ( command
             "oracle"
             ( info
-                (OracleCommand <$> oracleCommandParser)
+                (f <$> oracleCommandParser (fmapBox OracleCommand))
                 (progDesc "Manage token updates")
             )
             <> command
                 "requester"
                 ( info
-                    (RequesterCommand <$> requesterCommandParser)
+                    (f <$> requesterCommandParser (fmapBox RequesterCommand))
                     (progDesc "Manage requester changes")
                 )
             <> command
                 "retract"
                 ( info
-                    retractRequestOptions
+                    (f <$> retractRequestOptions)
                     (progDesc "Retract a change")
                 )
             <> command
                 "get-facts"
                 ( info
-                    (pure GetFacts)
+                    (pure . f . Box $ GetFacts)
                     (progDesc "Get token facts")
                 )
             <> command
                 "agent"
                 ( info
-                    (AgentCommand <$> agentCommandParser)
+                    (f <$> agentCommandParser (fmapBox undefined))
                     (progDesc "Manage agent changes")
                 )
         )
 
-optionsParser :: Parser Options
-optionsParser = Options <$> commandParser
+optionsParser :: Parser (Box Options)
+optionsParser = commandParser $ fmapBox Options
 
-parseArgs :: [String] -> IO Options
+parseArgs :: [String] -> IO (Box Options)
 parseArgs args = handleParseResult $ execParserPure defaultPrefs opts args
   where
     opts =
@@ -80,7 +81,7 @@ parseArgs args = handleParseResult $ execParserPure defaultPrefs opts args
                 <> header "anti - A tool for managing Antithesis test runs"
             )
 
-retractRequestOptions :: Parser Command
+retractRequestOptions :: Parser (Box Command)
 retractRequestOptions =
-    RetractRequest
+    Box . RetractRequest
         <$> outputReferenceParser

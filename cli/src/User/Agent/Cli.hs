@@ -5,11 +5,8 @@
 
 module User.Agent.Cli
     ( AgentCommand (..)
+    , IsReady (..)
     , agentCmd
-    , accept
-    , reject
-    , report
-    , create
     )
 where
 
@@ -42,37 +39,13 @@ import User.Types
     , URL (..)
     )
 
-accept :: TestRun -> AgentCommand
-accept key = AgentCommand $ Accept key ()
-
-reject :: TestRun -> [Reason] -> AgentCommand
-reject key reason = AgentCommand $ Reject key () reason
-
-report :: TestRun -> Duration -> URL -> AgentCommand
-report key duration url = AgentCommand $ Report key () duration url
-
-create :: TestRun -> Duration -> AgentCommand
-create key duration = AgentCommand $ Create key duration
-
-data AgentCommand
-    = forall result.
-        ToJSON ClientM result =>
-      AgentCommand (AgentCommandCore result NotReady)
-
-deriving instance Show AgentCommand
-instance Eq AgentCommand where
-    AgentCommand c1@Create{} == AgentCommand c2@Create{} = c1 == c2
-    AgentCommand c1@Accept{} == AgentCommand c2@Accept{} = c1 == c2
-    AgentCommand c1@Reject{} == AgentCommand c2@Reject{} = c1 == c2
-    AgentCommand c1@Report{} == AgentCommand c2@Report{} = c1 == c2
-    _ == _ = False
-
-agentCmd :: Wallet -> TokenId -> AgentCommand -> ClientM JSValue
-agentCmd wallet tokenId (AgentCommand cmdNotReady) = do
+agentCmd
+    :: Wallet -> TokenId -> AgentCommand NotReady a -> ClientM (WithTxHash a)
+agentCmd wallet tokenId cmdNotReady = do
     mCmdReady <- resolveOldState tokenId cmdNotReady
     case mCmdReady of
-        Nothing -> pure JSNull
-        Just cmdReady -> agentCmdCore wallet tokenId toJSON cmdReady
+        Nothing -> error "No previous state found for the command"
+        Just cmdReady -> agentCmdCore wallet tokenId cmdReady
 
 withExpectedState
     :: FromJSON Maybe (TestRunState phase)
@@ -101,8 +74,8 @@ withExpectedState tokenId testRun cont = do
 
 resolveOldState
     :: TokenId
-    -> AgentCommandCore result NotReady
-    -> ClientM (Maybe (AgentCommandCore result Ready))
+    -> AgentCommand NotReady result
+    -> ClientM (Maybe (AgentCommand Ready result))
 resolveOldState tokenId cmd = case cmd of
     Create key duration -> pure $ Just $ Create key duration
     Accept key () -> withExpectedState tokenId key $ pure . Accept key
@@ -120,46 +93,48 @@ type family IfReady a b where
     IfReady NotReady _ = ()
     IfReady Ready b = b
 
-data AgentCommandCore result (phase :: IsReady) where
+data Role = Internal | External
+    deriving (Show, Eq)
+
+data AgentCommand (phase :: IsReady) result where
     Create
         :: TestRun
         -> Duration
-        -> AgentCommandCore (TestRunState PendingT) phase
+        -> AgentCommand phase (TestRunState PendingT)
     Accept
         :: TestRun
         -> IfReady phase (TestRunState PendingT)
-        -> AgentCommandCore (TestRunState RunningT) phase
+        -> AgentCommand phase (TestRunState RunningT)
     Reject
         :: TestRun
         -> IfReady phase (TestRunState PendingT)
         -> [Reason]
-        -> AgentCommandCore (TestRunState DoneT) phase
+        -> AgentCommand phase (TestRunState DoneT)
     Report
         :: TestRun
         -> IfReady phase (TestRunState RunningT)
         -> Duration
         -> URL
-        -> AgentCommandCore (TestRunState DoneT) phase
+        -> AgentCommand phase (TestRunState DoneT)
 
-deriving instance Show (AgentCommandCore result NotReady)
-deriving instance Eq (AgentCommandCore result NotReady)
-deriving instance Show (AgentCommandCore result Ready)
-deriving instance Eq (AgentCommandCore result Ready)
+deriving instance Show (AgentCommand NotReady result)
+deriving instance Eq (AgentCommand NotReady result)
+deriving instance Show (AgentCommand Ready result)
+deriving instance Eq (AgentCommand Ready result)
 
 agentCmdCore
     :: Wallet
     -> TokenId
-    -> (WithTxHash result -> ClientM a)
-    -> AgentCommandCore result Ready
-    -> ClientM a
-agentCmdCore wallet tokenId cont cmd = case cmd of
+    -> AgentCommand Ready result
+    -> ClientM (WithTxHash result)
+agentCmdCore wallet tokenId cmd = case cmd of
     Create key duration -> do
-        createCommand wallet tokenId key duration >>= cont
-    Accept key pending -> acceptCommand wallet tokenId key pending >>= cont
+        createCommand wallet tokenId key duration
+    Accept key pending -> acceptCommand wallet tokenId key pending
     Reject key pending reason ->
-        rejectCommand wallet tokenId key pending reason >>= cont
+        rejectCommand wallet tokenId key pending reason
     Report key running duration url ->
-        reportCommand wallet tokenId key running duration url >>= cont
+        reportCommand wallet tokenId key running duration url
 
 signAndSubmitAnUpdate
     :: (ToJSON ClientM old, ToJSON ClientM new, ToJSON ClientM res)

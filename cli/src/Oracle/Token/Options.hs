@@ -1,10 +1,13 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
 module Oracle.Token.Options
-    ( TokenCommand
-    , tokenCommandParser
+    ( tokenCommandParser
+    , Box (..)
     )
 where
 
 import Core.Options (outputReferenceParser)
+import Lib.Box (Box (..))
 import Options.Applicative
     ( Alternative (many)
     , Parser
@@ -16,25 +19,22 @@ import Options.Applicative
     , (<**>)
     )
 import Oracle.Token.Cli
-    ( TokenCommand
-    , bootTokenCmd
-    , getTokenCmd
-    , updateTokenCmd
+    ( TokenCommand (..)
     )
 
-tokenCommandParser :: Parser TokenCommand
-tokenCommandParser =
+tokenCommandParser :: (Box TokenCommand -> b) -> Parser b
+tokenCommandParser constructor =
     hsubparser
         ( command
             "get"
             ( info
-                (pure getTokenCmd <**> helper)
+                (pure (constructor $ Box GetToken) <**> helper)
                 (progDesc "Get a token")
             )
             <> command
                 "update"
                 ( info
-                    ( updateTokenCmd
+                    ( constructor . Box . UpdateToken
                         <$> many outputReferenceParser
                     )
                     (progDesc "Update a token")
@@ -42,7 +42,7 @@ tokenCommandParser =
             <> command
                 "boot"
                 ( info
-                    (pure bootTokenCmd <**> helper)
+                    (pure (constructor $ Box BootToken) <**> helper)
                     (progDesc "Boot a token")
                 )
         )

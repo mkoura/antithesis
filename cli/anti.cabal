@@ -90,6 +90,7 @@ library
     Cli
     Core.Options
     Core.Types
+    Lib.Box
     Lib.JSON
     MPFS.API
     Options

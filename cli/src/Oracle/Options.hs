@@ -1,8 +1,12 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
+{-# HLINT ignore "Redundant <$>" #-}
 module Oracle.Options
     ( OracleCommand (..)
     , oracleCommandParser
     ) where
 
+import Lib.Box (Box, fmapBox)
 import Options.Applicative
     ( Parser
     , command
@@ -15,13 +19,16 @@ import Options.Applicative
 import Oracle.Cli (OracleCommand (..))
 import Oracle.Token.Options (tokenCommandParser)
 
-oracleCommandParser :: Parser OracleCommand
-oracleCommandParser =
+oracleCommandParser :: (Box OracleCommand -> b) -> Parser b
+oracleCommandParser constructor =
     hsubparser
         ( command
             "token"
             ( info
-                (OracleTokenCommand <$> tokenCommandParser <**> helper)
+                ( constructor
+                    <$> tokenCommandParser (fmapBox OracleTokenCommand)
+                    <**> helper
+                )
                 (progDesc "Manage tokens")
             )
         )

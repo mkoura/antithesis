@@ -14,6 +14,7 @@ import Core.Options
     , repositoryOption
     , usernameOption
     )
+import Core.Types (TxHash, WithTxHash)
 import Options.Applicative
     ( Parser
     , command
@@ -21,15 +22,18 @@ import Options.Applicative
     , info
     , progDesc
     )
+import Oracle.Token.Options (Box (..))
 import User.Requester.Cli (RequesterCommand (..))
 import User.Types
     ( Duration (..)
+    , Phase (PendingT)
     , RegisterRoleKey (..)
     , RegisterUserKey (..)
     , TestRun (..)
+    , TestRunState
     )
 
-addPublicKeyOptions :: Parser RequesterCommand
+addPublicKeyOptions :: Parser (RequesterCommand TxHash)
 addPublicKeyOptions =
     RegisterUser
         <$> ( RegisterUserKey
@@ -38,7 +42,7 @@ addPublicKeyOptions =
                 <*> pubkeyhashOption
             )
 
-removePublicKeyOptions :: Parser RequesterCommand
+removePublicKeyOptions :: Parser (RequesterCommand TxHash)
 removePublicKeyOptions =
     UnregisterUser
         <$> ( RegisterUserKey
@@ -47,7 +51,7 @@ removePublicKeyOptions =
                 <*> pubkeyhashOption
             )
 
-addRoleOptions :: Parser RequesterCommand
+addRoleOptions :: Parser (RequesterCommand TxHash)
 addRoleOptions =
     RegisterRole
         <$> ( RegisterRoleKey
@@ -56,7 +60,7 @@ addRoleOptions =
                 <*> usernameOption
             )
 
-removeRoleOptions :: Parser RequesterCommand
+removeRoleOptions :: Parser (RequesterCommand TxHash)
 removeRoleOptions =
     UnregisterRole
         <$> ( RegisterRoleKey
@@ -65,42 +69,43 @@ removeRoleOptions =
                 <*> usernameOption
             )
 
-requesterCommandParser :: Parser RequesterCommand
-requesterCommandParser =
+requesterCommandParser :: (Box RequesterCommand -> b) -> Parser b
+requesterCommandParser constructor =
     hsubparser
         ( command
             "create-test"
             ( info
-                requestTestOptions
+                (constructor . Box <$> requestTestOptions)
                 (progDesc "Request an antithesis test run")
             )
             <> command
                 "register-public-key"
                 ( info
-                    addPublicKeyOptions
+                    (constructor . Box <$> addPublicKeyOptions)
                     (progDesc "Register a user public key")
                 )
             <> command
                 "unregister-public-key"
                 ( info
-                    removePublicKeyOptions
+                    (constructor . Box <$> removePublicKeyOptions)
                     (progDesc "Unregister a user public key")
                 )
             <> command
                 "register-role"
                 ( info
-                    addRoleOptions
+                    (constructor . Box <$> addRoleOptions)
                     (progDesc "Add a user to a repository")
                 )
             <> command
                 "unregister-role"
                 ( info
-                    removeRoleOptions
+                    (constructor . Box <$> removeRoleOptions)
                     (progDesc "Remove a user from a repository")
                 )
         )
 
-requestTestOptions :: Parser RequesterCommand
+requestTestOptions
+    :: Parser (RequesterCommand (WithTxHash (TestRunState PendingT)))
 requestTestOptions =
     RequestTest
         <$> ( TestRun

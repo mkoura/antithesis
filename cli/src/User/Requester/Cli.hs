@@ -7,8 +7,9 @@ module User.Requester.Cli
 
 import Core.Types
     ( TokenId
+    , TxHash
     , Wallet (..)
-    , WithTxHash
+    , WithTxHash (..)
     )
 import MPFS.API
     ( RequestDeleteBody (..)
@@ -18,51 +19,62 @@ import MPFS.API
     )
 import Servant.Client (ClientM)
 import Submitting (submitting)
-import Text.JSON.Canonical (JSValue (..), ToJSON (..))
+import Text.JSON.Canonical (ToJSON (..))
 import User.Agent.Cli
-    ( agentCmd
-    , create
+    ( AgentCommand (..)
+    , agentCmd
     )
 import User.Types
     ( Duration
+    , Phase (PendingT)
     , RegisterRoleKey (..)
     , RegisterUserKey (..)
     , TestRun (..)
+    , TestRunState
     )
 
-data RequesterCommand
-    = RegisterUser RegisterUserKey
-    | UnregisterUser RegisterUserKey
-    | RegisterRole RegisterRoleKey
-    | UnregisterRole RegisterRoleKey
-    | RequestTest TestRun Duration
-    deriving (Eq, Show)
+data RequesterCommand a where
+    RegisterUser :: RegisterUserKey -> RequesterCommand TxHash
+    UnregisterUser
+        :: RegisterUserKey -> RequesterCommand TxHash
+    RegisterRole
+        :: RegisterRoleKey -> RequesterCommand TxHash
+    UnregisterRole
+        :: RegisterRoleKey -> RequesterCommand TxHash
+    RequestTest
+        :: TestRun
+        -> Duration
+        -> RequesterCommand (WithTxHash (TestRunState PendingT))
+
+deriving instance Show (RequesterCommand a)
+deriving instance Eq (RequesterCommand a)
 
 requesterCmd
-    :: Wallet -> TokenId -> RequesterCommand -> ClientM JSValue
+    :: Wallet -> TokenId -> RequesterCommand a -> ClientM a
 requesterCmd wallet tokenId command = do
     case command of
         RegisterUser request ->
-            registerUser wallet tokenId request >>= toJSON
+            registerUser wallet tokenId request
         UnregisterUser request ->
-            unregisterUser wallet tokenId request >>= toJSON
+            unregisterUser wallet tokenId request
         RegisterRole request ->
-            registerRole wallet tokenId request >>= toJSON
+            registerRole wallet tokenId request
         UnregisterRole request ->
-            unregisterRole wallet tokenId request >>= toJSON
+            unregisterRole wallet tokenId request
         RequestTest testRun duration ->
-            agentCmd wallet tokenId $ create testRun duration
+            agentCmd wallet tokenId $ Create testRun duration
 
 registerUser
     :: Wallet
     -> TokenId
     -> RegisterUserKey
-    -> ClientM (WithTxHash JSValue)
+    -> ClientM TxHash
 registerUser
     wallet
     tokenId
-    request =
-        submitting wallet $ \address -> do
+    request = fmap txHash
+        $ submitting wallet
+        $ \address -> do
             key <- toJSON request
             value <- toJSON ("" :: String)
             requestInsert address tokenId
@@ -72,12 +84,13 @@ unregisterUser
     :: Wallet
     -> TokenId
     -> RegisterUserKey
-    -> ClientM (WithTxHash JSValue)
+    -> ClientM TxHash
 unregisterUser
     wallet
     tokenId
-    request =
-        submitting wallet $ \address -> do
+    request = fmap txHash
+        $ submitting wallet
+        $ \address -> do
             key <- toJSON request
             value <- toJSON ("" :: String)
             requestDelete address tokenId
@@ -87,12 +100,13 @@ registerRole
     :: Wallet
     -> TokenId
     -> RegisterRoleKey
-    -> ClientM (WithTxHash JSValue)
+    -> ClientM TxHash
 registerRole
     wallet
     tokenId
-    request =
-        submitting wallet $ \address -> do
+    request = fmap txHash
+        $ submitting wallet
+        $ \address -> do
             key <- toJSON request
             value <- toJSON ("" :: String)
             requestInsert address tokenId
@@ -102,12 +116,13 @@ unregisterRole
     :: Wallet
     -> TokenId
     -> RegisterRoleKey
-    -> ClientM (WithTxHash JSValue)
+    -> ClientM TxHash
 unregisterRole
     wallet
     tokenId
-    request =
-        submitting wallet $ \address -> do
+    request = fmap txHash
+        $ submitting wallet
+        $ \address -> do
             key <- toJSON request
             value <- toJSON ("" :: String)
             requestDelete address tokenId

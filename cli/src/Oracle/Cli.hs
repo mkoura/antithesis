@@ -4,21 +4,23 @@ module Oracle.Cli
     ) where
 
 import Core.Types (TokenId, Wallet)
-import Oracle.Token.Cli (TokenCommand, tokenCmd)
+import Oracle.Token.Cli (TokenCommand, tokenCmdCore)
 import Oracle.Validate.Cli (ValidateCommand, validateCmd)
 import Servant.Client (ClientM)
 import Text.JSON.Canonical (JSValue)
 
-data OracleCommand
-    = OracleTokenCommand TokenCommand
-    | OracleValidateCommand ValidateCommand
-    deriving (Eq, Show)
+data OracleCommand a where
+    OracleTokenCommand :: TokenCommand a -> OracleCommand a
+    OracleValidateCommand :: ValidateCommand -> OracleCommand JSValue
+
+deriving instance Show (OracleCommand a)
+deriving instance Eq (OracleCommand a)
 
 oracleCmd
-    :: Wallet -> Maybe TokenId -> OracleCommand -> ClientM JSValue
+    :: Wallet -> Maybe TokenId -> OracleCommand a -> ClientM a
 oracleCmd wallet (Just tk) = \case
     OracleTokenCommand tokenCommand ->
-        tokenCmd
+        tokenCmdCore
             wallet
             (Just tk)
             tokenCommand
@@ -28,7 +30,7 @@ oracleCmd wallet (Just tk) = \case
             validateCommand
 oracleCmd wallet Nothing = \case
     OracleTokenCommand tokenCommand ->
-        tokenCmd
+        tokenCmdCore
             wallet
             Nothing
             tokenCommand

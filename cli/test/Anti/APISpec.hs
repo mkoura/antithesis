@@ -41,7 +41,7 @@ import Core.Types
     , PublicKeyHash (PublicKeyHash)
     , RequestRefId (RequestRefId)
     , TokenId (..)
-    , TxHash (TxHash)
+    , TxHash
     , Username (..)
     , Wallet (..)
     , WithTxHash (..)
@@ -75,9 +75,8 @@ import Network.HTTP.Client
 import Network.HTTP.Client.TLS (tlsManagerSettings)
 import Oracle.Cli (OracleCommand (OracleTokenCommand), oracleCmd)
 import Oracle.Token.Cli
-    ( TokenCommandCore (..)
+    ( TokenCommand (..)
     , tokenCmdCore
-    , updateTokenCmd
     )
 import PlutusTx (Data, fromData)
 import Servant.Client (ClientM, mkClientEnv, parseBaseUrl, runClientM)
@@ -133,7 +132,7 @@ deserializeTx tx = case decode (T.encodeUtf8 tx) of
         Left err -> error $ "Failed to decode full CBOR: " ++ show err
         Right tx' -> tx'
 
-setup :: IO (Call, JSValue -> ClientM (), TokenId)
+setup :: IO (Call, TxHash -> ClientM (), TokenId)
 setup = do
     url <- parseBaseUrl host
     nm <-
@@ -153,9 +152,9 @@ setup = do
     liftIO $ waitTx call txHash
     case mTokenId of
         Nothing -> error "BootToken failed, no TokenId returned"
-        Just tokenId -> return (call, liftIO . waitTx call . getTxHash, tokenId)
+        Just tokenId -> return (call, liftIO . waitTx call, tokenId)
 
-teardown :: ActionWith (Call, JSValue -> ClientM (), TokenId)
+teardown :: ActionWith (Call, TxHash -> ClientM (), TokenId)
 teardown (call, _, tk) = do
     wallet <- loadOracleWallet
     WithTxHash txHash _ <- calling call $ do
@@ -183,16 +182,6 @@ getFirstOutput dtx = case dtx
 (!?) :: [(JSString, JSValue)] -> String -> Maybe JSValue
 (!?) = flip lookup . fmap (first fromJSString)
 
-getTxHash :: JSValue -> TxHash
-getTxHash obj = case obj of
-    JSObject mapping -> case mapping !? "txHash" of
-        Just (JSString requestTxHash) ->
-            TxHash
-                $ T.pack
-                $ fromJSString requestTxHash
-        _ -> error "Key missing"
-    _ -> error "Response is not an object"
-
 waitTx :: Call -> TxHash -> IO ()
 waitTx (Call call) txHash = void $ go 600
   where
@@ -205,7 +194,7 @@ waitTx (Call call) txHash = void $ go 600
                 liftIO $ threadDelay 1000000
                 go (n - 1)
 
-retractTx :: Wallet -> JSValue -> ClientM JSValue
+retractTx :: Wallet -> TxHash -> ClientM TxHash
 retractTx wallet obj = do
     cmd
         wallet
@@ -213,7 +202,7 @@ retractTx wallet obj = do
         $ RetractRequest
             { outputReference =
                 RequestRefId
-                    $ textOf (getTxHash obj) <> "-0"
+                    $ textOf obj <> "-0"
             }
 
 spec :: SpecWith ()
@@ -352,11 +341,11 @@ spec = do
                         updateTx <-
                             oracleCmd oracle (Just tokenId)
                                 $ OracleTokenCommand
-                                $ updateTokenCmd
+                                $ UpdateToken
                                     [ RequestRefId
-                                        $ textOf (getTxHash insertTx) <> "-0"
+                                        $ textOf insertTx <> "-0"
                                     ]
-                        wait updateTx
+                        wait $ txHash updateTx
                         pure ()
 
 loadEnvWallet :: String -> IO Wallet

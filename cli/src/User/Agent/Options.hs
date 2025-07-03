@@ -26,40 +26,45 @@ import Options.Applicative
     , progDesc
     , str
     )
-import User.Agent.Cli (AgentCommand (..), accept, reject, report)
+import Oracle.Token.Options (Box (..))
+import User.Agent.Cli (AgentCommand (..), IsReady (NotReady))
 import User.Types
     ( Duration (..)
+    , Phase (..)
     , Reason (..)
     , TestRun (..)
+    , TestRunState
     , URL (..)
     )
 
-agentCommandParser :: Parser AgentCommand
-agentCommandParser =
+agentCommandParser
+    :: (Box (AgentCommand NotReady) -> b) -> Parser b
+agentCommandParser constructor =
     hsubparser
         ( command
             "accept-test"
             ( info
-                acceptTestOptions
+                (constructor . Box <$> acceptTestOptions)
                 (progDesc "Request a test on a specific platform")
             )
             <> command
                 "reject-test"
                 ( info
-                    rejectTestOptions
+                    (constructor . Box <$> rejectTestOptions)
                     (progDesc "Reject a test with a reason")
                 )
             <> command
                 "report-test"
                 ( info
-                    reportTestOptions
+                    (constructor . Box <$> reportTestOptions)
                     (progDesc "Report the result of a test run")
                 )
         )
 
-acceptTestOptions :: Parser AgentCommand
+acceptTestOptions
+    :: Parser (AgentCommand NotReady (TestRunState RunningT))
 acceptTestOptions =
-    fmap accept
+    fmap (`Accept` ())
         $ TestRun
             <$> platformOption
             <*> repositoryOption
@@ -84,7 +89,8 @@ reasonParser =
         Left
             "Invalid reason. Valid options are: duration, platform, repository, commit, round."
 
-rejectTestOptions :: Parser AgentCommand
+rejectTestOptions
+    :: Parser (AgentCommand NotReady (TestRunState DoneT))
 rejectTestOptions = do
     testRun <-
         TestRun
@@ -95,9 +101,10 @@ rejectTestOptions = do
             <*> pure 1
             <*> usernameOption
     reason <- many reasonParser
-    pure $ reject testRun reason
+    pure $ Reject testRun () reason
 
-reportTestOptions :: Parser AgentCommand
+reportTestOptions
+    :: Parser (AgentCommand NotReady (TestRunState DoneT))
 reportTestOptions = do
     testRun <-
         TestRun
@@ -114,4 +121,4 @@ reportTestOptions = do
                 (long "duration" <> help "Duration of the test run in seconds")
     url <-
         URL <$> option str (long "url" <> help "URL of the test report")
-    pure $ report testRun duration url
+    pure $ Report testRun () duration url

@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedRecordDot #-}
+
 module MPFS.APISpec (spec)
 where
 
@@ -31,8 +33,7 @@ import Control.Monad (void)
 import Control.Monad.Catch (SomeException, catch)
 import Control.Monad.IO.Class (MonadIO (..))
 import Core.Types
-    ( Address (..)
-    , CageDatum (..)
+    ( CageDatum (..)
     , Change (..)
     , Key (..)
     , Operation (..)
@@ -54,7 +55,6 @@ import Data.ByteString.Char8 qualified as B
 import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.Sequence.Strict qualified as Seq
 import Data.Text (Text)
-import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import MPFS.API
     ( RequestDeleteBody (RequestDeleteBody)
@@ -80,7 +80,7 @@ import Oracle.Token.Cli
     )
 import PlutusTx (Data, fromData)
 import Servant.Client (ClientM, mkClientEnv, parseBaseUrl, runClientM)
-import Submitting (walletFromMnemonic)
+import Submitting (readWallet)
 import System.Environment (getEnv)
 import Test.Hspec
     ( ActionWith
@@ -103,22 +103,6 @@ import User.Types (RegisterUserKey (..))
 mpfsPolicyId :: String
 mpfsPolicyId = "c1e392ee7da9415f946de9d2aef9607322b47d6e84e8142ef0c340bf"
 
-oracleOwner :: String
-oracleOwner = "1f5cebecb4cd1cad6108a86014de9d8f23f9d4477bbddb3e1289b224"
-
-_oracleAddress :: Address
-_oracleAddress =
-    Address
-        "addr_test1vq04e6lvknx3ettppz5xq9x7nk8j87w5gaammke7z2ymyfqtkl4vv"
-
-requesterAddress :: Address
-requesterAddress =
-    Address
-        "addr_test1qz6zuvdm0gu3q54pk50wjfjwyt4mwj6uaelzdfh9extxgn9jwpzyryhlkvscdgpkgefv78gkfa70p70tz04hjpeemjmsrd2jqm"
-
-requesterOwner :: Owner
-requesterOwner = Owner "b42e31bb7a391052a1b51ee9264e22ebb74b5cee7e26a6e5c996644c"
-
 host :: String
 host = "https://mpfs.plutimus.com"
 
@@ -136,8 +120,18 @@ deserializeTx tx = case decode (T.encodeUtf8 tx) of
         Left err -> error $ "Failed to decode full CBOR: " ++ show err
         Right tx' -> tx'
 
-setup :: IO (Call, TxHash -> ClientM (), TokenId)
+data Context = Context
+    { mpfs :: Call
+    , wait :: TxHash -> ClientM ()
+    , tokenId :: TokenId
+    , requesterWallet :: Wallet
+    , oracleWallet :: Wallet
+    }
+
+setup :: IO Context
 setup = do
+    requesterWallet <- loadRequesterWallet
+    oracleWallet <- loadOracleWallet
     url <- parseBaseUrl host
     nm <-
         newManager
@@ -156,14 +150,22 @@ setup = do
     liftIO $ waitTx call txHash
     case mTokenId of
         Nothing -> error "BootToken failed, no TokenId returned"
-        Just tokenId -> return (call, liftIO . waitTx call, tokenId)
+        Just tokenId ->
+            return
+                Context
+                    { mpfs = call
+                    , wait = liftIO . waitTx call
+                    , tokenId
+                    , requesterWallet
+                    , oracleWallet
+                    }
 
-teardown :: ActionWith (Call, TxHash -> ClientM (), TokenId)
-teardown (call, _, tk) = do
+teardown :: ActionWith Context
+teardown Context{mpfs, tokenId} = do
     wallet <- loadOracleWallet
-    txHash <- calling call $ do
-        tokenCmdCore wallet (Just tk) EndToken
-    liftIO $ waitTx call txHash
+    txHash <- calling mpfs $ do
+        tokenCmdCore wallet (Just tokenId) EndToken
+    liftIO $ waitTx mpfs txHash
 
 getFirstOutput :: AlonzoTx ConwayEra -> Maybe (String, Data)
 getFirstOutput dtx = case dtx
@@ -213,95 +215,100 @@ spec :: SpecWith ()
 spec = do
     beforeAll setup $ afterAll teardown $ do
         describe "MPFS.API" $ do
-            it "can retrieve config" $ \(Call call, _, tokenId) -> do
+            it "can retrieve config" $ \Context{mpfs = Call call, tokenId, oracleWallet} -> do
                 res <- call $ getToken tokenId
                 case res of
                     JSObject obj -> case obj !? "state" of
                         Just (JSObject state) -> case state !? "owner" of
                             Just (JSString antiTokenOwner') ->
-                                fromJSString antiTokenOwner' `shouldBe` oracleOwner
-                            _ -> error "Field 'ewner' is missing or not a string"
+                                Owner (fromJSString antiTokenOwner')
+                                    `shouldBe` oracleWallet.owner
+                            _ -> error "Field 'owner' is missing or not a string"
                         _ -> error "Field 'state' is missing or not an object"
                     _ -> error "Response is not an object"
-            it "can retrieve token facts" $ \(Call call, _, tokenId) -> do
-                res <- call $ getTokenFacts tokenId
-                case res of
-                    JSObject _obj -> return () -- Add your logic here to handle the object
-                    _ -> error "Response is not an object"
-            it "can retrieve a request-insert tx" $ \(Call call, _, tokenId) -> do
-                WithUnsignedTx tx _ <-
-                    call
-                        $ requestInsert
-                            requesterAddress
-                            tokenId
-                        $ RequestInsertBody
-                            (JSString "key")
-                        $ JSString "value"
-                let dtx = deserializeTx tx
-                Just (policyId', datum) <- pure $ getFirstOutput dtx
-                Just (Just (cageDatum :: CageDatum String String)) <-
-                    pure $ fromData datum
-                policyId' `shouldBe` mpfsPolicyId
-                cageDatum
-                    `shouldBe` RequestDatum
-                        { tokenId = tokenId
-                        , owner = requesterOwner
-                        , change =
-                            Change
-                                { key = Key "key"
-                                , operation = Insert "value"
-                                }
-                        }
-            it "can retrieve a request-delete tx" $ \(Call call, _, tokenId) -> do
-                WithUnsignedTx tx _ <-
-                    call
-                        $ requestDelete
-                            requesterAddress
-                            tokenId
-                        $ RequestDeleteBody (JSString "key") (JSString "value")
-                let dtx = deserializeTx tx
-                Just (policyId', datum) <- pure $ getFirstOutput dtx
-                Just (Just (cageDatum :: CageDatum String String)) <-
-                    pure $ fromData datum
-                policyId' `shouldBe` mpfsPolicyId
-                cageDatum
-                    `shouldBe` RequestDatum
-                        { tokenId = tokenId
-                        , owner = requesterOwner
-                        , change =
-                            Change
-                                { key = Key "key"
-                                , operation = Delete "value"
-                                }
-                        }
-            it "can retrieve a request-update tx" $ \(Call call, _, tokenId) -> do
-                WithUnsignedTx tx _ <-
-                    call
-                        $ requestUpdate
-                            requesterAddress
-                            tokenId
-                        $ RequestUpdateBody
-                            (JSString "key")
-                            (JSString "oldValue")
-                            (JSString "newValue")
-                let dtx = deserializeTx tx
-                Just (policyId', datum) <- pure $ getFirstOutput dtx
-                Just (Just (cageDatum :: CageDatum String String)) <-
-                    pure $ fromData datum
-                policyId' `shouldBe` mpfsPolicyId
-                cageDatum
-                    `shouldBe` RequestDatum
-                        { tokenId = tokenId
-                        , owner = requesterOwner
-                        , change =
-                            Change
-                                { key = Key "key"
-                                , operation = Update "oldValue" "newValue"
-                                }
-                        }
+            it "can retrieve token facts"
+                $ \(Context{mpfs = Call call, tokenId}) -> do
+                    res <- call $ getTokenFacts tokenId
+                    case res of
+                        JSObject _obj -> return ()
+                        _ -> error "Response is not an object"
+            it "can retrieve a request-insert tx"
+                $ \Context{mpfs = Call call, tokenId, requesterWallet} -> do
+                    WithUnsignedTx tx _ <-
+                        call
+                            $ requestInsert
+                                (address requesterWallet)
+                                tokenId
+                            $ RequestInsertBody
+                                (JSString "key")
+                            $ JSString "value"
+                    let dtx = deserializeTx tx
+                    Just (policyId', datum) <- pure $ getFirstOutput dtx
+                    Just (Just (cageDatum :: CageDatum String String)) <-
+                        pure $ fromData datum
+                    policyId' `shouldBe` mpfsPolicyId
+                    cageDatum
+                        `shouldBe` RequestDatum
+                            { tokenId = tokenId
+                            , owner = requesterWallet.owner
+                            , change =
+                                Change
+                                    { key = Key "key"
+                                    , operation = Insert "value"
+                                    }
+                            }
+            it "can retrieve a request-delete tx"
+                $ \Context{mpfs = Call call, tokenId, requesterWallet} -> do
+                    WithUnsignedTx tx _ <-
+                        call
+                            $ requestDelete
+                                requesterWallet.address
+                                tokenId
+                            $ RequestDeleteBody (JSString "key") (JSString "value")
+                    let dtx = deserializeTx tx
+                    Just (policyId', datum) <- pure $ getFirstOutput dtx
+                    Just (Just (cageDatum :: CageDatum String String)) <-
+                        pure $ fromData datum
+                    policyId' `shouldBe` mpfsPolicyId
+                    cageDatum
+                        `shouldBe` RequestDatum
+                            { tokenId = tokenId
+                            , owner = requesterWallet.owner
+                            , change =
+                                Change
+                                    { key = Key "key"
+                                    , operation = Delete "value"
+                                    }
+                            }
+            it "can retrieve a request-update tx"
+                $ \Context{mpfs = Call call, tokenId, requesterWallet} -> do
+                    WithUnsignedTx tx _ <-
+                        call
+                            $ requestUpdate
+                                requesterWallet.address
+                                tokenId
+                            $ RequestUpdateBody
+                                (JSString "key")
+                                (JSString "oldValue")
+                                (JSString "newValue")
+                    let dtx = deserializeTx tx
+                    Just (policyId', datum) <- pure $ getFirstOutput dtx
+                    Just (Just (cageDatum :: CageDatum String String)) <-
+                        pure $ fromData datum
+                    policyId' `shouldBe` mpfsPolicyId
+                    cageDatum
+                        `shouldBe` RequestDatum
+                            { tokenId = tokenId
+                            , owner = requesterWallet.owner
+                            , change =
+                                Change
+                                    { key = Key "key"
+                                    , operation = Update "oldValue" "newValue"
+                                    }
+                            }
 
             it "can submit and retract a request-insert tx"
-                $ \(Call call, wait, tokenId) -> do
+                $ \(Context{mpfs = Call call, wait, tokenId}) -> do
                     wallet <- loadRequesterWallet
                     call $ do
                         insert <-
@@ -317,7 +324,7 @@ spec = do
                         pure ()
 
             it "can update the anti token with a registered user"
-                $ \(Call call, wait, tokenId) -> do
+                $ \(Context{mpfs = Call call, wait, tokenId}) -> do
                     requester <- loadRequesterWallet
                     oracle <- loadOracleWallet
                     let key =
@@ -364,19 +371,12 @@ spec = do
                         pure ()
 
 loadEnvWallet :: String -> IO Wallet
-loadEnvWallet envVar = do
-    mnemonic <- getEnv envVar
-    pure
-        $ either (error . show) id
-            . walletFromMnemonic
-            . T.words
-            . T.pack
-        $ mnemonic
+loadEnvWallet envVar = getEnv envVar >>= readWallet
 
 loadRequesterWallet :: IO Wallet
 loadRequesterWallet =
-    loadEnvWallet "ANTI_TEST_REQUESTER_MNEMONIC"
+    loadEnvWallet "ANTI_TEST_REQUESTER_WALLET"
 
 loadOracleWallet :: IO Wallet
 loadOracleWallet = do
-    loadEnvWallet "ANTI_TEST_ORACLE_MNEMONIC"
+    loadEnvWallet "ANTI_TEST_ORACLE_WALLET"

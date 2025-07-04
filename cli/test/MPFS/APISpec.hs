@@ -51,7 +51,7 @@ import Core.Types
 import Data.Bifunctor (first)
 import Data.ByteString.Base16
 import Data.ByteString.Char8 qualified as B
-import Data.ByteString.Lazy qualified as BL
+import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.Sequence.Strict qualified as Seq
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -88,10 +88,18 @@ import Test.Hspec
     , afterAll
     , beforeAll
     , describe
+    , fit
     , it
     , shouldBe
     )
-import Text.JSON.Canonical (JSString, JSValue (..), fromJSString)
+import Text.JSON.Canonical
+    ( JSString
+    , JSValue (..)
+    , ToJSON (..)
+    , fromJSString
+    , renderCanonicalJSON
+    , toJSString
+    )
 import User.Requester.Cli (RequesterCommand (..), requesterCmd)
 import User.Types (RegisterUserKey (..))
 
@@ -323,28 +331,55 @@ spec = do
                         wait deleteTx
                         retractTx wallet deleteTx >>= wait
                         pure ()
-            it "can update the anti token with a registered user"
+            fit "can update the anti token with a registered user"
                 $ \(Call call, wait, tokenId) -> do
                     requester <- loadRequesterWallet
                     oracle <- loadOracleWallet
+                    let key =
+                            RegisterUserKey
+                                { platform = Platform "test-platform"
+                                , username = Username "test-user"
+                                , pubkeyhash = PublicKeyHash "test-pubkeyhash"
+                                }
+                    keyJ <- toJSON key
                     call $ do
                         insertTx <-
                             requesterCmd requester tokenId
-                                $ RegisterUser
-                                $ RegisterUserKey
-                                    { platform = Platform "test-platform"
-                                    , username = Username "test-user"
-                                    , pubkeyhash = PublicKeyHash "test-pubkeyhash"
-                                    }
+                                $ RegisterUser key
                         wait insertTx
-                        updateTx <-
+                        updateInsertTx <-
                             oracleCmd oracle (Just tokenId)
                                 $ OracleTokenCommand
                                 $ UpdateToken
                                     [ RequestRefId
                                         $ textOf insertTx <> "-0"
                                     ]
-                        wait updateTx
+                        wait updateInsertTx
+                        facts <- getTokenFacts tokenId
+                        liftIO
+                            $ facts
+                            `shouldBe` JSObject
+                                [
+                                    ( toJSString
+                                        $ BL.unpack
+                                        $ renderCanonicalJSON keyJ
+                                    , JSString "\"\""
+                                    )
+                                ]
+                        deleteTx <-
+                            requesterCmd requester tokenId
+                                $ UnregisterUser key
+                        wait deleteTx
+                        updateDeleteTx <-
+                            oracleCmd oracle (Just tokenId)
+                                $ OracleTokenCommand
+                                $ UpdateToken
+                                    [ RequestRefId
+                                        $ textOf deleteTx <> "-0"
+                                    ]
+                        wait updateDeleteTx
+                        facts' <- getTokenFacts tokenId
+                        liftIO $ facts' `shouldBe` JSObject []
                         pure ()
 
 loadEnvWallet :: String -> IO Wallet

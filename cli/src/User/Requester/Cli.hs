@@ -76,7 +76,7 @@ registerUser
         $ submitting wallet
         $ \address -> do
             key <- toJSON request
-            value <- toJSON ("" :: String)
+            value <- toJSON ()
             requestInsert address tokenId
                 $ RequestInsertBody{key = key, value = value}
 
@@ -92,7 +92,7 @@ unregisterUser
         $ submitting wallet
         $ \address -> do
             key <- toJSON request
-            value <- toJSON ("" :: String)
+            value <- toJSON ()
             requestDelete address tokenId
                 $ RequestDeleteBody{key = key, value = value}
 
@@ -108,7 +108,7 @@ registerRole
         $ submitting wallet
         $ \address -> do
             key <- toJSON request
-            value <- toJSON ("" :: String)
+            value <- toJSON ()
             requestInsert address tokenId
                 $ RequestInsertBody{key = key, value = value}
 
@@ -124,6 +124,6 @@ unregisterRole
         $ submitting wallet
         $ \address -> do
             key <- toJSON request
-            value <- toJSON ("" :: String)
+            value <- toJSON ()
             requestDelete address tokenId
                 $ RequestDeleteBody{key = key, value = value}

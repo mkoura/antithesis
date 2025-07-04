@@ -26,6 +26,7 @@ import Options.Applicative
 import Oracle.Options (oracleCommandParser)
 import User.Agent.Options (agentCommandParser)
 import User.Requester.Options (requesterCommandParser)
+import Wallet.Options (walletCommandParser)
 
 newtype Options a = Options
     { optionsCommand :: Command a
@@ -64,6 +65,12 @@ commandParser =
                 ( info
                     (fmapBox AgentCommand <$> agentCommandParser)
                     (progDesc "Manage agent changes")
+                )
+            <> command
+                "wallet"
+                ( info
+                    (fmapBox Wallet <$> walletCommandParser)
+                    (progDesc "Manage wallet operations")
                 )
         )
 

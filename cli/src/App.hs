@@ -1,6 +1,7 @@
 module App (server) where
 
 import Cli (cmd)
+import Control.Exception (catch)
 import Core.Types
     ( TokenId (..)
     )
@@ -26,7 +27,8 @@ import Submitting (readWallet)
 import System.Environment (getArgs, getEnv, lookupEnv)
 import Text.JSON.Canonical (JSValue, ToJSON (..))
 
-server :: IO (Box Options, Either ClientError JSValue)
+server
+    :: IO (Box Options, FilePath, String, Either ClientError JSValue)
 server = do
     args <- getArgs
     o@(Box (Options command)) <- parseArgs args
@@ -34,14 +36,17 @@ server = do
     mtk <- fmap TokenId <$> lookupEnv "ANTI_TOKEN_ID"
     baseUrl <- parseBaseUrl mpfs_host
     walletFile <- getEnv "ANTI_WALLET_FILE"
-    wallet <- readWallet walletFile
+    mWallet <-
+        (Right <$> readWallet walletFile)
+            `catch` \(_ :: IOError) -> return $ Left walletFile
     manger <-
         newManager
             $ if baseUrlScheme baseUrl == Https
                 then tlsManagerSettings
                 else defaultManagerSettings
     let clientEnv = mkClientEnv manger baseUrl
-    (o,) <$> runClientM (cmd wallet mtk command >>= toJSON) clientEnv
+    (o,walletFile,mpfs_host,)
+        <$> runClientM (cmd mWallet mtk command >>= toJSON) clientEnv
 
 _logRequests :: ManagerSettings -> ManagerSettings
 _logRequests settings =

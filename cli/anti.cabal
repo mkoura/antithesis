@@ -113,6 +113,8 @@ library
     User.Requester.Cli
     User.Requester.Options
     User.Types
+    Wallet.Cli
+    Wallet.Options
     Words
 
   -- Modules included in this library but not exported.
@@ -140,6 +142,7 @@ library
     , lens
     , optparse-applicative
     , plutus-tx
+    , random
     , servant
     , servant-client
     , string-qq
@@ -198,7 +201,6 @@ executable wallet
     , base
     , bytestring
     , optparse-applicative
-    , random
     , text
 
   -- Directories containing source files.

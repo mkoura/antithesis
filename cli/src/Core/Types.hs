@@ -3,31 +3,31 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module Core.Types
-    ( Directory (..)
+    ( Address (..)
+    , CageDatum (..)
+    , Change (..)
+    , Directory (..)
     , Host (..)
+    , Key (..)
     , Operation (..)
+    , Owner (..)
     , Platform (..)
     , Port (..)
     , PublicKeyHash (..)
     , Repository (..)
-    , Role (..)
-    , SHA1 (..)
-    , TokenId (..)
-    , Username (..)
-    , Address (..)
-    , WithUnsignedTx (..)
-    , WithTxHash (..)
-    , Wallet (..)
     , RequestRefId (..)
+    , Role (..)
+    , Root (..)
+    , SHA1 (..)
     , SignedTx (..)
     , SignTxError (..)
-    , UnsignedTx (..)
+    , TokenId (..)
     , TxHash (..)
-    , Owner (..)
-    , Key (..)
-    , CageDatum (..)
-    , Root (..)
-    , Change (..)
+    , UnsignedTx (..)
+    , Username (..)
+    , Wallet (..)
+    , WithTxHash (..)
+    , WithUnsignedTx (..)
     ) where
 
 import Control.Exception (Exception)
@@ -279,6 +279,12 @@ newtype Host = Host String
 
 newtype Address = Address Text
     deriving (Eq, Show)
+
+instance Monad m => ToJSON m Address where
+    toJSON (Address addr) = toJSON addr
+
+instance ReportSchemaErrors m => FromJSON m Address where
+    fromJSON v = Address <$> fromJSON v
 
 instance FromHttpApiData Address where
     parseUrlPiece addr =

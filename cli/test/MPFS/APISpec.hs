@@ -203,7 +203,7 @@ waitTx (Call call) txHash = void $ go 600
 retractTx :: Wallet -> TxHash -> ClientM TxHash
 retractTx wallet obj = do
     cmd
-        wallet
+        (Right wallet)
         Nothing
         $ RetractRequest
             { outputReference =

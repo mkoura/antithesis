@@ -3,6 +3,7 @@ module Cli
     , Command (..)
     ) where
 
+import Control.Monad.IO.Class (MonadIO (..))
 import Core.Types
     ( RequestRefId
     , TokenId
@@ -24,6 +25,7 @@ import User.Requester.Cli
     ( RequesterCommand
     , requesterCmd
     )
+import Wallet.Cli (WalletCommand, walletCmd)
 
 data Command a where
     RequesterCommand :: RequesterCommand a -> Command a
@@ -34,12 +36,14 @@ data Command a where
            }
         -> Command TxHash
     GetFacts :: Command JSValue
+    Wallet :: WalletCommand a -> Command a
 
 deriving instance Show (Command a)
 deriving instance Eq (Command a)
 
-cmd :: Wallet -> Maybe TokenId -> Command a -> ClientM a
-cmd wallet (Just tokenId) command =
+cmd
+    :: Either FilePath Wallet -> Maybe TokenId -> Command a -> ClientM a
+cmd (Right wallet) (Just tokenId) command =
     case command of
         RequesterCommand requesterCommand ->
             requesterCmd wallet tokenId requesterCommand
@@ -49,9 +53,20 @@ cmd wallet (Just tokenId) command =
         GetFacts -> getTokenFacts tokenId
         RetractRequest refId -> fmap txHash $ submitting wallet $ \address ->
             retractChange address refId
-cmd wallet Nothing command =
+        Wallet walletCommand -> liftIO $ walletCmd (Right wallet) walletCommand
+cmd (Right wallet) Nothing command =
     case command of
         RetractRequest refId -> fmap txHash $ submitting wallet $ \address ->
             retractChange address refId
+        Wallet walletCommand -> liftIO $ walletCmd (Right wallet) walletCommand
         OracleCommand oracleCommand -> oracleCmd wallet Nothing oracleCommand
         _ -> error "TokenId is required for this command"
+cmd mwf@(Left _) (Just tokenId) command =
+    case command of
+        GetFacts -> getTokenFacts tokenId
+        Wallet walletCommand -> liftIO $ walletCmd mwf walletCommand
+        _ -> error "Wallet is required for this command"
+cmd mwf@(Left _) Nothing command =
+    case command of
+        Wallet walletCommand -> liftIO $ walletCmd mwf walletCommand
+        _ -> error "Wallet and TokenId are required for this command"

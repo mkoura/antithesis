@@ -78,8 +78,8 @@ anti args = do
     -- Call the main function with the simulated arguments
     ev <- withArgs args server
     case ev of
-        (_, Left err) -> error $ "Error: " ++ show err
-        (o, Right result) -> return (o, result)
+        (_, _, _, Left err) -> error $ "Error: " ++ show err
+        (o, _, _, Right result) -> return (o, result)
 
 dummyTxHash :: Monad m => m JSValue
 dummyTxHash =

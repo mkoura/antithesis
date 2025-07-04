@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-import Control.Monad (replicateM)
+import Control.Monad (void)
 import Core.Types
     ( Owner (..)
     , SignedTx (..)
@@ -29,9 +29,8 @@ import Options.Applicative
     , strArgument
     , (<**>)
     )
-import Submitting (readWallet, walletFromMnemonic, writeWallet)
-import System.Random (randomRIO)
-import Words (englishWords)
+import Submitting (readWallet)
+import Wallet.Cli (WalletCommand (Create), walletCmd)
 
 data Commands
     = CreateWallet FilePath
@@ -116,15 +115,5 @@ addressCmd walletFile = do
             , "publicKeyHash" .= hash
             ]
 
-element :: [a] -> IO a
-element xs = do
-    idx <- randomRIO (0, length xs - 1)
-    return $ xs !! idx
-
 createWallet :: FilePath -> IO ()
-createWallet walletFile = do
-    w12 <- replicateM 12 $ element englishWords
-    case walletFromMnemonic w12 of
-        Left _e -> createWallet walletFile
-        Right _wallet -> do
-            writeWallet walletFile w12
+createWallet walletFile = void $ walletCmd (Left walletFile) Create

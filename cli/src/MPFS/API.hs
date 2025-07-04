@@ -35,7 +35,12 @@ import Data.Aeson
     , (.:)
     , (.=)
     )
+import Data.Aeson.KeyMap qualified as Aeson
+import Data.Aeson.Types (parseMaybe)
 import Data.Data (Proxy (..))
+import Data.Maybe (fromMaybe)
+import Data.String (IsString)
+import Data.Traversable (for)
 import Lib.JSON
     ( fromAesonString
     , fromAesonThrow
@@ -55,7 +60,7 @@ import Servant.API
     )
 import Servant.Client (ClientM, client)
 import Text.JSON.Canonical
-    ( JSValue
+    ( JSValue (..)
     )
 
 data RequestInsertBody = RequestInsertBody
@@ -253,7 +258,25 @@ updateToken address tokenId requests =
 getToken :: TokenId -> ClientM JSValue
 getToken tokenId = fromAesonThrow <$> getToken' tokenId
 getTokenFacts :: TokenId -> ClientM JSValue
-getTokenFacts tokenId = fromAesonThrow <$> getTokenFacts' tokenId
+getTokenFacts tokenId = do
+    aesonFacts <- getTokenFacts' tokenId
+    pure
+        $ fromMaybe JSNull
+        $ case aesonFacts of
+            Object obj -> do
+                es <- for (Aeson.toList obj) $ \(key, value) -> do
+                    key' <- parseMaybe fromAesonString $ toJSON key
+                    value' <- parseMaybe fromAesonString value
+                    pure (key', value')
+                pure $ JSObject $ es >>= explode
+            _ -> error "getTokenFacts: expected JSObject"
+
+explode :: IsString a => (b, b) -> [(a, b)]
+explode (key, value) =
+    [ ("key", key)
+    , ("value", value)
+    ]
+
 submitTransaction :: SignedTx -> ClientM TxHash
 submitTransaction = submitTransaction'
 waitNBlocks :: Int -> ClientM JSValue

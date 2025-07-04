@@ -88,7 +88,6 @@ import Test.Hspec
     , afterAll
     , beforeAll
     , describe
-    , fit
     , it
     , shouldBe
     )
@@ -97,8 +96,6 @@ import Text.JSON.Canonical
     , JSValue (..)
     , ToJSON (..)
     , fromJSString
-    , renderCanonicalJSON
-    , toJSString
     )
 import User.Requester.Cli (RequesterCommand (..), requesterCmd)
 import User.Types (RegisterUserKey (..))
@@ -302,25 +299,12 @@ spec = do
                                 , operation = Update "oldValue" "newValue"
                                 }
                         }
-            it "can submit a request-insert tx" $ \(Call call, wait, tokenId) -> do
-                wallet <- loadRequesterWallet
-                call $ do
-                    insert <-
-                        requesterCmd wallet tokenId
-                            $ RegisterUser
-                            $ RegisterUserKey
-                                { platform = Platform "test-platform"
-                                , username = Username "test-user"
-                                , pubkeyhash = PublicKeyHash "test-pubkeyhash"
-                                }
-                    wait insert
-                    retractTx wallet insert >>= wait
-                    pure ()
-            it "can submit a request-delete tx"
+
+            it "can submit and retract a request-insert tx"
                 $ \(Call call, wait, tokenId) -> do
                     wallet <- loadRequesterWallet
                     call $ do
-                        deleteTx <-
+                        insert <-
                             requesterCmd wallet tokenId
                                 $ RegisterUser
                                 $ RegisterUserKey
@@ -328,10 +312,11 @@ spec = do
                                     , username = Username "test-user"
                                     , pubkeyhash = PublicKeyHash "test-pubkeyhash"
                                     }
-                        wait deleteTx
-                        retractTx wallet deleteTx >>= wait
+                        wait insert
+                        retractTx wallet insert >>= wait
                         pure ()
-            fit "can update the anti token with a registered user"
+
+            it "can update the anti token with a registered user"
                 $ \(Call call, wait, tokenId) -> do
                     requester <- loadRequesterWallet
                     oracle <- loadOracleWallet
@@ -359,12 +344,8 @@ spec = do
                         liftIO
                             $ facts
                             `shouldBe` JSObject
-                                [
-                                    ( toJSString
-                                        $ BL.unpack
-                                        $ renderCanonicalJSON keyJ
-                                    , JSString "\"\""
-                                    )
+                                [ ("key", keyJ)
+                                , ("value", JSNull)
                                 ]
                         deleteTx <-
                             requesterCmd requester tokenId

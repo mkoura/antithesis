@@ -90,7 +90,6 @@ import Test.Hspec
     , describe
     , it
     , shouldBe
-    , xit
     )
 import Text.JSON.Canonical (JSString, JSValue (..), fromJSString)
 import User.Requester.Cli (RequesterCommand (..), requesterCmd)
@@ -324,7 +323,7 @@ spec = do
                         wait deleteTx
                         retractTx wallet deleteTx >>= wait
                         pure ()
-            xit "can update the anti token with a registered user"
+            it "can update the anti token with a registered user"
                 $ \(Call call, wait, tokenId) -> do
                     requester <- loadRequesterWallet
                     oracle <- loadOracleWallet
@@ -333,9 +332,9 @@ spec = do
                             requesterCmd requester tokenId
                                 $ RegisterUser
                                 $ RegisterUserKey
-                                    { platform = Platform "test-platform-2"
-                                    , username = Username "test-user-2"
-                                    , pubkeyhash = PublicKeyHash "test-pubkeyhash-2"
+                                    { platform = Platform "test-platform"
+                                    , username = Username "test-user"
+                                    , pubkeyhash = PublicKeyHash "test-pubkeyhash"
                                     }
                         wait insertTx
                         updateTx <-

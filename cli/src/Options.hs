@@ -54,7 +54,7 @@ commandParser =
                     (progDesc "Retract a change")
                 )
             <> command
-                "get-facts"
+                "facts"
                 ( info
                     (pure . Box $ GetFacts)
                     (progDesc "Get token facts")

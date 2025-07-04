@@ -119,7 +119,7 @@ true
 now `alice` can inspect the token facts
 
 ```bash
-> anti user request get-facts -t $tokenId | jq
+> anti user request facts -t $tokenId | jq
 {
   "register-public-key/github/alice/AAAAC3NzaC1lZDI1NTE5AAAAIO773JHqlyLm5XzOjSe+Q5yFJyLFuMLL6+n63t4t7HR8": ""
 }

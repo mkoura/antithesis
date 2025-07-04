@@ -7,7 +7,7 @@ module CliSpec
     )
 where
 
-import App (server)
+import App (client)
 import Cli (Command (..))
 import Core.Types
     ( Directory (..)
@@ -76,7 +76,7 @@ anti :: [String] -> IO (Box Options, JSValue)
 anti args = do
     -- Simulate the command line arguments
     -- Call the main function with the simulated arguments
-    ev <- withArgs args server
+    ev <- withArgs args client
     case ev of
         (_, _, _, Left err) -> error $ "Error: " ++ show err
         (o, _, _, Right result) -> return (o, result)
@@ -92,7 +92,7 @@ spec = beforeAll_ runDummyServer $ do
     xit "can request user registration" $ do
         let args =
                 [ "requester"
-                , "register-public-key"
+                , "register-user"
                 , "--platform"
                 , "github"
                 , "--username"

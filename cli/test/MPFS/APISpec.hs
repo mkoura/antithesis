@@ -80,7 +80,7 @@ import Oracle.Token.Cli
     )
 import PlutusTx (Data, fromData)
 import Servant.Client (ClientM, mkClientEnv, parseBaseUrl, runClientM)
-import Submitting (readWallet)
+import Submitting (IfToWait (..), Submitting (..), readWallet)
 import System.Environment (getEnv)
 import Test.Hspec
     ( ActionWith
@@ -122,7 +122,7 @@ deserializeTx tx = case decode (T.encodeUtf8 tx) of
 
 data Context = Context
     { mpfs :: Call
-    , wait :: TxHash -> ClientM ()
+    , wait180 :: Submitting
     , tokenId :: TokenId
     , requesterWallet :: Wallet
     , oracleWallet :: Wallet
@@ -145,8 +145,14 @@ setup = do
                 Left err -> throwIO err
                 Right res -> return res
     oracle <- loadOracleWallet
+    let wait180 :: Submitting
+        wait180 = Submitting (Wait 180) $ \c -> do
+            r <- runClientM c (mkClientEnv nm url)
+            case r of
+                Left err -> throwIO err
+                Right res -> return res
     WithTxHash txHash mTokenId <- calling call $ do
-        tokenCmdCore oracle Nothing BootToken
+        tokenCmdCore wait180 oracle Nothing BootToken
     liftIO $ waitTx call txHash
     case mTokenId of
         Nothing -> error "BootToken failed, no TokenId returned"
@@ -154,17 +160,17 @@ setup = do
             return
                 Context
                     { mpfs = call
-                    , wait = liftIO . waitTx call
+                    , wait180
                     , tokenId
                     , requesterWallet
                     , oracleWallet
                     }
 
 teardown :: ActionWith Context
-teardown Context{mpfs, tokenId} = do
+teardown Context{mpfs, tokenId, wait180} = do
     wallet <- loadOracleWallet
     txHash <- calling mpfs $ do
-        tokenCmdCore wallet (Just tokenId) EndToken
+        tokenCmdCore wait180 wallet (Just tokenId) EndToken
     liftIO $ waitTx mpfs txHash
 
 getFirstOutput :: AlonzoTx ConwayEra -> Maybe (String, Data)
@@ -200,11 +206,13 @@ waitTx (Call call) txHash = void $ go 600
                 liftIO $ threadDelay 1000000
                 go (n - 1)
 
-retractTx :: Wallet -> TxHash -> ClientM TxHash
-retractTx wallet obj = do
-    cmd
-        (Right wallet)
-        Nothing
+retractTx :: Submitting -> Wallet -> TxHash -> ClientM ()
+retractTx wait180 wallet obj = do
+    void
+        $ cmd
+            wait180
+            (Right wallet)
+            Nothing
         $ RetractRequest
             { outputReference =
                 RequestRefId
@@ -308,23 +316,22 @@ spec = do
                             }
 
             it "can submit and retract a request-insert tx"
-                $ \(Context{mpfs = Call call, wait, tokenId}) -> do
+                $ \(Context{mpfs = Call call, wait180, tokenId}) -> do
                     wallet <- loadRequesterWallet
                     call $ do
                         insert <-
-                            requesterCmd wallet tokenId
+                            requesterCmd wait180 wallet tokenId
                                 $ RegisterUser
                                 $ RegisterUserKey
                                     { platform = Platform "test-platform"
                                     , username = Username "test-user"
                                     , pubkeyhash = PublicKeyHash "test-pubkeyhash"
                                     }
-                        wait insert
-                        retractTx wallet insert >>= wait
+                        retractTx wait180 wallet insert
                         pure ()
 
             it "can update the anti token with a registered user"
-                $ \(Context{mpfs = Call call, wait, tokenId}) -> do
+                $ \(Context{mpfs = Call call, wait180, tokenId}) -> do
                     requester <- loadRequesterWallet
                     oracle <- loadOracleWallet
                     let key =
@@ -336,17 +343,15 @@ spec = do
                     keyJ <- toJSON key
                     call $ do
                         insertTx <-
-                            requesterCmd requester tokenId
+                            requesterCmd wait180 requester tokenId
                                 $ RegisterUser key
-                        wait insertTx
-                        updateInsertTx <-
-                            oracleCmd oracle (Just tokenId)
+                        _updateInsertTx <-
+                            oracleCmd wait180 oracle (Just tokenId)
                                 $ OracleTokenCommand
                                 $ UpdateToken
                                     [ RequestRefId
                                         $ textOf insertTx <> "-0"
                                     ]
-                        wait updateInsertTx
                         facts <- getTokenFacts tokenId
                         liftIO
                             $ facts
@@ -355,17 +360,15 @@ spec = do
                                 , ("value", JSNull)
                                 ]
                         deleteTx <-
-                            requesterCmd requester tokenId
+                            requesterCmd wait180 requester tokenId
                                 $ UnregisterUser key
-                        wait deleteTx
-                        updateDeleteTx <-
-                            oracleCmd oracle (Just tokenId)
+                        _updateDeleteTx <-
+                            oracleCmd wait180 oracle (Just tokenId)
                                 $ OracleTokenCommand
                                 $ UpdateToken
                                     [ RequestRefId
                                         $ textOf deleteTx <> "-0"
                                     ]
-                        wait updateDeleteTx
                         facts' <- getTokenFacts tokenId
                         liftIO $ facts' `shouldBe` JSObject []
                         pure ()

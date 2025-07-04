@@ -1,4 +1,4 @@
-module App (server) where
+module App (client) where
 
 import Cli (cmd)
 import Control.Exception (catch)
@@ -18,18 +18,19 @@ import Options (Options (..), parseArgs)
 import Servant.Client
     ( BaseUrl (..)
     , ClientError
+    , ClientM
     , Scheme (..)
     , mkClientEnv
     , parseBaseUrl
     , runClientM
     )
-import Submitting (readWallet)
+import Submitting (IfToWait (..), Submitting (..), readWallet)
 import System.Environment (getArgs, getEnv, lookupEnv)
 import Text.JSON.Canonical (JSValue, ToJSON (..))
 
-server
+client
     :: IO (Box Options, FilePath, String, Either ClientError JSValue)
-server = do
+client = do
     args <- getArgs
     o@(Box (Options command)) <- parseArgs args
     mpfs_host <- getEnv "ANTI_MPFS_HOST"
@@ -45,8 +46,19 @@ server = do
                 then tlsManagerSettings
                 else defaultManagerSettings
     let clientEnv = mkClientEnv manger baseUrl
+    eiftw <- lookupEnv "ANTI_WAIT"
+    let iftw = case eiftw of
+            Just s -> Wait (read s)
+            Nothing -> NoWait
+        runClient :: forall a. ClientM a -> IO a
+        runClient c = do
+            e <- runClientM c clientEnv
+            case e of
+                Left err -> error $ "Client error: " ++ show err
+                Right r -> return r
+    let sbmt = Submitting{ifToWait = iftw, runClient}
     (o,walletFile,mpfs_host,)
-        <$> runClientM (cmd mWallet mtk command >>= toJSON) clientEnv
+        <$> runClientM (cmd sbmt mWallet mtk command >>= toJSON) clientEnv
 
 _logRequests :: ManagerSettings -> ManagerSettings
 _logRequests settings =

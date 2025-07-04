@@ -22,7 +22,7 @@ import MPFS.API
     , requestUpdate
     )
 import Servant.Client (ClientM)
-import Submitting (submitting)
+import Submitting (Submitting, submitting)
 import Text.JSON.Canonical
     ( FromJSON (..)
     , JSValue (..)
@@ -40,12 +40,16 @@ import User.Types
     )
 
 agentCmd
-    :: Wallet -> TokenId -> AgentCommand NotReady a -> ClientM a
-agentCmd wallet tokenId cmdNotReady = do
+    :: Submitting
+    -> Wallet
+    -> TokenId
+    -> AgentCommand NotReady a
+    -> ClientM a
+agentCmd sbmt wallet tokenId cmdNotReady = do
     mCmdReady <- resolveOldState tokenId cmdNotReady
     case mCmdReady of
         Nothing -> error "No previous state found for the command"
-        Just cmdReady -> agentCmdCore wallet tokenId cmdReady
+        Just cmdReady -> agentCmdCore sbmt wallet tokenId cmdReady
 
 withExpectedState
     :: FromJSON Maybe (TestRunState phase)
@@ -123,29 +127,31 @@ deriving instance Show (AgentCommand Ready result)
 deriving instance Eq (AgentCommand Ready result)
 
 agentCmdCore
-    :: Wallet
+    :: Submitting
+    -> Wallet
     -> TokenId
     -> AgentCommand Ready result
     -> ClientM result
-agentCmdCore wallet tokenId cmd = case cmd of
+agentCmdCore sbmt wallet tokenId cmd = case cmd of
     Create key duration -> do
-        createCommand wallet tokenId key duration
-    Accept key pending -> acceptCommand wallet tokenId key pending
+        createCommand sbmt wallet tokenId key duration
+    Accept key pending -> acceptCommand sbmt wallet tokenId key pending
     Reject key pending reason ->
-        rejectCommand wallet tokenId key pending reason
+        rejectCommand sbmt wallet tokenId key pending reason
     Report key running duration url ->
-        reportCommand wallet tokenId key running duration url
+        reportCommand sbmt wallet tokenId key running duration url
 
 signAndSubmitAnUpdate
     :: (ToJSON ClientM old, ToJSON ClientM new, ToJSON ClientM res)
-    => Wallet
+    => Submitting
+    -> Wallet
     -> TokenId
     -> old
     -> new
     -> res
     -> ClientM (WithTxHash res)
-signAndSubmitAnUpdate wallet tokenId testRun oldState newState = do
-    WithTxHash txHash _ <- submitting wallet $ \address -> do
+signAndSubmitAnUpdate sbmt wallet tokenId testRun oldState newState = do
+    WithTxHash txHash _ <- submitting sbmt wallet $ \address -> do
         key <- toJSON testRun
         oldValue <- toJSON oldState
         newValue <- toJSON newState
@@ -154,14 +160,15 @@ signAndSubmitAnUpdate wallet tokenId testRun oldState newState = do
     pure $ WithTxHash txHash $ Just newState
 
 createCommand
-    :: Wallet
+    :: Submitting
+    -> Wallet
     -> TokenId
     -> TestRun
     -> Duration
     -> ClientM (WithTxHash (TestRunState PendingT))
-createCommand wallet tokenId testRun duration = do
+createCommand sbmt wallet tokenId testRun duration = do
     let newState = Pending duration
-    WithTxHash txHash _ <- submitting wallet $ \address -> do
+    WithTxHash txHash _ <- submitting sbmt wallet $ \address -> do
         key <- toJSON testRun
         value <- toJSON newState
         requestInsert address tokenId
@@ -169,34 +176,37 @@ createCommand wallet tokenId testRun duration = do
     pure $ WithTxHash txHash $ Just newState
 
 reportCommand
-    :: Wallet
+    :: Submitting
+    -> Wallet
     -> TokenId
     -> TestRun
     -> TestRunState RunningT
     -> Duration
     -> URL
     -> ClientM (WithTxHash (TestRunState DoneT))
-reportCommand wallet tokenId testRun testRunState duration url =
-    signAndSubmitAnUpdate wallet tokenId testRun testRunState
+reportCommand sbmt wallet tokenId testRun testRunState duration url =
+    signAndSubmitAnUpdate sbmt wallet tokenId testRun testRunState
         $ Finished testRunState duration url
 
 rejectCommand
-    :: Wallet
+    :: Submitting
+    -> Wallet
     -> TokenId
     -> TestRun
     -> TestRunState PendingT
     -> [Reason]
     -> ClientM (WithTxHash (TestRunState DoneT))
-rejectCommand wallet tokenId testRun testRunState reason =
-    signAndSubmitAnUpdate wallet tokenId testRun testRunState
+rejectCommand sbmt wallet tokenId testRun testRunState reason =
+    signAndSubmitAnUpdate sbmt wallet tokenId testRun testRunState
         $ Rejected testRunState reason
 
 acceptCommand
-    :: Wallet
+    :: Submitting
+    -> Wallet
     -> TokenId
     -> TestRun
     -> TestRunState PendingT
     -> ClientM (WithTxHash (TestRunState RunningT))
-acceptCommand wallet tokenId testRun testRunState =
-    signAndSubmitAnUpdate wallet tokenId testRun testRunState
+acceptCommand sbmt wallet tokenId testRun testRunState =
+    signAndSubmitAnUpdate sbmt wallet tokenId testRun testRunState
         $ Accepted testRunState

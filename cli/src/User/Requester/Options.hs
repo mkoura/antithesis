@@ -79,7 +79,7 @@ requesterCommandParser =
                 (progDesc "Request an antithesis test run")
             )
             <> command
-                "register-public-key"
+                "register-user"
                 ( info
                     (Box <$> addPublicKeyOptions)
                     (progDesc "Register a user public key")

@@ -7,6 +7,7 @@ import Core.Types (TokenId, Wallet)
 import Oracle.Token.Cli (TokenCommand, tokenCmdCore)
 import Oracle.Validate.Cli (ValidateCommand, validateCmd)
 import Servant.Client (ClientM)
+import Submitting (Submitting)
 import Text.JSON.Canonical (JSValue)
 
 data OracleCommand a where
@@ -17,10 +18,11 @@ deriving instance Show (OracleCommand a)
 deriving instance Eq (OracleCommand a)
 
 oracleCmd
-    :: Wallet -> Maybe TokenId -> OracleCommand a -> ClientM a
-oracleCmd wallet (Just tk) = \case
+    :: Submitting -> Wallet -> Maybe TokenId -> OracleCommand a -> ClientM a
+oracleCmd sbmt wallet (Just tk) = \case
     OracleTokenCommand tokenCommand ->
         tokenCmdCore
+            sbmt
             wallet
             (Just tk)
             tokenCommand
@@ -28,9 +30,10 @@ oracleCmd wallet (Just tk) = \case
         validateCmd
             tk
             validateCommand
-oracleCmd wallet Nothing = \case
+oracleCmd sbmt wallet Nothing = \case
     OracleTokenCommand tokenCommand ->
         tokenCmdCore
+            sbmt
             wallet
             Nothing
             tokenCommand

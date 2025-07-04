@@ -14,7 +14,7 @@ import Core.Types
 import MPFS.API (getTokenFacts, retractChange)
 import Oracle.Cli (OracleCommand (..), oracleCmd)
 import Servant.Client (ClientM)
-import Submitting (submitting)
+import Submitting (Submitting, submitting)
 import Text.JSON.Canonical (JSValue)
 import User.Agent.Cli
     ( AgentCommand (..)
@@ -42,31 +42,35 @@ deriving instance Show (Command a)
 deriving instance Eq (Command a)
 
 cmd
-    :: Either FilePath Wallet -> Maybe TokenId -> Command a -> ClientM a
-cmd (Right wallet) (Just tokenId) command =
+    :: Submitting
+    -> Either FilePath Wallet
+    -> Maybe TokenId
+    -> Command a
+    -> ClientM a
+cmd sbmt (Right wallet) (Just tokenId) command =
     case command of
         RequesterCommand requesterCommand ->
-            requesterCmd wallet tokenId requesterCommand
+            requesterCmd sbmt wallet tokenId requesterCommand
         OracleCommand oracleCommand ->
-            oracleCmd wallet (Just tokenId) oracleCommand
-        AgentCommand agentCommand -> agentCmd wallet tokenId agentCommand
+            oracleCmd sbmt wallet (Just tokenId) oracleCommand
+        AgentCommand agentCommand -> agentCmd sbmt wallet tokenId agentCommand
         GetFacts -> getTokenFacts tokenId
-        RetractRequest refId -> fmap txHash $ submitting wallet $ \address ->
+        RetractRequest refId -> fmap txHash $ submitting sbmt wallet $ \address ->
             retractChange address refId
         Wallet walletCommand -> liftIO $ walletCmd (Right wallet) walletCommand
-cmd (Right wallet) Nothing command =
+cmd sbmt (Right wallet) Nothing command =
     case command of
-        RetractRequest refId -> fmap txHash $ submitting wallet $ \address ->
+        RetractRequest refId -> fmap txHash $ submitting sbmt wallet $ \address ->
             retractChange address refId
         Wallet walletCommand -> liftIO $ walletCmd (Right wallet) walletCommand
-        OracleCommand oracleCommand -> oracleCmd wallet Nothing oracleCommand
+        OracleCommand oracleCommand -> oracleCmd sbmt wallet Nothing oracleCommand
         _ -> error "TokenId is required for this command"
-cmd mwf@(Left _) (Just tokenId) command =
+cmd _iftw mwf@(Left _) (Just tokenId) command =
     case command of
         GetFacts -> getTokenFacts tokenId
         Wallet walletCommand -> liftIO $ walletCmd mwf walletCommand
         _ -> error "Wallet is required for this command"
-cmd mwf@(Left _) Nothing command =
+cmd _iftw mwf@(Left _) Nothing command =
     case command of
         Wallet walletCommand -> liftIO $ walletCmd mwf walletCommand
         _ -> error "Wallet and TokenId are required for this command"

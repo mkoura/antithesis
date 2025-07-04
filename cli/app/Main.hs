@@ -7,7 +7,7 @@ import Text.JSON.Canonical (renderCanonicalJSON)
 
 main :: IO ()
 main = do
-    (_, walletFile, mpsHost, e) <- Anti.server
+    (_, walletFile, mpsHost, e) <- Anti.client
     case e of
         Left err -> error $ "Error connecting to mpfs server: " ++ show err
         Right result -> do

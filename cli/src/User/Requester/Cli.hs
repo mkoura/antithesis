@@ -18,7 +18,7 @@ import MPFS.API
     , requestInsert
     )
 import Servant.Client (ClientM)
-import Submitting (submitting)
+import Submitting (Submitting, submitting)
 import Text.JSON.Canonical (ToJSON (..))
 import User.Agent.Cli
     ( AgentCommand (..)
@@ -50,30 +50,36 @@ deriving instance Show (RequesterCommand a)
 deriving instance Eq (RequesterCommand a)
 
 requesterCmd
-    :: Wallet -> TokenId -> RequesterCommand a -> ClientM a
-requesterCmd wallet tokenId command = do
+    :: Submitting
+    -> Wallet
+    -> TokenId
+    -> RequesterCommand a
+    -> ClientM a
+requesterCmd sbmt wallet tokenId command = do
     case command of
         RegisterUser request ->
-            registerUser wallet tokenId request
+            registerUser sbmt wallet tokenId request
         UnregisterUser request ->
-            unregisterUser wallet tokenId request
+            unregisterUser sbmt wallet tokenId request
         RegisterRole request ->
-            registerRole wallet tokenId request
+            registerRole sbmt wallet tokenId request
         UnregisterRole request ->
-            unregisterRole wallet tokenId request
+            unregisterRole sbmt wallet tokenId request
         RequestTest testRun duration ->
-            agentCmd wallet tokenId $ Create testRun duration
+            agentCmd sbmt wallet tokenId $ Create testRun duration
 
 registerUser
-    :: Wallet
+    :: Submitting
+    -> Wallet
     -> TokenId
     -> RegisterUserKey
     -> ClientM TxHash
 registerUser
+    sbmt
     wallet
     tokenId
     request = fmap txHash
-        $ submitting wallet
+        $ submitting sbmt wallet
         $ \address -> do
             key <- toJSON request
             value <- toJSON ()
@@ -81,15 +87,17 @@ registerUser
                 $ RequestInsertBody{key = key, value = value}
 
 unregisterUser
-    :: Wallet
+    :: Submitting
+    -> Wallet
     -> TokenId
     -> RegisterUserKey
     -> ClientM TxHash
 unregisterUser
+    sbmt
     wallet
     tokenId
     request = fmap txHash
-        $ submitting wallet
+        $ submitting sbmt wallet
         $ \address -> do
             key <- toJSON request
             value <- toJSON ()
@@ -97,15 +105,17 @@ unregisterUser
                 $ RequestDeleteBody{key = key, value = value}
 
 registerRole
-    :: Wallet
+    :: Submitting
+    -> Wallet
     -> TokenId
     -> RegisterRoleKey
     -> ClientM TxHash
 registerRole
+    sbmt
     wallet
     tokenId
     request = fmap txHash
-        $ submitting wallet
+        $ submitting sbmt wallet
         $ \address -> do
             key <- toJSON request
             value <- toJSON ()
@@ -113,15 +123,17 @@ registerRole
                 $ RequestInsertBody{key = key, value = value}
 
 unregisterRole
-    :: Wallet
+    :: Submitting
+    -> Wallet
     -> TokenId
     -> RegisterRoleKey
     -> ClientM TxHash
 unregisterRole
+    sbmt
     wallet
     tokenId
     request = fmap txHash
-        $ submitting wallet
+        $ submitting sbmt wallet
         $ \address -> do
             key <- toJSON request
             value <- toJSON ()

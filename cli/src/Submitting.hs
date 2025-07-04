@@ -14,6 +14,8 @@ module Submitting
     , readWallet
     , walletFromMnemonic
     , writeWallet
+    , Submitting (..)
+    , IfToWait (..)
     )
 where
 
@@ -65,15 +67,19 @@ import Cardano.Ledger.Keys
     ( VKey (..)
     , asWitness
     )
-import Cardano.Mnemonic
-import Control.Exception (Exception, throwIO)
+import Cardano.Mnemonic (MkSomeMnemonic (mkSomeMnemonic))
+import Control.Concurrent (threadDelay)
+import Control.Exception (Exception, SomeException, throwIO)
 import Control.Lens ((%~))
+import Control.Monad (void)
+import Control.Monad.Catch (MonadCatch (..))
 import Control.Monad.IO.Class (MonadIO (..))
 import Core.Types
     ( Address (..)
     , Owner (..)
     , SignTxError (..)
     , SignedTx (..)
+    , TxHash
     , UnsignedTx (..)
     , Wallet (..)
     , WithTxHash (WithTxHash)
@@ -101,19 +107,41 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import GHC.Generics (Generic)
-import MPFS.API (submitTransaction)
+import MPFS.API (getTransaction, submitTransaction)
 import Servant.Client (ClientM)
 import Text.JSON.Canonical (JSValue)
 
+data IfToWait = Wait Int | NoWait
+    deriving (Show, Eq)
+
+data Submitting = Submitting
+    { ifToWait :: IfToWait
+    , runClient :: forall a. ClientM a -> IO a
+    }
+
+waitTx :: Submitting -> TxHash -> IO ()
+waitTx (Submitting (Wait maxCycles) runClient) txHash = void $ go maxCycles
+  where
+    go :: Int -> IO JSValue
+    go 0 = error "Transaction not found after waiting"
+    go n =
+        runClient (getTransaction txHash)
+            `catch` \(_ :: SomeException) -> do
+                liftIO $ threadDelay 1000000
+                go (n - 1)
+waitTx (Submitting NoWait _) _ = return ()
+
 submitting
-    :: Wallet
+    :: Submitting
+    -> Wallet
     -> (Address -> ClientM (WithUnsignedTx JSValue))
     -> ClientM (WithTxHash JSValue)
-submitting Wallet{address, sign} action = do
+submitting sbmt Wallet{address, sign} action = do
     WithUnsignedTx unsignedTx value <- action address
     case sign $ UnsignedTx unsignedTx of
         Right (SignedTx signedTx) -> do
             txHash <- submitTransaction $ SignedTx signedTx
+            liftIO $ waitTx sbmt txHash
             return $ WithTxHash txHash value
         Left e -> liftIO $ throwIO e
 

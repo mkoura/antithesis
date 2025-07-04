@@ -137,6 +137,7 @@ library
     , cardano-ledger-binary  ^>=1.6.0.0
     , cardano-ledger-core    ^>=1.17.0.0
     , containers             ^>=0.6.8
+    , exceptions
     , http-client
     , http-client-tls
     , lens

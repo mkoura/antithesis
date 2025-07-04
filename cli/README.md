@@ -56,6 +56,11 @@ export OWNER=$(anti wallet info | jq -r .result.owner)
 
 Fund your wallet with some tAda tokens on preprod, for example using the [Cardano Testnet Faucet](https://docs.cardano.org/cardano-testnets/tools/faucet/).
 
+## Set the timeout for the `anti` command
+
+When submitting txs to the chain, it's quite convenient to wait for the transaction to be included in the chain, so that you can immediately use the result of the transaction.
+
+To do that, you can set the `ANTI_WAIT` environment variable to the number of seconds you want to wait for the transaction to be included in the chain.
 
 ## Requester role
 

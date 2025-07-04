@@ -6,6 +6,7 @@ module Oracle.Token.Cli
 import Core.Types
     ( RequestRefId
     , TokenId
+    , TxHash
     , Wallet
     , WithTxHash (WithTxHash)
     )
@@ -27,8 +28,8 @@ data TokenCommand a where
     GetToken :: TokenCommand JSValue
     BootToken :: TokenCommand (WithTxHash TokenId)
     UpdateToken
-        :: {requests :: [RequestRefId]} -> TokenCommand (WithTxHash ())
-    EndToken :: TokenCommand (WithTxHash ())
+        :: {requests :: [RequestRefId]} -> TokenCommand TxHash
+    EndToken :: TokenCommand TxHash
 
 deriving instance Show (TokenCommand a)
 deriving instance Eq (TokenCommand a)
@@ -41,11 +42,11 @@ tokenCmdCore wallet (Just tk) cmd = do
         UpdateToken reqs -> do
             WithTxHash txHash _ <- submitting wallet $ \address ->
                 updateToken address tk reqs
-            pure $ WithTxHash txHash Nothing
+            pure txHash
         BootToken -> error "BootToken command requires no TokenId"
         EndToken -> do
             WithTxHash txHash _ <- submitting wallet $ \address -> endToken address tk
-            pure $ WithTxHash txHash Nothing
+            pure txHash
 tokenCmdCore wallet Nothing cmd = case cmd of
     BootToken -> do
         WithTxHash txHash jTokenId <- submitting wallet

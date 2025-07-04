@@ -156,7 +156,7 @@ setup = do
 teardown :: ActionWith (Call, TxHash -> ClientM (), TokenId)
 teardown (call, _, tk) = do
     wallet <- loadOracleWallet
-    WithTxHash txHash _ <- calling call $ do
+    txHash <- calling call $ do
         tokenCmdCore wallet (Just tk) EndToken
     liftIO $ waitTx call txHash
 
@@ -344,7 +344,7 @@ spec = do
                                     [ RequestRefId
                                         $ textOf insertTx <> "-0"
                                     ]
-                        wait $ txHash updateTx
+                        wait updateTx
                         pure ()
 
 loadEnvWallet :: String -> IO Wallet

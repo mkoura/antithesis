@@ -12,6 +12,7 @@ import Core.Options
     , repositoryOption
     , usernameOption
     )
+import Core.Types (WithTxHash)
 import Lib.Box (Box (..))
 import Options.Applicative
     ( Alternative (..)
@@ -62,7 +63,7 @@ agentCommandParser =
         )
 
 acceptTestOptions
-    :: Parser (AgentCommand NotReady (TestRunState RunningT))
+    :: Parser (AgentCommand NotReady (WithTxHash (TestRunState RunningT)))
 acceptTestOptions =
     fmap (`Accept` ())
         $ TestRun
@@ -90,7 +91,7 @@ reasonParser =
             "Invalid reason. Valid options are: duration, platform, repository, commit, round."
 
 rejectTestOptions
-    :: Parser (AgentCommand NotReady (TestRunState DoneT))
+    :: Parser (AgentCommand NotReady (WithTxHash (TestRunState DoneT)))
 rejectTestOptions = do
     testRun <-
         TestRun
@@ -104,7 +105,7 @@ rejectTestOptions = do
     pure $ Reject testRun () reason
 
 reportTestOptions
-    :: Parser (AgentCommand NotReady (TestRunState DoneT))
+    :: Parser (AgentCommand NotReady (WithTxHash (TestRunState DoneT)))
 reportTestOptions = do
     testRun <-
         TestRun

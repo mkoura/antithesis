@@ -40,7 +40,7 @@ import User.Types
     )
 
 agentCmd
-    :: Wallet -> TokenId -> AgentCommand NotReady a -> ClientM (WithTxHash a)
+    :: Wallet -> TokenId -> AgentCommand NotReady a -> ClientM a
 agentCmd wallet tokenId cmdNotReady = do
     mCmdReady <- resolveOldState tokenId cmdNotReady
     case mCmdReady of
@@ -100,22 +100,22 @@ data AgentCommand (phase :: IsReady) result where
     Create
         :: TestRun
         -> Duration
-        -> AgentCommand phase (TestRunState PendingT)
+        -> AgentCommand phase (WithTxHash (TestRunState PendingT))
     Accept
         :: TestRun
         -> IfReady phase (TestRunState PendingT)
-        -> AgentCommand phase (TestRunState RunningT)
+        -> AgentCommand phase (WithTxHash (TestRunState RunningT))
     Reject
         :: TestRun
         -> IfReady phase (TestRunState PendingT)
         -> [Reason]
-        -> AgentCommand phase (TestRunState DoneT)
+        -> AgentCommand phase (WithTxHash (TestRunState DoneT))
     Report
         :: TestRun
         -> IfReady phase (TestRunState RunningT)
         -> Duration
         -> URL
-        -> AgentCommand phase (TestRunState DoneT)
+        -> AgentCommand phase (WithTxHash (TestRunState DoneT))
 
 deriving instance Show (AgentCommand NotReady result)
 deriving instance Eq (AgentCommand NotReady result)
@@ -126,7 +126,7 @@ agentCmdCore
     :: Wallet
     -> TokenId
     -> AgentCommand Ready result
-    -> ClientM (WithTxHash result)
+    -> ClientM result
 agentCmdCore wallet tokenId cmd = case cmd of
     Create key duration -> do
         createCommand wallet tokenId key duration

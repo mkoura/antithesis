@@ -62,7 +62,7 @@ commandParser =
             <> command
                 "agent"
                 ( info
-                    (fmapBox undefined <$> agentCommandParser)
+                    (fmapBox AgentCommand <$> agentCommandParser)
                     (progDesc "Manage agent changes")
                 )
         )

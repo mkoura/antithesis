@@ -28,7 +28,7 @@ import User.Requester.Cli
 data Command a where
     RequesterCommand :: RequesterCommand a -> Command a
     OracleCommand :: OracleCommand a -> Command a
-    AgentCommand :: AgentCommand NotReady a -> Command (WithTxHash a)
+    AgentCommand :: AgentCommand NotReady a -> Command a
     RetractRequest
         :: { outputReference :: RequestRefId
            }
@@ -43,7 +43,8 @@ cmd wallet (Just tokenId) command =
     case command of
         RequesterCommand requesterCommand ->
             requesterCmd wallet tokenId requesterCommand
-        OracleCommand oracleCommand -> oracleCmd wallet (Just tokenId) oracleCommand
+        OracleCommand oracleCommand ->
+            oracleCmd wallet (Just tokenId) oracleCommand
         AgentCommand agentCommand -> agentCmd wallet tokenId agentCommand
         GetFacts -> getTokenFacts tokenId
         RetractRequest refId -> fmap txHash $ submitting wallet $ \address ->

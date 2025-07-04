@@ -19,14 +19,14 @@ import Options.Applicative
 import Oracle.Cli (OracleCommand (..))
 import Oracle.Token.Options (tokenCommandParser)
 
-oracleCommandParser :: (Box OracleCommand -> b) -> Parser b
-oracleCommandParser constructor =
+oracleCommandParser :: Parser (Box OracleCommand)
+oracleCommandParser =
     hsubparser
         ( command
             "token"
             ( info
-                ( constructor
-                    <$> tokenCommandParser (fmapBox OracleTokenCommand)
+                ( fmapBox OracleTokenCommand
+                    <$> tokenCommandParser
                     <**> helper
                 )
                 (progDesc "Manage tokens")

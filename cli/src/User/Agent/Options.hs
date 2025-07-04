@@ -12,6 +12,7 @@ import Core.Options
     , repositoryOption
     , usernameOption
     )
+import Lib.Box (Box (..))
 import Options.Applicative
     ( Alternative (..)
     , Parser
@@ -26,7 +27,6 @@ import Options.Applicative
     , progDesc
     , str
     )
-import Oracle.Token.Options (Box (..))
 import User.Agent.Cli (AgentCommand (..), IsReady (NotReady))
 import User.Types
     ( Duration (..)
@@ -38,25 +38,25 @@ import User.Types
     )
 
 agentCommandParser
-    :: (Box (AgentCommand NotReady) -> b) -> Parser b
-agentCommandParser constructor =
+    :: Parser (Box (AgentCommand NotReady))
+agentCommandParser =
     hsubparser
         ( command
             "accept-test"
             ( info
-                (constructor . Box <$> acceptTestOptions)
+                (Box <$> acceptTestOptions)
                 (progDesc "Request a test on a specific platform")
             )
             <> command
                 "reject-test"
                 ( info
-                    (constructor . Box <$> rejectTestOptions)
+                    (Box <$> rejectTestOptions)
                     (progDesc "Reject a test with a reason")
                 )
             <> command
                 "report-test"
                 ( info
-                    (constructor . Box <$> reportTestOptions)
+                    (Box <$> reportTestOptions)
                     (progDesc "Report the result of a test run")
                 )
         )

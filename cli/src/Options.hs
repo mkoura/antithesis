@@ -32,43 +32,43 @@ newtype Options a = Options
     }
     deriving (Eq, Show)
 
-commandParser :: (Box Command -> b) -> Parser b
-commandParser f =
+commandParser :: Parser (Box Command)
+commandParser =
     hsubparser
         ( command
             "oracle"
             ( info
-                (f <$> oracleCommandParser (fmapBox OracleCommand))
+                (fmapBox OracleCommand <$> oracleCommandParser)
                 (progDesc "Manage token updates")
             )
             <> command
                 "requester"
                 ( info
-                    (f <$> requesterCommandParser (fmapBox RequesterCommand))
+                    (fmapBox RequesterCommand <$> requesterCommandParser)
                     (progDesc "Manage requester changes")
                 )
             <> command
                 "retract"
                 ( info
-                    (f <$> retractRequestOptions)
+                    retractRequestOptions
                     (progDesc "Retract a change")
                 )
             <> command
                 "get-facts"
                 ( info
-                    (pure . f . Box $ GetFacts)
+                    (pure . Box $ GetFacts)
                     (progDesc "Get token facts")
                 )
             <> command
                 "agent"
                 ( info
-                    (f <$> agentCommandParser (fmapBox undefined))
+                    (fmapBox undefined <$> agentCommandParser)
                     (progDesc "Manage agent changes")
                 )
         )
 
 optionsParser :: Parser (Box Options)
-optionsParser = commandParser $ fmapBox Options
+optionsParser = fmapBox Options <$> commandParser
 
 parseArgs :: [String] -> IO (Box Options)
 parseArgs args = handleParseResult $ execParserPure defaultPrefs opts args

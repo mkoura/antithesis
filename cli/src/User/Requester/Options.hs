@@ -69,37 +69,37 @@ removeRoleOptions =
                 <*> usernameOption
             )
 
-requesterCommandParser :: (Box RequesterCommand -> b) -> Parser b
-requesterCommandParser constructor =
+requesterCommandParser :: Parser (Box RequesterCommand)
+requesterCommandParser =
     hsubparser
         ( command
             "create-test"
             ( info
-                (constructor . Box <$> requestTestOptions)
+                (Box <$> requestTestOptions)
                 (progDesc "Request an antithesis test run")
             )
             <> command
                 "register-public-key"
                 ( info
-                    (constructor . Box <$> addPublicKeyOptions)
+                    (Box <$> addPublicKeyOptions)
                     (progDesc "Register a user public key")
                 )
             <> command
                 "unregister-public-key"
                 ( info
-                    (constructor . Box <$> removePublicKeyOptions)
+                    (Box <$> removePublicKeyOptions)
                     (progDesc "Unregister a user public key")
                 )
             <> command
                 "register-role"
                 ( info
-                    (constructor . Box <$> addRoleOptions)
+                    (Box <$> addRoleOptions)
                     (progDesc "Add a user to a repository")
                 )
             <> command
                 "unregister-role"
                 ( info
-                    (constructor . Box <$> removeRoleOptions)
+                    (Box <$> removeRoleOptions)
                     (progDesc "Remove a user from a repository")
                 )
         )

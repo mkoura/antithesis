@@ -22,27 +22,28 @@ import Oracle.Token.Cli
     ( TokenCommand (..)
     )
 
-tokenCommandParser :: (Box TokenCommand -> b) -> Parser b
-tokenCommandParser constructor =
+tokenCommandParser :: Parser (Box TokenCommand)
+tokenCommandParser =
     hsubparser
         ( command
             "get"
             ( info
-                (pure (constructor $ Box GetToken) <**> helper)
+                (pure (Box GetToken) <**> helper)
                 (progDesc "Get a token")
             )
             <> command
                 "update"
                 ( info
-                    ( constructor . Box . UpdateToken
+                    ( Box . UpdateToken
                         <$> many outputReferenceParser
+                        <**> helper
                     )
                     (progDesc "Update a token")
                 )
             <> command
                 "boot"
                 ( info
-                    (pure (constructor $ Box BootToken) <**> helper)
+                    (pure (Box BootToken) <**> helper)
                     (progDesc "Boot a token")
                 )
         )

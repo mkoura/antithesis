@@ -1,4 +1,4 @@
-module Anti.Server
+module MPFS.Server
     ( appDummy
     , dummyWithUnsignedTx
     )

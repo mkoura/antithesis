@@ -1,6 +1,6 @@
 {-# LANGUAGE QuasiQuotes #-}
 
-module Anti.CliSpec
+module CliSpec
     ( spec
     , runDummyServer
     , anti

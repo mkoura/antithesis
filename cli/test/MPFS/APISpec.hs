@@ -1,4 +1,4 @@
-module Anti.APISpec (spec)
+module MPFS.APISpec (spec)
 where
 
 import Cardano.Ledger.Alonzo.Tx (AlonzoTx)

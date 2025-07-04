@@ -120,7 +120,7 @@ spec = beforeAll_ runDummyServer $ do
     xit "can request user unregistration" $ do
         let args =
                 [ "requester"
-                , "unregister-public-key"
+                , "unregister-user"
                 , "--platform"
                 , "github"
                 , "--username"

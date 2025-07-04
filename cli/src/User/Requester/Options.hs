@@ -85,7 +85,7 @@ requesterCommandParser =
                     (progDesc "Register a user public key")
                 )
             <> command
-                "unregister-public-key"
+                "unregister-user"
                 ( info
                     (Box <$> removePublicKeyOptions)
                     (progDesc "Unregister a user public key")

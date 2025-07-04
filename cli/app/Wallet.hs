@@ -2,7 +2,7 @@
 
 import Control.Monad (replicateM)
 import Core.Types
-    ( PublicKeyHash (..)
+    ( Owner (..)
     , SignedTx (..)
     , UnsignedTx (..)
     , Wallet (..)
@@ -107,7 +107,7 @@ signTransactionCmd walletFile unsignedFile signedFile = do
 
 addressCmd :: FilePath -> IO ()
 addressCmd walletFile = do
-    Wallet (Types.Address address) (PublicKeyHash hash) _ <-
+    Wallet (Types.Address address) (Owner hash) _ <-
         readWallet walletFile
     BL.putStrLn
         $ encode

@@ -71,7 +71,7 @@ import Control.Lens ((%~))
 import Control.Monad.IO.Class (MonadIO (..))
 import Core.Types
     ( Address (..)
-    , PublicKeyHash (..)
+    , Owner (..)
     , SignTxError (..)
     , SignedTx (..)
     , UnsignedTx (..)
@@ -174,8 +174,8 @@ walletFromMnemonic mnemonicWords = do
         $ Wallet
             { address = addr
             , sign = signTx $ getKey addrXPrv96
-            , pubKeyHash =
-                PublicKeyHash
+            , owner =
+                Owner
                     $ BS.unpack
                     $ Base16.encode
                     $ digest (Proxy @Blake2b_224) pubBytes32

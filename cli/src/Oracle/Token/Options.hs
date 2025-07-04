@@ -46,4 +46,10 @@ tokenCommandParser =
                     (pure (Box BootToken) <**> helper)
                     (progDesc "Boot a token")
                 )
+            <> command
+                "end"
+                ( info
+                    (pure (Box EndToken) <**> helper)
+                    (progDesc "End a token")
+                )
         )

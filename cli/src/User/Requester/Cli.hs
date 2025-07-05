@@ -18,7 +18,7 @@ import MPFS.API
     , requestInsert
     )
 import Servant.Client (ClientM)
-import Submitting (Submitting, submitting)
+import Submitting (Submitting, signAndSubmit)
 import Text.JSON.Canonical (ToJSON (..))
 import User.Agent.Cli
     ( AgentCommand (..)
@@ -79,7 +79,7 @@ registerUser
     wallet
     tokenId
     request = fmap txHash
-        $ submitting sbmt wallet
+        $ signAndSubmit sbmt wallet
         $ \address -> do
             key <- toJSON request
             value <- toJSON ()
@@ -97,7 +97,7 @@ unregisterUser
     wallet
     tokenId
     request = fmap txHash
-        $ submitting sbmt wallet
+        $ signAndSubmit sbmt wallet
         $ \address -> do
             key <- toJSON request
             value <- toJSON ()
@@ -115,7 +115,7 @@ registerRole
     wallet
     tokenId
     request = fmap txHash
-        $ submitting sbmt wallet
+        $ signAndSubmit sbmt wallet
         $ \address -> do
             key <- toJSON request
             value <- toJSON ()
@@ -133,7 +133,7 @@ unregisterRole
     wallet
     tokenId
     request = fmap txHash
-        $ submitting sbmt wallet
+        $ signAndSubmit sbmt wallet
         $ \address -> do
             key <- toJSON request
             value <- toJSON ()

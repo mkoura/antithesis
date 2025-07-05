@@ -10,7 +10,7 @@
 {-# HLINT ignore "Use newtype instead of data" #-}
 
 module Submitting
-    ( submitting
+    ( signAndSubmit
     , readWallet
     , walletFromMnemonic
     , writeWallet
@@ -131,12 +131,12 @@ waitTx (Submitting (Wait maxCycles) runClient) txHash = void $ go maxCycles
                 go (n - 1)
 waitTx (Submitting NoWait _) _ = return ()
 
-submitting
+signAndSubmit
     :: Submitting
     -> Wallet
     -> (Address -> ClientM (WithUnsignedTx JSValue))
     -> ClientM (WithTxHash JSValue)
-submitting sbmt Wallet{address, sign} action = do
+signAndSubmit sbmt Wallet{address, sign} action = do
     WithUnsignedTx unsignedTx value <- action address
     case sign $ UnsignedTx unsignedTx of
         Right (SignedTx signedTx) -> do

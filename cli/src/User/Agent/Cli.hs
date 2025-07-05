@@ -22,7 +22,7 @@ import MPFS.API
     , requestUpdate
     )
 import Servant.Client (ClientM)
-import Submitting (Submitting, submitting)
+import Submitting (Submitting, signAndSubmit)
 import Text.JSON.Canonical
     ( FromJSON (..)
     , JSValue (..)
@@ -151,7 +151,7 @@ signAndSubmitAnUpdate
     -> res
     -> ClientM (WithTxHash res)
 signAndSubmitAnUpdate sbmt wallet tokenId testRun oldState newState = do
-    WithTxHash txHash _ <- submitting sbmt wallet $ \address -> do
+    WithTxHash txHash _ <- signAndSubmit sbmt wallet $ \address -> do
         key <- toJSON testRun
         oldValue <- toJSON oldState
         newValue <- toJSON newState
@@ -168,7 +168,7 @@ createCommand
     -> ClientM (WithTxHash (TestRunState PendingT))
 createCommand sbmt wallet tokenId testRun duration = do
     let newState = Pending duration
-    WithTxHash txHash _ <- submitting sbmt wallet $ \address -> do
+    WithTxHash txHash _ <- signAndSubmit sbmt wallet $ \address -> do
         key <- toJSON testRun
         value <- toJSON newState
         requestInsert address tokenId

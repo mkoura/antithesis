@@ -14,7 +14,7 @@ import Core.Types
 import MPFS.API (getTokenFacts, retractChange)
 import Oracle.Cli (OracleCommand (..), oracleCmd)
 import Servant.Client (ClientM)
-import Submitting (Submitting, submitting)
+import Submitting (Submitting, signAndSubmit)
 import Text.JSON.Canonical (JSValue)
 import User.Agent.Cli
     ( AgentCommand (..)
@@ -55,12 +55,12 @@ cmd sbmt (Right wallet) (Just tokenId) command =
             oracleCmd sbmt wallet (Just tokenId) oracleCommand
         AgentCommand agentCommand -> agentCmd sbmt wallet tokenId agentCommand
         GetFacts -> getTokenFacts tokenId
-        RetractRequest refId -> fmap txHash $ submitting sbmt wallet $ \address ->
+        RetractRequest refId -> fmap txHash $ signAndSubmit sbmt wallet $ \address ->
             retractChange address refId
         Wallet walletCommand -> liftIO $ walletCmd (Right wallet) walletCommand
 cmd sbmt (Right wallet) Nothing command =
     case command of
-        RetractRequest refId -> fmap txHash $ submitting sbmt wallet $ \address ->
+        RetractRequest refId -> fmap txHash $ signAndSubmit sbmt wallet $ \address ->
             retractChange address refId
         Wallet walletCommand -> liftIO $ walletCmd (Right wallet) walletCommand
         OracleCommand oracleCommand -> oracleCmd sbmt wallet Nothing oracleCommand

@@ -18,7 +18,7 @@ import MPFS.API
     , updateToken
     )
 import Servant.Client (ClientM)
-import Submitting (Submitting, submitting)
+import Submitting (Submitting, signAndSubmit)
 import Text.JSON.Canonical
     ( FromJSON (fromJSON)
     , JSValue (..)
@@ -40,16 +40,16 @@ tokenCmdCore sbmt wallet (Just tk) cmd = do
     case cmd of
         GetToken -> getToken tk
         UpdateToken reqs -> do
-            WithTxHash txHash _ <- submitting sbmt wallet $ \address ->
+            WithTxHash txHash _ <- signAndSubmit sbmt wallet $ \address ->
                 updateToken address tk reqs
             pure txHash
         BootToken -> error "BootToken command requires no TokenId"
         EndToken -> do
-            WithTxHash txHash _ <- submitting sbmt wallet $ \address -> endToken address tk
+            WithTxHash txHash _ <- signAndSubmit sbmt wallet $ \address -> endToken address tk
             pure txHash
 tokenCmdCore sbmt wallet Nothing cmd = case cmd of
     BootToken -> do
-        WithTxHash txHash jTokenId <- submitting sbmt wallet
+        WithTxHash txHash jTokenId <- signAndSubmit sbmt wallet
             $ \address -> bootToken address
         case jTokenId of
             Just tkId -> case fromJSON tkId of

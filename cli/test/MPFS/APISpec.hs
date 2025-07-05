@@ -43,6 +43,7 @@ import Core.Types
     , RequestRefId (RequestRefId)
     , TokenId (..)
     , TxHash
+    , UnsignedTx (..)
     , Username (..)
     , Wallet (..)
     , WithTxHash (..)
@@ -242,7 +243,7 @@ spec = do
                         _ -> error "Response is not an object"
             it "can retrieve a request-insert tx"
                 $ \Context{mpfs = Call call, tokenId, requesterWallet} -> do
-                    WithUnsignedTx tx _ <-
+                    WithUnsignedTx (UnsignedTx tx) _ <-
                         call
                             $ requestInsert
                                 (address requesterWallet)
@@ -267,7 +268,7 @@ spec = do
                             }
             it "can retrieve a request-delete tx"
                 $ \Context{mpfs = Call call, tokenId, requesterWallet} -> do
-                    WithUnsignedTx tx _ <-
+                    WithUnsignedTx (UnsignedTx tx) _ <-
                         call
                             $ requestDelete
                                 requesterWallet.address
@@ -290,7 +291,7 @@ spec = do
                             }
             it "can retrieve a request-update tx"
                 $ \Context{mpfs = Call call, tokenId, requesterWallet} -> do
-                    WithUnsignedTx tx _ <-
+                    WithUnsignedTx (UnsignedTx tx) _ <-
                         call
                             $ requestUpdate
                                 requesterWallet.address

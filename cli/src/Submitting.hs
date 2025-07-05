@@ -138,7 +138,7 @@ signAndSubmit
     -> ClientM (WithTxHash JSValue)
 signAndSubmit sbmt Wallet{address, sign} action = do
     WithUnsignedTx unsignedTx value <- action address
-    case sign $ UnsignedTx unsignedTx of
+    case sign unsignedTx of
         Right (SignedTx signedTx) -> do
             txHash <- submitTransaction $ SignedTx signedTx
             liftIO $ waitTx sbmt txHash

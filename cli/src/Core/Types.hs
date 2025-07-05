@@ -313,7 +313,15 @@ instance Aeson.ToJSON SignedTx where
 newtype UnsignedTx = UnsignedTx
     { unsignedTransaction :: Text
     }
-    deriving (Show)
+    deriving (Show, Eq)
+
+instance Aeson.FromJSON UnsignedTx where
+    parseJSON = Aeson.withText "UnsignedTx" $ \v ->
+        pure (UnsignedTx v)
+
+instance Aeson.ToJSON UnsignedTx where
+    toJSON (UnsignedTx unsignedTransaction) =
+        Aeson.toJSON unsignedTransaction
 
 instance Monad m => ToJSON m UnsignedTx where
     toJSON (UnsignedTx unsignedTransaction) =
@@ -327,7 +335,7 @@ instance ReportSchemaErrors m => FromJSON m UnsignedTx where
             <$> v .: "unsignedTransaction"
 
 data WithUnsignedTx a = WithUnsignedTx
-    { unsignedTransaction :: Text
+    { unsignedTransaction :: UnsignedTx
     , value :: Maybe a
     }
     deriving (Show, Functor, Eq)

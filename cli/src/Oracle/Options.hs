@@ -3,7 +3,7 @@ module Oracle.Options
     , oracleCommandParser
     ) where
 
-import Lib.Box (Box, fmapBox)
+import Lib.Box (Box (..), fmapBox)
 import Options.Applicative
     ( Parser
     , command
@@ -15,6 +15,7 @@ import Options.Applicative
     )
 import Oracle.Cli (OracleCommand (..))
 import Oracle.Token.Options (tokenCommandParser)
+import Oracle.Validate.Options (validateCommandParser)
 
 oracleCommandParser :: Parser (Box OracleCommand)
 oracleCommandParser =
@@ -28,4 +29,13 @@ oracleCommandParser =
                 )
                 (progDesc "Manage tokens")
             )
+            <> command
+                "requests"
+                ( info
+                    ( Box . OracleValidateCommand
+                        <$> validateCommandParser
+                        <**> helper
+                    )
+                    (progDesc "Manage requests")
+                )
         )

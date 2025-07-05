@@ -17,7 +17,13 @@ import Core.Types
     )
 import Lib.JSON
 import Text.JSON.Canonical
-import User.Types (RegisterRoleKey, RegisterUserKey)
+import User.Types
+    ( Phase (..)
+    , RegisterRoleKey
+    , RegisterUserKey
+    , TestRun
+    , TestRunState
+    )
 
 data Request k v = Request
     { outputRefId :: RequestRefId
@@ -68,13 +74,22 @@ instance ReportSchemaErrors m => FromJSON m TokenState where
         pure $ TokenState{tokenRoot = root, tokenOwner = owner}
 
 data RequestZoo where
-    RegisterUserRequest :: Request RegisterUserKey String -> RequestZoo
+    RegisterUserRequest
+        :: Request RegisterUserKey () -> RequestZoo
     UnregisterUserRequest
-        :: Request RegisterUserKey String -> RequestZoo
+        :: Request RegisterUserKey () -> RequestZoo
     RegisterRoleRequest
-        :: Request RegisterRoleKey String -> RequestZoo
+        :: Request RegisterRoleKey () -> RequestZoo
     UnregisterRoleRequest
-        :: Request RegisterRoleKey String -> RequestZoo
+        :: Request RegisterRoleKey () -> RequestZoo
+    CreateTestRequest
+        :: Request TestRun (TestRunState PendingT) -> RequestZoo
+    RejectRequest
+        :: Request TestRun (TestRunState DoneT) -> RequestZoo
+    AcceptRequest
+        :: Request TestRun (TestRunState RunningT) -> RequestZoo
+    FinishedRequest
+        :: Request TestRun (TestRunState DoneT) -> RequestZoo
 
 parseRegisterUserKey
     :: (ReportSchemaErrors m, Alternative m) => JSValue -> m RequestZoo
@@ -117,6 +132,26 @@ instance Monad m => ToJSON m RequestZoo where
     toJSON (UnregisterRoleRequest req) =
         object
             [ "type" .= ("unregister-role" :: String)
+            , "request" .= req
+            ]
+    toJSON (CreateTestRequest req) =
+        object
+            [ "type" .= ("create-test" :: String)
+            , "request" .= req
+            ]
+    toJSON (RejectRequest req) =
+        object
+            [ "type" .= ("reject-test" :: String)
+            , "request" .= req
+            ]
+    toJSON (AcceptRequest req) =
+        object
+            [ "type" .= ("accept-test" :: String)
+            , "request" .= req
+            ]
+    toJSON (FinishedRequest req) =
+        object
+            [ "type" .= ("finished-test" :: String)
             , "request" .= req
             ]
 

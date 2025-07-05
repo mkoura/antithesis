@@ -218,13 +218,13 @@ instance {-# OVERLAPPING #-} ReportSchemaErrors Maybe where
     expected _expectedValue _gotValue = Nothing
 
 parseJSValue
-    :: FromJSON Maybe a
+    :: (FromJSON m a, ReportSchemaErrors m)
     => StrictByteString
-    -> Maybe a
+    -> m a
 parseJSValue b = do
     js <- case parseCanonicalJSON (BL.fromStrict b) of
-        Left _err -> Nothing
-        Right js -> Just js
+        Left err -> expected "JSValue" (Just err)
+        Right js -> pure js
     fromJSON js
 
 newtype Parsing m a = Parsing

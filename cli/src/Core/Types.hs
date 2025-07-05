@@ -34,6 +34,7 @@ import Control.Exception (Exception)
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Base16 (encode)
 import Data.ByteString.Char8 qualified as B
+import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.Text (Text)
 import Data.Text qualified as T
 import Lib.JSON
@@ -49,9 +50,10 @@ import Servant.API (FromHttpApiData (..), ToHttpApiData (..))
 import Text.JSON.Canonical
     ( FromJSON (..)
     , JSValue (..)
-    , ReportSchemaErrors
+    , ReportSchemaErrors (..)
     , ToJSON (..)
     , expectedButGotValue
+    , renderCanonicalJSON
     )
 
 -- TxHash-OutputIndex
@@ -132,11 +134,19 @@ instance FromJSON Maybe a => FromData (Key a) where
         parse = \case
             B b -> Key <$> parseJSValue b
             _ -> Nothing
-instance ToJSON m a => ToJSON m (Key a) where
-    toJSON (Key key) = toJSON key
 
-instance (FromJSON m a, Functor m) => FromJSON m (Key a) where
-    fromJSON v = Key <$> fromJSON v
+instance (ToJSON m a, Monad m) => ToJSON m (Key a) where
+    toJSON (Key key) = do
+        j <- BL.unpack . renderCanonicalJSON <$> toJSON key
+        toJSON j
+
+instance
+    (FromJSON m a, Monad m, ReportSchemaErrors m)
+    => FromJSON m (Key a)
+    where
+    fromJSON v = do
+        keyString :: String <- fromJSON v
+        Key <$> parseJSValue (B.pack keyString)
 
 data Operation a
     = Insert a
@@ -157,26 +167,39 @@ instance FromJSON Maybe a => FromData (Operation a) where
             _ -> Nothing
 
 instance (ToJSON m a, Monad m) => ToJSON m (Operation a) where
-    toJSON (Insert a) =
+    toJSON (Insert a) = do
+        v <- BL.unpack . renderCanonicalJSON <$> toJSON a
         object
-            ["operation" .= ("insert" :: String), "value" .= a]
-    toJSON (Delete a) =
+            ["type" .= ("insert" :: String), "value" .= v]
+    toJSON (Delete a) = do
+        v <- BL.unpack . renderCanonicalJSON <$> toJSON a
         object
-            ["operation" .= ("delete" :: String), "value" .= a]
-    toJSON (Update old new) =
+            ["type" .= ("delete" :: String), "value" .= v]
+    toJSON (Update old new) = do
+        oldValue <- BL.unpack . renderCanonicalJSON <$> toJSON old
+        newValue <- BL.unpack . renderCanonicalJSON <$> toJSON new
         object
-            [ "operation" .= ("update" :: String)
-            , "oldValue" .= old
-            , "newValue" .= new
+            [ "type" .= ("update" :: String)
+            , "oldValue" .= oldValue
+            , "newValue" .= newValue
             ]
 
 instance (ReportSchemaErrors m, FromJSON m a) => FromJSON m (Operation a) where
     fromJSON = withObject "Operation" $ \v -> do
-        op <- v .: "operation"
+        op <- v .: "type"
         case op of
-            JSString "insert" -> Insert <$> v .: "value"
-            JSString "delete" -> Delete <$> v .: "value"
-            JSString "update" -> Update <$> v .: "oldValue" <*> v .: "newValue"
+            JSString "insert" -> do
+                valueString <- v .: "value"
+                Insert <$> parseJSValue (B.pack valueString)
+            JSString "delete" -> do
+                valueString <- v .: "value"
+                Delete <$> parseJSValue (B.pack valueString)
+            JSString "update" -> do
+                oldValueString <- v .: "oldValue"
+                oldValue <- parseJSValue (B.pack oldValueString)
+                newValueString <- v .: "newValue"
+                newValue <- parseJSValue (B.pack newValueString)
+                pure $ Update oldValue newValue
             _ -> expectedButGotValue "Operation" op
 
 newtype Root = Root String
@@ -205,9 +228,9 @@ instance
     (FromJSON m k, FromJSON m v, ReportSchemaErrors m)
     => FromJSON m (Change k v)
     where
-    fromJSON = withObject "Change" $ \v -> do
+    fromJSON w = flip (withObject "Change") w $ \v -> do
         key <- v .: "key"
-        operation <- v .: "operation"
+        operation <- fromJSON w
         pure $ Change key operation
 
 instance

@@ -126,27 +126,33 @@ data Reason
     | UnacceptableRequester
     deriving (Eq, Show)
 
-toJSONReason :: Monad m => Reason -> m JSValue
-toJSONReason UnacceptableDuration = stringJSON "unacceptable duration"
-toJSONReason UnacceptablePlatform = stringJSON "unacceptable platform"
-toJSONReason UnacceptableRepository = stringJSON "unacceptable repository"
-toJSONReason UnacceptableCommit = stringJSON "unacceptable commit"
-toJSONReason UnacceptableRound = stringJSON "unacceptable round"
-toJSONReason UnacceptableRequester = stringJSON "unacceptable requester"
+instance Monad m => ToJSON m Reason where
+    toJSON UnacceptableDuration =
+        stringJSON "unacceptable duration"
+    toJSON UnacceptablePlatform =
+        stringJSON "unacceptable platform"
+    toJSON UnacceptableRepository =
+        stringJSON "unacceptable repository"
+    toJSON UnacceptableCommit =
+        stringJSON "unacceptable commit"
+    toJSON UnacceptableRound =
+        stringJSON "unacceptable round"
+    toJSON UnacceptableRequester =
+        stringJSON "unacceptable requester"
 
-fromJSONReason :: (ReportSchemaErrors m) => JSValue -> m Reason
-fromJSONReason (JSString jsString) = do
-    let reason = fromJSString jsString
-    case reason of
-        "unacceptable duration" -> pure UnacceptableDuration
-        "unacceptable platform" -> pure UnacceptablePlatform
-        "unacceptable repository" -> pure UnacceptableRepository
-        "unacceptable commit" -> pure UnacceptableCommit
-        "unacceptable round" -> pure UnacceptableRound
-        "unacceptable requester" -> pure UnacceptableRequester
-        _ -> expectedButGotValue "a valid reason" (JSString jsString)
-fromJSONReason other =
-    expectedButGotValue "a string representing a reason" other
+instance ReportSchemaErrors m => FromJSON m Reason where
+    fromJSON (JSString jsString) = do
+        let reason = fromJSString jsString
+        case reason of
+            "unacceptable duration" -> pure UnacceptableDuration
+            "unacceptable platform" -> pure UnacceptablePlatform
+            "unacceptable repository" -> pure UnacceptableRepository
+            "unacceptable commit" -> pure UnacceptableCommit
+            "unacceptable round" -> pure UnacceptableRound
+            "unacceptable requester" -> pure UnacceptableRequester
+            _ -> expectedButGotValue "a valid reason" (JSString jsString)
+    fromJSON other =
+        expectedButGotValue "a string representing a reason" other
 
 data TestRunState a where
     Pending :: Duration -> TestRunState PendingT
@@ -167,7 +173,7 @@ instance Monad m => ToJSON m (TestRunState a) where
         object
             [ ("phase", stringJSON "rejected")
             , ("pending", toJSON pending)
-            , ("reasons", traverse toJSONReason reasons >>= toJSON)
+            , ("reasons", traverse toJSON reasons >>= toJSON)
             ]
     toJSON (Accepted pending) =
         object
@@ -207,7 +213,7 @@ instance ReportSchemaErrors m => FromJSON m (TestRunState DoneT) where
             "rejected" -> do
                 pending <- getField "pending" mapping >>= fromJSON
                 reasons <- getListField "reasons" mapping
-                reasonList <- traverse fromJSONReason reasons
+                reasonList <- traverse fromJSON reasons
                 pure $ Rejected pending reasonList
             "finished" -> do
                 running <- getField "running" mapping >>= fromJSON

@@ -32,7 +32,7 @@ where
 
 import Control.Applicative (Alternative)
 import Control.Monad (MonadPlus (..), (<=<))
-import Control.Monad.Trans.Maybe (MaybeT)
+import Control.Monad.Trans.Except (ExceptT)
 import Data.Aeson (Value, decode, encode)
 import Data.Aeson qualified as Aeson
 import Data.Aeson.Types qualified as AesonInternal
@@ -228,7 +228,7 @@ parseJSValue b = do
     fromJSON js
 
 newtype Parsing m a = Parsing
-    { runParsing :: MaybeT m a
+    { runParsing :: ExceptT String m a
     }
     deriving (Functor, Applicative, Monad, Alternative)
 

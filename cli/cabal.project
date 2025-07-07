@@ -6,6 +6,7 @@ index-state:
 
 packages:
     .
+    ./CI/rewrite-libs
 
 constraints:
     cardano-ledger-api >=1.11.0.0 && <1.12

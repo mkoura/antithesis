@@ -29,7 +29,6 @@
     let
       lib = nixpkgs.lib;
       version = self.dirtyShortRev or self.shortRev;
-
       fix-blst = final: prev: {
         haskell-nix = prev.haskell-nix // {
           extraPkgconfigMappings = prev.haskell-nix.extraPkgconfigMappings // {
@@ -55,7 +54,10 @@
             ];
             inherit system;
           };
-
+          rewrite-libs = import ./CI/rewrite-libs/rewrite-libs.nix {
+            inherit system;
+            inherit (inputs) nixpkgs flake-utils haskellNix;
+          };
           project = import ./nix/anti-project.nix {
             indexState = "2025-05-07T00:00:00Z";
             inherit CHaP;
@@ -64,19 +66,24 @@
           };
 
           linux-artifacts = import ./nix/anti-linux-artifacts.nix {
-             inherit pkgs node-project version project;
+            inherit pkgs node-project version project;
+          };
+          macos-artifacts = import ./nix/anti-macos-artifacts.nix {
+            inherit pkgs project node-project version;
+            rewrite-libs = rewrite-libs.packages.default;
           };
 
-          fullPackages = lib.mergeAttrsList [project.packages linux-artifacts.packages];
+          fullPackages = lib.mergeAttrsList [
+            project.packages
+            linux-artifacts.packages
+            macos-artifacts.packages
+          ];
 
         in {
 
-          packages = fullPackages // {
-            default = project.packages.anti;
-            };
+          packages = fullPackages // { default = project.packages.anti; };
           inherit (project) devShells;
-        }
-      ;
+        };
 
     in flake-utils.lib.eachSystem [ "x86_64-linux" "aarch64-darwin" ] perSystem;
 }

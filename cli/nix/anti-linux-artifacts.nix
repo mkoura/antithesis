@@ -21,6 +21,4 @@ let
       rm -rf $out/unpacked
     '';
   };
-in {
-  packages.linux64.tarball = tarball-derivation;
-}
+in { packages.linux64.tarball = tarball-derivation; }

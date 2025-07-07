@@ -10,6 +10,26 @@ To build the code, you can use [Nix](https://nixos.org/download.html) installed.
 nix shell .#anti
 ```
 
+Will bring in an executable named `anti` in your path on Linux and MacOS.
+
+To build standalone packages with
+- anti
+- cardano-cli
+- cardano-address
+- bech32
+
+On linux, you can build a nix derivation with
+
+```bash
+nix build .#linux64.tarball
+```
+
+On macOS, you can build a nix derivation with
+
+```bash
+nix build .#macos64.tarball
+```
+
 ## Targeting the MPFS service
 
 If you do not want to host your own MPFS service, you can use a public one at `https://mpfs.plutimus.com`.

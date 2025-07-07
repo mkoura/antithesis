@@ -7,12 +7,16 @@ module Oracle.Validate.Logic
     ) where
 
 import Control.Monad.IO.Class (liftIO)
-import Core.Types (Change (..), Key (..), Platform (..), RequestRefId)
+import Core.Types (Change (..), Key (..), Platform (..), PublicKeyHash (..), RequestRefId, TokenId, Username (..))
 import Lib.JSON
     ( stringJSON
     )
+import MPFS.API
+    ( getTokenFacts
+    )
 import Oracle.Types (Request (..), RequestZoo (..))
 import Servant.Client (ClientM)
+import Text.JSON.Canonical (JSValue(..),toJSString)
 import Text.JSON.Canonical.Class (ToJSON (..))
 import User.Types (RegisterUserKey (..))
 
@@ -32,10 +36,14 @@ instance Monad m => ToJSON m ValidationResult where
         CannotValidate reason -> stringJSON $ "cannot validate: " <> reason
         NotEvaluated -> stringJSON "not evaluated"
 
+instance MonadFail ClientM where
+  fail = error
+
 validateRequest
-    :: RequestZoo
+    :: TokenId
+    -> RequestZoo
     -> ClientM (RequestRefId, ValidationResult)
-validateRequest (RegisterUserRequest (Request refId _owner (Change k _v))) = do
+validateRequest _tk (RegisterUserRequest (Request refId _owner (Change k _v))) = do
     res <- case k of
         Key (RegisterUserKey {platform,username,pubkeyhash}) ->
             case platform of
@@ -48,17 +56,29 @@ validateRequest (RegisterUserRequest (Request refId _owner (Change k _v))) = do
                 Platform _other ->
                     pure $ CannotValidate "expecting github platform as we are validating only this at this moment"
     pure (refId, res)
-validateRequest (UnregisterUserRequest (Request refId _owner _change)) =
+validateRequest tk (UnregisterUserRequest (Request refId _owner (Change k _v))) = do
+    JSObject facts <- getTokenFacts tk
+    let Key (RegisterUserKey (Platform platform) (Username username) (PublicKeyHash pubkeyhash) ) = k
+    let expEntry = ("key", JSObject
+            [ ("platform", JSString $ toJSString platform)
+            , ("publickeyhash", JSString $ toJSString pubkeyhash )
+            , ("type", JSString $ toJSString "register-user")
+            , ("user", JSString $ toJSString username)
+            ])
+    let findRes = filter (== expEntry) facts
+    if null findRes then
+        pure (refId, NotValidated "no mirror user registration fact found")
+    else
+        pure (refId, Validated)
+validateRequest _tk (RegisterRoleRequest (Request refId _owner _change)) =
     pure (refId, NotEvaluated)
-validateRequest (RegisterRoleRequest (Request refId _owner _change)) =
+validateRequest _tk (UnregisterRoleRequest (Request refId _owner _change)) =
     pure (refId, NotEvaluated)
-validateRequest (UnregisterRoleRequest (Request refId _owner _change)) =
+validateRequest _tk (CreateTestRequest (Request refId _owner _change)) =
     pure (refId, NotEvaluated)
-validateRequest (CreateTestRequest (Request refId _owner _change)) =
+validateRequest _tk (RejectRequest (Request refId _owner _change)) =
     pure (refId, NotEvaluated)
-validateRequest (RejectRequest (Request refId _owner _change)) =
+validateRequest _tk (AcceptRequest (Request refId _owner _change)) =
     pure (refId, NotEvaluated)
-validateRequest (AcceptRequest (Request refId _owner _change)) =
-    pure (refId, NotEvaluated)
-validateRequest (FinishedRequest (Request refId _owner _change)) =
+validateRequest _tk (FinishedRequest (Request refId _owner _change)) =
     pure (refId, NotEvaluated)

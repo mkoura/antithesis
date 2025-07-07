@@ -54,7 +54,7 @@ validateCmd tk command = do
                     Left e -> error $ "Failed to parse token: " ++ e
                     Right jsValue -> pure jsValue
             forM requests $ \request -> do
-                validateRequest request >>= uncurry mkResult
+                validateRequest tk request >>= uncurry mkResult
     toJSON rus
 
 mkResult :: Monad m => RequestRefId -> ValidationResult -> m JSValue

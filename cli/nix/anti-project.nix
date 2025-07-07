@@ -29,6 +29,8 @@ let
       cardano-cli
       project.hsPkgs.cardano-addresses.components.exes.cardano-address
       project.hsPkgs.bech32.components.exes.bech32
+      pkgs.nixfmt
+
     ];
     shellHook = ''
       echo "Entering shell for anti CLI development"
@@ -61,8 +63,7 @@ in {
   inherit project;
   packages.anti = project.hsPkgs.anti.components.exes.anti;
   packages.wallet = project.hsPkgs.anti.components.exes.wallet;
-  packages.bech32 =
-    project.hsPkgs.bech32.components.exes.bech32;
+  packages.bech32 = project.hsPkgs.bech32.components.exes.bech32;
   packages.cardano-address =
     project.hsPkgs.cardano-addresses.components.exes.cardano-address;
   musl64 = project.projectCross.musl64.hsPkgs;

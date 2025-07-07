@@ -1,4 +1,4 @@
-{ pkgs, project, node-project, version, rewrite-libs , ...  }:
+{ pkgs, project, node-project, version, rewrite-libs, ... }:
 
 let
   inherit (pkgs) lib;
@@ -29,4 +29,4 @@ let
     '';
   };
 
-in  {packages.macos64.tarball = tarball-derivation; }
+in { packages.macos64.tarball = tarball-derivation; }

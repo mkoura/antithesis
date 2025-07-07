@@ -45,10 +45,8 @@ validateRequest (RegisterUserRequest (Request refId _owner (Change k _v))) = do
                         pure Validated
                     else
                         pure $ NotValidated (Github.emitPublicKeyMsg validationRes)
-                Platform other ->
+                Platform _other ->
                     pure $ CannotValidate "expecting github platform as we are validating only this at this moment"
-        _ ->
-            pure $ CannotValidate "expecting RegisterUserKey"
     pure (refId, res)
 validateRequest (UnregisterUserRequest (Request refId _owner _change)) =
     pure (refId, NotEvaluated)

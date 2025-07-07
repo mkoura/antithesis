@@ -1,5 +1,4 @@
-{ CHaP, version, indexState, pkgs, cardano-node, cardano-cli
-, cardano-submit-api, ... }:
+{ CHaP, indexState, pkgs, cardano-cli, ... }:
 
 let
   libOverlay = { lib, pkgs, ... }: {
@@ -27,17 +26,29 @@ let
     buildInputs = [
       pkgs.gitAndTools.git
       pkgs.just
-      cardano-node
       cardano-cli
-      cardano-submit-api
+      project.hsPkgs.cardano-addresses.components.exes.cardano-address
+      project.hsPkgs.bech32.components.exes.bech32
     ];
     shellHook = ''
       echo "Entering shell for anti CLI development"
     '';
   };
+
+  fullyStaticOptions = { pkgs, ... }:
+    let libs = with pkgs; [ zlib openssl libffi gmp6 pkgs.secp256k1 ];
+    in {
+      enableShared = false;
+      enableStatic = true;
+      configureFlags = map (l: "--ghc-option=-optl=-L${l}/lib") (libs);
+    };
+  musl = { pkgs, ... }: {
+    packages.anti.components.exes.anti = (fullyStaticOptions { inherit pkgs; });
+    doHaddock = false;
+  };
   mkProject = ctx@{ lib, pkgs, ... }: {
     name = "anti";
-    src = ./.;
+    src = ./..;
     compiler-nix-name = "ghc984";
     shell = shell { inherit pkgs; };
     modules = [ libOverlay ];
@@ -48,11 +59,11 @@ let
 in {
   devShells.default = project.shell;
   inherit project;
-  inherit version;
   packages.anti = project.hsPkgs.anti.components.exes.anti;
   packages.wallet = project.hsPkgs.anti.components.exes.wallet;
-  packages.cardano-node = cardano-node;
-  packages.cardano-cli = cardano-cli;
-  packages.cardano-submit-api = cardano-submit-api;
-
+  packages.bech32 =
+    project.hsPkgs.bech32.components.exes.bech32;
+  packages.cardano-address =
+    project.hsPkgs.cardano-addresses.components.exes.cardano-address;
+  musl64 = project.projectCross.musl64.hsPkgs;
 }

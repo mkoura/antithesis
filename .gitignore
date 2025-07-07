@@ -21,3 +21,4 @@ cli/.vscode
 
 # locals
 cli/tmp
+cli/result

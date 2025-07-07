@@ -42,10 +42,10 @@
 
       perSystem = system:
         let
-          node-pkgs = cardano-node-runtime.project.${system}.pkgs;
-          cardano-node = node-pkgs.cardano-node;
-          cardano-cli = node-pkgs.cardano-cli;
-          cardano-submit-api = node-pkgs.cardano-submit-api;
+          node-project = cardano-node-runtime.project.${system};
+          cardano-node = node-project.pkgs.cardano-node;
+          cardano-cli = node-project.pkgs.cardano-cli;
+          cardano-submit-api = node-project.pkgs.cardano-submit-api;
           pkgs = import nixpkgs {
             overlays = [
               iohkNix.overlays.crypto # modified crypto libs
@@ -56,15 +56,27 @@
             inherit system;
           };
 
-        in import ./project.nix {
-          indexState = "2025-05-07T00:00:00Z";
-          inherit CHaP;
-          inherit version;
-          inherit pkgs;
-          inherit cardano-node;
-          inherit cardano-cli;
-          inherit cardano-submit-api;
-        };
+          project = import ./nix/anti-project.nix {
+            indexState = "2025-05-07T00:00:00Z";
+            inherit CHaP;
+            inherit pkgs;
+            inherit cardano-cli;
+          };
+
+          linux-artifacts = import ./nix/anti-linux-artifacts.nix {
+             inherit pkgs node-project version project;
+          };
+
+          fullPackages = lib.mergeAttrsList [project.packages linux-artifacts.packages];
+
+        in {
+
+          packages = fullPackages // {
+            default = project.packages.anti;
+            };
+          inherit (project) devShells;
+        }
+      ;
 
     in flake-utils.lib.eachSystem [ "x86_64-linux" "aarch64-darwin" ] perSystem;
 }

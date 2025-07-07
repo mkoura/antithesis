@@ -27,6 +27,8 @@ module Lib.JSON
     , fromAesonString
     , parseJSValue
     , Parsing (..)
+    , fromAesonStructurally
+    , fromJSValueStructurally
     )
 where
 
@@ -46,6 +48,7 @@ import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
+import Data.Vector qualified as Vector
 import Text.JSON.Canonical
     ( FromJSON (fromJSON)
     , Int54
@@ -241,3 +244,26 @@ instance Applicative m => ToJSON m () where
 instance (ReportSchemaErrors m) => FromJSON m () where
     fromJSON JSNull = pure ()
     fromJSON v = expectedButGotValue "()" v
+
+fromJSValueStructurally :: JSValue -> Value
+fromJSValueStructurally (JSObject _m) = undefined
+fromJSValueStructurally (JSArray xs) =
+    Aeson.Array
+        $ Vector.fromList
+        $ fmap fromJSValueStructurally xs
+fromJSValueStructurally (JSString _s) = undefined
+fromJSValueStructurally (JSNum _n) = undefined
+fromJSValueStructurally JSNull = Aeson.Null
+fromJSValueStructurally (JSBool b) = Aeson.Bool b
+
+fromAesonStructurally :: Value -> Maybe JSValue
+fromAesonStructurally Aeson.Null = Just JSNull
+fromAesonStructurally (Aeson.Bool b) = Just $ JSBool b
+fromAesonStructurally (Aeson.Number _n) = undefined
+fromAesonStructurally (Aeson.String _s) = undefined
+fromAesonStructurally (Aeson.Array xs) =
+    JSArray
+        <$> traverse
+            fromAesonStructurally
+            (Vector.toList xs)
+fromAesonStructurally (Aeson.Object _obj) = undefined

@@ -8,6 +8,8 @@ import Data.Aeson.Types (parseMaybe)
 import Lib.JSON
     ( CanonicalJSONError (CanonicalJSONError)
     , fromAesonString
+    , fromAesonStructurally
+    , fromJSValueStructurally
     , runCanonicalJSON
     , runIdentityCanonicalJSON
     , toAesonString
@@ -44,3 +46,8 @@ spec = do
             let value = ()
             toJSON value `shouldBe` Just JSNull
             (toJSON >=> fromJSON) value `shouldBe` Just ()
+    describe "aeson to canonical json roundtrips" $ do
+        it "converts JSArray to Aeson and back" $ do
+            let jsValue = JSArray [JSBool False, JSArray [JSNull, JSBool True]]
+            fromAesonStructurally (fromJSValueStructurally jsValue)
+                `shouldBe` Just jsValue

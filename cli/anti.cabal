@@ -149,6 +149,7 @@ library
     , string-qq
     , text
     , transformers
+    , vector
     , wreq
 
   -- Directories containing source files.

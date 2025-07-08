@@ -93,7 +93,8 @@ validateRequest tk (UnregisterUserRequest (Request refId _owner (Change k _v))) 
         then
             pure
                 ( refId
-                , NotValidated $ "no '" <> username <> "'user registration fact found"
+                , NotValidated
+                    $ "no registration fact for '" <> username <> "' user found"
                 )
         else
             pure (refId, Validated)
@@ -123,7 +124,8 @@ validateRequest tk (RegisterRoleRequest (Request refId _owner (Change k _v))) = 
         then
             pure
                 ( refId
-                , NotValidated $ "no '" <> username <> "'user registration fact found"
+                , NotValidated
+                    $ "no registration fact for '" <> username <> "' user found"
                 )
         else do
             validationRes <-
@@ -131,7 +133,7 @@ validateRequest tk (RegisterRoleRequest (Request refId _owner (Change k _v))) = 
                     $ Github.inspectRepoRoleForUser
                         (Username username)
                         repository
-                        (Role "antihesis")
+                        (Role "antithesis")
             if validationRes == Github.RepoRoleValidated
                 then
                     pure (refId, Validated)
@@ -149,8 +151,6 @@ validateRequest tk (UnregisterRoleRequest (Request refId _owner (Change k _v))) 
             ( "key"
             , JSObject
                 [ ("platform", JSString $ toJSString platform)
-                , ("type", JSString $ toJSString "register-role")
-                , ("user", JSString $ toJSString username)
                 ,
                     ( "repository"
                     , JSObject
@@ -158,6 +158,8 @@ validateRequest tk (UnregisterRoleRequest (Request refId _owner (Change k _v))) 
                         , ("project", JSString $ toJSString repo)
                         ]
                     )
+                , ("type", JSString $ toJSString "register-role")
+                , ("user", JSString $ toJSString username)
                 ]
             )
     let findRes = filter (== expEntry) facts
@@ -166,9 +168,9 @@ validateRequest tk (UnregisterRoleRequest (Request refId _owner (Change k _v))) 
             pure
                 ( refId
                 , NotValidated
-                    $ "no registration fact found of the 'antithesis' role for '"
+                    $ "no registration fact of the 'antithesis' role for '"
                         <> username
-                        <> "'user"
+                        <> "' user found"
                 )
         else
             pure (refId, Validated)

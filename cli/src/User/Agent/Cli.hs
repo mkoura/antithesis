@@ -11,9 +11,7 @@ module User.Agent.Cli
 where
 
 import Core.Types (Duration, TokenId, Wallet, WithTxHash (..))
-import Data.ByteString.Lazy.Char8 qualified as BL
-import Data.Text qualified as T
-import Data.Text.Encoding (decodeUtf8)
+import Data.List (find)
 import MPFS.API
     ( RequestInsertBody (..)
     , RequestUpdateBody (..)
@@ -27,8 +25,6 @@ import Text.JSON.Canonical
     ( FromJSON (..)
     , JSValue (..)
     , ToJSON (..)
-    , renderCanonicalJSON
-    , toJSString
     )
 import User.Types
     ( Phase (..)
@@ -59,20 +55,21 @@ withExpectedState
 withExpectedState tokenId testRun cont = do
     facts <- getTokenFacts tokenId
     jsonKeyValue <- toJSON testRun
-    let jsonKey =
-            toJSString
-                $ T.unpack
-                $ decodeUtf8
-                $ BL.toStrict
-                $ renderCanonicalJSON jsonKeyValue
+    let
+        hasKey (JSObject obj) =
+            any
+                (\(k, value) -> k == "key" && value == jsonKeyValue)
+                obj
+        hasKey _ = False
     case facts of
-        JSObject mapping -> do
-            case lookup jsonKey mapping of
-                Just value -> do
-                    case fromJSON value of
+        JSArray objects -> do
+            case filter hasKey objects of
+                [JSObject object] -> do
+                    let value = find (\(k, _) -> k == "value") object
+                    case value >>= fromJSON . snd of
                         Nothing -> pure Nothing
                         Just x -> Just <$> cont x
-                Nothing -> pure Nothing
+                _ -> pure Nothing
         _ -> pure Nothing
 
 resolveOldState

@@ -12,6 +12,7 @@ import Core.Types
     , Key (..)
     , Platform (..)
     , PublicKeyHash (..)
+    , Repository (..)
     , RequestRefId
     , Role (..)
     , TokenId
@@ -123,8 +124,34 @@ validateRequest tk (RegisterRoleRequest (Request refId _owner (Change k _v))) = 
                 pure (refId, Validated)
             else
                 pure (refId, NotValidated (Github.emitRepoRoleMsg validationRes))
-validateRequest _tk (UnregisterRoleRequest (Request refId _owner _change)) =
-    pure (refId, NotEvaluated)
+validateRequest tk (UnregisterRoleRequest (Request refId _owner (Change k _v))) = do
+    JSObject facts <- getTokenFacts tk
+    let Key
+            ( RegisterRoleKey
+                    (Platform platform)
+                    (Repository owner repo)
+                    (Username username)
+                ) = k
+    let expEntry =
+            ( "key"
+            , JSObject
+                [ ("platform", JSString $ toJSString platform)
+                , ("type", JSString $ toJSString "register-role")
+                , ("user", JSString $ toJSString username)
+                , ( "repository"
+                    , JSObject
+                        [ ("organization", JSString $ toJSString owner)
+                        , ("project", JSString $ toJSString repo)
+                        ]
+                   )
+                ]
+            )
+    let findRes = filter (== expEntry) facts
+    if null findRes
+        then
+            pure (refId, NotValidated $ "no registration fact found of the 'antithesis' role for '"<> username <>"'user")
+        else
+            pure (refId, Validated)
 validateRequest _tk (CreateTestRequest (Request refId _owner _change)) =
     pure (refId, NotEvaluated)
 validateRequest _tk (RejectRequest (Request refId _owner _change)) =

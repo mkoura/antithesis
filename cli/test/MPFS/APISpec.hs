@@ -239,7 +239,7 @@ spec = do
                 $ \(Context{mpfs = Call call, tokenId}) -> do
                     res <- call $ getTokenFacts tokenId
                     case res of
-                        JSObject _obj -> return ()
+                        JSArray _ -> return ()
                         _ -> error "Response is not an object"
             it "can retrieve a request-insert tx"
                 $ \Context{mpfs = Call call, tokenId, requesterWallet} -> do
@@ -356,9 +356,11 @@ spec = do
                         facts <- getTokenFacts tokenId
                         liftIO
                             $ facts
-                            `shouldBe` JSObject
-                                [ ("key", keyJ)
-                                , ("value", JSNull)
+                            `shouldBe` JSArray
+                                [ JSObject
+                                    [ ("key", keyJ)
+                                    , ("value", JSNull)
+                                    ]
                                 ]
                         deleteTx <-
                             requesterCmd wait180 requester tokenId
@@ -371,7 +373,7 @@ spec = do
                                         $ textOf deleteTx <> "-0"
                                     ]
                         facts' <- getTokenFacts tokenId
-                        liftIO $ facts' `shouldBe` JSObject []
+                        liftIO $ facts' `shouldBe` JSArray []
                         pure ()
 
 loadEnvWallet :: String -> IO Wallet

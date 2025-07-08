@@ -12,6 +12,7 @@ import Core.Types
     , Key (..)
     , Platform (..)
     , PublicKeyHash (..)
+    , Repository (..)
     , RequestRefId
     , TokenId
     , Username (..)
@@ -26,8 +27,9 @@ import Oracle.Types (Request (..), RequestZoo (..))
 import Servant.Client (ClientM)
 import Text.JSON.Canonical (JSValue (..), toJSString)
 import Text.JSON.Canonical.Class (ToJSON (..))
-import User.Types (RegisterUserKey (..))
+import User.Types (RegisterRoleKey (..), RegisterUserKey (..))
 
+import Data.List qualified as L
 import Oracle.Github.ListPublicKeys qualified as Github
 
 data ValidationResult
@@ -87,11 +89,34 @@ validateRequest tk (UnregisterUserRequest (Request refId _owner (Change k _v))) 
     let findRes = filter (== expEntry) facts
     if null findRes
         then
-            pure (refId, NotValidated "no mirror user registration fact found")
+            pure (refId, NotValidated $ "no '"<> username <>"'user registration fact found")
         else
             pure (refId, Validated)
-validateRequest _tk (RegisterRoleRequest (Request refId _owner _change)) =
-    pure (refId, NotEvaluated)
+validateRequest tk (RegisterRoleRequest (Request refId _owner (Change k _v))) = do
+    JSObject facts <- getTokenFacts tk
+    let Key
+            ( RegisterRoleKey
+                    (Platform platform)
+                    (Repository _org _project)
+                    (Username username)
+                ) = k
+    let expEntry =
+            ( "key"
+            , JSObject
+                [ ("platform", JSString $ toJSString platform)
+                , ("type", JSString $ toJSString "register-user")
+                , ("user", JSString $ toJSString username)
+                ]
+            )
+    let isPartlyTheSame (_, jsObj1) (_, JSObject obj2) =
+            jsObj1 == JSObject (snd $ L.partition (\pair -> fst pair == "publickeyhash") obj2)
+        isPartlyTheSame _ _ = error "isPartlyTheSame has encountered very unexpected case."
+    let findRes = filter (isPartlyTheSame expEntry) facts
+    if null findRes
+        then
+            pure (refId, NotValidated $ "no '"<> username <>"'user registration fact found")
+        else
+            pure (refId, NotEvaluated)
 validateRequest _tk (UnregisterRoleRequest (Request refId _owner _change)) =
     pure (refId, NotEvaluated)
 validateRequest _tk (CreateTestRequest (Request refId _owner _change)) =

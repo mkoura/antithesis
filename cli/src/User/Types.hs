@@ -79,7 +79,7 @@ instance Monad m => ToJSON m TestRun where
                     )
                 , ("directory", stringJSON directory)
                 , ("commitId", stringJSON commitId)
-                , ("round", intJSON tryIndex)
+                , ("try", intJSON tryIndex)
                 , ("requester", stringJSON requester)
                 ]
 
@@ -94,7 +94,7 @@ instance (Monad m, ReportSchemaErrors m) => FromJSON m TestRun where
             pure $ Repository{organization = owner, project = repo}
         directory <- getStringField "directory" mapping
         commitId <- getStringField "commitId" mapping
-        tryIndex <- getIntegralField "round" mapping
+        tryIndex <- getIntegralField "try" mapping
         requester <- getStringField "requester" mapping
         pure
             $ TestRun
@@ -120,7 +120,7 @@ data Reason
     | UnacceptablePlatform
     | UnacceptableRepository
     | UnacceptableCommit
-    | UnacceptableRound
+    | UnacceptableTryIndex
     | UnacceptableRequester
     deriving (Eq, Show)
 
@@ -133,8 +133,8 @@ instance Monad m => ToJSON m Reason where
         stringJSON "unacceptable repository"
     toJSON UnacceptableCommit =
         stringJSON "unacceptable commit"
-    toJSON UnacceptableRound =
-        stringJSON "unacceptable round"
+    toJSON UnacceptableTryIndex =
+        stringJSON "unacceptable try index"
     toJSON UnacceptableRequester =
         stringJSON "unacceptable requester"
 
@@ -146,7 +146,7 @@ instance ReportSchemaErrors m => FromJSON m Reason where
             "unacceptable platform" -> pure UnacceptablePlatform
             "unacceptable repository" -> pure UnacceptableRepository
             "unacceptable commit" -> pure UnacceptableCommit
-            "unacceptable round" -> pure UnacceptableRound
+            "unacceptable try index" -> pure UnacceptableTryIndex
             "unacceptable requester" -> pure UnacceptableRequester
             _ -> expectedButGotValue "a valid reason" (JSString jsString)
     fromJSON other =

@@ -12,8 +12,8 @@ import Core.Types
     , Key (..)
     , Platform (..)
     , PublicKeyHash (..)
-    , Repository (..)
     , RequestRefId
+    , Role (..)
     , TokenId
     , Username (..)
     )
@@ -30,6 +30,7 @@ import Text.JSON.Canonical.Class (ToJSON (..))
 import User.Types (RegisterRoleKey (..), RegisterUserKey (..))
 
 import Data.List qualified as L
+import Oracle.Github.GetRepoRole qualified as Github
 import Oracle.Github.ListPublicKeys qualified as Github
 
 data ValidationResult
@@ -97,11 +98,11 @@ validateRequest tk (RegisterRoleRequest (Request refId _owner (Change k _v))) = 
     let Key
             ( RegisterRoleKey
                     (Platform platform)
-                    (Repository _org _project)
+                    repository
                     (Username username)
                 ) = k
     let expEntry =
-            ( "key"
+            ( "key" :: String
             , JSObject
                 [ ("platform", JSString $ toJSString platform)
                 , ("type", JSString $ toJSString "register-user")
@@ -115,8 +116,13 @@ validateRequest tk (RegisterRoleRequest (Request refId _owner (Change k _v))) = 
     if null findRes
         then
             pure (refId, NotValidated $ "no '"<> username <>"'user registration fact found")
-        else
-            pure (refId, NotEvaluated)
+        else do
+            validationRes <- liftIO $ Github.inspectRepoRoleForUser (Username username) repository (Role "antihesis")
+            if validationRes == Github.RepoRoleValidated
+                then
+                pure (refId, Validated)
+            else
+                pure (refId, NotValidated (Github.emitRepoRoleMsg validationRes))
 validateRequest _tk (UnregisterRoleRequest (Request refId _owner _change)) =
     pure (refId, NotEvaluated)
 validateRequest _tk (CreateTestRequest (Request refId _owner _change)) =

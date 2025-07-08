@@ -109,7 +109,7 @@ import Data.Text.Encoding qualified as T
 import GHC.Generics (Generic)
 import MPFS.API (getTransaction, submitTransaction)
 import Servant.Client (ClientM)
-import Text.JSON.Canonical (JSValue)
+import Text.JSON.Canonical (JSValue (..))
 
 data IfToWait = Wait Int | NoWait
     deriving (Show, Eq)
@@ -123,7 +123,7 @@ waitTx :: Submitting -> TxHash -> IO ()
 waitTx (Submitting (Wait maxCycles) runClient) txHash = void $ go maxCycles
   where
     go :: Int -> IO JSValue
-    go 0 = error "Transaction not found after waiting"
+    go 0 = pure JSNull
     go n =
         runClient (getTransaction txHash)
             `catch` \(_ :: SomeException) -> do

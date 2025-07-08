@@ -122,6 +122,7 @@ data Reason
     | UnacceptableCommit
     | UnacceptableTryIndex
     | UnacceptableRequester
+    | AnyReason String
     deriving (Eq, Show)
 
 instance Monad m => ToJSON m Reason where
@@ -137,6 +138,8 @@ instance Monad m => ToJSON m Reason where
         stringJSON "unacceptable try index"
     toJSON UnacceptableRequester =
         stringJSON "unacceptable requester"
+    toJSON (AnyReason reason) =
+        stringJSON reason
 
 instance ReportSchemaErrors m => FromJSON m Reason where
     fromJSON (JSString jsString) = do
@@ -148,7 +151,7 @@ instance ReportSchemaErrors m => FromJSON m Reason where
             "unacceptable commit" -> pure UnacceptableCommit
             "unacceptable try index" -> pure UnacceptableTryIndex
             "unacceptable requester" -> pure UnacceptableRequester
-            _ -> expectedButGotValue "a valid reason" (JSString jsString)
+            _ -> pure $ AnyReason reason
     fromJSON other =
         expectedButGotValue "a string representing a reason" other
 
@@ -170,18 +173,18 @@ instance Monad m => ToJSON m (TestRunState a) where
     toJSON (Rejected pending reasons) =
         object
             [ ("phase", stringJSON "rejected")
-            , ("pending", toJSON pending)
+            , ("from", toJSON pending)
             , ("reasons", traverse toJSON reasons >>= toJSON)
             ]
     toJSON (Accepted pending) =
         object
             [ ("phase", stringJSON "accepted")
-            , ("pending", toJSON pending)
+            , ("from", toJSON pending)
             ]
     toJSON (Finished running duration url) =
         object
             [ ("phase", stringJSON "finished")
-            , ("running", toJSON running)
+            , ("from", toJSON running)
             , ("duration", intJSON $ case duration of Duration d -> d)
             , ("url", stringJSON $ case url of URL u -> u)
             ]
@@ -209,12 +212,12 @@ instance ReportSchemaErrors m => FromJSON m (TestRunState DoneT) where
         phase <- getStringField "phase" mapping
         case phase of
             "rejected" -> do
-                pending <- getField "pending" mapping >>= fromJSON
+                pending <- getField "from" mapping >>= fromJSON
                 reasons <- getListField "reasons" mapping
                 reasonList <- traverse fromJSON reasons
                 pure $ Rejected pending reasonList
             "finished" -> do
-                running <- getField "running" mapping >>= fromJSON
+                running <- getField "from" mapping >>= fromJSON
                 duration <- getIntegralField "duration" mapping
                 url <- getStringField "url" mapping
                 pure $ Finished running (Duration duration) (URL url)
@@ -233,7 +236,7 @@ instance ReportSchemaErrors m => FromJSON m (TestRunState RunningT) where
         phase <- getStringField "phase" mapping
         case phase of
             "accepted" -> do
-                pending <- getField "pending" mapping >>= fromJSON
+                pending <- getField "from" mapping >>= fromJSON
                 pure $ Accepted pending
             _ ->
                 expectedButGotValue

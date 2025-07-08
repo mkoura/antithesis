@@ -85,10 +85,8 @@ reasonParser =
     readReason "platform" = pure UnacceptablePlatform
     readReason "repository" = pure UnacceptableRepository
     readReason "commit" = pure UnacceptableCommit
-    readReason "try index" = pure UnacceptableTryIndex
-    readReason _ =
-        Left
-            "Invalid reason. Valid options are: duration, platform, repository, commit, try index."
+    readReason "try" = pure UnacceptableTryIndex
+    readReason s = Right $ AnyReason s
 
 rejectTestOptions
     :: Parser (AgentCommand NotReady (WithTxHash (TestRunState DoneT)))

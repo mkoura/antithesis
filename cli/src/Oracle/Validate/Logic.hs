@@ -91,7 +91,10 @@ validateRequest tk (UnregisterUserRequest (Request refId _owner (Change k _v))) 
     let findRes = filter (== expEntry) facts
     if null findRes
         then
-            pure (refId, NotValidated $ "no '"<> username <>"'user registration fact found")
+            pure
+                ( refId
+                , NotValidated $ "no '" <> username <> "'user registration fact found"
+                )
         else
             pure (refId, Validated)
 validateRequest tk (RegisterRoleRequest (Request refId _owner (Change k _v))) = do
@@ -111,19 +114,29 @@ validateRequest tk (RegisterRoleRequest (Request refId _owner (Change k _v))) = 
                 ]
             )
     let isPartlyTheSame (_, jsObj1) (_, JSObject obj2) =
-            jsObj1 == JSObject (snd $ L.partition (\pair -> fst pair == "publickeyhash") obj2)
+            jsObj1
+                == JSObject
+                    (snd $ L.partition (\pair -> fst pair == "publickeyhash") obj2)
         isPartlyTheSame _ _ = error "isPartlyTheSame has encountered very unexpected case."
     let findRes = filter (isPartlyTheSame expEntry) facts
     if null findRes
         then
-            pure (refId, NotValidated $ "no '"<> username <>"'user registration fact found")
+            pure
+                ( refId
+                , NotValidated $ "no '" <> username <> "'user registration fact found"
+                )
         else do
-            validationRes <- liftIO $ Github.inspectRepoRoleForUser (Username username) repository (Role "antihesis")
+            validationRes <-
+                liftIO
+                    $ Github.inspectRepoRoleForUser
+                        (Username username)
+                        repository
+                        (Role "antihesis")
             if validationRes == Github.RepoRoleValidated
                 then
-                pure (refId, Validated)
-            else
-                pure (refId, NotValidated (Github.emitRepoRoleMsg validationRes))
+                    pure (refId, Validated)
+                else
+                    pure (refId, NotValidated (Github.emitRepoRoleMsg validationRes))
 validateRequest tk (UnregisterRoleRequest (Request refId _owner (Change k _v))) = do
     JSObject facts <- getTokenFacts tk
     let Key
@@ -138,18 +151,25 @@ validateRequest tk (UnregisterRoleRequest (Request refId _owner (Change k _v))) 
                 [ ("platform", JSString $ toJSString platform)
                 , ("type", JSString $ toJSString "register-role")
                 , ("user", JSString $ toJSString username)
-                , ( "repository"
+                ,
+                    ( "repository"
                     , JSObject
                         [ ("organization", JSString $ toJSString owner)
                         , ("project", JSString $ toJSString repo)
                         ]
-                   )
+                    )
                 ]
             )
     let findRes = filter (== expEntry) facts
     if null findRes
         then
-            pure (refId, NotValidated $ "no registration fact found of the 'antithesis' role for '"<> username <>"'user")
+            pure
+                ( refId
+                , NotValidated
+                    $ "no registration fact found of the 'antithesis' role for '"
+                        <> username
+                        <> "'user"
+                )
         else
             pure (refId, Validated)
 validateRequest _tk (CreateTestRequest (Request refId _owner _change)) =

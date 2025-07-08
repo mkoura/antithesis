@@ -10,9 +10,10 @@ import Core.Options
     , directoryOption
     , platformOption
     , repositoryOption
+    , tryOption
     , usernameOption
     )
-import Core.Types (WithTxHash)
+import Core.Types (Duration (..), WithTxHash)
 import Lib.Box (Box (..))
 import Options.Applicative
     ( Alternative (..)
@@ -30,8 +31,7 @@ import Options.Applicative
     )
 import User.Agent.Cli (AgentCommand (..), IsReady (NotReady))
 import User.Types
-    ( Duration (..)
-    , Phase (..)
+    ( Phase (..)
     , Reason (..)
     , TestRun (..)
     , TestRunState
@@ -71,7 +71,7 @@ acceptTestOptions =
             <*> repositoryOption
             <*> directoryOption
             <*> commitOption
-            <*> pure 1
+            <*> tryOption
             <*> usernameOption
 
 reasonParser :: Parser Reason
@@ -99,7 +99,7 @@ rejectTestOptions = do
             <*> repositoryOption
             <*> directoryOption
             <*> commitOption
-            <*> pure 1
+            <*> tryOption
             <*> usernameOption
     reason <- many reasonParser
     pure $ Reject testRun () reason
@@ -113,13 +113,13 @@ reportTestOptions = do
             <*> repositoryOption
             <*> directoryOption
             <*> commitOption
-            <*> pure 1
+            <*> tryOption
             <*> usernameOption
     duration <-
         Duration
             <$> option
                 auto
-                (long "duration" <> help "Duration of the test run in seconds")
+                (long "duration" <> help "Duration of the test run in hours")
     url <-
         URL <$> option str (long "url" <> help "URL of the test report")
     pure $ Report testRun () duration url

@@ -7,6 +7,7 @@ module Core.Types
     , CageDatum (..)
     , Change (..)
     , Directory (..)
+    , Duration (..)
     , Host (..)
     , Key (..)
     , Operation (..)
@@ -22,6 +23,7 @@ module Core.Types
     , SignedTx (..)
     , SignTxError (..)
     , TokenId (..)
+    , Try (..)
     , TxHash (..)
     , UnsignedTx (..)
     , Username (..)
@@ -437,3 +439,9 @@ data Wallet = Wallet
     , owner :: Owner
     , sign :: UnsignedTx -> Either SignTxError SignedTx
     }
+
+newtype Duration = Duration Int
+    deriving (Eq, Show)
+
+newtype Try = Try Int
+    deriving (Eq, Show)

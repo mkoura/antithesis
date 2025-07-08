@@ -6,7 +6,6 @@
 module User.Types
     ( TestRun (..)
     , TestRunState (..)
-    , Duration (..)
     , Reason (..)
     , Phase (..)
     , URL (..)
@@ -19,10 +18,12 @@ import Control.Applicative (Alternative)
 import Control.Monad (guard)
 import Core.Types
     ( Directory (..)
+    , Duration (..)
     , Platform (..)
     , PublicKeyHash (..)
     , Repository (..)
     , SHA1 (..)
+    , Try (..)
     , Username (..)
     )
 import Data.Map.Strict qualified as Map
@@ -52,7 +53,7 @@ data TestRun = TestRun
     , repository :: Repository
     , directory :: Directory
     , commitId :: SHA1
-    , testRunIndex :: Int
+    , tryIndex :: Try
     , requester :: Username
     }
     deriving (Eq, Show)
@@ -64,7 +65,7 @@ instance Monad m => ToJSON m TestRun where
                 (Repository owner repo)
                 (Directory directory)
                 (SHA1 commitId)
-                testRunIndex
+                (Try tryIndex)
                 (Username requester)
             ) =
             object
@@ -78,7 +79,7 @@ instance Monad m => ToJSON m TestRun where
                     )
                 , ("directory", stringJSON directory)
                 , ("commitId", stringJSON commitId)
-                , ("round", intJSON testRunIndex)
+                , ("round", intJSON tryIndex)
                 , ("requester", stringJSON requester)
                 ]
 
@@ -93,7 +94,7 @@ instance (Monad m, ReportSchemaErrors m) => FromJSON m TestRun where
             pure $ Repository{organization = owner, project = repo}
         directory <- getStringField "directory" mapping
         commitId <- getStringField "commitId" mapping
-        testRunIndex <- getIntegralField "round" mapping
+        tryIndex <- getIntegralField "round" mapping
         requester <- getStringField "requester" mapping
         pure
             $ TestRun
@@ -101,16 +102,13 @@ instance (Monad m, ReportSchemaErrors m) => FromJSON m TestRun where
                 , repository = repository
                 , directory = Directory directory
                 , commitId = SHA1 commitId
-                , testRunIndex = testRunIndex
+                , tryIndex = Try tryIndex
                 , requester = Username requester
                 }
     fromJSON r =
         expectedButGotValue
             "an object representing a test run"
             r
-
-newtype Duration = Duration Int
-    deriving (Eq, Show)
 
 data Phase = PendingT | DoneT | RunningT
 

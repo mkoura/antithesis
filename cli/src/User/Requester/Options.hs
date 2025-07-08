@@ -9,9 +9,11 @@ module User.Requester.Options
 import Core.Options
     ( commitOption
     , directoryOption
+    , durationOption
     , platformOption
     , pubkeyhashOption
     , repositoryOption
+    , tryOption
     , usernameOption
     )
 import Core.Types (TxHash, WithTxHash)
@@ -25,8 +27,7 @@ import Options.Applicative
 import Oracle.Token.Options (Box (..))
 import User.Requester.Cli (RequesterCommand (..))
 import User.Types
-    ( Duration (..)
-    , Phase (PendingT)
+    ( Phase (PendingT)
     , RegisterRoleKey (..)
     , RegisterUserKey (..)
     , TestRun (..)
@@ -113,7 +114,7 @@ requestTestOptions =
                 <*> repositoryOption
                 <*> directoryOption
                 <*> commitOption
-                <*> pure 1
+                <*> tryOption
                 <*> usernameOption
             )
-        <*> pure (Duration 3)
+        <*> durationOption

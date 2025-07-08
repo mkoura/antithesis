@@ -11,11 +11,13 @@ import App (client)
 import Cli (Command (..))
 import Core.Types
     ( Directory (..)
+    , Duration (..)
     , Platform (..)
     , PublicKeyHash (..)
     , Repository (..)
     , RequestRefId (..)
     , SHA1 (..)
+    , Try (..)
     , Username (..)
     )
 import Data.Aeson (encodeFile)
@@ -35,8 +37,7 @@ import Test.Hspec
 import Text.JSON.Canonical (Int54, JSValue (JSArray, JSNull))
 import User.Requester.Cli (RequesterCommand (..))
 import User.Types
-    ( Duration (..)
-    , RegisterRoleKey (..)
+    ( RegisterRoleKey (..)
     , RegisterUserKey (..)
     , TestRun (..)
     )
@@ -196,7 +197,7 @@ spec = beforeAll_ runDummyServer $ do
                                         , requester = Username "bob"
                                         , commitId = SHA1 "9114528e2343e6fcf3c92de71364275227e6b16d"
                                         , directory = Directory "."
-                                        , testRunIndex = 1
+                                        , tryIndex = Try 1
                                         }
                                 $ Duration 3
                         }

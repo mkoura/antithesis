@@ -9,23 +9,28 @@ module Core.Options
     , pubkeyhashOption
     , roleOption
     , outputReferenceParser
+    , durationOption
+    , tryOption
     )
 where
 
 import Core.Types
     ( Directory (..)
+    , Duration (..)
     , Platform (..)
     , PublicKeyHash (..)
     , Repository (..)
     , RequestRefId (..)
     , Role (..)
     , SHA1 (..)
+    , Try (..)
     , Username (..)
     )
 import Data.Text qualified as T
 import Options.Applicative
     ( Parser
     , ReadM
+    , auto
     , help
     , long
     , maybeReader
@@ -135,3 +140,25 @@ parseOutputReference = do
                 $ RequestRefId
                 $ T.pack s
         _ -> fail "Invalid output reference format. Use 'txHash-index'"
+
+durationOption :: Parser Duration
+durationOption =
+    Duration
+        <$> option
+            auto
+            ( long "duration"
+                <> short 't'
+                <> metavar "DURATION"
+                <> help "The duration in hours for the test-run"
+            )
+
+tryOption :: Parser Try
+tryOption =
+    Try
+        <$> option
+            auto
+            ( long "try"
+                <> short 'y'
+                <> metavar "TRY"
+                <> help "The current attempt number for this commit"
+            )

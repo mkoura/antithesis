@@ -39,8 +39,6 @@ import Data.Aeson.KeyMap qualified as Aeson
 import Data.Aeson.Types (parseMaybe)
 import Data.Data (Proxy (..))
 import Data.Maybe (fromMaybe, mapMaybe)
-import Data.String (IsString)
-import Data.Traversable (for)
 import Lib.JSON
     ( fromAesonString
     , fromAesonThrow

@@ -8,10 +8,12 @@ where
 
 import Core.Types
     ( Directory (Directory)
+    , Duration (..)
     , Platform (Platform)
     , PublicKeyHash (..)
     , Repository (Repository, organization, project)
     , SHA1 (SHA1)
+    , Try (..)
     , Username (Username)
     )
 import Test.Hspec (Spec, describe, it, shouldBe)
@@ -21,18 +23,9 @@ import Text.JSON.Canonical
     , ToJSON (..)
     )
 import User.Types
-    ( Duration (Duration)
-    , Reason (..)
+    ( Reason (..)
     , RegisterUserKey (..)
-    , TestRun
-        ( TestRun
-        , commitId
-        , directory
-        , platform
-        , repository
-        , requester
-        , testRunIndex
-        )
+    , TestRun (..)
     , TestRunState (..)
     , URL (..)
     )
@@ -67,7 +60,7 @@ spec = do
                         , commitId = SHA1 "abc123"
                         , directory = Directory "src"
                         , requester = Username "tester"
-                        , testRunIndex = 1
+                        , tryIndex = Try 1
                         }
             roundTrip testRun
 

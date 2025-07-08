@@ -6,7 +6,8 @@ module User.Requester.Cli
     ) where
 
 import Core.Types
-    ( TokenId
+    ( Duration
+    , TokenId
     , TxHash
     , Wallet (..)
     , WithTxHash (..)
@@ -25,8 +26,7 @@ import User.Agent.Cli
     , agentCmd
     )
 import User.Types
-    ( Duration
-    , Phase (PendingT)
+    ( Phase (PendingT)
     , RegisterRoleKey (..)
     , RegisterUserKey (..)
     , TestRun (..)

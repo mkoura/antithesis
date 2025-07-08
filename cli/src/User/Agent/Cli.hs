@@ -10,7 +10,7 @@ module User.Agent.Cli
     )
 where
 
-import Core.Types (TokenId, Wallet, WithTxHash (..))
+import Core.Types (Duration, TokenId, Wallet, WithTxHash (..))
 import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8)
@@ -31,8 +31,7 @@ import Text.JSON.Canonical
     , toJSString
     )
 import User.Types
-    ( Duration
-    , Phase (..)
+    ( Phase (..)
     , Reason
     , TestRun (..)
     , TestRunState (..)

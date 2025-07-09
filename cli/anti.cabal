@@ -219,10 +219,8 @@ test-suite anti-test
 
   -- Modules included in this executable, other than Main.
   other-modules:
-    CliSpec
     Lib.JSONSpec
     MPFS.APISpec
-    MPFS.Server
     Oracle.Github.OracleValidationSpec
     User.TypesSpec
 
@@ -241,7 +239,6 @@ test-suite anti-test
   -- Test dependencies.
   build-depends:
     , aeson
-    , aeson-qq                   ^>=0.8.4
     , anti
     , base
     , base16-bytestring
@@ -260,8 +257,6 @@ test-suite anti-test
     , lens
     , plutus-tx
     , servant-client
-    , servant-server
     , text
-    , wai
 
   build-tool-depends: hspec-discover:hspec-discover

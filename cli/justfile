@@ -13,9 +13,12 @@ hlint:
   #!/usr/bin/env bash
   hlint app src test CI/rewrite-libs
 
-test:
+unit:
   #!/usr/bin/env bash
-  cabal test
+  cabal test \
+    --test-show-details=direct \
+    --test-option=--skip \
+    --test-option="MPFS.API" \
 
 build:
     #!/usr/bin/env bash
@@ -24,8 +27,13 @@ build:
 E2E:
     #!/usr/bin/env bash
     mkdir -p tmp/bin
-    cabal install --installdir=tmp >/dev/null
+    cabal install --overwrite-policy=always --installdir=tmp >/dev/null
     export PATH="$PWD/tmp:$PATH"
+    randomMPFSPort=$(shuf -i 1024-65636 -n 1)
+    export ANTI_MPFS_HOST="http://localhost:$randomMPFSPort"
+    export MPFS_PORT="$randomMPFSPort"
+    randomYaciAdminPort=$(shuf -i 1024-65536 -n 1)
+    export YACI_ADMIN_PORT="$randomYaciAdminPort"
     # shellcheck disable=SC2002
     randomName=$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 8 | head -n 1)
     docker compose -p "$randomName" -f test/fixtures/docker-compose.yml up -d
@@ -33,14 +41,13 @@ E2E:
       docker compose -p "$randomName" \
         -f test/fixtures/docker-compose.yml down
     }
-    trap down EXIT INT TERM
+    trap down EXIT INT
 
     export ANTI_WALLET_FILE=tmp/test.json
     export ANTI_TEST_REQUESTER_WALLET=tmp/test.json
     export ANTI_TEST_ORACLE_WALLET=tmp/test.json
-    export ANTI_MPFS_HOST=http://localhost:3000
     export ANTI_WAIT=2
-    while [[ "$(curl -s localhost:3000/tokens | jq -r '.indexerStatus.ready')" != "true" ]]; do
+    while [[ "$(curl -s "localhost:$MPFS_PORT/tokens" | jq -r '.indexerStatus.ready')" != "true" ]]; do
         echo "Waiting for indexer to be ready..."
         sleep 2
     done
@@ -48,7 +55,7 @@ E2E:
     echo "Funding address: $address"
     topup(){
         curl -s -X 'POST' \
-            'http://localhost:10000/local-cluster/api/addresses/topup' \
+            "http://localhost:$YACI_ADMIN_PORT/local-cluster/api/addresses/topup" \
             -H 'accept: */*' \
             -H 'Content-Type: application/json' \
             -d '{
@@ -64,6 +71,10 @@ E2E:
         echo "Retrying topup..."
         sleep 2
     done
+    cabal test \
+        --test-show-details=direct \
+        --test-option=--match \
+        --test-option="MPFS.API"
     ./test/scenarios/rejectATestRun.sh
     ./test/scenarios/acceptATestRun.sh
 
@@ -71,7 +82,7 @@ CI:
   #!/usr/bin/env bash
   set -euo pipefail
   just build
-  just test
+  just unit
   just E2E
   cabal-fmt -c anti.cabal CI/rewrite-libs/rewrite-libs.cabal
   fourmolu -m check src app test CI/rewrite-libs

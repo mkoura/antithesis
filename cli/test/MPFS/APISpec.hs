@@ -116,7 +116,7 @@ loadOracleWallet = do
     loadEnvWallet "ANTI_TEST_ORACLE_WALLET"
 
 getHostFromEnv :: IO String
-getHostFromEnv = getEnv "ANTI_MPFS_HOST" >>= \host -> print host >> return host
+getHostFromEnv = getEnv "ANTI_MPFS_HOST"
 
 newtype Call = Call {calling :: forall a. ClientM a -> IO a}
 

@@ -104,8 +104,19 @@ import User.Types (RegisterUserKey (..))
 mpfsPolicyId :: String
 mpfsPolicyId = "c1e392ee7da9415f946de9d2aef9607322b47d6e84e8142ef0c340bf"
 
-host :: String
-host = "https://mpfs.plutimus.com"
+loadEnvWallet :: String -> IO Wallet
+loadEnvWallet envVar = getEnv envVar >>= readWallet
+
+loadRequesterWallet :: IO Wallet
+loadRequesterWallet =
+    loadEnvWallet "ANTI_TEST_REQUESTER_WALLET"
+
+loadOracleWallet :: IO Wallet
+loadOracleWallet = do
+    loadEnvWallet "ANTI_TEST_ORACLE_WALLET"
+
+getHostFromEnv :: IO String
+getHostFromEnv = getEnv "ANTI_MPFS_HOST" >>= \host -> print host >> return host
 
 newtype Call = Call {calling :: forall a. ClientM a -> IO a}
 
@@ -133,6 +144,7 @@ setup :: IO Context
 setup = do
     requesterWallet <- loadRequesterWallet
     oracleWallet <- loadOracleWallet
+    host <- getHostFromEnv
     url <- parseBaseUrl host
     nm <-
         newManager
@@ -224,17 +236,18 @@ spec :: SpecWith ()
 spec = do
     beforeAll setup $ afterAll teardown $ do
         describe "MPFS.API" $ do
-            it "can retrieve config" $ \Context{mpfs = Call call, tokenId, oracleWallet} -> do
-                res <- call $ getToken tokenId
-                case res of
-                    JSObject obj -> case obj !? "state" of
-                        Just (JSObject state) -> case state !? "owner" of
-                            Just (JSString antiTokenOwner') ->
-                                Owner (fromJSString antiTokenOwner')
-                                    `shouldBe` oracleWallet.owner
-                            _ -> error "Field 'owner' is missing or not a string"
-                        _ -> error "Field 'state' is missing or not an object"
-                    _ -> error "Response is not an object"
+            it "can retrieve config"
+                $ \Context{mpfs = Call call, tokenId, oracleWallet} -> do
+                    res <- call $ getToken tokenId
+                    case res of
+                        JSObject obj -> case obj !? "state" of
+                            Just (JSObject state) -> case state !? "owner" of
+                                Just (JSString antiTokenOwner') ->
+                                    Owner (fromJSString antiTokenOwner')
+                                        `shouldBe` oracleWallet.owner
+                                _ -> error "Field 'owner' is missing or not a string"
+                            _ -> error "Field 'state' is missing or not an object"
+                        _ -> error "Response is not an object"
             it "can retrieve token facts"
                 $ \(Context{mpfs = Call call, tokenId}) -> do
                     res <- call $ getTokenFacts tokenId
@@ -375,14 +388,3 @@ spec = do
                         facts' <- getTokenFacts tokenId
                         liftIO $ facts' `shouldBe` JSArray []
                         pure ()
-
-loadEnvWallet :: String -> IO Wallet
-loadEnvWallet envVar = getEnv envVar >>= readWallet
-
-loadRequesterWallet :: IO Wallet
-loadRequesterWallet =
-    loadEnvWallet "ANTI_TEST_REQUESTER_WALLET"
-
-loadOracleWallet :: IO Wallet
-loadOracleWallet = do
-    loadEnvWallet "ANTI_TEST_ORACLE_WALLET"

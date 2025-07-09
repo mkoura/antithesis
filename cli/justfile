@@ -26,6 +26,44 @@ E2E:
     mkdir -p tmp/bin
     cabal install --installdir=tmp >/dev/null
     export PATH="$PWD/tmp:$PATH"
+    # shellcheck disable=SC2002
+    randomName=$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 8 | head -n 1)
+    docker compose -p "$randomName" -f test/fixtures/docker-compose.yml up -d
+    down() {
+      docker compose -p "$randomName" \
+        -f test/fixtures/docker-compose.yml down
+    }
+    trap down EXIT INT TERM
+
+    export ANTI_WALLET_FILE=tmp/test.json
+    export ANTI_TEST_REQUESTER_WALLET=tmp/test.json
+    export ANTI_TEST_ORACLE_WALLET=tmp/test.json
+    export ANTI_MPFS_HOST=http://localhost:3000
+    export ANTI_WAIT=2
+    while [[ "$(curl -s localhost:3000/tokens | jq -r '.indexerStatus.ready')" != "true" ]]; do
+        echo "Waiting for indexer to be ready..."
+        sleep 2
+    done
+    address=$(anti wallet info | jq -r '.result.address')
+    echo "Funding address: $address"
+    topup(){
+        curl -s -X 'POST' \
+            'http://localhost:10000/local-cluster/api/addresses/topup' \
+            -H 'accept: */*' \
+            -H 'Content-Type: application/json' \
+            -d '{
+            "address": "'"$address"'",
+            "adaAmount": 10000
+            }'
+        }
+    while true; do
+        if topup | grep -q "Topup successful"; then
+            echo "Topup successful"
+            break
+        fi
+        echo "Retrying topup..."
+        sleep 2
+    done
     ./test/scenarios/rejectATestRun.sh
     ./test/scenarios/acceptATestRun.sh
 

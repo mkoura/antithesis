@@ -30,7 +30,7 @@ check() {
 
 printFacts() {
     log "Current facts:"
-    anti facts | jq '.result.[]'
+    anti facts | jq '.result | .[]'
 }
 
 getOutputRef() {

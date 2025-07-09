@@ -71,12 +71,17 @@ E2E:
         echo "Retrying topup..."
         sleep 2
     done
+    echo "Starting E2E tests..."
+    just E2E-tests
+
+E2E-tests:
+    #!/usr/bin/env bash
     cabal test \
         --test-show-details=direct \
         --test-option=--match \
-        --test-option="MPFS.API"
-    ./test/scenarios/rejectATestRun.sh
-    ./test/scenarios/acceptATestRun.sh
+        --test-option="MPFS.API" \
+        --test-option=--match \
+        --test-option="E2E"
 
 CI:
   #!/usr/bin/env bash

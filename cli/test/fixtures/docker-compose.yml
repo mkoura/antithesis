@@ -1,6 +1,7 @@
 services:
   yaci-cli:
     image: bloxbean/yaci-cli:0.10.6-beta
+    platform: linux/x86_64
     environment:
       - yaci_store_enabled=true
       - ogmios_enabled=true
@@ -17,6 +18,7 @@ services:
 
   mpfs:
     image: ghcr.io/paolino/mpfs:0.0.1
+    platform: linux/x86_64
     command:
       - --port
       - "3000"

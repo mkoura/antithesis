@@ -16,7 +16,7 @@ services:
       - "${YACI_ADMIN_PORT:-10000}:10000"
 
   mpfs:
-    image: ghcr.io/paolino/mpfs/mpfs:0.0.1
+    image: ghcr.io/paolino/mpfs:0.0.1
     command:
       - --port
       - "3000"
@@ -32,6 +32,6 @@ services:
       - /data/seed
       - --generate
     restart:
-      always # until restore from origin is implemented 
+      always # until restore from origin is implemented
     ports:
       - "${MPFS_PORT:-3000}:3000"

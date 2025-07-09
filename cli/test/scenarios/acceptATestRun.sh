@@ -9,6 +9,8 @@ export ANTI_WAIT=240
 
 unset ANTI_TOKEN_ID
 
+log "Using ANTI_MPFS_HOST: $ANTI_MPFS_HOST"
+
 log "Creating an anti token..."
 result=$(anti oracle token boot)
 
@@ -42,15 +44,14 @@ anti oracle token update -o "$outputRef" >/dev/null
 
 printFacts
 
-log "Rejecting the test-run request..."
-result=$(anti agent reject-test \
+log "Accepting the test-run request..."
+result=$(anti agent accept-test \
     --platform test-hub \
     --repository test-org/test-repo \
     --directory test-dir \
     --commit test-commit \
     --username test-user \
-    --try 1 \
-    --reason "I am not ready yet")
+    --try 1)
 
 outputRef=$(getOutputRef "$result")
 log "Created a test-run rejection with output reference: $outputRef"

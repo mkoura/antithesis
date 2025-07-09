@@ -35,7 +35,7 @@ log "Using ANTI_MPFS_HOST: $ANTI_MPFS_HOST"
 
 printFacts() {
     log "Current facts:"
-    anti facts | jq
+    anti facts | jq '.result.[]'
 }
 
 getOutputRef() {
@@ -44,21 +44,21 @@ getOutputRef() {
     echo "${txHash}-0"
 }
 
-log "Creating anti oracle token..."
+log "Creating an anti token..."
 result=$(anti oracle token boot)
 
 tokenId=$(echo "$result" | jq -r '.result.value')
-log "Created anti oracle token with ID: $tokenId"
+log "Anti token ID: $tokenId"
 
 export ANTI_TOKEN_ID="$tokenId"
 
 tokenEnd() {
-    log "Ending anti oracle token..."
+    log "Ending anti token $ANTI_TOKEN_ID..."
     anti oracle token end > /dev/null || echo "Failed to end the token"
 }
 trap 'tokenEnd' EXIT INT TERM
 
-log "User creating a test-run request..."
+log "Creating a test-run request..."
 
 result=$(anti requester create-test \
     --platform test-hub \
@@ -70,14 +70,14 @@ result=$(anti requester create-test \
     --duration 3)
 
 outputRef=$(getOutputRef "$result")
-log "Test run request created with output reference: $outputRef"
+log "Created test-run request with output reference: $outputRef"
 
-log "Oracle accepting the test run request in the facts"
+log "Including the test-run request in the token ..."
 anti oracle token update -o "$outputRef" > /dev/null
 
 printFacts
 
-log "Agent rejecting the test run request..."
+log "Rejecting the test-run request..."
 result=$(anti agent reject-test \
     --platform test-hub \
     --repository test-org/test-repo \
@@ -88,9 +88,9 @@ result=$(anti agent reject-test \
     --reason "I am not ready yet")
 
 outputRef=$(getOutputRef "$result")
-log "Test run request rejected with output reference: $outputRef"
+log "Created a test-run rejection with output reference: $outputRef"
 
-log "Oracle updating the token with the fact state update..."
+log "Including the test-run rejection in the token ..."
 anti oracle token update -o "$outputRef" > /dev/null
 
 printFacts

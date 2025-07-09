@@ -24,7 +24,8 @@ build:
     #!/usr/bin/env bash
     cabal build all
 
-E2E:
+
+E2E match="":
     #!/usr/bin/env bash
     mkdir -p tmp/bin
     cabal install --overwrite-policy=always --installdir=tmp >/dev/null
@@ -72,16 +73,24 @@ E2E:
         sleep 2
     done
     echo "Starting E2E tests..."
-    just E2E-tests
+    just E2E-tests "{{match}}"
 
-E2E-tests:
+E2E-tests match="":
     #!/usr/bin/env bash
+    # shellcheck disable=SC2050
+    if [[ '{{match}}' == "" ]]; then
     cabal test \
         --test-show-details=direct \
         --test-option=--match \
         --test-option="MPFS.API" \
         --test-option=--match \
         --test-option="E2E"
+    else
+    cabal test \
+        --test-show-details=direct \
+        --test-option=--match \
+        --test-option="{{match}}"
+    fi
 
 CI:
   #!/usr/bin/env bash

@@ -29,7 +29,7 @@ let
       cardano-cli
       project.hsPkgs.cardano-addresses.components.exes.cardano-address
       project.hsPkgs.bech32.components.exes.bech32
-      pkgs.nixfmt
+      pkgs.nixfmt-classic
 
     ];
     shellHook = ''

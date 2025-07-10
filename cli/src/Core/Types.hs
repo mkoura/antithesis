@@ -8,6 +8,7 @@ module Core.Types
     , Change (..)
     , Directory (..)
     , Duration (..)
+    , Fact (..)
     , Host (..)
     , Key (..)
     , Operation (..)
@@ -30,6 +31,7 @@ module Core.Types
     , Wallet (..)
     , WithTxHash (..)
     , WithUnsignedTx (..)
+    , parseFacts
     ) where
 
 import Control.Exception (Exception)
@@ -37,6 +39,7 @@ import Data.Aeson qualified as Aeson
 import Data.ByteString.Base16 (encode)
 import Data.ByteString.Char8 qualified as B
 import Data.ByteString.Lazy.Char8 qualified as BL
+import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Lib.JSON
@@ -444,4 +447,25 @@ newtype Duration = Duration Int
     deriving (Eq, Show)
 
 newtype Try = Try Int
+    deriving (Eq, Show, Ord, Enum)
+
+data Fact = Fact
+    { key :: JSValue
+    , value :: JSValue
+    }
     deriving (Eq, Show)
+
+instance ReportSchemaErrors m => FromJSON m Fact where
+    fromJSON = withObject "Fact" $ \v -> do
+        key <- v .: "key"
+        value <- v .: "value"
+        pure $ Fact{key, value}
+
+parseFacts
+    :: (FromJSON Maybe key, FromJSON Maybe val) => [Fact] -> [(key, val)]
+parseFacts = mapMaybe f
+  where
+    f (Fact key value) = do
+        key' <- fromJSON key
+        value' <- fromJSON value
+        Just (key', value')

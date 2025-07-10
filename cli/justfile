@@ -13,12 +13,26 @@ hlint:
   #!/usr/bin/env bash
   hlint app src test CI/rewrite-libs
 
-unit:
+unit match="":
   #!/usr/bin/env bash
-  cabal test \
-    --test-show-details=direct \
-    --test-option=--skip \
-    --test-option="MPFS.API" \
+  # shellcheck disable=SC2050
+  if [[ '{{match}}' == "" ]]; then
+    cabal test \
+        --test-show-details=direct \
+        --test-option=--skip \
+        --test-option="MPFS.API" \
+        --test-option=--skip \
+        --test-option="E2E"
+  else
+    cabal test \
+        --test-show-details=direct \
+        --test-option=--skip \
+        --test-option="MPFS.API" \
+        --test-option=--skip \
+        --test-option="E2E" \
+        --test-option=--match \
+        --test-option="{{match}}"
+  fi
 
 build:
     #!/usr/bin/env bash

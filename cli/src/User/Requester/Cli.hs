@@ -25,6 +25,7 @@ import User.Agent.Cli
     ( AgentCommand (..)
     , agentCmd
     )
+import User.Agent.Validation.Config (AgentValidationConfig)
 import User.Types
     ( Phase (PendingT)
     , RegisterRoleKey (..)
@@ -32,6 +33,7 @@ import User.Types
     , TestRun (..)
     , TestRunState
     )
+import Validation (Validation)
 
 data RequesterCommand a where
     RegisterUser :: RegisterUserKey -> RequesterCommand TxHash
@@ -51,11 +53,13 @@ deriving instance Eq (RequesterCommand a)
 
 requesterCmd
     :: Submitting
+    -> AgentValidationConfig
+    -> Validation ClientM
     -> Wallet
     -> TokenId
     -> RequesterCommand a
     -> ClientM a
-requesterCmd sbmt wallet tokenId command = do
+requesterCmd sbmt config validation wallet tokenId command = do
     case command of
         RegisterUser request ->
             registerUser sbmt wallet tokenId request
@@ -66,7 +70,8 @@ requesterCmd sbmt wallet tokenId command = do
         UnregisterRole request ->
             unregisterRole sbmt wallet tokenId request
         RequestTest testRun duration ->
-            agentCmd sbmt wallet tokenId $ Create testRun duration
+            agentCmd sbmt config validation wallet tokenId
+                $ Create testRun duration
 
 registerUser
     :: Submitting

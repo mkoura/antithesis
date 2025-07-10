@@ -2,19 +2,29 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module User.Types
     ( TestRun (..)
+    , platformL
+    , repositoryL
+    , directoryL
+    , commitIdL
+    , tryIndexL
+    , requesterL
     , TestRunState (..)
     , TestRunRejection (..)
     , Phase (..)
     , URL (..)
     , RegisterUserKey (..)
     , RegisterRoleKey (..)
+    , roleOfATestRun
+    , AgentValidation (..)
     )
 where
 
 import Control.Applicative (Alternative)
+import Control.Lens (makeLensesFor)
 import Control.Monad (guard)
 import Core.Types
     ( Directory (..)
@@ -57,6 +67,29 @@ data TestRun = TestRun
     , requester :: Username
     }
     deriving (Eq, Show)
+
+makeLensesFor
+    [ ("platform", "platformL")
+    , ("repository", "repositoryL")
+    , ("directory", "directoryL")
+    , ("commitId", "commitIdL")
+    , ("tryIndex", "tryIndexL")
+    , ("requester", "requesterL")
+    ]
+    ''TestRun
+
+roleOfATestRun :: TestRun -> RegisterRoleKey
+roleOfATestRun
+    TestRun
+        { platform
+        , repository
+        , requester = username
+        } =
+        RegisterRoleKey
+            { platform
+            , repository
+            , username
+            }
 
 instance Monad m => ToJSON m TestRun where
     toJSON
@@ -333,3 +366,31 @@ instance Monad m => ToJSON m RegisterRoleKey where
                     )
                 , ("user", stringJSON user)
                 ]
+
+data AgentValidation = AgentValidation
+    { testRun :: TestRun
+    , validation :: Maybe [TestRunRejection]
+    }
+
+instance Monad m => ToJSON m AgentValidation where
+    toJSON AgentValidation{testRun, validation} =
+        object
+            [ ("testRun", toJSON testRun)
+            ,
+                ( "validation"
+                , maybe (pure JSNull) toJSON validation
+                )
+            ]
+instance ReportSchemaErrors m => FromJSON m AgentValidation where
+    fromJSON obj@(JSObject _) = do
+        mapping <- fromJSON obj
+        testRun <- mapping .: "testRun"
+        validation <- mapping .: "validation"
+        reasons <- case validation of
+            JSNull -> pure Nothing
+            _ -> Just <$> fromJSON validation
+        pure $ AgentValidation{testRun = testRun, validation = reasons}
+    fromJSON r =
+        expectedButGotValue
+            "an object representing an agent validation"
+            r

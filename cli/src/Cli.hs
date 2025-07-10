@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveGeneric #-}
+
 module Cli
     ( cmd
     , Command (..)
@@ -13,16 +15,21 @@ import Core.Types
     , WithTxHash (..)
     , parseFacts
     )
+import Data.Aeson (eitherDecodeFileStrict')
+import Data.Aeson.Types qualified as Aeson
+import GHC.Generics (Generic)
 import MPFS.API (getTokenFacts, retractChange)
 import Oracle.Cli (OracleCommand (..), oracleCmd)
 import Servant.Client (ClientM)
 import Submitting (Submitting, signAndSubmit)
+import System.Environment (getEnv)
 import Text.JSON.Canonical (FromJSON (..), JSValue)
 import User.Agent.Cli
     ( AgentCommand (..)
     , IsReady (NotReady)
     , agentCmd
     )
+import User.Agent.Validation.Config (AgentValidationConfig)
 import User.Requester.Cli
     ( RequesterCommand
     , requesterCmd
@@ -44,8 +51,15 @@ data Command a where
 deriving instance Show (Command a)
 deriving instance Eq (Command a)
 
-_mkValidation :: TokenId -> Validation ClientM
-_mkValidation tk =
+newtype Config = Config
+    { agentValidationConfig :: AgentValidationConfig
+    }
+    deriving (Show, Eq, Generic)
+
+instance Aeson.FromJSON Config
+
+mkValidation :: TokenId -> Validation ClientM
+mkValidation tk =
     Validation
         { facts = do
             factsObject <- getTokenFacts tk
@@ -62,30 +76,61 @@ cmd
     -> Maybe TokenId
     -> Command a
     -> ClientM a
-cmd sbmt (Right wallet) (Just tokenId) command =
+cmd sbmt mwf tokenId command = do
+    cfg <- liftIO $ do
+        configFile <- getEnv "ANTI_CONFIG_FILE"
+        config <-
+            eitherDecodeFileStrict' configFile :: IO (Either String Config)
+        case config of
+            Left err -> error $ "Failed to parse config file: " ++ err
+            Right cfg -> pure cfg
+    cmdCore sbmt cfg mwf tokenId command
+
+cmdCore
+    :: Submitting
+    -> Config
+    -> Either FilePath Wallet
+    -> Maybe TokenId
+    -> Command a
+    -> ClientM a
+cmdCore sbmt Config{agentValidationConfig} (Right wallet) (Just tokenId) command = do
+    let validation = mkValidation tokenId
     case command of
         RequesterCommand requesterCommand ->
-            requesterCmd sbmt wallet tokenId requesterCommand
+            requesterCmd
+                sbmt
+                agentValidationConfig
+                validation
+                wallet
+                tokenId
+                requesterCommand
         OracleCommand oracleCommand ->
             oracleCmd sbmt wallet (Just tokenId) oracleCommand
-        AgentCommand agentCommand -> agentCmd sbmt wallet tokenId agentCommand
+        AgentCommand agentCommand ->
+            agentCmd
+                sbmt
+                agentValidationConfig
+                validation
+                wallet
+                tokenId
+                agentCommand
         GetFacts -> getTokenFacts tokenId
         RetractRequest refId -> fmap txHash $ signAndSubmit sbmt wallet $ \address ->
             retractChange address refId
         Wallet walletCommand -> liftIO $ walletCmd (Right wallet) walletCommand
-cmd sbmt (Right wallet) Nothing command =
+cmdCore sbmt _ (Right wallet) Nothing command =
     case command of
         RetractRequest refId -> fmap txHash $ signAndSubmit sbmt wallet $ \address ->
             retractChange address refId
         Wallet walletCommand -> liftIO $ walletCmd (Right wallet) walletCommand
         OracleCommand oracleCommand -> oracleCmd sbmt wallet Nothing oracleCommand
         _ -> error "TokenId is required for this command"
-cmd _iftw mwf@(Left _) (Just tokenId) command =
+cmdCore _ _iftw mwf@(Left _) (Just tokenId) command =
     case command of
         GetFacts -> getTokenFacts tokenId
         Wallet walletCommand -> liftIO $ walletCmd mwf walletCommand
         _ -> error "Wallet is required for this command"
-cmd _iftw mwf@(Left _) Nothing command =
+cmdCore _ _iftw mwf@(Left _) Nothing command =
     case command of
         Wallet walletCommand -> liftIO $ walletCmd mwf walletCommand
         _ -> error "Wallet and TokenId are required for this command"

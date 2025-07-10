@@ -60,6 +60,12 @@ agentCommandParser =
                     (Box <$> reportTestOptions)
                     (progDesc "Report the result of a test run")
                 )
+            <> command
+                "validate-requests"
+                ( info
+                    (pure $ Box ValidateRequests)
+                    (progDesc "Validate test requests")
+                )
         )
 
 acceptTestOptions

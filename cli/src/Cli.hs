@@ -3,6 +3,7 @@
 module Cli
     ( cmd
     , Command (..)
+    , Config (..)
     ) where
 
 import Control.Monad.IO.Class (MonadIO (..))

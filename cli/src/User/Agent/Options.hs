@@ -32,8 +32,8 @@ import Options.Applicative
 import User.Agent.Cli (AgentCommand (..), IsReady (NotReady))
 import User.Types
     ( Phase (..)
-    , Reason (..)
     , TestRun (..)
+    , TestRunRejection (..)
     , TestRunState
     , URL (..)
     )
@@ -74,18 +74,17 @@ acceptTestOptions =
             <*> tryOption
             <*> usernameOption
 
-reasonParser :: Parser Reason
+reasonParser :: Parser TestRunRejection
 reasonParser =
     option
         (eitherReader readReason)
-        (long "reason" <> help "Reason for rejection")
+        (long "reason" <> help "TestRunRejection for rejection")
   where
-    readReason :: String -> Either String Reason
+    readReason :: String -> Either String TestRunRejection
     readReason "duration" = pure UnacceptableDuration
-    readReason "platform" = pure UnacceptablePlatform
-    readReason "repository" = pure UnacceptableRepository
     readReason "commit" = pure UnacceptableCommit
     readReason "try" = pure UnacceptableTryIndex
+    readReason "role" = pure UnacceptableRole
     readReason s = Right $ AnyReason s
 
 rejectTestOptions

@@ -6,7 +6,7 @@
 module User.Types
     ( TestRun (..)
     , TestRunState (..)
-    , Reason (..)
+    , TestRunRejection (..)
     , Phase (..)
     , URL (..)
     , RegisterUserKey (..)
@@ -115,49 +115,42 @@ data Phase = PendingT | DoneT | RunningT
 newtype URL = URL String
     deriving (Show, Eq)
 
-data Reason
+data TestRunRejection
     = UnacceptableDuration
-    | UnacceptablePlatform
-    | UnacceptableRepository
     | UnacceptableCommit
     | UnacceptableTryIndex
-    | UnacceptableRequester
+    | UnacceptableRole
     | AnyReason String
     deriving (Eq, Show)
 
-instance Monad m => ToJSON m Reason where
+instance Monad m => ToJSON m TestRunRejection where
     toJSON UnacceptableDuration =
         stringJSON "unacceptable duration"
-    toJSON UnacceptablePlatform =
-        stringJSON "unacceptable platform"
-    toJSON UnacceptableRepository =
-        stringJSON "unacceptable repository"
     toJSON UnacceptableCommit =
         stringJSON "unacceptable commit"
     toJSON UnacceptableTryIndex =
         stringJSON "unacceptable try index"
-    toJSON UnacceptableRequester =
-        stringJSON "unacceptable requester"
+    toJSON UnacceptableRole =
+        stringJSON "unacceptable role"
     toJSON (AnyReason reason) =
         stringJSON reason
 
-instance ReportSchemaErrors m => FromJSON m Reason where
+instance ReportSchemaErrors m => FromJSON m TestRunRejection where
     fromJSON (JSString jsString) = do
         let reason = fromJSString jsString
         case reason of
             "unacceptable duration" -> pure UnacceptableDuration
-            "unacceptable platform" -> pure UnacceptablePlatform
-            "unacceptable repository" -> pure UnacceptableRepository
             "unacceptable commit" -> pure UnacceptableCommit
             "unacceptable try index" -> pure UnacceptableTryIndex
-            "unacceptable requester" -> pure UnacceptableRequester
+            "unacceptable requester" -> pure UnacceptableRole
             _ -> pure $ AnyReason reason
     fromJSON other =
         expectedButGotValue "a string representing a reason" other
 
 data TestRunState a where
     Pending :: Duration -> TestRunState PendingT
-    Rejected :: TestRunState PendingT -> [Reason] -> TestRunState DoneT
+    Rejected
+        :: TestRunState PendingT -> [TestRunRejection] -> TestRunState DoneT
     Accepted :: TestRunState PendingT -> TestRunState RunningT
     Finished
         :: TestRunState RunningT -> Duration -> URL -> TestRunState DoneT

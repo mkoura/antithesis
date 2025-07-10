@@ -28,8 +28,8 @@ import Text.JSON.Canonical
     )
 import User.Types
     ( Phase (..)
-    , Reason
     , TestRun (..)
+    , TestRunRejection
     , TestRunState (..)
     , URL (..)
     )
@@ -108,7 +108,7 @@ data AgentCommand (phase :: IsReady) result where
     Reject
         :: TestRun
         -> IfReady phase (TestRunState PendingT)
-        -> [Reason]
+        -> [TestRunRejection]
         -> AgentCommand phase (WithTxHash (TestRunState DoneT))
     Report
         :: TestRun
@@ -190,7 +190,7 @@ rejectCommand
     -> TokenId
     -> TestRun
     -> TestRunState PendingT
-    -> [Reason]
+    -> [TestRunRejection]
     -> ClientM (WithTxHash (TestRunState DoneT))
 rejectCommand sbmt wallet tokenId testRun testRunState reason =
     signAndSubmitAnUpdate sbmt wallet tokenId testRun testRunState

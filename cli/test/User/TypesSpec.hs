@@ -23,9 +23,9 @@ import Text.JSON.Canonical
     , ToJSON (..)
     )
 import User.Types
-    ( Reason (..)
-    , RegisterUserKey (..)
+    ( RegisterUserKey (..)
     , TestRun (..)
+    , TestRunRejection (..)
     , TestRunState (..)
     , URL (..)
     )

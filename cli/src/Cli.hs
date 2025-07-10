@@ -5,17 +5,19 @@ module Cli
 
 import Control.Monad.IO.Class (MonadIO (..))
 import Core.Types
-    ( RequestRefId
+    ( Fact (..)
+    , RequestRefId
     , TokenId
     , TxHash
     , Wallet
     , WithTxHash (..)
+    , parseFacts
     )
 import MPFS.API (getTokenFacts, retractChange)
 import Oracle.Cli (OracleCommand (..), oracleCmd)
 import Servant.Client (ClientM)
 import Submitting (Submitting, signAndSubmit)
-import Text.JSON.Canonical (JSValue)
+import Text.JSON.Canonical (FromJSON (..), JSValue)
 import User.Agent.Cli
     ( AgentCommand (..)
     , IsReady (NotReady)
@@ -25,6 +27,7 @@ import User.Requester.Cli
     ( RequesterCommand
     , requesterCmd
     )
+import Validation (Validation (..))
 import Wallet.Cli (WalletCommand, walletCmd)
 
 data Command a where
@@ -40,6 +43,18 @@ data Command a where
 
 deriving instance Show (Command a)
 deriving instance Eq (Command a)
+
+_mkValidation :: TokenId -> Validation ClientM
+_mkValidation tk =
+    Validation
+        { facts = do
+            factsObject <- getTokenFacts tk
+            case fromJSON factsObject of
+                Nothing -> error "Failed to parse facts from JSON"
+                Just factsObject' -> do
+                    let factsList = parseFacts factsObject'
+                    return $ uncurry Fact <$> factsList
+        }
 
 cmd
     :: Submitting

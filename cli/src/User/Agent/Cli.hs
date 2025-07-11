@@ -24,10 +24,6 @@ import MPFS.API
     , requestInsert
     , requestUpdate
     )
-import Oracle.Validate.Requests.TestRun.Config
-    ( TestRunValidationConfig
-    )
-import Oracle.Validate.Requests.TestRun.Create (validateRequest)
 import Servant.Client (ClientM)
 import Submitting (Submitting, signAndSubmit)
 import Text.JSON.Canonical

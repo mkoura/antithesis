@@ -11,6 +11,7 @@ import Control.Monad.IO.Class (liftIO)
 import Core.Types
     ( Change (..)
     , Key (..)
+    , Operation (..)
     , Platform (..)
     , RequestRefId
     , Role (..)
@@ -26,9 +27,13 @@ import Oracle.Types (Request (..), RequestZoo (..))
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig
     )
+import Oracle.Validate.Requests.TestRun.Create (validateCreateTestRun)
 import Servant.Client (ClientM)
 import Text.JSON.Canonical.Class (ToJSON (..))
-import User.Types (RegisterRoleKey (..), RegisterUserKey (..))
+import User.Types
+    ( RegisterRoleKey (..)
+    , RegisterUserKey (..)
+    )
 import Validation (Validation (..))
 
 data ValidationResult
@@ -150,8 +155,32 @@ validateRequest
                     )
             else
                 pure (refId, Validated)
-validateRequest _ _validation (CreateTestRequest (Request refId _owner _change)) =
-    pure (refId, NotEvaluated)
+validateRequest
+    testRunConfig
+    validation
+    ( CreateTestRequest
+            (Request refId _owner (Change (Key testRun) operation))
+        ) =
+        (,) refId <$> do
+            case operation of
+                Insert state -> do
+                    result <-
+                        validateCreateTestRun
+                            testRunConfig
+                            validation
+                            testRun
+                            state
+                    case result of
+                        Nothing -> pure Validated
+                        Just rejections ->
+                            pure
+                                $ CannotValidate
+                                $ "test run validation failed for the following reasons: "
+                                    <> unwords (fmap show rejections)
+                _ ->
+                    pure
+                        $ CannotValidate
+                            "only insert operation is supported for test runs"
 validateRequest _ _validation (RejectRequest (Request refId _owner _change)) =
     pure (refId, NotEvaluated)
 validateRequest _ _validation (AcceptRequest (Request refId _owner _change)) =

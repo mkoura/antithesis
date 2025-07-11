@@ -1,5 +1,5 @@
 module Oracle.Validate.Requests.TestRun.Create
-    ( validateRequest
+    ( validateCreateTestRun
     ) where
 
 import Core.Types
@@ -81,14 +81,14 @@ checkCommit
             then return Nothing
             else return $ Just UnacceptableCommit
 
-validateRequest
+validateCreateTestRun
     :: Monad m
     => TestRunValidationConfig
     -> Validation m
     -> TestRun
     -> TestRunState PendingT
     -> m (Maybe [TestRunRejection])
-validateRequest
+validateCreateTestRun
     config
     validation
     testRun

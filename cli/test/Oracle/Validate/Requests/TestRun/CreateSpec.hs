@@ -18,7 +18,7 @@ import Core.Types
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig (..)
     )
-import Oracle.Validate.Requests.TestRun.Create (validateRequest)
+import Oracle.Validate.Requests.TestRun.Create (validateCreateTestRun)
 import Test.Hspec
     ( Spec
     , describe
@@ -174,7 +174,7 @@ spec = do
             let testRun = emptyTestRun
                 testRunState = Pending (Duration n)
             mresult <-
-                validateRequest testConfig noValidation testRun testRunState
+                validateCreateTestRun testConfig noValidation testRun testRunState
             onConditionHaveReason mresult UnacceptableDuration
                 $ n < minDuration testConfig || n > maxDuration testConfig
         it "reports unacceptable role"
@@ -218,7 +218,7 @@ spec = do
                                         & set requesterL (Username $ same username)
                                 testRunState = Pending (Duration 5)
                             mresult <-
-                                validateRequest
+                                validateCreateTestRun
                                     testConfig
                                     validation
                                     testRun
@@ -275,7 +275,7 @@ spec = do
                                             & set requesterL (Username username)
                                     testRunState = Pending (Duration 5)
                                 mresult <-
-                                    validateRequest
+                                    validateCreateTestRun
                                         testConfig
                                         validation
                                         testRun

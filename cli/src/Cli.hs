@@ -62,7 +62,7 @@ instance Aeson.FromJSON Config
 mkValidation :: TokenId -> Validation ClientM
 mkValidation tk =
     Validation
-        { facts = do
+        { mpfsGetFacts = do
             factsObject <- getTokenFacts tk
             case fromJSON factsObject of
                 Nothing -> error "Failed to parse facts from JSON"

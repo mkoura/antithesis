@@ -29,9 +29,9 @@ checkDuration AgentValidationConfig{maxDuration, minDuration} (Duration n)
 checkRole
     :: Monad m => Validation m -> TestRun -> m (Maybe TestRunRejection)
 checkRole
-    Validation{facts}
+    Validation{mpfsGetFacts}
     testRun = do
-        fs <- facts
+        fs <- mpfsGetFacts
         let roleFact = roleOfATestRun testRun
         roleFactKey <- toJSON roleFact
         roleFactValue <- toJSON ()
@@ -45,9 +45,9 @@ checkTryIndex
     -> TestRun
     -> m (Maybe TestRunRejection)
 checkTryIndex
-    Validation{facts}
+    Validation{mpfsGetFacts}
     testRun = do
-        fs <- facts
+        fs <- mpfsGetFacts
         let testRuns :: [(TestRun, TestRunState PendingT)] = parseFacts fs
         let sameCommitTestRuns =
                 filter

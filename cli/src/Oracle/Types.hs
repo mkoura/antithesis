@@ -109,9 +109,50 @@ parseRegisterRoleKey v = do
         Delete _ -> pure $ UnregisterRoleRequest r
         Update _ _ -> expected "insert or delete" $ Just "update"
 
+parseCreateTestRequest
+    :: (Alternative m, ReportSchemaErrors m) => JSValue -> m RequestZoo
+parseCreateTestRequest v = do
+    r@(Request{change}) <- fromJSON v
+    case operation change of
+        Insert _ -> pure $ CreateTestRequest r
+        Delete _ -> expected "insert" $ Just "delete"
+        Update _ _ -> expected "insert" $ Just "update"
+
+parseRejectRequest
+    :: (Alternative m, ReportSchemaErrors m) => JSValue -> m RequestZoo
+parseRejectRequest v = do
+    r@(Request{change}) <- fromJSON v
+    case operation change of
+        Insert _ -> expected "insert" $ Just "delete"
+        Delete _ -> expected "delete" $ Just "insert"
+        Update _ _ -> pure $ RejectRequest r
+
+parseAcceptRequest
+    :: (Alternative m, ReportSchemaErrors m) => JSValue -> m RequestZoo
+parseAcceptRequest v = do
+    r@(Request{change}) <- fromJSON v
+    case operation change of
+        Insert _ -> expected "insert" $ Just "delete"
+        Delete _ -> expected "delete" $ Just "insert"
+        Update _ _ -> pure $ AcceptRequest r
+
+parseFinishedRequest
+    :: (Alternative m, ReportSchemaErrors m) => JSValue -> m RequestZoo
+parseFinishedRequest v = do
+    r@(Request{change}) <- fromJSON v
+    case operation change of
+        Insert _ -> expected "insert" $ Just "delete"
+        Delete _ -> expected "delete" $ Just "insert"
+        Update _ _ -> pure $ FinishedRequest r
+
 instance (Alternative m, ReportSchemaErrors m) => FromJSON m RequestZoo where
     fromJSON v = do
-        parseRegisterUserKey v <|> parseRegisterRoleKey v
+        parseRegisterUserKey v
+            <|> parseRegisterRoleKey v
+            <|> parseCreateTestRequest v
+            <|> parseRejectRequest v
+            <|> parseAcceptRequest v
+            <|> parseFinishedRequest v
 
 instance Monad m => ToJSON m RequestZoo where
     toJSON (RegisterUserRequest req) =

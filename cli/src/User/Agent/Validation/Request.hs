@@ -65,6 +65,19 @@ checkTryIndex
             then return Nothing
             else return $ Just UnacceptableTryIndex
 
+checkCommit
+    :: Monad m
+    => Validation m
+    -> TestRun
+    -> m (Maybe TestRunRejection)
+checkCommit
+    Validation{githubCommitExists}
+    testRun = do
+        exists <- githubCommitExists (repository testRun) (commitId testRun)
+        if exists
+            then return Nothing
+            else return $ Just UnacceptableCommit
+
 validateRequest
     :: Monad m
     => AgentValidationConfig
@@ -83,6 +96,7 @@ validateRequest
                     [ pure $ checkDuration config duration
                     , checkRole validation testRun
                     , checkTryIndex validation testRun
+                    , checkCommit validation testRun
                     ]
 
         case result of

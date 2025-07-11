@@ -46,13 +46,19 @@ import User.Types
     , requesterL
     , tryIndexL
     )
-import Validation (Validation (Validation))
+import Validation (Validation (..))
 
-noFacts :: Monad m => Validation m
-noFacts = Validation $ return []
+noValidation :: Monad m => Validation m
+noValidation = mkValidation [] []
 
-validation :: Monad m => [Fact] -> Validation m
-validation fs = Validation $ return fs
+mkValidation
+    :: Monad m => [Fact] -> [(Repository, Commit)] -> Validation m
+mkValidation fs rs =
+    Validation
+        { mpfsGetFacts = return fs
+        , githubCommitExists = \repository commit ->
+            return $ (repository, commit) `elem` rs
+        }
 
 registerRole
     :: Monad m => String -> String -> String -> String -> m Fact
@@ -196,7 +202,8 @@ spec = do
         it "reports unaccaptable duration" $ property $ \n -> do
             let testRun = emptyTestRun
                 testRunState = Pending (Duration n)
-            mresult <- validateRequest testConfig noFacts testRun testRunState
+            mresult <-
+                validateRequest testConfig noValidation testRun testRunState
             onConditionHaveReason mresult UnacceptableDuration
                 $ n < minDuration testConfig || n > maxDuration testConfig
         it "reports unacceptable role"
@@ -226,7 +233,7 @@ spec = do
                                     (different organization)
                                     (different project)
                                     (different username)
-                            let facts = validation [user, role]
+                            let validation = mkValidation [user, role] []
                             let testRun =
                                     emptyTestRun
                                         & set platformL (Platform $ same platform)
@@ -239,7 +246,7 @@ spec = do
                                             )
                                         & set requesterL (Username $ same username)
                                 testRunState = Pending (Duration 5)
-                            mresult <- validateRequest testConfig facts testRun testRunState
+                            mresult <- validateRequest testConfig validation testRun testRunState
                             onConditionHaveReason mresult UnacceptableRole
                                 $ not allTheSame
         it "reports unacceptable try index"
@@ -258,7 +265,7 @@ spec = do
                                 tryIndexRequest == tryIndexFact + 1
                             Nothing -> tryIndexRequest == 1
                     cover 5 rightIndex "pass" $ do
-                        facts <- case mTryIndexFact of
+                        validation <- case mTryIndexFact of
                             Just (Positive tryIndexFact) -> do
                                 testRunFact <-
                                     registerTestRun
@@ -270,8 +277,8 @@ spec = do
                                         tryIndexFact
                                         (asciiString username)
                                         duration
-                                return $ validation [testRunFact]
-                            Nothing -> return noFacts
+                                return $ mkValidation [testRunFact] []
+                            Nothing -> return noValidation
                         let testRun =
                                 emptyTestRun
                                     & set platformL (Platform $ asciiString platform)
@@ -287,6 +294,6 @@ spec = do
                                     & set tryIndexL (Try tryIndexRequest)
                                     & set requesterL (Username $ asciiString username)
                             testRunState = Pending (Duration 5)
-                        mresult <- validateRequest testConfig facts testRun testRunState
+                        mresult <- validateRequest testConfig validation testRun testRunState
                         onConditionHaveReason mresult UnacceptableTryIndex
                             $ not rightIndex

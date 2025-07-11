@@ -19,6 +19,7 @@ import Core.Types
 import Data.Aeson (eitherDecodeFileStrict')
 import Data.Aeson.Types qualified as Aeson
 import GHC.Generics (Generic)
+import Lib.GitHub qualified as GitHub
 import MPFS.API (getTokenFacts, retractChange)
 import Oracle.Cli (OracleCommand (..), oracleCmd)
 import Servant.Client (ClientM)
@@ -69,6 +70,8 @@ mkValidation tk =
                 Just factsObject' -> do
                     let factsList = parseFacts factsObject'
                     return $ uncurry Fact <$> factsList
+        , githubCommitExists = \repository commit ->
+            liftIO $ GitHub.githubCommitExists repository commit
         }
 
 cmd

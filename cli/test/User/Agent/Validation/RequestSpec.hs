@@ -23,13 +23,13 @@ import Test.Hspec
     , shouldNotContain
     )
 import Test.QuickCheck
-    ( Arbitrary (..)
-    , Positive (..)
+    ( Positive (..)
     , Testable (..)
     , cover
-    , elements
-    , suchThat
     )
+import Test.QuickCheck.Commit (CommitValue (..))
+import Test.QuickCheck.JSString (JSStringValue (..))
+import Test.QuickCheck.Same (isTheSame, theSame, tryDifferent)
 import Text.JSON.Canonical (ToJSON (..))
 import User.Agent.Validation.Config (AgentValidationConfig (..))
 import User.Agent.Validation.Request (validateRequest)
@@ -164,38 +164,6 @@ onConditionHaveReason result reason = \case
     True -> shouldHaveReason result reason
     False -> shouldNotHaveReason result reason
 
-data Same a = Same a | NotSame a a
-    deriving (Show, Eq)
-
-tryDifferent :: Same a -> a
-tryDifferent (Same a) = a
-tryDifferent (NotSame _ a) = a
-
-theSame :: Same a -> a
-theSame (Same a) = a
-theSame (NotSame a _) = a
-
-ascii :: String
-ascii = ['a' .. 'z'] <> ['A' .. 'Z'] <> ['0' .. '9'] <> [' ', '-', '_']
-
-newtype Ascii = Ascii Char
-    deriving (Show, Eq)
-
-instance Arbitrary Ascii where
-    arbitrary = Ascii <$> elements ascii
-
-asciiString :: [Ascii] -> String
-asciiString = map (\(Ascii c) -> c)
-instance (Eq a, Arbitrary a) => Arbitrary (Same a) where
-    arbitrary = do
-        a <- arbitrary
-        b <- arbitrary `suchThat` (/= a)
-        elements [Same a, NotSame a b]
-
-isTheSame :: Same a -> Bool
-isTheSame (Same _) = True
-isTheSame (NotSame _ _) = False
-
 spec :: Spec
 spec = do
     describe "validateRequest" $ do
@@ -217,8 +185,8 @@ spec = do
                                 && isTheSame organization
                                 && isTheSame project
                                 && isTheSame username
-                        different = asciiString . tryDifferent
-                        same = asciiString . theSame
+                        different = getJSStringValue . tryDifferent
+                        same = getJSStringValue . theSame
 
                     cover 5 allTheSame "pass" $ do
                         do
@@ -251,14 +219,14 @@ spec = do
                                 $ not allTheSame
         it "reports unacceptable try index"
             $ property
-            $ \platform
-               organization
-               project
-               directory
-               commitId
+            $ \(JSStringValue platform)
+               (JSStringValue organization)
+               (JSStringValue project)
+               (JSStringValue directory)
+               (CommitValue commitId)
                mTryIndexFact
                (Positive tryIndexRequest)
-               username
+               (JSStringValue username)
                duration -> do
                     let rightIndex = case mTryIndexFact of
                             Just ((Positive tryIndexFact)) ->
@@ -269,30 +237,30 @@ spec = do
                             Just (Positive tryIndexFact) -> do
                                 testRunFact <-
                                     registerTestRun
-                                        (asciiString platform)
-                                        (asciiString organization)
-                                        (asciiString project)
-                                        (asciiString directory)
-                                        (asciiString commitId)
+                                        platform
+                                        organization
+                                        project
+                                        directory
+                                        commitId
                                         tryIndexFact
-                                        (asciiString username)
+                                        username
                                         duration
                                 return $ mkValidation [testRunFact] []
                             Nothing -> return noValidation
                         let testRun =
                                 emptyTestRun
-                                    & set platformL (Platform $ asciiString platform)
+                                    & set platformL (Platform platform)
                                     & set
                                         repositoryL
                                         ( Repository
-                                            { organization = asciiString organization
-                                            , project = asciiString project
+                                            { organization = organization
+                                            , project = project
                                             }
                                         )
-                                    & set directoryL (Directory $ asciiString directory)
-                                    & set commitIdL (Commit $ asciiString commitId)
+                                    & set directoryL (Directory directory)
+                                    & set commitIdL (Commit commitId)
                                     & set tryIndexL (Try tryIndexRequest)
-                                    & set requesterL (Username $ asciiString username)
+                                    & set requesterL (Username username)
                             testRunState = Pending (Duration 5)
                         mresult <- validateRequest testConfig validation testRun testRunState
                         onConditionHaveReason mresult UnacceptableTryIndex

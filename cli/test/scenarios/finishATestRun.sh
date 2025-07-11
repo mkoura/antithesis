@@ -66,6 +66,7 @@ expectedFacts=$(
 [
   {
     "key": {
+      "type": "test-run",
       "commitId": "test-commit",
       "directory": "test-dir",
       "platform": "test-hub",

@@ -102,7 +102,8 @@ instance Monad m => ToJSON m TestRun where
                 (Username requester)
             ) =
             object
-                [ ("platform", stringJSON platform)
+                [ ("type", stringJSON "test-run")
+                , ("platform", stringJSON platform)
                 ,
                     ( "repository"
                     , object
@@ -119,25 +120,32 @@ instance Monad m => ToJSON m TestRun where
 instance (Monad m, ReportSchemaErrors m) => FromJSON m TestRun where
     fromJSON obj@(JSObject _) = do
         mapping <- fromJSON obj
-        platform <- getStringField "platform" mapping
-        repository <- do
-            repoMapping <- getStringMapField "repository" mapping
-            owner <- getStringField "organization" repoMapping
-            repo <- getStringField "repo" repoMapping
-            pure $ Repository{organization = owner, project = repo}
-        directory <- getStringField "directory" mapping
-        commitId <- getStringField "commitId" mapping
-        tryIndex <- getIntegralField "try" mapping
-        requester <- getStringField "requester" mapping
-        pure
-            $ TestRun
-                { platform = Platform platform
-                , repository = repository
-                , directory = Directory directory
-                , commitId = Commit commitId
-                , tryIndex = Try tryIndex
-                , requester = Username requester
-                }
+        requestType <- mapping .: "type"
+        case requestType of
+            JSString "test-run" -> do
+                platform <- getStringField "platform" mapping
+                repository <- do
+                    repoMapping <- getStringMapField "repository" mapping
+                    owner <- getStringField "organization" repoMapping
+                    repo <- getStringField "repo" repoMapping
+                    pure $ Repository{organization = owner, project = repo}
+                directory <- getStringField "directory" mapping
+                commitId <- getStringField "commitId" mapping
+                tryIndex <- getIntegralField "try" mapping
+                requester <- getStringField "requester" mapping
+                pure
+                    $ TestRun
+                        { platform = Platform platform
+                        , repository = repository
+                        , directory = Directory directory
+                        , commitId = Commit commitId
+                        , tryIndex = Try tryIndex
+                        , requester = Username requester
+                        }
+            _ ->
+                expectedButGotValue
+                    "a test-run type tagged request"
+                    obj
     fromJSON r =
         expectedButGotValue
             "an object representing a test run"

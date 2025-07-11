@@ -19,9 +19,11 @@ spec :: Spec
 spec = do
     describe "E2E tests" $ do
         describe "should prove that agent" $ do
-            it "can to reject a test-run"
+            it "can reject a test-run"
                 $ runScenario "rejectATestRun.sh"
-            it "can to accept a test-run"
+            it "can accept a test-run"
                 $ runScenario "acceptATestRun.sh"
             it "can finish a test-run"
                 $ runScenario "finishATestRun.sh"
+            it "can validate a test-run"
+                $ runScenario "validateATestRun.sh"

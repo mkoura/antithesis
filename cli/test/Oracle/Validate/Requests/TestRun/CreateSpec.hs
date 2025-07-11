@@ -52,15 +52,21 @@ import User.Types
 import Validation (Validation (..))
 
 noValidation :: Monad m => Validation m
-noValidation = mkValidation [] []
+noValidation = mkValidation [] [] []
 
 mkValidation
-    :: Monad m => [Fact] -> [(Repository, Commit)] -> Validation m
-mkValidation fs rs =
+    :: Monad m
+    => [Fact]
+    -> [(Repository, Commit)]
+    -> [(Repository, Commit, Directory)]
+    -> Validation m
+mkValidation fs rs ds =
     Validation
         { mpfsGetFacts = return fs
         , githubCommitExists = \repository commit ->
             return $ (repository, commit) `elem` rs
+        , githubDirectoryExists = \repository commit dir ->
+            return $ (repository, commit, dir) `elem` ds
         }
 
 registerRole
@@ -204,7 +210,7 @@ spec = do
                                     (different organization)
                                     (different project)
                                     (different username)
-                            let validation = mkValidation [user, role] []
+                            let validation = mkValidation [user, role] [] []
                             let testRun =
                                     emptyTestRun
                                         & set platformL (Platform $ same platform)
@@ -226,10 +232,10 @@ spec = do
                             onConditionHaveReason mresult UnacceptableRole
                                 $ not allTheSame
         it "reports unacceptable try index" $ do
-            let factIndexGen tryIndexReuest =
+            let factIndexGen tryIndexRequest =
                     withNothing 0.8
                         $ withAPresence 0.2
-                        $ tryIndexReuest + 1
+                        $ tryIndexRequest + 1
             property
                 $ \(JSStringValue platform)
                    (JSStringValue organization)
@@ -257,7 +263,7 @@ spec = do
                                                 tryIndexFact
                                                 username
                                                 duration
-                                        return $ mkValidation [testRunFact] []
+                                        return $ mkValidation [testRunFact] [] []
                                     Nothing -> return noValidation
                                 let testRun =
                                         emptyTestRun
@@ -282,3 +288,62 @@ spec = do
                                         testRunState
                                 onConditionHaveReason mresult UnacceptableTryIndex
                                     $ not rightIndex
+
+        it "reports unacceptable directory" $ do
+            let factDirectoryGen = withAPresence 0.3
+            property
+                $ \(JSStringValue platform)
+                   (JSStringValue organization)
+                   (JSStringValue project)
+                   (JSStringValue directory)
+                   (CommitValue commitId)
+                   tryIndexRequest
+                   (JSStringValue username)
+                   duration ->
+                        forAll (factDirectoryGen directory) $ \directoryFact -> do
+                            let rightDirectory = directory == directoryFact
+                            cover 5 rightDirectory "pass" $ do
+                                validation <- do
+                                    testRunFact <-
+                                        registerTestRun
+                                            platform
+                                            organization
+                                            project
+                                            directory
+                                            commitId
+                                            tryIndexRequest
+                                            username
+                                            duration
+                                    return
+                                        $ mkValidation
+                                            [testRunFact]
+                                            []
+                                            [
+                                                ( Repository organization project
+                                                , Commit commitId
+                                                , Directory directoryFact
+                                                )
+                                            ]
+                                let testRun =
+                                        emptyTestRun
+                                            & set platformL (Platform platform)
+                                            & set
+                                                repositoryL
+                                                ( Repository
+                                                    { organization = organization
+                                                    , project = project
+                                                    }
+                                                )
+                                            & set directoryL (Directory directory)
+                                            & set commitIdL (Commit commitId)
+                                            & set tryIndexL (Try tryIndexRequest)
+                                            & set requesterL (Username username)
+                                    testRunState = Pending (Duration 5)
+                                mresult <-
+                                    validateCreateTestRun
+                                        testConfig
+                                        validation
+                                        testRun
+                                        testRunState
+                                onConditionHaveReason mresult UnacceptableDirectory
+                                    $ not rightDirectory

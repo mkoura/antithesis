@@ -1,17 +1,19 @@
 module Lib.GitHub
     ( githubCommitExists
+    , githubDirectoryExists
     ) where
 
 import Control.Exception
     ( Exception
     , throwIO
     )
-import Core.Types (Commit (..), Repository (..))
+import Core.Types (Commit (..), Directory (..), Repository (..))
 import Data.ByteString.Char8 qualified as B
 import Data.Text qualified as T
 import GitHub (Auth (..), GitHubRW, github)
 import GitHub.Data.Name (Name (..))
 import GitHub.Endpoints.Repos.Commits qualified as GH
+import GitHub.Endpoints.Repos.Contents qualified as GH
 import Network.HTTP.Client
     ( HttpException (..)
     , HttpExceptionContent (StatusCodeException)
@@ -30,7 +32,7 @@ callGithub req = do
     auth <- getOAUth
     github auth req
 
-data GithubError = RepositoryNotFound
+data GithubError = RepositoryNotFound | DirectoryNotFound
     deriving (Show)
 
 instance Exception GithubError
@@ -70,3 +72,25 @@ githubCommitExists (Repository owner repo) (Commit sha) = do
     owner' = N $ T.pack owner
     repo' = N $ T.pack repo
     sha' = N $ T.pack sha
+
+githubDirectoryExists
+    :: Repository -> Commit -> Directory -> IO Bool
+githubDirectoryExists (Repository owner repo) (Commit sha) (Directory dir) = do
+    let path = T.pack dir
+    contents <-
+        callGithub
+            $ GH.contentsForR
+                owner'
+                repo'
+                path
+                (Just sha')
+    case contents of
+        Left e -> onStatusCodeOfException e $ \_ -> do
+            return $ Just False
+        Right _ -> return True
+  where
+    -- If the directory exists, the API will return a list of contents.
+
+    owner' = N $ T.pack owner
+    repo' = N $ T.pack repo
+    sha' = T.pack sha

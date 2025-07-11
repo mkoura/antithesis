@@ -81,6 +81,23 @@ checkCommit
             then return Nothing
             else return $ Just UnacceptableCommit
 
+checkDirectory
+    :: Monad m
+    => Validation m
+    -> TestRun
+    -> m (Maybe TestRunRejection)
+checkDirectory
+    Validation{githubDirectoryExists}
+    testRun = do
+        exists <-
+            githubDirectoryExists
+                (repository testRun)
+                (commitId testRun)
+                (directory testRun)
+        if exists
+            then return Nothing
+            else return $ Just UnacceptableDirectory
+
 validateCreateTestRun
     :: Monad m
     => TestRunValidationConfig
@@ -100,6 +117,7 @@ validateCreateTestRun
                     , checkRole validation testRun
                     , checkTryIndex validation testRun
                     , checkCommit validation testRun
+                    , checkDirectory validation testRun
                     ]
 
         case result of

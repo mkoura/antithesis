@@ -67,7 +67,7 @@ log "Creating a test-run request..."
 result=$(anti requester create-test \
     --platform github \
     --repository cardano-foundation/antithesis \
-    --directory test-dir \
+    --directory compose \
     --commit d9fb8d2bcfa321497ae3a89244bf13513a9a9a14 \
     --username paolino \
     --try 1 \

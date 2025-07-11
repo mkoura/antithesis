@@ -3,7 +3,7 @@
 module User.Agent.Validation.RequestSpec (spec)
 where
 
-import Control.Lens (set, (&))
+import Control.Lens (set, under, (&))
 import Core.Types
     ( Commit (Commit)
     , Directory (Directory)
@@ -23,12 +23,13 @@ import Test.Hspec
     , shouldNotContain
     )
 import Test.QuickCheck
-    ( Positive (..)
-    , Testable (..)
+    ( Testable (..)
     , cover
+    , forAll
     )
 import Test.QuickCheck.Commit (CommitValue (..))
 import Test.QuickCheck.JSString (JSStringValue (..))
+import Test.QuickCheck.Lib (withAPresence, withNothing)
 import Test.QuickCheck.Same (isTheSame, theSame, tryDifferent)
 import Text.JSON.Canonical (ToJSON (..))
 import User.Agent.Validation.Config (AgentValidationConfig (..))
@@ -214,54 +215,68 @@ spec = do
                                             )
                                         & set requesterL (Username $ same username)
                                 testRunState = Pending (Duration 5)
-                            mresult <- validateRequest testConfig validation testRun testRunState
+                            mresult <-
+                                validateRequest
+                                    testConfig
+                                    validation
+                                    testRun
+                                    testRunState
                             onConditionHaveReason mresult UnacceptableRole
                                 $ not allTheSame
-        it "reports unacceptable try index"
-            $ property
-            $ \(JSStringValue platform)
-               (JSStringValue organization)
-               (JSStringValue project)
-               (JSStringValue directory)
-               (CommitValue commitId)
-               mTryIndexFact
-               (Positive tryIndexRequest)
-               (JSStringValue username)
-               duration -> do
-                    let rightIndex = case mTryIndexFact of
-                            Just ((Positive tryIndexFact)) ->
-                                tryIndexRequest == tryIndexFact + 1
-                            Nothing -> tryIndexRequest == 1
-                    cover 5 rightIndex "pass" $ do
-                        validation <- case mTryIndexFact of
-                            Just (Positive tryIndexFact) -> do
-                                testRunFact <-
-                                    registerTestRun
-                                        platform
-                                        organization
-                                        project
-                                        directory
-                                        commitId
-                                        tryIndexFact
-                                        username
-                                        duration
-                                return $ mkValidation [testRunFact] []
-                            Nothing -> return noValidation
-                        let testRun =
-                                emptyTestRun
-                                    & set platformL (Platform platform)
-                                    & set
-                                        repositoryL
-                                        ( Repository
-                                            { organization = organization
-                                            , project = project
-                                            }
-                                        )
-                                    & set directoryL (Directory directory)
-                                    & set commitIdL (Commit commitId)
-                                    & set tryIndexL (Try tryIndexRequest)
-                                    & set requesterL (Username username)
-                            testRunState = Pending (Duration 5)
-                        mresult <- validateRequest testConfig validation testRun testRunState
-                        onConditionHaveReason mresult UnacceptableTryIndex
-                            $ not rightIndex
+        it "reports unacceptable try index" $ do
+            let factIndexGen tryIndexReuest =
+                    withNothing 0.8
+                        $ withAPresence 0.2
+                        $ tryIndexReuest + 1
+            property
+                $ \(JSStringValue platform)
+                   (JSStringValue organization)
+                   (JSStringValue project)
+                   (JSStringValue directory)
+                   (CommitValue commitId)
+                   tryIndexRequest
+                   (JSStringValue username)
+                   duration -> forAll (factIndexGen tryIndexRequest)
+                        $ \mTryIndexFact -> do
+                            let rightIndex = case mTryIndexFact of
+                                    Just tryIndexFact ->
+                                        tryIndexRequest == tryIndexFact + 1
+                                    Nothing -> tryIndexRequest == 1
+                            cover 5 rightIndex "pass" $ do
+                                validation <- case mTryIndexFact of
+                                    Just tryIndexFact -> do
+                                        testRunFact <-
+                                            registerTestRun
+                                                platform
+                                                organization
+                                                project
+                                                directory
+                                                commitId
+                                                tryIndexFact
+                                                username
+                                                duration
+                                        return $ mkValidation [testRunFact] []
+                                    Nothing -> return noValidation
+                                let testRun =
+                                        emptyTestRun
+                                            & set platformL (Platform platform)
+                                            & set
+                                                repositoryL
+                                                ( Repository
+                                                    { organization = organization
+                                                    , project = project
+                                                    }
+                                                )
+                                            & set directoryL (Directory directory)
+                                            & set commitIdL (Commit commitId)
+                                            & set tryIndexL (Try tryIndexRequest)
+                                            & set requesterL (Username username)
+                                    testRunState = Pending (Duration 5)
+                                mresult <-
+                                    validateRequest
+                                        testConfig
+                                        validation
+                                        testRun
+                                        testRunState
+                                onConditionHaveReason mresult UnacceptableTryIndex
+                                    $ not rightIndex

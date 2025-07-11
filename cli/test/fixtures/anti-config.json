@@ -1,0 +1,6 @@
+{
+    "agentValidationConfig": {
+        "minDuration": 1,
+        "maxDuration": 12
+    }
+}

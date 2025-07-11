@@ -7,12 +7,12 @@ module User.TypesSpec
 where
 
 import Core.Types
-    ( Directory (Directory)
+    ( Commit (Commit)
+    , Directory (Directory)
     , Duration (..)
     , Platform (Platform)
     , PublicKeyHash (..)
     , Repository (Repository, organization, project)
-    , SHA1 (SHA1)
     , Try (..)
     , Username (Username)
     )
@@ -57,7 +57,7 @@ spec = do
                                 { organization = "user"
                                 , project = "repo"
                                 }
-                        , commitId = SHA1 "abc123"
+                        , commitId = Commit "abc123"
                         , directory = Directory "src"
                         , requester = Username "tester"
                         , tryIndex = Try 1

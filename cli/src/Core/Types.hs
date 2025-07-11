@@ -20,7 +20,7 @@ module Core.Types
     , RequestRefId (..)
     , Role (..)
     , Root (..)
-    , SHA1 (..)
+    , Commit (..)
     , SignedTx (..)
     , SignTxError (..)
     , TokenId (..)
@@ -281,7 +281,7 @@ newtype Platform = Platform String
 newtype PublicKeyHash = PublicKeyHash String
     deriving (Eq, Show)
 
-newtype SHA1 = SHA1 String
+newtype Commit = Commit String
     deriving (Eq, Show)
 
 newtype Role = Role String

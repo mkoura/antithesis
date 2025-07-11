@@ -27,12 +27,12 @@ import Control.Applicative (Alternative)
 import Control.Lens (makeLensesFor)
 import Control.Monad (guard)
 import Core.Types
-    ( Directory (..)
+    ( Commit (..)
+    , Directory (..)
     , Duration (..)
     , Platform (..)
     , PublicKeyHash (..)
     , Repository (..)
-    , SHA1 (..)
     , Try (..)
     , Username (..)
     )
@@ -62,7 +62,7 @@ data TestRun = TestRun
     { platform :: Platform
     , repository :: Repository
     , directory :: Directory
-    , commitId :: SHA1
+    , commitId :: Commit
     , tryIndex :: Try
     , requester :: Username
     }
@@ -97,7 +97,7 @@ instance Monad m => ToJSON m TestRun where
                 (Platform platform)
                 (Repository owner repo)
                 (Directory directory)
-                (SHA1 commitId)
+                (Commit commitId)
                 (Try tryIndex)
                 (Username requester)
             ) =
@@ -134,7 +134,7 @@ instance (Monad m, ReportSchemaErrors m) => FromJSON m TestRun where
                 { platform = Platform platform
                 , repository = repository
                 , directory = Directory directory
-                , commitId = SHA1 commitId
+                , commitId = Commit commitId
                 , tryIndex = Try tryIndex
                 , requester = Username requester
                 }

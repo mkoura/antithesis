@@ -15,14 +15,14 @@ module Core.Options
 where
 
 import Core.Types
-    ( Directory (..)
+    ( Commit (..)
+    , Directory (..)
     , Duration (..)
     , Platform (..)
     , PublicKeyHash (..)
     , Repository (..)
     , RequestRefId (..)
     , Role (..)
-    , SHA1 (..)
     , Try (..)
     , Username (..)
     )
@@ -67,9 +67,9 @@ repositoryOption =
             <> help "The repository in the format 'organization/project'"
         )
 
-commitOption :: Parser SHA1
+commitOption :: Parser Commit
 commitOption =
-    SHA1
+    Commit
         <$> strOption
             ( long "commit"
                 <> short 'c'

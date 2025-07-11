@@ -5,13 +5,13 @@ where
 
 import Control.Lens (set, (&))
 import Core.Types
-    ( Directory (Directory)
+    ( Commit (Commit)
+    , Directory (Directory)
     , Duration (..)
     , Fact (..)
     , Platform (Platform)
     , PublicKeyHash (PublicKeyHash)
     , Repository (Repository, organization, project)
-    , SHA1 (SHA1)
     , Try (Try)
     , Username (Username)
     )
@@ -113,7 +113,7 @@ registerTestRun
                             , project
                             }
                     , directory = Directory directory
-                    , commitId = SHA1 commitId
+                    , commitId = Commit commitId
                     , tryIndex = Try tryIndex
                     , requester = Username requester
                     }
@@ -130,7 +130,7 @@ emptyTestRun =
                 , project = ""
                 }
         , directory = Directory ""
-        , commitId = SHA1 ""
+        , commitId = Commit ""
         , tryIndex = Try 1
         , requester = Username ""
         }
@@ -283,7 +283,7 @@ spec = do
                                             }
                                         )
                                     & set directoryL (Directory $ asciiString directory)
-                                    & set commitIdL (SHA1 $ asciiString commitId)
+                                    & set commitIdL (Commit $ asciiString commitId)
                                     & set tryIndexL (Try tryIndexRequest)
                                     & set requesterL (Username $ asciiString username)
                             testRunState = Pending (Duration 5)

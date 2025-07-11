@@ -1,9 +1,9 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 
-module User.Agent.Validation.RequestSpec (spec)
+module Oracle.Validate.Requests.TestRun.CreateSpec (spec)
 where
 
-import Control.Lens (set, under, (&))
+import Control.Lens (set, (&))
 import Core.Types
     ( Commit (Commit)
     , Directory (Directory)
@@ -15,6 +15,10 @@ import Core.Types
     , Try (Try)
     , Username (Username)
     )
+import Oracle.Validate.Requests.TestRun.Config
+    ( TestRunValidationConfig (..)
+    )
+import Oracle.Validate.Requests.TestRun.Create (validateRequest)
 import Test.Hspec
     ( Spec
     , describe
@@ -32,8 +36,6 @@ import Test.QuickCheck.JSString (JSStringValue (..))
 import Test.QuickCheck.Lib (withAPresence, withNothing)
 import Test.QuickCheck.Same (isTheSame, theSame, tryDifferent)
 import Text.JSON.Canonical (ToJSON (..))
-import User.Agent.Validation.Config (AgentValidationConfig (..))
-import User.Agent.Validation.Request (validateRequest)
 import User.Types
     ( RegisterRoleKey (..)
     , RegisterUserKey (..)
@@ -142,9 +144,9 @@ emptyTestRun =
         , requester = Username ""
         }
 
-testConfig :: AgentValidationConfig
+testConfig :: TestRunValidationConfig
 testConfig =
-    AgentValidationConfig
+    TestRunValidationConfig
         { maxDuration = 6
         , minDuration = 1
         }

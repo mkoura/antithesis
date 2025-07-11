@@ -10,13 +10,11 @@ module User.Agent.Cli
     )
 where
 
-import Control.Monad (forM)
 import Core.Types
     ( Duration
     , TokenId
     , Wallet
     , WithTxHash (..)
-    , parseFacts
     )
 import Data.List (find)
 import MPFS.API
@@ -26,6 +24,10 @@ import MPFS.API
     , requestInsert
     , requestUpdate
     )
+import Oracle.Validate.Requests.TestRun.Config
+    ( TestRunValidationConfig
+    )
+import Oracle.Validate.Requests.TestRun.Create (validateRequest)
 import Servant.Client (ClientM)
 import Submitting (Submitting, signAndSubmit)
 import Text.JSON.Canonical
@@ -33,32 +35,26 @@ import Text.JSON.Canonical
     , JSValue (..)
     , ToJSON (..)
     )
-import User.Agent.Validation.Config (AgentValidationConfig)
-import User.Agent.Validation.Request (validateRequest)
 import User.Types
-    ( AgentValidation (..)
-    , Phase (..)
+    ( Phase (..)
     , TestRun (..)
     , TestRunRejection
     , TestRunState (..)
     , URL (..)
     )
-import Validation (Validation)
 
 agentCmd
     :: Submitting
-    -> AgentValidationConfig
-    -> Validation ClientM
     -> Wallet
     -> TokenId
     -> AgentCommand NotReady a
     -> ClientM a
-agentCmd sbmt cfg validation wallet tokenId cmdNotReady = do
+agentCmd sbmt wallet tokenId cmdNotReady = do
     mCmdReady <- resolveOldState tokenId cmdNotReady
     case mCmdReady of
         Nothing -> error "No previous state found for the command"
         Just cmdReady ->
-            agentCmdCore sbmt cfg validation wallet tokenId cmdReady
+            agentCmdCore sbmt wallet tokenId cmdReady
 
 withExpectedState
     :: FromJSON Maybe (TestRunState phase)
@@ -99,7 +95,6 @@ resolveOldState tokenId cmd = case cmd of
     Report key () duration url ->
         withExpectedState tokenId key $ \runningState ->
             pure $ Report key runningState duration url
-    ValidateRequests -> pure $ Just ValidateRequests
 
 data IsReady = NotReady | Ready
     deriving (Show, Eq)
@@ -131,7 +126,6 @@ data AgentCommand (phase :: IsReady) result where
         -> Duration
         -> URL
         -> AgentCommand phase (WithTxHash (TestRunState DoneT))
-    ValidateRequests :: AgentCommand phase [AgentValidation]
 
 deriving instance Show (AgentCommand NotReady result)
 deriving instance Eq (AgentCommand NotReady result)
@@ -140,13 +134,11 @@ deriving instance Eq (AgentCommand Ready result)
 
 agentCmdCore
     :: Submitting
-    -> AgentValidationConfig
-    -> Validation ClientM
     -> Wallet
     -> TokenId
     -> AgentCommand Ready result
     -> ClientM result
-agentCmdCore sbmt cfg validation wallet tokenId cmd = case cmd of
+agentCmdCore sbmt wallet tokenId cmd = case cmd of
     Create key duration -> do
         createCommand sbmt wallet tokenId key duration
     Accept key pending -> acceptCommand sbmt wallet tokenId key pending
@@ -154,20 +146,6 @@ agentCmdCore sbmt cfg validation wallet tokenId cmd = case cmd of
         rejectCommand sbmt wallet tokenId key pending reason
     Report key running duration url ->
         reportCommand sbmt wallet tokenId key running duration url
-    ValidateRequests -> do
-        factsObject <- getTokenFacts tokenId
-        let parsed :: Maybe [(TestRun, TestRunState PendingT)] = do
-                facts <- fromJSON factsObject
-                pure $ parseFacts facts
-        case parsed of
-            Nothing -> error "Failed to parse facts"
-            Just testRuns -> forM testRuns $ \(testRun, state) -> do
-                mReasons <- validateRequest cfg validation testRun state
-                pure
-                    $ AgentValidation
-                        { testRun
-                        , validation = mReasons
-                        }
 
 signAndSubmitAnUpdate
     :: (ToJSON ClientM old, ToJSON ClientM new, ToJSON ClientM res)

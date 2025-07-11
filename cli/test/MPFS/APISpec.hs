@@ -334,7 +334,7 @@ spec = do
                     wallet <- loadRequesterWallet
                     call $ do
                         insert <-
-                            requesterCmd wait180 undefined undefined wallet tokenId
+                            requesterCmd wait180 wallet tokenId
                                 $ RegisterUser
                                 $ RegisterUserKey
                                     { platform = Platform "test-platform"
@@ -357,10 +357,10 @@ spec = do
                     keyJ <- toJSON key
                     call $ do
                         insertTx <-
-                            requesterCmd wait180 undefined undefined requester tokenId
+                            requesterCmd wait180 requester tokenId
                                 $ RegisterUser key
                         _updateInsertTx <-
-                            oracleCmd wait180 oracle (Just tokenId)
+                            oracleCmd wait180 oracle undefined (Just tokenId)
                                 $ OracleTokenCommand
                                 $ UpdateToken
                                     [ RequestRefId
@@ -376,10 +376,10 @@ spec = do
                                     ]
                                 ]
                         deleteTx <-
-                            requesterCmd wait180 undefined undefined requester tokenId
+                            requesterCmd wait180 requester tokenId
                                 $ UnregisterUser key
                         _updateDeleteTx <-
-                            oracleCmd wait180 oracle (Just tokenId)
+                            oracleCmd wait180 oracle undefined (Just tokenId)
                                 $ OracleTokenCommand
                                 $ UpdateToken
                                     [ RequestRefId

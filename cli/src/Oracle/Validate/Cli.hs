@@ -26,6 +26,9 @@ import Oracle.Validate.Logic
     ( ValidationResult
     , validateRequest
     )
+import Oracle.Validate.Requests.TestRun.Config
+    ( TestRunValidationConfig
+    )
 import Servant.Client (ClientM)
 import Text.JSON.Canonical
     ( FromJSON (..)
@@ -34,13 +37,19 @@ import Text.JSON.Canonical
     , mkObject
     , toJSString
     )
+import Validation (Validation)
 
 data ValidateCommand
     = ValidateRequests
     deriving (Eq, Show)
 
-validateCmd :: TokenId -> ValidateCommand -> ClientM JSValue
-validateCmd tk command = do
+validateCmd
+    :: TestRunValidationConfig
+    -> Validation ClientM
+    -> TokenId
+    -> ValidateCommand
+    -> ClientM JSValue
+validateCmd testRunConfig validation tk command = do
     rus <- case command of
         ValidateRequests -> do
             canonicalJSON <- getToken tk
@@ -54,7 +63,8 @@ validateCmd tk command = do
                     Left e -> error $ "Failed to parse token: " ++ e
                     Right jsValue -> pure jsValue
             forM requests $ \request -> do
-                validateRequest tk request >>= uncurry mkResult
+                validateRequest testRunConfig validation request
+                    >>= uncurry mkResult
     toJSON rus
 
 mkResult :: Monad m => RequestRefId -> ValidationResult -> m JSValue

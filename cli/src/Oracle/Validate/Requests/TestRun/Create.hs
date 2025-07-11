@@ -1,4 +1,4 @@
-module User.Agent.Validation.Request
+module Oracle.Validate.Requests.TestRun.Create
     ( validateRequest
     ) where
 
@@ -9,8 +9,10 @@ import Core.Types
     , parseFacts
     )
 import Data.Maybe (catMaybes)
+import Oracle.Validate.Requests.TestRun.Config
+    ( TestRunValidationConfig (..)
+    )
 import Text.JSON.Canonical (ToJSON (..))
-import User.Agent.Validation.Config (AgentValidationConfig (..))
 import User.Types
     ( Phase (PendingT)
     , TestRun (..)
@@ -21,8 +23,8 @@ import User.Types
 import Validation (Validation (..))
 
 checkDuration
-    :: AgentValidationConfig -> Duration -> Maybe TestRunRejection
-checkDuration AgentValidationConfig{maxDuration, minDuration} (Duration n)
+    :: TestRunValidationConfig -> Duration -> Maybe TestRunRejection
+checkDuration TestRunValidationConfig{maxDuration, minDuration} (Duration n)
     | n < minDuration || n > maxDuration = Just UnacceptableDuration
     | otherwise = Nothing
 
@@ -61,6 +63,7 @@ checkTryIndex
             latest = case sameCommitTestRuns of
                 [] -> Try 0
                 _ -> maximum $ map (tryIndex . fst) sameCommitTestRuns
+
         if tryIndex testRun == succ latest
             then return Nothing
             else return $ Just UnacceptableTryIndex
@@ -80,7 +83,7 @@ checkCommit
 
 validateRequest
     :: Monad m
-    => AgentValidationConfig
+    => TestRunValidationConfig
     -> Validation m
     -> TestRun
     -> TestRunState PendingT

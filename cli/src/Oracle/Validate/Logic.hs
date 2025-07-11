@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE StrictData #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
@@ -11,28 +12,24 @@ import Core.Types
     ( Change (..)
     , Key (..)
     , Platform (..)
-    , PublicKeyHash (..)
-    , Repository (..)
     , RequestRefId
     , Role (..)
-    , TokenId
-    , Username (..)
+    , parseFacts
     )
+import Data.List (find)
 import Lib.JSON
     ( stringJSON
     )
-import MPFS.API
-    ( getTokenFacts
-    )
-import Oracle.Types (Request (..), RequestZoo (..))
-import Servant.Client (ClientM)
-import Text.JSON.Canonical (JSValue (..), toJSString)
-import Text.JSON.Canonical.Class (ToJSON (..))
-import User.Types (RegisterRoleKey (..), RegisterUserKey (..))
-
-import Data.List qualified as L
 import Oracle.Github.GetRepoRole qualified as Github
 import Oracle.Github.ListPublicKeys qualified as Github
+import Oracle.Types (Request (..), RequestZoo (..))
+import Oracle.Validate.Requests.TestRun.Config
+    ( TestRunValidationConfig
+    )
+import Servant.Client (ClientM)
+import Text.JSON.Canonical.Class (ToJSON (..))
+import User.Types (RegisterRoleKey (..), RegisterUserKey (..))
+import Validation (Validation (..))
 
 data ValidationResult
     = Validated
@@ -52,10 +49,11 @@ instance MonadFail ClientM where
     fail = error
 
 validateRequest
-    :: TokenId
+    :: TestRunValidationConfig
+    -> Validation ClientM
     -> RequestZoo
     -> ClientM (RequestRefId, ValidationResult)
-validateRequest _tk (RegisterUserRequest (Request refId _owner (Change k _v))) = do
+validateRequest _ _validation (RegisterUserRequest (Request refId _owner (Change k _v))) = do
     res <- case k of
         Key (RegisterUserKey{platform, username, pubkeyhash}) ->
             case platform of
@@ -71,114 +69,92 @@ validateRequest _tk (RegisterUserRequest (Request refId _owner (Change k _v))) =
                         $ CannotValidate
                             "expecting github platform as we are validating only this at this moment"
     pure (refId, res)
-validateRequest tk (UnregisterUserRequest (Request refId _owner (Change k _v))) = do
-    JSObject facts <- getTokenFacts tk
-    let Key
-            ( RegisterUserKey
-                    (Platform platform)
-                    (Username username)
-                    (PublicKeyHash pubkeyhash)
-                ) = k
-    let expEntry =
-            ( "key"
-            , JSObject
-                [ ("platform", JSString $ toJSString platform)
-                , ("publickeyhash", JSString $ toJSString pubkeyhash)
-                , ("type", JSString $ toJSString "register-user")
-                , ("user", JSString $ toJSString username)
-                ]
-            )
-    let findRes = filter (== expEntry) facts
-    if null findRes
-        then
-            pure
-                ( refId
-                , NotValidated
-                    $ "no registration fact for '" <> username <> "' user found"
-                )
-        else
-            pure (refId, Validated)
-validateRequest tk (RegisterRoleRequest (Request refId _owner (Change k _v))) = do
-    JSObject facts <- getTokenFacts tk
-    let Key
-            ( RegisterRoleKey
-                    (Platform platform)
-                    repository
-                    (Username username)
-                ) = k
-    let expEntry =
-            ( "key" :: String
-            , JSObject
-                [ ("platform", JSString $ toJSString platform)
-                , ("type", JSString $ toJSString "register-user")
-                , ("user", JSString $ toJSString username)
-                ]
-            )
-    let isPartlyTheSame (_, jsObj1) (_, JSObject obj2) =
-            jsObj1
-                == JSObject
-                    (snd $ L.partition (\pair -> fst pair == "publickeyhash") obj2)
-        isPartlyTheSame _ _ = error "isPartlyTheSame has encountered very unexpected case."
-    let findRes = filter (isPartlyTheSame expEntry) facts
-    if null findRes
-        then
-            pure
-                ( refId
-                , NotValidated
-                    $ "no registration fact for '" <> username <> "' user found"
-                )
-        else do
-            validationRes <-
-                liftIO
-                    $ Github.inspectRepoRoleForUser
-                        (Username username)
-                        repository
-                        (Role "antithesis")
-            if validationRes == Github.RepoRoleValidated
-                then
-                    pure (refId, Validated)
-                else
-                    pure (refId, NotValidated (Github.emitRepoRoleMsg validationRes))
-validateRequest tk (UnregisterRoleRequest (Request refId _owner (Change k _v))) = do
-    JSObject facts <- getTokenFacts tk
-    let Key
-            ( RegisterRoleKey
-                    (Platform platform)
-                    (Repository owner repo)
-                    (Username username)
-                ) = k
-    let expEntry =
-            ( "key"
-            , JSObject
-                [ ("platform", JSString $ toJSString platform)
-                ,
-                    ( "repository"
-                    , JSObject
-                        [ ("organization", JSString $ toJSString owner)
-                        , ("project", JSString $ toJSString repo)
-                        ]
+validateRequest
+    _
+    Validation{mpfsGetFacts}
+    (UnregisterUserRequest (Request refId _owner (Change (Key k) _v))) = do
+        facts <- mpfsGetFacts
+        let registration = find (\(k', ()) -> k' == k) $ parseFacts facts
+        if null registration
+            then
+                pure
+                    ( refId
+                    , NotValidated
+                        $ "no registration for platform '"
+                            <> show k.platform
+                            <> "' and user '"
+                            <> show k.username
+                            <> "' and public key hash '"
+                            <> show k.pubkeyhash
+                            <> "' found"
                     )
-                , ("type", JSString $ toJSString "register-role")
-                , ("user", JSString $ toJSString username)
-                ]
-            )
-    let findRes = filter (== expEntry) facts
-    if null findRes
-        then
-            pure
-                ( refId
-                , NotValidated
-                    $ "no registration fact of the 'antithesis' role for '"
-                        <> username
-                        <> "' user found"
-                )
-        else
-            pure (refId, Validated)
-validateRequest _tk (CreateTestRequest (Request refId _owner _change)) =
+            else
+                pure (refId, Validated)
+validateRequest
+    _
+    Validation{mpfsGetFacts}
+    (RegisterRoleRequest (Request refId _owner (Change k _v))) = do
+        facts <- mpfsGetFacts
+        let Key
+                ( RegisterRoleKey
+                        platform
+                        repository
+                        username
+                    ) = k
+        let registration = flip find (parseFacts facts)
+                $ \(RegisterUserKey platform' username' _, ()) ->
+                    platform' == platform
+                        && username' == username
+
+        if null registration
+            then
+                pure
+                    ( refId
+                    , NotValidated
+                        $ "no registration for platform '"
+                            <> show platform
+                            <> "' and repository '"
+                            <> show repository
+                            <> "' and user '"
+                            <> show username
+                            <> "' found"
+                    )
+            else do
+                validationRes <-
+                    liftIO
+                        $ Github.inspectRepoRoleForUser
+                            username
+                            repository
+                            (Role "antithesis")
+                if validationRes == Github.RepoRoleValidated
+                    then
+                        pure (refId, Validated)
+                    else
+                        pure (refId, NotValidated (Github.emitRepoRoleMsg validationRes))
+validateRequest
+    _
+    Validation{mpfsGetFacts}
+    (UnregisterRoleRequest (Request refId _owner (Change (Key k) _v))) = do
+        facts <- mpfsGetFacts
+        let registration = find (\(k', ()) -> k' == k) $ parseFacts facts
+        if null registration
+            then
+                pure
+                    ( refId
+                    , NotValidated
+                        $ "no registration of the 'antithesis' role for '"
+                            <> show k.platform
+                            <> "' platform and '"
+                            <> show k.repository
+                            <> "' repository found"
+                    )
+            else
+                pure (refId, Validated)
+validateRequest _ _validation (CreateTestRequest (Request refId _owner _change)) =
     pure (refId, NotEvaluated)
-validateRequest _tk (RejectRequest (Request refId _owner _change)) =
+validateRequest _ _validation (RejectRequest (Request refId _owner _change)) =
     pure (refId, NotEvaluated)
-validateRequest _tk (AcceptRequest (Request refId _owner _change)) =
+validateRequest _ _validation (AcceptRequest (Request refId _owner _change)) =
     pure (refId, NotEvaluated)
-validateRequest _tk (FinishedRequest (Request refId _owner _change)) =
+validateRequest _ _validation (FinishedRequest (Request refId _owner _change)) =
     pure (refId, NotEvaluated)

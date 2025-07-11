@@ -8,35 +8,33 @@ module Cli
 
 import Control.Monad.IO.Class (MonadIO (..))
 import Core.Types
-    ( Fact (..)
-    , RequestRefId
+    ( RequestRefId
     , TokenId
     , TxHash
     , Wallet
     , WithTxHash (..)
-    , parseFacts
     )
 import Data.Aeson (eitherDecodeFileStrict')
 import Data.Aeson.Types qualified as Aeson
 import GHC.Generics (Generic)
-import Lib.GitHub qualified as GitHub
 import MPFS.API (getTokenFacts, retractChange)
 import Oracle.Cli (OracleCommand (..), oracleCmd)
+import Oracle.Validate.Requests.TestRun.Config
+    ( TestRunValidationConfig
+    )
 import Servant.Client (ClientM)
 import Submitting (Submitting, signAndSubmit)
 import System.Environment (getEnv)
-import Text.JSON.Canonical (FromJSON (..), JSValue)
+import Text.JSON.Canonical (JSValue)
 import User.Agent.Cli
     ( AgentCommand (..)
     , IsReady (NotReady)
     , agentCmd
     )
-import User.Agent.Validation.Config (AgentValidationConfig)
 import User.Requester.Cli
     ( RequesterCommand
     , requesterCmd
     )
-import Validation (Validation (..))
 import Wallet.Cli (WalletCommand, walletCmd)
 
 data Command a where
@@ -54,25 +52,11 @@ deriving instance Show (Command a)
 deriving instance Eq (Command a)
 
 newtype Config = Config
-    { agentValidationConfig :: AgentValidationConfig
+    { agentValidationConfig :: TestRunValidationConfig
     }
     deriving (Show, Eq, Generic)
 
 instance Aeson.FromJSON Config
-
-mkValidation :: TokenId -> Validation ClientM
-mkValidation tk =
-    Validation
-        { mpfsGetFacts = do
-            factsObject <- getTokenFacts tk
-            case fromJSON factsObject of
-                Nothing -> error "Failed to parse facts from JSON"
-                Just factsObject' -> do
-                    let factsList = parseFacts factsObject'
-                    return $ uncurry Fact <$> factsList
-        , githubCommitExists = \repository commit ->
-            liftIO $ GitHub.githubCommitExists repository commit
-        }
 
 cmd
     :: Submitting
@@ -98,23 +82,23 @@ cmdCore
     -> Command a
     -> ClientM a
 cmdCore sbmt Config{agentValidationConfig} (Right wallet) (Just tokenId) command = do
-    let validation = mkValidation tokenId
     case command of
         RequesterCommand requesterCommand ->
             requesterCmd
                 sbmt
-                agentValidationConfig
-                validation
                 wallet
                 tokenId
                 requesterCommand
         OracleCommand oracleCommand ->
-            oracleCmd sbmt wallet (Just tokenId) oracleCommand
+            oracleCmd
+                sbmt
+                wallet
+                agentValidationConfig
+                (Just tokenId)
+                oracleCommand
         AgentCommand agentCommand ->
             agentCmd
                 sbmt
-                agentValidationConfig
-                validation
                 wallet
                 tokenId
                 agentCommand
@@ -122,12 +106,13 @@ cmdCore sbmt Config{agentValidationConfig} (Right wallet) (Just tokenId) command
         RetractRequest refId -> fmap txHash $ signAndSubmit sbmt wallet $ \address ->
             retractChange address refId
         Wallet walletCommand -> liftIO $ walletCmd (Right wallet) walletCommand
-cmdCore sbmt _ (Right wallet) Nothing command =
+cmdCore sbmt Config{agentValidationConfig} (Right wallet) Nothing command =
     case command of
         RetractRequest refId -> fmap txHash $ signAndSubmit sbmt wallet $ \address ->
             retractChange address refId
         Wallet walletCommand -> liftIO $ walletCmd (Right wallet) walletCommand
-        OracleCommand oracleCommand -> oracleCmd sbmt wallet Nothing oracleCommand
+        OracleCommand oracleCommand ->
+            oracleCmd sbmt wallet agentValidationConfig Nothing oracleCommand
         _ -> error "TokenId is required for this command"
 cmdCore _ _iftw mwf@(Left _) (Just tokenId) command =
     case command of

@@ -108,11 +108,11 @@ library
     Oracle.Validate.Cli
     Oracle.Validate.Logic
     Oracle.Validate.Options
+    Oracle.Validate.Requests.TestRun.Config
+    Oracle.Validate.Requests.TestRun.Create
     Submitting
     User.Agent.Cli
     User.Agent.Options
-    User.Agent.Validation.Config
-    User.Agent.Validation.Request
     User.Requester.Cli
     User.Requester.Options
     User.Types
@@ -229,7 +229,7 @@ test-suite anti-test
     Lib.JSONSpec
     MPFS.APISpec
     Oracle.Github.OracleValidationSpec
-    User.Agent.Validation.RequestSpec
+    Oracle.Validate.Requests.TestRun.CreateSpec
     User.TypesSpec
 
   -- LANGUAGE extensions used by modules in this package.

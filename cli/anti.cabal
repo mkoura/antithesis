@@ -91,6 +91,7 @@ library
     Core.Options
     Core.Types
     Lib.Box
+    Lib.GitHub
     Lib.JSON
     MPFS.API
     Options
@@ -141,8 +142,10 @@ library
     , cardano-ledger-core    ^>=1.17.0.0
     , containers             ^>=0.6.8
     , exceptions
+    , github
     , http-client
     , http-client-tls
+    , http-types
     , lens
     , optparse-applicative
     , plutus-tx

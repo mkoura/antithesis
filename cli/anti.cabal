@@ -93,6 +93,7 @@ library
     Lib.Box
     Lib.GitHub
     Lib.JSON
+    Lib.SSH.Key
     MPFS.API
     Options
     Oracle.Cli
@@ -141,12 +142,14 @@ library
     , cardano-ledger-binary  ^>=1.6.0.0
     , cardano-ledger-core    ^>=1.17.0.0
     , containers             ^>=0.6.8
+    , crypton
     , exceptions
     , github
     , http-client
     , http-client-tls
     , http-types
     , lens
+    , memory
     , optparse-applicative
     , plutus-tx
     , random

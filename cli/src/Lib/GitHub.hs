@@ -1,6 +1,7 @@
 module Lib.GitHub
     ( githubCommitExists
     , githubDirectoryExists
+    , githubUserPublicKeys
     ) where
 
 import Control.Exception
@@ -9,11 +10,11 @@ import Control.Exception
     )
 import Core.Types (Commit (..), Directory (..), Repository (..))
 import Data.ByteString.Char8 qualified as B
+import Data.Foldable (Foldable (..))
 import Data.Text qualified as T
-import GitHub (Auth (..), GitHubRW, github)
+import GitHub (Auth (..), FetchCount (..), GitHubRW, github)
+import GitHub qualified as GH
 import GitHub.Data.Name (Name (..))
-import GitHub.Endpoints.Repos.Commits qualified as GH
-import GitHub.Endpoints.Repos.Contents qualified as GH
 import Network.HTTP.Client
     ( HttpException (..)
     , HttpExceptionContent (StatusCodeException)
@@ -89,8 +90,15 @@ githubDirectoryExists (Repository owner repo) (Commit sha) (Directory dir) = do
             return $ Just False
         Right _ -> return True
   where
-    -- If the directory exists, the API will return a list of contents.
-
     owner' = N $ T.pack owner
     repo' = N $ T.pack repo
     sha' = T.pack sha
+
+githubUserPublicKeys :: String -> IO [T.Text]
+githubUserPublicKeys name = do
+    auth <- getOAUth
+    result <-
+        github auth $ GH.publicSSHKeysForR (N $ T.pack name) FetchAll
+    case result of
+        Left e -> throwIO e
+        Right r -> pure $ GH.basicPublicSSHKeyKey <$> toList r

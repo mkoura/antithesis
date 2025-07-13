@@ -7,6 +7,7 @@ module User.Agent.Cli
     ( AgentCommand (..)
     , IsReady (..)
     , agentCmd
+    , agentCmdCore
     )
 where
 
@@ -18,10 +19,8 @@ import Core.Types
     )
 import Data.List (find)
 import MPFS.API
-    ( RequestInsertBody (..)
-    , RequestUpdateBody (..)
+    ( RequestUpdateBody (..)
     , getTokenFacts
-    , requestInsert
     , requestUpdate
     )
 import Servant.Client (ClientM)
@@ -83,7 +82,6 @@ resolveOldState
     -> AgentCommand NotReady result
     -> ClientM (Maybe (AgentCommand Ready result))
 resolveOldState tokenId cmd = case cmd of
-    Create key duration -> pure $ Just $ Create key duration
     Accept key () -> withExpectedState tokenId key $ pure . Accept key
     Reject key () reason ->
         withExpectedState tokenId key
@@ -103,10 +101,6 @@ data Role = Internal | External
     deriving (Show, Eq)
 
 data AgentCommand (phase :: IsReady) result where
-    Create
-        :: TestRun
-        -> Duration
-        -> AgentCommand phase (WithTxHash (TestRunState PendingT))
     Accept
         :: TestRun
         -> IfReady phase (TestRunState PendingT)
@@ -135,8 +129,6 @@ agentCmdCore
     -> AgentCommand Ready result
     -> ClientM result
 agentCmdCore sbmt wallet tokenId cmd = case cmd of
-    Create key duration -> do
-        createCommand sbmt wallet tokenId key duration
     Accept key pending -> acceptCommand sbmt wallet tokenId key pending
     Reject key pending reason ->
         rejectCommand sbmt wallet tokenId key pending reason
@@ -159,22 +151,6 @@ signAndSubmitAnUpdate sbmt wallet tokenId testRun oldState newState = do
         newValue <- toJSON newState
         requestUpdate address tokenId
             $ RequestUpdateBody{key, oldValue, newValue}
-    pure $ WithTxHash txHash $ Just newState
-
-createCommand
-    :: Submitting
-    -> Wallet
-    -> TokenId
-    -> TestRun
-    -> Duration
-    -> ClientM (WithTxHash (TestRunState PendingT))
-createCommand sbmt wallet tokenId testRun duration = do
-    let newState = Pending duration
-    WithTxHash txHash _ <- signAndSubmit sbmt wallet $ \address -> do
-        key <- toJSON testRun
-        value <- toJSON newState
-        requestInsert address tokenId
-            $ RequestInsertBody{key, value}
     pure $ WithTxHash txHash $ Just newState
 
 reportCommand

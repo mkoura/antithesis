@@ -21,16 +21,12 @@ import MPFS.API
 import Servant.Client (ClientM)
 import Submitting (Submitting, signAndSubmit)
 import Text.JSON.Canonical (ToJSON (..))
-import User.Agent.Cli
-    ( AgentCommand (..)
-    , agentCmd
-    )
 import User.Types
     ( Phase (PendingT)
     , RegisterRoleKey (..)
     , RegisterUserKey (..)
     , TestRun (..)
-    , TestRunState
+    , TestRunState (..)
     )
 
 data RequesterCommand a where
@@ -66,8 +62,28 @@ requesterCmd sbmt wallet tokenId command = do
         UnregisterRole request ->
             unregisterRole sbmt wallet tokenId request
         RequestTest testRun duration ->
-            agentCmd sbmt wallet tokenId
-                $ Create testRun duration
+            createCommand
+                sbmt
+                wallet
+                tokenId
+                testRun
+                duration
+
+createCommand
+    :: Submitting
+    -> Wallet
+    -> TokenId
+    -> TestRun
+    -> Duration
+    -> ClientM (WithTxHash (TestRunState PendingT))
+createCommand sbmt wallet tokenId testRun duration = do
+    let newState = Pending duration
+    WithTxHash txHash _ <- signAndSubmit sbmt wallet $ \address -> do
+        key <- toJSON testRun
+        value <- toJSON newState
+        requestInsert address tokenId
+            $ RequestInsertBody{key, value}
+    pure $ WithTxHash txHash $ Just newState
 
 registerUser
     :: Submitting

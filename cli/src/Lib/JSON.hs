@@ -29,6 +29,8 @@ module Lib.JSON
     , Parsing (..)
     , fromAesonStructurally
     , fromJSValueStructurally
+    , byteStringToJSON
+    , byteStringFromJSON
     )
 where
 
@@ -40,6 +42,8 @@ import Data.Aeson qualified as Aeson
 import Data.Aeson.Types qualified as AesonInternal
 import Data.Bifunctor (first)
 import Data.ByteString
+import Data.ByteString.Base16 qualified as Base16
+import Data.ByteString.Char8 qualified as B
 import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.Functor ((<&>))
 import Data.Functor.Identity (Identity (..))
@@ -107,6 +111,15 @@ stringJSON = toJSON
 
 jsonToString :: JSValue -> String
 jsonToString = BL.unpack . renderCanonicalJSON
+
+byteStringToJSON :: Monad m => ByteString -> m JSValue
+byteStringToJSON = toJSON . B.unpack . Base16.encode
+
+byteStringFromJSON
+    :: (ReportSchemaErrors m) => JSValue -> m ByteString
+byteStringFromJSON s = do
+    string <- fromJSON s
+    pure $ Base16.decodeLenient . B.pack $ string
 
 -- TODO: do the conversion in a more efficient way
 toAeson :: JSValue -> Value

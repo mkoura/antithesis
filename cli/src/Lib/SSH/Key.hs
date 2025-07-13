@@ -2,6 +2,8 @@
 
 module Lib.SSH.Key
     ( decodePrivateSSHFile
+    , Sign
+    , SSHKeySelector (..)
     ) where
 
 import Control.Applicative (many, (<|>))
@@ -27,17 +29,24 @@ import Data.Map.Strict qualified as Map
 import Data.String (IsString)
 import Data.Word (Word32, Word8)
 
+newtype SSHKeySelector = SSHKeySelector
+    { sshKeySelector :: String
+    }
+    deriving (Eq, Show, IsString, Ord)
+
+type Sign = B.ByteString -> Ed25519.Signature
+
 decodePrivateSSHFile
     :: B.ByteString
     -> FilePath
-    -> IO (Map B.ByteString Ed25519.SecretKey)
+    -> IO (Map SSHKeySelector Sign)
 decodePrivateSSHFile passphrase filePath = do
     content <- B.readFile filePath
     ks <- decodePrivateKeyFile passphrase content
-    return
-        $ foldMap
-            (\(KeyPairEd25519 _ sk, comment) -> Map.singleton comment sk)
-            ks
+    let mkSign (KeyPairEd25519 pk sk, comment) =
+            let k = SSHKeySelector $ B.unpack comment
+            in  Map.singleton k $ Ed25519.sign sk pk
+    pure $ foldMap mkSign ks
 
 data KeyPair
     = KeyPairEd25519 Ed25519.PublicKey Ed25519.SecretKey

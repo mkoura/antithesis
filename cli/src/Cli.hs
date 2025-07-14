@@ -81,45 +81,32 @@ cmdCore
     -> Maybe TokenId
     -> Command a
     -> ClientM a
-cmdCore sbmt Config{agentValidationConfig} (Right wallet) (Just tokenId) command = do
-    case command of
-        RequesterCommand requesterCommand ->
-            requesterCmd
-                sbmt
-                wallet
-                tokenId
-                requesterCommand
-        OracleCommand oracleCommand ->
-            oracleCmd
-                sbmt
-                wallet
-                agentValidationConfig
-                (Just tokenId)
-                oracleCommand
-        AgentCommand agentCommand ->
-            agentCmd
-                sbmt
-                wallet
-                tokenId
-                agentCommand
-        GetFacts -> getTokenFacts tokenId
-        RetractRequest refId -> fmap txHash $ signAndSubmit sbmt wallet $ \address ->
-            retractChange address refId
-        Wallet walletCommand -> liftIO $ walletCmd (Right wallet) walletCommand
-cmdCore sbmt Config{agentValidationConfig} (Right wallet) Nothing command =
-    case command of
-        RetractRequest refId -> fmap txHash $ signAndSubmit sbmt wallet $ \address ->
-            retractChange address refId
-        Wallet walletCommand -> liftIO $ walletCmd (Right wallet) walletCommand
-        OracleCommand oracleCommand ->
-            oracleCmd sbmt wallet agentValidationConfig Nothing oracleCommand
-        _ -> error "TokenId is required for this command"
-cmdCore _ _iftw mwf@(Left _) (Just tokenId) command =
-    case command of
-        GetFacts -> getTokenFacts tokenId
-        Wallet walletCommand -> liftIO $ walletCmd mwf walletCommand
-        _ -> error "Wallet is required for this command"
-cmdCore _ _iftw mwf@(Left _) Nothing command =
-    case command of
-        Wallet walletCommand -> liftIO $ walletCmd mwf walletCommand
-        _ -> error "Wallet and TokenId are required for this command"
+cmdCore sbmt Config{agentValidationConfig} mWallet mTokenId = \case
+    RequesterCommand requesterCommand ->
+        case (mWallet, mTokenId) of
+            (Right wallet, Just tokenId) ->
+                requesterCmd sbmt wallet tokenId requesterCommand
+            _ -> error "Wallet and TokenId are required for RequesterCommand"
+    OracleCommand oracleCommand ->
+        case mWallet of
+            Right wallet ->
+                oracleCmd sbmt wallet agentValidationConfig mTokenId oracleCommand
+            Left _ -> error "Wallet is required for OracleCommand"
+    AgentCommand agentCommand ->
+        case (mWallet, mTokenId) of
+            (Right wallet, Just tokenId) ->
+                agentCmd sbmt wallet tokenId agentCommand
+            _ -> error "Wallet and TokenId are required for AgentCommand"
+    RetractRequest refId -> do
+        case mWallet of
+            Right wallet -> fmap txHash $ signAndSubmit sbmt wallet $ \address ->
+                retractChange address refId
+            Left _ -> error "Wallet is required for RetractRequest"
+    GetFacts -> do
+        case mTokenId of
+            Just tokenId -> getTokenFacts tokenId
+            Nothing -> error "TokenId is required for GetFacts"
+    Wallet walletCommand -> do
+        case mWallet of
+            Right wallet -> liftIO $ walletCmd (Right wallet) walletCommand
+            Left walletFile -> liftIO $ walletCmd (Left walletFile) walletCommand

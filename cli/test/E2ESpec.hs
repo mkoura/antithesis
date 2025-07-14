@@ -27,3 +27,5 @@ spec = do
                 $ runScenario "finishATestRun.sh"
             it "can validate a test-run"
                 $ runScenario "validateATestRun.sh"
+            it "can validate a user registration and his role"
+                $ runScenario "validateUserRegAddRole.sh"

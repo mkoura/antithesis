@@ -144,7 +144,7 @@ expectedGet1=$(
       "value": "null"
     },
     "outputRefId": "$outputRegRef2",
-    "owner": "$owner"
+    "owner": $owner
   },
   {
     "change": {
@@ -153,7 +153,7 @@ expectedGet1=$(
       "value": "null"
     },
     "outputRefId": "$outputRoleRef1",
-    "owner": "$owner"
+    "owner": $owner
   }
 ]
 EOF
@@ -163,4 +163,52 @@ resultGet1=$(anti oracle token get | jq '.result.requests')
 
 if [[ "$(echo "$resultGet1" | jq -S 'sort_by(.outputRefId)')" != "$(echo "$expectedGet1" | jq -S 'sort_by(.outputRefId)')" ]]; then
     emitMismatch 4 "get token requests" "$resultGet1" "$expectedGet1"
+fi
+
+resultVal4=$(anti oracle requests validate | jq -r '.result')
+
+expectedVal4=$(
+    cat <<EOF
+[
+  {
+    "reference": "$outputRegRef2",
+    "validation": "not validated: The user does not have the specified Ed25519 public key exposed in Github."
+  },
+  {
+    "reference": "$outputRoleRef1",
+    "validation": "validated"
+  }
+]
+EOF
+)
+
+if [[ "$(echo "$resultVal4" | jq -S 'sort_by(.reference)')" != "$(echo "$expectedVal4" | jq -S 'sort_by(.reference)')" ]]; then
+    emitMismatch 5 "validation" "$resultVal4" "$expectedVal4"
+fi
+
+log "Including the role request that passed validation in the token ..."
+anti oracle token update -o "$outputRoleRef1" >/dev/null
+
+printFacts
+
+expectedGet2=$(
+    cat <<EOF
+[
+  {
+    "change": {
+      "key": "{\"platform\":\"github\",\"publickeyhash\":\"AAAAC3NzaC1lZDI1NTE5AAAAIO773JHqlyLm5XzOjSe+Q5yFJyLFuMLL6+n63t4t7HR9\",\"type\":\"register-user\",\"user\":\"paolino\"}",
+      "type": "insert",
+      "value": "null"
+    },
+    "outputRefId": "$outputRegRef2",
+    "owner": $owner
+  }
+]
+EOF
+)
+
+resultGet2=$(anti oracle token get | jq '.result.requests')
+
+if [[ "$(echo "$resultGet2" | jq -S 'sort_by(.outputRefId)')" != "$(echo "$expectedGet2" | jq -S 'sort_by(.outputRefId)')" ]]; then
+    emitMismatch 6 "get token requests" "$resultGet2" "$expectedGet2"
 fi

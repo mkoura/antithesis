@@ -85,6 +85,8 @@ reasonParser =
     readReason "commit" = pure UnacceptableCommit
     readReason "try" = pure UnacceptableTryIndex
     readReason "role" = pure UnacceptableRole
+    readReason "directory" = pure UnacceptableDirectory
+    readReason "signature" = pure UnacceptableSignature
     readReason s = Right $ AnyReason s
 
 rejectTestOptions

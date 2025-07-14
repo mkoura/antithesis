@@ -53,15 +53,15 @@ expectedVal1=$(
 EOF
 )
 
-emitValidationMismatch() {
-    log "Validation result does not match expected value:"
-    log "    Actual validation $1 result: $2"
-    log "    Expected validation $1 result: $3"
+emitMismatch() {
+    log "$2 result does not match expected value:"
+    log "    Actual $2 $1 result: $3"
+    log "    Expected $2 validation $1 result: $4"
     exit 1
 }
 
 if [[ "$(echo "$resultVal1" | jq -S 'sort_by(.reference)')" != "$(echo "$expectedVal1" | jq -S 'sort_by(.reference)')" ]]; then
-    emitValidationMismatch 1 "$resultVal1" "$expectedVal1"
+    emitMismatch 1 "validation" "$resultVal1" "$expectedVal1"
 fi
 
 resultReg2=$(anti requester register-user \
@@ -90,7 +90,7 @@ EOF
 )
 
 if [[ "$(echo "$resultVal2" | jq -S 'sort_by(.reference)')" != "$(echo "$expectedVal2" | jq -S 'sort_by(.reference)')" ]]; then
-    emitValidationMismatch 2 "$resultVal2" "$expectedVal2"
+    emitMismatch 2 "validation" "$resultVal2" "$expectedVal2"
 fi
 
 log "Trying to register a role before token updating"
@@ -123,7 +123,7 @@ EOF
 )
 
 if [[ "$(echo "$resultVal3" | jq -S 'sort_by(.reference)')" != "$(echo "$expectedVal3" | jq -S 'sort_by(.reference)')" ]]; then
-    emitValidationMismatch 3 "$resultVal3" "$expectedVal3"
+    emitMismatch 3 "validation" "$resultVal3" "$expectedVal3"
 fi
 
 
@@ -131,3 +131,36 @@ log "Including the registration request that passed validation in the token ..."
 anti oracle token update -o "$outputRegRef1" >/dev/null
 
 printFacts
+
+owner=$(anti wallet info | jq '.result.owner')
+
+expectedGet1=$(
+    cat <<EOF
+[
+  {
+    "change": {
+      "key": "{\"platform\":\"github\",\"publickeyhash\":\"AAAAC3NzaC1lZDI1NTE5AAAAIO773JHqlyLm5XzOjSe+Q5yFJyLFuMLL6+n63t4t7HR9\",\"type\":\"register-user\",\"user\":\"paolino\"}",
+      "type": "insert",
+      "value": "null"
+    },
+    "outputRefId": "$outputRegRef2",
+    "owner": "$owner"
+  },
+  {
+    "change": {
+      "key": "{\"platform\":\"github\",\"repository\":{\"organization\":\"paweljakubas\",\"project\":\"j-data-analysis\"},\"type\":\"register-role\",\"user\":\"paolino\"}",
+      "type": "insert",
+      "value": "null"
+    },
+    "outputRefId": "$outputRoleRef1",
+    "owner": "$owner"
+  }
+]
+EOF
+)
+
+resultGet1=$(anti oracle token get | jq '.result.requests')
+
+if [[ "$(echo "$resultGet1" | jq -S 'sort_by(.outputRefId)')" != "$(echo "$expectedGet1" | jq -S 'sort_by(.outputRefId)')" ]]; then
+    emitMismatch 4 "get token requests" "$resultGet1" "$expectedGet1"
+fi

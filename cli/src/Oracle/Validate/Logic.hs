@@ -13,8 +13,10 @@ import Core.Types
     , Key (..)
     , Operation (..)
     , Platform (..)
+    , Repository (..)
     , RequestRefId
     , Role (..)
+    , Username (..)
     , parseFacts
     )
 import Data.List (find)
@@ -113,15 +115,20 @@ validateRequest
 
         if null registration
             then
-                pure
+                let (Platform p) = platform
+                    (Repository o r) = repository
+                    (Username u) = username
+                in pure
                     ( refId
                     , NotValidated
                         $ "no registration for platform '"
-                            <> show platform
+                            <> show p
                             <> "' and repository '"
-                            <> show repository
+                            <> show r
+                            <> "' of owner '"
+                            <> show o
                             <> "' and user '"
-                            <> show username
+                            <> show u
                             <> "' found"
                     )
             else do

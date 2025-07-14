@@ -60,7 +60,7 @@ emitValidationMismatch() {
     exit 1
 }
 
-if [[ "$(echo "$resultVal1" | jq -S .)" != "$(echo "$expectedVal1" | jq -S .)" ]]; then
+if [[ "$(echo "$resultVal1" | jq -S 'sort_by(.reference)')" != "$(echo "$expectedVal1" | jq -S 'sort_by(.reference)')" ]]; then
     emitValidationMismatch 1 "$resultVal1" "$expectedVal1"
 fi
 
@@ -89,12 +89,45 @@ expectedVal2=$(
 EOF
 )
 
-if [[ "$(echo "$resultVal2" | jq -S .)" != "$(echo "$expectedVal2" | jq -S .)" ]]; then
+if [[ "$(echo "$resultVal2" | jq -S 'sort_by(.reference)')" != "$(echo "$expectedVal2" | jq -S 'sort_by(.reference)')" ]]; then
     emitValidationMismatch 2 "$resultVal2" "$expectedVal2"
 fi
 
+log "Trying to register a role before token updating"
+resultRole1=$(anti requester register-role \
+    --platform github \
+    --repository paweljakubas/j-data-analysis \
+    --username paolino \
+    )
+outputRoleRef1=$(getOutputRef "$resultRole1")
 
-#log "Including the registration request in the token ..."
-#anti oracle token update -o "$outputRegRef1" >/dev/null
+resultVal3=$(anti oracle requests validate | jq -r '.result')
 
-#printFacts
+expectedVal3=$(
+    cat <<EOF
+[
+  {
+    "reference": "$outputRegRef1",
+    "validation": "validated"
+  },
+  {
+    "reference": "$outputRegRef2",
+    "validation": "not validated: The user does not have the specified Ed25519 public key exposed in Github."
+  },
+  {
+    "reference": "$outputRoleRef1",
+    "validation": "not validated: no registration for platform '\"github\"' and repository '\"j-data-analysis\"' of owner '\"paweljakubas\"' and user '\"paolino\"' found"
+  }
+]
+EOF
+)
+
+if [[ "$(echo "$resultVal3" | jq -S 'sort_by(.reference)')" != "$(echo "$expectedVal3" | jq -S 'sort_by(.reference)')" ]]; then
+    emitValidationMismatch 3 "$resultVal3" "$expectedVal3"
+fi
+
+
+log "Including the registration request that passed validation in the token ..."
+anti oracle token update -o "$outputRegRef1" >/dev/null
+
+printFacts

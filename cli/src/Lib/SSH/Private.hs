@@ -1,3 +1,7 @@
+{-
+This module was taken almost verbatim from the SSH library for Haskell.
+https://hackage.haskell.org/package/hssh-0.1.0.0/docs/src/Network.SSH.Key.html
+-}
 {-# LANGUAGE MultiWayIf #-}
 
 module Lib.SSH.Private
@@ -23,8 +27,18 @@ import Crypto.KDF.BCryptPBKDF qualified as BCryptPBKDF
 import Crypto.PubKey.Ed25519 qualified as Ed25519
 import Data.Bits (Bits (shiftL, shiftR, (.&.), (.|.)))
 import Data.ByteArray qualified as BA
-import Data.ByteArray.Parse qualified as BP
-import Data.ByteString qualified as BS
+import Data.ByteArray.Parse
+    ( Parser
+    , Result (ParseFail, ParseMore, ParseOK)
+    , anyByte
+    , byte
+    , bytes
+    , hasMore
+    , parse
+    , skip
+    )
+import Data.ByteArray.Parse qualified as P
+import Data.ByteString (ByteString)
 import Data.ByteString.Char8 qualified as B
 import Data.Map.Strict qualified as Map
 import Data.String (IsString)
@@ -64,42 +78,37 @@ data KeyPair
     deriving (Eq, Show)
 
 decodePrivateKeyFile
-    :: ( MonadFail m
-       , BA.ByteArray input
-       , BA.ByteArrayAccess passphrase
-       , BA.ByteArray comment
-       )
-    => passphrase
-    -> input
-    -> m [(KeyPair, comment)]
+    :: MonadFail m
+    => ByteString
+    -> ByteString
+    -> m [(KeyPair, ByteString)]
 decodePrivateKeyFile passphrase =
-    f . BP.parse (parsePrivateKeyFile passphrase) . BA.convert
+    f . parse (parsePrivateKeyFile passphrase) . BA.convert
   where
-    f (BP.ParseOK _ a) = pure a
-    f (BP.ParseFail e) = fail e
-    f (BP.ParseMore c) = f (c Nothing)
+    f (ParseOK _ a) = pure a
+    f (ParseFail e) = fail e
+    f (ParseMore c) = f (c Nothing)
 
 parsePrivateKeyFile
-    :: (BA.ByteArrayAccess passphrase, BA.ByteArray comment)
-    => passphrase
-    -> BP.Parser BS.ByteString [(KeyPair, comment)]
+    :: ByteString
+    -> Parser ByteString [(KeyPair, ByteString)]
 parsePrivateKeyFile passphrase = do
-    BP.bytes "-----BEGIN OPENSSH PRIVATE KEY-----"
+    bytes "-----BEGIN OPENSSH PRIVATE KEY-----"
     void $ many space
     bs <- parseBase64
     void $ many space
-    BP.bytes "-----END OPENSSH PRIVATE KEY-----"
+    bytes "-----END OPENSSH PRIVATE KEY-----"
     void $ many space
-    BP.hasMore >>= flip when syntaxError
-    case BP.parse (parseKeys passphrase) bs of
-        BP.ParseOK _ keys -> pure keys
-        BP.ParseFail e -> fail e
-        BP.ParseMore _ -> syntaxError
+    hasMore >>= flip when syntaxError
+    case parse (parseKeys passphrase) bs of
+        ParseOK _ keys -> pure keys
+        ParseFail e -> fail e
+        ParseMore _ -> syntaxError
 
-syntaxError :: BP.Parser ba a
+syntaxError :: Parser ByteString a
 syntaxError = fail "Syntax error"
 
-parseBase64 :: BA.ByteArray ba => BP.Parser ba ba
+parseBase64 :: Parser ByteString ByteString
 parseBase64 = s0 []
   where
     -- Initial state and final state.
@@ -132,9 +141,8 @@ parseBase64 = s0 []
         byte1 = (i `shiftL` 2) + (j `shiftR` 4)
         byte2 = ((j .&. 15) `shiftL` 4) + (k `shiftR` 2)
 
-    char :: (BA.ByteArray ba) => BP.Parser ba Word8
     char =
-        BP.anyByte >>= \c ->
+        anyByte >>= \c ->
             if
                 | c >= fe 'A' && c <= fe 'Z' -> pure (c - fe 'A')
                 | c >= fe 'a' && c <= fe 'z' -> pure (c - fe 'a' + 26)
@@ -143,14 +151,13 @@ parseBase64 = s0 []
                 | c == fe '/' -> pure 63
                 | otherwise -> fail ""
 
-    padding :: (BA.ByteArray ba) => BP.Parser ba ()
-    padding = BP.byte 61 -- 61 == fromEnum '='
+    padding = byte 61 -- 61 == fromEnum '='
 fe :: Char -> Word8
 fe = fromIntegral . fromEnum
 
-space :: (BA.ByteArray ba) => BP.Parser ba ()
+space :: Parser ByteString ()
 space =
-    BP.anyByte >>= \c ->
+    anyByte >>= \c ->
         if
             | c == fe ' ' -> pure ()
             | c == fe '\n' -> pure ()
@@ -158,34 +165,29 @@ space =
             | c == fe '\t' -> pure ()
             | otherwise -> fail ""
 
-space1 :: (BA.ByteArray ba) => BP.Parser ba ()
+space1 :: Parser ByteString ()
 space1 = space >> many space >> pure ()
 
-getWord32be :: BA.ByteArray ba => BP.Parser ba Word32
+getWord32be :: Parser ByteString Word32
 getWord32be = do
-    x0 <- fromIntegral <$> BP.anyByte
-    x1 <- fromIntegral <$> BP.anyByte
-    x2 <- fromIntegral <$> BP.anyByte
-    x3 <- fromIntegral <$> BP.anyByte
+    x0 <- fromIntegral <$> anyByte
+    x1 <- fromIntegral <$> anyByte
+    x2 <- fromIntegral <$> anyByte
+    x3 <- fromIntegral <$> anyByte
     pure $ shiftR x0 24 .|. shiftR x1 16 .|. shiftR x2 8 .|. x3
 
-getString :: BA.ByteArray ba => BP.Parser ba ba
-getString = BP.take . fromIntegral =<< getWord32be
+getString :: Parser ByteString ByteString
+getString = P.take . fromIntegral =<< getWord32be
 
 parseKeys
-    :: ( BA.ByteArray input
-       , IsString input
-       , Show input
-       , BA.ByteArray comment
-       , BA.ByteArrayAccess passphrase
-       )
-    => passphrase
-    -> BP.Parser input [(KeyPair, comment)]
+    :: ()
+    => ByteString
+    -> Parser ByteString [(KeyPair, ByteString)]
 parseKeys passphrase = do
-    BP.bytes "openssh-key-v1\NUL"
+    bytes "openssh-key-v1\NUL"
     cipherAlgo <- getString
     kdfAlgo <- getString
-    BP.skip 4 -- size of the kdf section
+    skip 4 -- size of the kdf section
     deriveKey <- case kdfAlgo of
         "none" ->
             pure $ \_ -> CryptoFailed CryptoError_KeySizeInvalid
@@ -197,13 +199,13 @@ parseKeys passphrase = do
                     CryptoPassed
                         $ BCryptPBKDF.generate
                             (BCryptPBKDF.Parameters rounds len)
-                            (BA.convert passphrase :: BA.Bytes)
+                            passphrase
                             salt
                 _ -> undefined -- impossible
         _ ->
             fail
                 $ "Unsupported key derivation function "
-                    ++ show (BA.convert kdfAlgo :: BA.Bytes)
+                    ++ B.unpack kdfAlgo
 
     numberOfKeys <- fromIntegral <$> getWord32be
     _publicKeysRaw <- getString -- not used
@@ -224,14 +226,14 @@ parseKeys passphrase = do
                         iv
                         privateKeysRawEncrypted
             _ -> fail $ "Unsupported cipher " ++ show cipherAlgo
-    case BP.parse (parsePrivateKeys numberOfKeys) privateKeysRawDecrypted of
-        BP.ParseOK _ keys -> pure keys
-        BP.ParseFail e -> fail e
-        BP.ParseMore _ -> syntaxError
+    case parse (parsePrivateKeys numberOfKeys) privateKeysRawDecrypted of
+        ParseOK _ keys -> pure keys
+        ParseFail e -> fail e
+        ParseMore _ -> syntaxError
 
 decryptPrivateKeys
     :: (Cipher.BlockCipher c, MonadFail m)
-    => (Cipher.KeySizeSpecifier -> CryptoFailable BA.ScrubbedBytes)
+    => (Cipher.KeySizeSpecifier -> CryptoFailable ByteString)
     -> (Cipher.AES256 -> Cipher.IV c -> b)
     -> m b
 decryptPrivateKeys deriveKey how = do
@@ -251,9 +253,8 @@ decryptPrivateKeys deriveKey how = do
         CryptoFailed e -> fail (show e)
 
 parsePrivateKeys
-    :: (BA.ByteArray comment)
-    => Int
-    -> BP.Parser BA.ScrubbedBytes [(KeyPair, comment)]
+    :: Int
+    -> Parser ByteString [(KeyPair, ByteString)]
 parsePrivateKeys count = do
     check1 <- getWord32be
     check2 <- getWord32be
@@ -262,13 +263,13 @@ parsePrivateKeys count = do
         key <-
             getString >>= \algo -> case algo of
                 "ssh-ed25519" -> do
-                    BP.skip 3
-                    BP.byte 32 -- length field (is always 32 for ssh-ed25519)
-                    BP.skip Ed25519.publicKeySize
-                    BP.skip 3
-                    BP.byte 64 -- length field (is always 64 for ssh-ed25519)
-                    secretKeyRaw <- BP.take 32
-                    publicKeyRaw <- BP.take 32
+                    skip 3
+                    byte 32 -- length field (is always 32 for ssh-ed25519)
+                    skip Ed25519.publicKeySize
+                    skip 3
+                    byte 64 -- length field (is always 64 for ssh-ed25519)
+                    secretKeyRaw <- P.take 32
+                    publicKeyRaw <- P.take 32
                     let key =
                             KeyPairEd25519
                                 <$> Ed25519.publicKey publicKeyRaw
@@ -278,11 +279,11 @@ parsePrivateKeys count = do
                         CryptoFailed _ ->
                             fail
                                 $ "Invalid "
-                                    ++ show (BA.convert algo :: BA.Bytes)
+                                    ++ B.unpack algo
                                     ++ " key"
                 _ ->
                     fail
                         $ "Unsupported algorithm "
-                            ++ show (BA.convert algo :: BA.Bytes)
+                            ++ B.unpack algo
         comment <- BA.convert <$> getString
         pure (key, comment)

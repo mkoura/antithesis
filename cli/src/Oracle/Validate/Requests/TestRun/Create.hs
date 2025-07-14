@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedRecordDot #-}
+
 module Oracle.Validate.Requests.TestRun.Create
     ( validateCreateTestRun
     ) where
@@ -8,13 +10,17 @@ import Core.Types
     , Try (..)
     , parseFacts
     )
-import Data.Maybe (catMaybes)
+import Crypto.PubKey.Ed25519 qualified as Ed25519
+import Data.ByteString.Lazy qualified as BL
+import Data.Maybe (catMaybes, mapMaybe)
+import Lib.SSH.Public (decodePublicKey)
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig (..)
     )
-import Text.JSON.Canonical (ToJSON (..))
+import Text.JSON.Canonical (ToJSON (..), renderCanonicalJSON)
 import User.Types
     ( Phase (PendingT)
+    , RegisterUserKey (..)
     , TestRun (..)
     , TestRunRejection (..)
     , TestRunState (..)
@@ -56,7 +62,7 @@ checkTryIndex
                     ( \(tr, _) ->
                         repository tr == repository testRun
                             && commitId tr == commitId testRun
-                            && platform tr == platform testRun
+                            && tr.platform == testRun.platform
                             && directory tr == directory testRun
                     )
                     testRuns
@@ -98,6 +104,29 @@ checkDirectory
             then return Nothing
             else return $ Just UnacceptableDirectory
 
+checkSignature
+    :: Monad m
+    => Validation m
+    -> TestRun
+    -> Ed25519.Signature
+    -> m (Maybe TestRunRejection)
+checkSignature
+    Validation{mpfsGetFacts}
+    testRun
+    signature = do
+        fs <- mpfsGetFacts
+        testRunJ <- toJSON testRun
+        let registeredUsers :: [(RegisterUserKey, ())] = parseFacts fs
+            userKeys =
+                mapMaybe
+                    (decodePublicKey . pubkeyhash)
+                    . filter (\(RegisterUserKey _ u _) -> u == requester testRun)
+                    $ fst <$> registeredUsers
+            load = BL.toStrict $ renderCanonicalJSON testRunJ
+        if any (\verify -> verify signature load) userKeys
+            then return Nothing
+            else return $ Just UnacceptableSignature
+
 validateCreateTestRun
     :: Monad m
     => TestRunValidationConfig
@@ -109,7 +138,7 @@ validateCreateTestRun
     config
     validation
     testRun
-    (Pending duration _signature) = do
+    (Pending duration signature) = do
         result <-
             catMaybes
                 <$> sequence
@@ -118,6 +147,7 @@ validateCreateTestRun
                     , checkTryIndex validation testRun
                     , checkCommit validation testRun
                     , checkDirectory validation testRun
+                    , checkSignature validation testRun signature
                     ]
 
         case result of

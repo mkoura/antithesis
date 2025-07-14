@@ -11,12 +11,15 @@ import Core.Types
     , Duration (..)
     , Fact (..)
     , Platform (Platform)
-    , PublicKeyHash (PublicKeyHash)
+    , PublicKeyHash
     , Repository (Repository, organization, project)
     , Try (Try)
     , Username (Username)
     )
 import Crypto.PubKey.Ed25519 qualified as Ed25519
+import Data.ByteString.Lazy.Char8 qualified as BL
+import Data.Maybe (maybeToList)
+import Lib.SSH.Public (encodePublicKey)
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig (..)
     )
@@ -25,11 +28,14 @@ import Test.Hspec
     ( Spec
     , describe
     , it
+    , shouldBe
     , shouldContain
     , shouldNotContain
     )
 import Test.QuickCheck
-    ( Testable (..)
+    ( ASCIIString (..)
+    , Positive (..)
+    , Testable (..)
     , cover
     , forAll
     , forAllBlind
@@ -39,7 +45,7 @@ import Test.QuickCheck.Crypton (sshGen)
 import Test.QuickCheck.JSString (JSStringValue (..))
 import Test.QuickCheck.Lib (withAPresence, withNothing)
 import Test.QuickCheck.Same (isTheSame, theSame, tryDifferent)
-import Text.JSON.Canonical (ToJSON (..))
+import Text.JSON.Canonical (ToJSON (..), renderCanonicalJSON)
 import User.Types
     ( RegisterRoleKey (..)
     , RegisterUserKey (..)
@@ -90,14 +96,14 @@ registerRole platform organization project requester = do
     value <- toJSON ()
     return $ Fact{key, value}
 
-registerUser :: Monad m => String -> String -> String -> m Fact
+registerUser :: Monad m => String -> String -> PublicKeyHash -> m Fact
 registerUser platform username publicKeyHash = do
     key <-
         toJSON
             $ RegisterUserKey
                 { platform = Platform platform
                 , username = Username username
-                , pubkeyhash = PublicKeyHash publicKeyHash
+                , pubkeyhash = publicKeyHash
                 }
     value <- toJSON ()
     return $ Fact{key, value}
@@ -183,6 +189,89 @@ onConditionHaveReason result reason = \case
 spec :: Spec
 spec = do
     describe "validateRequest" $ do
+        it "accepts valid test run" $ do
+            property
+                $ \(ASCIIString platform)
+                   (ASCIIString organization)
+                   (ASCIIString project)
+                   (ASCIIString directory)
+                   (CommitValue commitId)
+                   (Positive tryIndex)
+                   (ASCIIString username) ->
+                        forAllBlind sshGen $ \(sign, pk) -> do
+                            user <-
+                                registerUser
+                                    platform
+                                    username
+                                    $ encodePublicKey pk
+                            role <-
+                                registerRole
+                                    platform
+                                    organization
+                                    project
+                                    username
+                            let mkTestRun j =
+                                    emptyTestRun
+                                        & set platformL (Platform platform)
+                                        & set
+                                            repositoryL
+                                            ( Repository
+                                                { organization = organization
+                                                , project = project
+                                                }
+                                            )
+                                        & set directoryL (Directory directory)
+                                        & set commitIdL (Commit commitId)
+                                        & set tryIndexL (Try j)
+                                        & set requesterL (Username username)
+                            let previous = case tryIndex of
+                                    1 -> Nothing
+                                    n -> do
+                                        let previousTestRun = mkTestRun (n - 1)
+                                        k <- toJSON previousTestRun
+                                        v <-
+                                            toJSON
+                                                ( Pending (Duration 5)
+                                                    $ sign
+                                                    $ BL.unpack
+                                                    $ renderCanonicalJSON k
+                                                )
+                                        Just $ Fact{key = k, value = v}
+                            let validation =
+                                    mkValidation
+                                        ([user, role] <> maybeToList previous)
+                                        [
+                                            ( Repository
+                                                { organization = organization
+                                                , project = project
+                                                }
+                                            , Commit commitId
+                                            )
+                                        ]
+                                        [
+                                            ( Repository
+                                                { organization = organization
+                                                , project = project
+                                                }
+                                            , Commit commitId
+                                            , Directory directory
+                                            )
+                                        ]
+                            let testRun = mkTestRun tryIndex
+                            testRunJ <- toJSON testRun
+                            let testRunState =
+                                    Pending (Duration 5)
+                                        $ sign
+                                        $ BL.unpack
+                                        $ renderCanonicalJSON testRunJ
+                            mresult <-
+                                validateCreateTestRun
+                                    testConfig
+                                    validation
+                                    testRun
+                                    testRunState
+                            mresult `shouldBe` Nothing
+
         it "reports unaccaptable duration"
             $ property
             $ \n message -> forAllBlind
@@ -212,7 +301,7 @@ spec = do
                                 registerUser
                                     (different platform)
                                     (different username)
-                                    "publicKeyHash"
+                                    $ encodePublicKey pk
                             role <-
                                 registerRole
                                     (different platform)

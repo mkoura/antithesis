@@ -29,7 +29,6 @@ result=$(anti requester create-test \
     --username test-user \
     --try 1 \
     --duration 3)
-echo $result
 
 outputRef=$(getOutputRef "$result")
 anti oracle token update -o "$outputRef" >/dev/null
@@ -61,13 +60,12 @@ outputRef=$(getOutputRef "$result")
 anti oracle token update -o "$outputRef" >/dev/null
 
 facts=$(anti facts | jq '.result')
-
+echo "Facts: $facts"
 expectedFacts=$(
     cat <<EOF
 [
   {
     "key": {
-      "type": "test-run",
       "commitId": "test-commit",
       "directory": "test-dir",
       "platform": "test-hub",
@@ -76,14 +74,16 @@ expectedFacts=$(
         "repo": "test-repo"
       },
       "requester": "test-user",
-      "try": 1
+      "try": 1,
+      "type": "test-run"
     },
     "value": {
       "duration": 3,
       "from": {
         "from": {
           "duration": 3,
-          "phase": "pending"
+          "phase": "pending",
+          "signature": "11ffa439b09d47b4c652ed80231fc1336837b113161246e2716ed290b7831bfb86ecf79a1a354a3d7705b43547616825c06ab94913f9ecfcde11542d21f2790d"
         },
         "phase": "accepted"
       },
@@ -91,6 +91,7 @@ expectedFacts=$(
       "url": "http://example.com/test-results"
     }
   }
+
 ]
 EOF
 )

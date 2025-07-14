@@ -230,6 +230,7 @@ test-suite anti-test
   other-modules:
     E2ESpec
     Lib.JSONSpec
+    Lib.SSH.KeySpec
     MPFS.APISpec
     Oracle.Github.OracleValidationSpec
     Oracle.Validate.Requests.TestRun.CreateSpec
@@ -262,6 +263,7 @@ test-suite anti-test
     , cardano-ledger-binary
     , cardano-ledger-core
     , cardano-strict-containers
+    , crypton
     , exceptions
     , hspec
     , http-client
@@ -282,6 +284,7 @@ library test-lib
   -- Modules exported by the library.
   exposed-modules:
     Test.QuickCheck.Commit
+    Test.QuickCheck.Crypton
     Test.QuickCheck.JSString
     Test.QuickCheck.Lib
     Test.QuickCheck.Same
@@ -295,6 +298,9 @@ library test-lib
   -- Other library packages from which modules are imported.
   build-depends:
     , base
+    , bytestring
+    , crypton
+    , memory
     , QuickCheck
 
   -- Directories containing source files.

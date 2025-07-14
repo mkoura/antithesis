@@ -61,6 +61,7 @@ E2E match="":
     export ANTI_WALLET_FILE=tmp/test.json
     export ANTI_TEST_REQUESTER_WALLET=tmp/test.json
     export ANTI_TEST_ORACLE_WALLET=tmp/test.json
+    export ANTI_CONFIG_FILE=test/fixtures/anti-config.json
     export ANTI_WAIT=2
     while [[ "$(curl -s "localhost:$MPFS_PORT/tokens" | jq -r '.indexerStatus.ready')" != "true" ]]; do
         echo "Waiting for indexer to be ready..."

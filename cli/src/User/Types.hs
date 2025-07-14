@@ -168,6 +168,7 @@ data TestRunRejection
     | UnacceptableTryIndex
     | UnacceptableRole
     | UnacceptableDirectory
+    | UnacceptableSignature
     | AnyReason String
     deriving (Eq, Show)
 
@@ -182,6 +183,8 @@ instance Monad m => ToJSON m TestRunRejection where
         stringJSON "unacceptable role"
     toJSON UnacceptableDirectory =
         stringJSON "unacceptable directory"
+    toJSON UnacceptableSignature =
+        stringJSON "unacceptable signature"
     toJSON (AnyReason reason) =
         stringJSON reason
 
@@ -194,6 +197,7 @@ instance ReportSchemaErrors m => FromJSON m TestRunRejection where
             "unacceptable try index" -> pure UnacceptableTryIndex
             "unacceptable role" -> pure UnacceptableRole
             "unacceptable directory" -> pure UnacceptableDirectory
+            "unacceptable signature" -> pure UnacceptableSignature
             _ -> pure $ AnyReason reason
     fromJSON other =
         expectedButGotValue "a string representing a reason" other

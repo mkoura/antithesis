@@ -9,18 +9,18 @@ import Lib.SSH.Key
     ( KeyAPI (KeyAPI, publicKey, sign)
     , decodePrivateSSHFile
     )
-import Test.Hspec (Spec, before, describe, it)
+import Test.Hspec (Spec, describe, it, beforeAll)
 import Test.QuickCheck (Testable (property))
 
 readKey :: IO KeyAPI
 readKey = do
-    signingMap <- decodePrivateSSHFile "pw" "test/fixtures/id_ed25519"
+    signingMap <- decodePrivateSSHFile "pw" "test/fixtures/test_ed25519"
     Just api <- pure $ signingMap "test_user"
     pure api
 
 spec :: Spec
 spec = do
-    describe "SSH Key" $ before readKey $ do
+    describe "SSH Key" $ beforeAll readKey $ do
         it "should sign and verify a message" $ \KeyAPI{sign, publicKey} -> do
             property $ \msgb -> do
                 let msg = B.pack msgb

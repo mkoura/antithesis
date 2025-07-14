@@ -1,4 +1,5 @@
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 module Oracle.Validate.Requests.TestRun.CreateSpec (spec)
 where
@@ -15,6 +16,7 @@ import Core.Types
     , Try (Try)
     , Username (Username)
     )
+import Crypto.PubKey.Ed25519 qualified as Ed25519
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig (..)
     )
@@ -30,8 +32,10 @@ import Test.QuickCheck
     ( Testable (..)
     , cover
     , forAll
+    , forAllBlind
     )
 import Test.QuickCheck.Commit (CommitValue (..))
+import Test.QuickCheck.Crypton (signatureGen)
 import Test.QuickCheck.JSString (JSStringValue (..))
 import Test.QuickCheck.Lib (withAPresence, withNothing)
 import Test.QuickCheck.Same (isTheSame, theSame, tryDifferent)
@@ -108,6 +112,7 @@ registerTestRun
     -> Int
     -> String
     -> Int
+    -> Ed25519.Signature
     -> m Fact
 registerTestRun
     platform
@@ -117,7 +122,8 @@ registerTestRun
     commitId
     tryIndex
     requester
-    duration = do
+    duration
+    signature = do
         key <-
             toJSON
                 $ TestRun
@@ -132,7 +138,7 @@ registerTestRun
                     , tryIndex = Try tryIndex
                     , requester = Username requester
                     }
-        value <- toJSON (Pending (Duration duration))
+        value <- toJSON (Pending (Duration duration) signature)
         return $ Fact{key, value}
 
 emptyTestRun :: TestRun
@@ -155,6 +161,7 @@ testConfig =
     TestRunValidationConfig
         { maxDuration = 6
         , minDuration = 1
+        , sshKeySelector = ""
         }
 
 shouldHaveReason :: (Show a, Eq a) => Maybe [a] -> a -> IO ()
@@ -176,19 +183,21 @@ onConditionHaveReason result reason = \case
 spec :: Spec
 spec = do
     describe "validateRequest" $ do
-        it "reports unaccaptable duration" $ property $ \n -> do
-            let testRun = emptyTestRun
-                testRunState = Pending (Duration n)
-            mresult <-
-                validateCreateTestRun testConfig noValidation testRun testRunState
-            onConditionHaveReason mresult UnacceptableDuration
-                $ n < minDuration testConfig || n > maxDuration testConfig
+        it "reports unaccaptable duration"
+            $ property
+            $ \n message -> forAllBlind
+                signatureGen
+                $ \(sign, _) -> do
+                    let testRun = emptyTestRun
+                        testRunState = Pending (Duration n) $ sign message
+                    mresult <-
+                        validateCreateTestRun testConfig noValidation testRun testRunState
+                    onConditionHaveReason mresult UnacceptableDuration
+                        $ n < minDuration testConfig || n > maxDuration testConfig
         it "reports unacceptable role"
             $ property
-            $ \platform
-               organization
-               project
-               username -> do
+            $ \platform organization project username message ->
+                forAllBlind signatureGen $ \(sign, _) -> do
                     let allTheSame =
                             isTheSame platform
                                 && isTheSame organization
@@ -222,7 +231,7 @@ spec = do
                                                 }
                                             )
                                         & set requesterL (Username $ same username)
-                                testRunState = Pending (Duration 5)
+                                testRunState = Pending (Duration 5) $ sign message
                             mresult <-
                                 validateCreateTestRun
                                     testConfig
@@ -244,8 +253,9 @@ spec = do
                    (CommitValue commitId)
                    tryIndexRequest
                    (JSStringValue username)
-                   duration -> forAll (factIndexGen tryIndexRequest)
-                        $ \mTryIndexFact -> do
+                   duration
+                   message -> forAllBlind signatureGen $ \(sign, _) ->
+                        forAll (factIndexGen tryIndexRequest) $ \mTryIndexFact -> do
                             let rightIndex = case mTryIndexFact of
                                     Just tryIndexFact ->
                                         tryIndexRequest == tryIndexFact + 1
@@ -263,6 +273,7 @@ spec = do
                                                 tryIndexFact
                                                 username
                                                 duration
+                                                $ sign message
                                         return $ mkValidation [testRunFact] [] []
                                     Nothing -> return noValidation
                                 let testRun =
@@ -279,7 +290,7 @@ spec = do
                                             & set commitIdL (Commit commitId)
                                             & set tryIndexL (Try tryIndexRequest)
                                             & set requesterL (Username username)
-                                    testRunState = Pending (Duration 5)
+                                    testRunState = Pending (Duration 5) $ sign message
                                 mresult <-
                                     validateCreateTestRun
                                         testConfig
@@ -299,51 +310,54 @@ spec = do
                    (CommitValue commitId)
                    tryIndexRequest
                    (JSStringValue username)
-                   duration ->
-                        forAll (factDirectoryGen directory) $ \directoryFact -> do
-                            let rightDirectory = directory == directoryFact
-                            cover 5 rightDirectory "pass" $ do
-                                validation <- do
-                                    testRunFact <-
-                                        registerTestRun
-                                            platform
-                                            organization
-                                            project
-                                            directory
-                                            commitId
-                                            tryIndexRequest
-                                            username
-                                            duration
-                                    return
-                                        $ mkValidation
-                                            [testRunFact]
-                                            []
-                                            [
-                                                ( Repository organization project
-                                                , Commit commitId
-                                                , Directory directoryFact
-                                                )
-                                            ]
-                                let testRun =
-                                        emptyTestRun
-                                            & set platformL (Platform platform)
-                                            & set
-                                                repositoryL
-                                                ( Repository
-                                                    { organization = organization
-                                                    , project = project
-                                                    }
-                                                )
-                                            & set directoryL (Directory directory)
-                                            & set commitIdL (Commit commitId)
-                                            & set tryIndexL (Try tryIndexRequest)
-                                            & set requesterL (Username username)
-                                    testRunState = Pending (Duration 5)
-                                mresult <-
-                                    validateCreateTestRun
-                                        testConfig
-                                        validation
-                                        testRun
-                                        testRunState
-                                onConditionHaveReason mresult UnacceptableDirectory
-                                    $ not rightDirectory
+                   duration
+                   message -> forAllBlind signatureGen
+                        $ \(sign, _) ->
+                            forAll (factDirectoryGen directory) $ \directoryFact -> do
+                                let rightDirectory = directory == directoryFact
+                                cover 5 rightDirectory "pass" $ do
+                                    validation <- do
+                                        testRunFact <-
+                                            registerTestRun
+                                                platform
+                                                organization
+                                                project
+                                                directory
+                                                commitId
+                                                tryIndexRequest
+                                                username
+                                                duration
+                                                $ sign message
+                                        return
+                                            $ mkValidation
+                                                [testRunFact]
+                                                []
+                                                [
+                                                    ( Repository organization project
+                                                    , Commit commitId
+                                                    , Directory directoryFact
+                                                    )
+                                                ]
+                                    let testRun =
+                                            emptyTestRun
+                                                & set platformL (Platform platform)
+                                                & set
+                                                    repositoryL
+                                                    ( Repository
+                                                        { organization = organization
+                                                        , project = project
+                                                        }
+                                                    )
+                                                & set directoryL (Directory directory)
+                                                & set commitIdL (Commit commitId)
+                                                & set tryIndexL (Try tryIndexRequest)
+                                                & set requesterL (Username username)
+                                        testRunState = Pending (Duration 5) $ sign message
+                                    mresult <-
+                                        validateCreateTestRun
+                                            testConfig
+                                            validation
+                                            testRun
+                                            testRunState
+                                    onConditionHaveReason mresult UnacceptableDirectory
+                                        $ not rightDirectory

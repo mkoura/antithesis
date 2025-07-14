@@ -17,6 +17,17 @@ import Core.Types
     , Username (Username)
     )
 import Test.Hspec (Spec, describe, it, shouldBe)
+import Test.QuickCheck
+    ( ASCIIString (..)
+    , Gen
+    , Testable (..)
+    , arbitrary
+    , elements
+    , forAll
+    , forAllBlind
+    , listOf
+    )
+import Test.QuickCheck.Crypton (signatureGen)
 import Text.JSON.Canonical
     ( FromJSON (..)
     , ReportSchemaErrors (..)
@@ -45,6 +56,18 @@ roundTrip value = do
     decoded <- fromJSON encoded
     decoded `shouldBe` value
 
+testRunRejectionGen :: Gen TestRunRejection
+testRunRejectionGen = do
+    ASCIIString message <- arbitrary
+    elements
+        [ UnacceptableDuration
+        , UnacceptableCommit
+        , UnacceptableDirectory
+        , UnacceptableTryIndex
+        , UnacceptableRole
+        , AnyReason message
+        ]
+
 spec :: Spec
 spec = do
     describe "TestRun" $ do
@@ -65,18 +88,27 @@ spec = do
             roundTrip testRun
 
     describe "TestRunState" $ do
-        it "roundtrips on the JSON instance" $ do
-            let pending = Pending $ Duration 4
-            roundTrip pending
-            let rejected =
-                    Rejected
-                        pending
-                        [UnacceptableDuration, UnacceptableCommit]
-            roundTrip rejected
-            let accepted = Accepted pending
-            roundTrip accepted
-            let finished = Finished accepted (Duration 4) (URL "")
-            roundTrip finished
+        it "roundtrips on the JSON instance"
+            $ property
+            $ \message
+               duration
+               (ASCIIString url) -> forAll (listOf testRunRejectionGen) $ \rejections -> do
+                    forAllBlind signatureGen $ \(sign, _verify) -> do
+                        let pending = Pending (Duration duration) $ sign message
+                        roundTrip pending
+                        let rejected =
+                                Rejected
+                                    pending
+                                    rejections
+                        roundTrip rejected
+                        let accepted = Accepted pending
+                        roundTrip accepted
+                        let finished =
+                                Finished
+                                    accepted
+                                    (Duration duration)
+                                    (URL url)
+                        roundTrip finished
 
     describe "RegisterUserKey" $ do
         it "roundtrips on the JSON instance" $ do

@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-
 module Cli
     ( cmd
     , Command (..)
@@ -16,11 +14,15 @@ import Core.Types
     )
 import Data.Aeson (eitherDecodeFileStrict')
 import Data.Aeson.Types qualified as Aeson
-import GHC.Generics (Generic)
+import Lib.SSH.Key
+    ( KeyAPI (..)
+    , SSHKeySelector (SSHKeySelector)
+    , SigningMap
+    )
 import MPFS.API (getTokenFacts, retractChange)
 import Oracle.Cli (OracleCommand (..), oracleCmd)
 import Oracle.Validate.Requests.TestRun.Config
-    ( TestRunValidationConfig
+    ( TestRunValidationConfig (..)
     )
 import Servant.Client (ClientM)
 import Submitting (Submitting, signAndSubmit)
@@ -54,17 +56,21 @@ deriving instance Eq (Command a)
 newtype Config = Config
     { agentValidationConfig :: TestRunValidationConfig
     }
-    deriving (Show, Eq, Generic)
+    deriving (Show, Eq)
 
-instance Aeson.FromJSON Config
+instance Aeson.FromJSON Config where
+    parseJSON = Aeson.withObject "Config" $ \v ->
+        Config
+            <$> v Aeson..: "agentValidationConfig"
 
 cmd
     :: Submitting
     -> Either FilePath Wallet
+    -> Maybe SigningMap
     -> Maybe TokenId
     -> Command a
     -> ClientM a
-cmd sbmt mwf tokenId command = do
+cmd sbmt mwf msign tokenId command = do
     cfg <- liftIO $ do
         configFile <- getEnv "ANTI_CONFIG_FILE"
         config <-
@@ -72,41 +78,55 @@ cmd sbmt mwf tokenId command = do
         case config of
             Left err -> error $ "Failed to parse config file: " ++ err
             Right cfg -> pure cfg
-    cmdCore sbmt cfg mwf tokenId command
+    cmdCore sbmt cfg mwf msign tokenId command
+
+failNothing :: Applicative m => [Char] -> Maybe a -> m a
+failNothing w Nothing = error w
+failNothing _ (Just x) = pure x
+
+failLeft :: Applicative m => (a -> String) -> Either a b -> m b
+failLeft f (Left err) = error $ f err
+failLeft _ (Right x) = pure x
 
 cmdCore
     :: Submitting
     -> Config
     -> Either FilePath Wallet
+    -> Maybe SigningMap
     -> Maybe TokenId
     -> Command a
     -> ClientM a
-cmdCore sbmt Config{agentValidationConfig} mWallet mTokenId = \case
-    RequesterCommand requesterCommand ->
-        case (mWallet, mTokenId) of
-            (Right wallet, Just tokenId) ->
-                requesterCmd sbmt wallet tokenId requesterCommand
-            _ -> error "Wallet and TokenId are required for RequesterCommand"
-    OracleCommand oracleCommand ->
-        case mWallet of
-            Right wallet ->
-                oracleCmd sbmt wallet agentValidationConfig mTokenId oracleCommand
-            Left _ -> error "Wallet is required for OracleCommand"
-    AgentCommand agentCommand ->
-        case (mWallet, mTokenId) of
-            (Right wallet, Just tokenId) ->
-                agentCmd sbmt wallet tokenId agentCommand
-            _ -> error "Wallet and TokenId are required for AgentCommand"
-    RetractRequest refId -> do
-        case mWallet of
-            Right wallet -> fmap txHash $ signAndSubmit sbmt wallet $ \address ->
+cmdCore
+    sbmt
+    Config{agentValidationConfig}
+    mWallet
+    mSigning
+    mTokenId = \case
+        RequesterCommand requesterCommand -> do
+            signing <- failNothing "No SSH file" mSigning
+            keyAPI <-
+                failNothing "No SSH selector"
+                    $ signing
+                    $ SSHKeySelector
+                    $ sshKeySelector agentValidationConfig
+            tokenId <- failNothing "No TokenId" mTokenId
+            wallet <- failLeft ("No wallet @ " <>) mWallet
+            requesterCmd sbmt wallet tokenId (sign keyAPI) requesterCommand
+        OracleCommand oracleCommand -> do
+            wallet <- failLeft ("No wallet @ " <>) mWallet
+            oracleCmd sbmt wallet agentValidationConfig mTokenId oracleCommand
+        AgentCommand agentCommand -> do
+            tokenId <- failNothing "No TokenId" mTokenId
+            wallet <- failLeft ("No wallet @ " <>) mWallet
+            agentCmd sbmt wallet tokenId agentCommand
+        RetractRequest refId -> do
+            wallet <- failLeft ("No wallet @ " <>) mWallet
+            fmap txHash $ signAndSubmit sbmt wallet $ \address ->
                 retractChange address refId
-            Left _ -> error "Wallet is required for RetractRequest"
-    GetFacts -> do
-        case mTokenId of
-            Just tokenId -> getTokenFacts tokenId
-            Nothing -> error "TokenId is required for GetFacts"
-    Wallet walletCommand -> do
-        case mWallet of
-            Right wallet -> liftIO $ walletCmd (Right wallet) walletCommand
-            Left walletFile -> liftIO $ walletCmd (Left walletFile) walletCommand
+        GetFacts -> do
+            tokenId <- failNothing "No TokenId" mTokenId
+            getTokenFacts tokenId
+        Wallet walletCommand -> do
+            liftIO $ case mWallet of
+                Right wallet -> walletCmd (Right wallet) walletCommand
+                Left walletFile -> walletCmd (Left walletFile) walletCommand

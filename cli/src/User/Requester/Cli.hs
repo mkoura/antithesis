@@ -12,6 +12,8 @@ import Core.Types
     , Wallet (..)
     , WithTxHash (..)
     )
+import Data.ByteString.Lazy qualified as BL
+import Lib.SSH.Key (Sign)
 import MPFS.API
     ( RequestDeleteBody (..)
     , RequestInsertBody (..)
@@ -20,7 +22,7 @@ import MPFS.API
     )
 import Servant.Client (ClientM)
 import Submitting (Submitting, signAndSubmit)
-import Text.JSON.Canonical (ToJSON (..))
+import Text.JSON.Canonical (ToJSON (..), renderCanonicalJSON)
 import User.Types
     ( Phase (PendingT)
     , RegisterRoleKey (..)
@@ -49,9 +51,10 @@ requesterCmd
     :: Submitting
     -> Wallet
     -> TokenId
+    -> Sign
     -> RequesterCommand a
     -> ClientM a
-requesterCmd sbmt wallet tokenId command = do
+requesterCmd sbmt wallet tokenId sign command = do
     case command of
         RegisterUser request ->
             registerUser sbmt wallet tokenId request
@@ -66,6 +69,7 @@ requesterCmd sbmt wallet tokenId command = do
                 sbmt
                 wallet
                 tokenId
+                sign
                 testRun
                 duration
 
@@ -73,14 +77,16 @@ createCommand
     :: Submitting
     -> Wallet
     -> TokenId
+    -> Sign
     -> TestRun
     -> Duration
     -> ClientM (WithTxHash (TestRunState PendingT))
-createCommand sbmt wallet tokenId testRun duration = do
-    let newState = Pending duration
+createCommand sbmt wallet tokenId sign testRun duration = do
+    key <- toJSON testRun
+    let signature = sign $ BL.toStrict $ renderCanonicalJSON key
+    let newState = Pending duration signature
+    value <- toJSON newState
     WithTxHash txHash _ <- signAndSubmit sbmt wallet $ \address -> do
-        key <- toJSON testRun
-        value <- toJSON newState
         requestInsert address tokenId
             $ RequestInsertBody{key, value}
     pure $ WithTxHash txHash $ Just newState

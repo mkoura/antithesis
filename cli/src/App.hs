@@ -5,7 +5,9 @@ import Control.Exception (catch)
 import Core.Types
     ( TokenId (..)
     )
+import Data.ByteString.Char8 qualified as B
 import Lib.Box (Box (..))
+import Lib.SSH.Key (decodePrivateSSHFile)
 import Network.HTTP.Client
     ( ManagerSettings (..)
     , Request (requestBody)
@@ -40,6 +42,14 @@ client = do
     mWallet <-
         (Right <$> readWallet walletFile)
             `catch` \(_ :: IOError) -> return $ Left walletFile
+    mSigning <- do
+        mf <- lookupEnv "ANTI_SSH_FILE"
+        case mf of
+            Just f -> do
+                pw <- getEnv "ANTI_SSH_PASSWORD"
+                r <- decodePrivateSSHFile (B.pack pw) f
+                return $ Just r
+            Nothing -> return Nothing
     manger <-
         newManager
             $ if baseUrlScheme baseUrl == Https
@@ -58,7 +68,9 @@ client = do
                 Right r -> return r
     let sbmt = Submitting{ifToWait = iftw, runClient}
     (o,walletFile,mpfs_host,)
-        <$> runClientM (cmd sbmt mWallet mtk command >>= toJSON) clientEnv
+        <$> runClientM
+            (cmd sbmt mWallet mSigning mtk command >>= toJSON)
+            clientEnv
 
 _logRequests :: ManagerSettings -> ManagerSettings
 _logRequests settings =

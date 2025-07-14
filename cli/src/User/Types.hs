@@ -1,5 +1,6 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -36,9 +37,14 @@ import Core.Types
     , Try (..)
     , Username (..)
     )
+import Crypto.Error (CryptoFailable (..))
+import Crypto.PubKey.Ed25519 qualified as Ed25519
+import Data.ByteArray qualified as BA
 import Data.Map.Strict qualified as Map
 import Lib.JSON
-    ( getField
+    ( byteStringFromJSON
+    , byteStringToJSON
+    , getField
     , getIntegralField
     , getListField
     , getStringField
@@ -186,14 +192,14 @@ instance ReportSchemaErrors m => FromJSON m TestRunRejection where
             "unacceptable duration" -> pure UnacceptableDuration
             "unacceptable commit" -> pure UnacceptableCommit
             "unacceptable try index" -> pure UnacceptableTryIndex
-            "unacceptable requester" -> pure UnacceptableRole
+            "unacceptable role" -> pure UnacceptableRole
             "unacceptable directory" -> pure UnacceptableDirectory
             _ -> pure $ AnyReason reason
     fromJSON other =
         expectedButGotValue "a string representing a reason" other
 
 data TestRunState a where
-    Pending :: Duration -> TestRunState PendingT
+    Pending :: Duration -> Ed25519.Signature -> TestRunState PendingT
     Rejected
         :: TestRunState PendingT -> [TestRunRejection] -> TestRunState DoneT
     Accepted :: TestRunState PendingT -> TestRunState RunningT
@@ -203,10 +209,11 @@ data TestRunState a where
 deriving instance Eq (TestRunState a)
 deriving instance Show (TestRunState a)
 instance Monad m => ToJSON m (TestRunState a) where
-    toJSON (Pending (Duration d)) =
+    toJSON (Pending (Duration d) signature) =
         object
             [ ("phase", stringJSON "pending")
             , ("duration", intJSON d)
+            , ("signature", byteStringToJSON $ BA.convert signature)
             ]
     toJSON (Rejected pending reasons) =
         object
@@ -234,7 +241,15 @@ instance ReportSchemaErrors m => FromJSON m (TestRunState PendingT) where
         case phase of
             "pending" -> do
                 duration <- getIntegralField "duration" mapping
-                pure $ Pending (Duration duration)
+                signatureJSValue <- getField "signature" mapping
+                signatureByteString <- byteStringFromJSON signatureJSValue
+                case Ed25519.signature signatureByteString of
+                    CryptoPassed signature ->
+                        pure $ Pending (Duration duration) signature
+                    CryptoFailed e ->
+                        expectedButGotValue
+                            ("a valid Ed25519 signature " ++ show e)
+                            signatureJSValue
             _ ->
                 expectedButGotValue
                     "a pending phase"

@@ -109,7 +109,7 @@ validateCreateTestRun
     config
     validation
     testRun
-    (Pending duration) = do
+    (Pending duration _signature) = do
         result <-
             catMaybes
                 <$> sequence

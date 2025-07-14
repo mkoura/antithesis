@@ -1,6 +1,8 @@
 {
     "agentValidationConfig": {
         "minDuration": 1,
-        "maxDuration": 12
+        "maxDuration": 12 ,
+        "sshKeySelector" : "test_user"
     }
+
 }

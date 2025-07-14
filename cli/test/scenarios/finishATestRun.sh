@@ -29,6 +29,7 @@ result=$(anti requester create-test \
     --username test-user \
     --try 1 \
     --duration 3)
+echo $result
 
 outputRef=$(getOutputRef "$result")
 anti oracle token update -o "$outputRef" >/dev/null

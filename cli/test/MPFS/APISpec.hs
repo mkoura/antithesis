@@ -226,6 +226,7 @@ retractTx wait180 wallet obj = do
             wait180
             (Right wallet)
             Nothing
+            Nothing
         $ RetractRequest
             { outputReference =
                 RequestRefId
@@ -334,7 +335,7 @@ spec = do
                     wallet <- loadRequesterWallet
                     call $ do
                         insert <-
-                            requesterCmd wait180 wallet tokenId
+                            requesterCmd wait180 wallet tokenId undefined
                                 $ RegisterUser
                                 $ RegisterUserKey
                                     { platform = Platform "test-platform"
@@ -357,7 +358,7 @@ spec = do
                     keyJ <- toJSON key
                     call $ do
                         insertTx <-
-                            requesterCmd wait180 requester tokenId
+                            requesterCmd wait180 requester tokenId undefined
                                 $ RegisterUser key
                         _updateInsertTx <-
                             oracleCmd wait180 oracle undefined (Just tokenId)
@@ -376,7 +377,7 @@ spec = do
                                     ]
                                 ]
                         deleteTx <-
-                            requesterCmd wait180 requester tokenId
+                            requesterCmd wait180 requester tokenId undefined
                                 $ UnregisterUser key
                         _updateDeleteTx <-
                             oracleCmd wait180 oracle undefined (Just tokenId)

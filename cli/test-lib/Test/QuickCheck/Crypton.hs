@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Test.QuickCheck.Crypton
-    ( signatureGen
+    ( sshGen
     )
 where
 
@@ -24,12 +24,12 @@ instance MonadRandom Gen where
         bytes <- vectorOf n (choose (0, 255) :: Gen Word8)
         return $ BA.pack bytes
 
-signatureGen
+sshGen
     :: Gen
         ( String -> Ed25519.Signature
-        , String -> Ed25519.Signature -> Bool
+        , Ed25519.PublicKey
         )
-signatureGen = do
+sshGen = do
     private <- generateSecretKey
     let public = Ed25519.toPublic private
         sign message =
@@ -37,4 +37,4 @@ signatureGen = do
             in  case Ed25519.signature signature of
                     CryptoFailed err -> error $ "Invalid signature: " ++ show err
                     CryptoPassed sig -> sig
-    return (sign, Ed25519.verify public . B.pack)
+    return (sign, public)

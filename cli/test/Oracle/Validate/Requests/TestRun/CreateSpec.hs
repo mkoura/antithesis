@@ -35,7 +35,7 @@ import Test.QuickCheck
     , forAllBlind
     )
 import Test.QuickCheck.Commit (CommitValue (..))
-import Test.QuickCheck.Crypton (signatureGen)
+import Test.QuickCheck.Crypton (sshGen)
 import Test.QuickCheck.JSString (JSStringValue (..))
 import Test.QuickCheck.Lib (withAPresence, withNothing)
 import Test.QuickCheck.Same (isTheSame, theSame, tryDifferent)
@@ -186,7 +186,7 @@ spec = do
         it "reports unaccaptable duration"
             $ property
             $ \n message -> forAllBlind
-                signatureGen
+                sshGen
                 $ \(sign, _) -> do
                     let testRun = emptyTestRun
                         testRunState = Pending (Duration n) $ sign message
@@ -197,7 +197,7 @@ spec = do
         it "reports unacceptable role"
             $ property
             $ \platform organization project username message ->
-                forAllBlind signatureGen $ \(sign, _) -> do
+                forAllBlind sshGen $ \(sign, pk) -> do
                     let allTheSame =
                             isTheSame platform
                                 && isTheSame organization
@@ -254,7 +254,7 @@ spec = do
                    tryIndexRequest
                    (JSStringValue username)
                    duration
-                   message -> forAllBlind signatureGen $ \(sign, _) ->
+                   message -> forAllBlind sshGen $ \(sign, _pk) ->
                         forAll (factIndexGen tryIndexRequest) $ \mTryIndexFact -> do
                             let rightIndex = case mTryIndexFact of
                                     Just tryIndexFact ->
@@ -311,7 +311,7 @@ spec = do
                    tryIndexRequest
                    (JSStringValue username)
                    duration
-                   message -> forAllBlind signatureGen
+                   message -> forAllBlind sshGen
                         $ \(sign, _) ->
                             forAll (factDirectoryGen directory) $ \directoryFact -> do
                                 let rightDirectory = directory == directoryFact

@@ -27,7 +27,7 @@ import Test.QuickCheck
     , forAllBlind
     , listOf
     )
-import Test.QuickCheck.Crypton (signatureGen)
+import Test.QuickCheck.Crypton (sshGen)
 import Text.JSON.Canonical
     ( FromJSON (..)
     , ReportSchemaErrors (..)
@@ -93,7 +93,7 @@ spec = do
             $ \message
                duration
                (ASCIIString url) -> forAll (listOf testRunRejectionGen) $ \rejections -> do
-                    forAllBlind signatureGen $ \(sign, _verify) -> do
+                    forAllBlind sshGen $ \(sign, _verify) -> do
                         let pending = Pending (Duration duration) $ sign message
                         roundTrip pending
                         let rejected =

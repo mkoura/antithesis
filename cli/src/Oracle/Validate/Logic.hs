@@ -118,19 +118,19 @@ validateRequest
                 let (Platform p) = platform
                     (Repository o r) = repository
                     (Username u) = username
-                in pure
-                    ( refId
-                    , NotValidated
-                        $ "no registration for platform '"
-                            <> show p
-                            <> "' and repository '"
-                            <> show r
-                            <> "' of owner '"
-                            <> show o
-                            <> "' and user '"
-                            <> show u
-                            <> "' found"
-                    )
+                in  pure
+                        ( refId
+                        , NotValidated
+                            $ "no registration for platform '"
+                                <> show p
+                                <> "' and repository '"
+                                <> show r
+                                <> "' of owner '"
+                                <> show o
+                                <> "' and user '"
+                                <> show u
+                                <> "' found"
+                        )
             else do
                 validationRes <-
                     liftIO

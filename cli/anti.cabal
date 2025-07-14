@@ -94,6 +94,7 @@ library
     Lib.GitHub
     Lib.JSON
     Lib.SSH.Key
+    Lib.SSH.Public
     MPFS.API
     Options
     Oracle.Cli
@@ -133,6 +134,8 @@ library
     , aeson
     , base
     , base16-bytestring      ^>=1.0.2.0
+    , base64-bytestring
+    , binary
     , bytestring
     , canonical-json
     , cardano-addresses      ^>=4.0.0

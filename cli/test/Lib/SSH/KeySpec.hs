@@ -9,7 +9,7 @@ import Lib.SSH.Key
     ( KeyAPI (KeyAPI, publicKey, sign)
     , decodePrivateSSHFile
     )
-import Test.Hspec (Spec, describe, it, beforeAll)
+import Test.Hspec (Spec, beforeAll, describe, it)
 import Test.QuickCheck (Testable (property))
 
 readKey :: IO KeyAPI

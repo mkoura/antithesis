@@ -7,7 +7,7 @@ import Core.Types
     )
 import Data.ByteString.Char8 qualified as B
 import Lib.Box (Box (..))
-import Lib.SSH.Key (decodePrivateSSHFile)
+import Lib.SSH.Private (decodePrivateSSHFile)
 import Network.HTTP.Client
     ( ManagerSettings (..)
     , Request (requestBody)

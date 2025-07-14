@@ -14,7 +14,7 @@ import Core.Types
     )
 import Data.Aeson (eitherDecodeFileStrict')
 import Data.Aeson.Types qualified as Aeson
-import Lib.SSH.Key
+import Lib.SSH.Private
     ( KeyAPI (..)
     , SSHKeySelector (SSHKeySelector)
     , SigningMap

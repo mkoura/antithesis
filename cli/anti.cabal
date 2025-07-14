@@ -93,7 +93,7 @@ library
     Lib.Box
     Lib.GitHub
     Lib.JSON
-    Lib.SSH.Key
+    Lib.SSH.Private
     Lib.SSH.Public
     MPFS.API
     Options

@@ -5,7 +5,7 @@ where
 
 import Crypto.PubKey.Ed25519 qualified as Ed25519
 import Data.ByteString qualified as B
-import Lib.SSH.Key
+import Lib.SSH.Private
     ( KeyAPI (KeyAPI, publicKey, sign)
     , decodePrivateSSHFile
     )

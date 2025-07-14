@@ -13,7 +13,7 @@ import Core.Types
     , WithTxHash (..)
     )
 import Data.ByteString.Lazy qualified as BL
-import Lib.SSH.Key (Sign)
+import Lib.SSH.Private (Sign)
 import MPFS.API
     ( RequestDeleteBody (..)
     , RequestInsertBody (..)

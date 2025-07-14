@@ -1,6 +1,6 @@
 {-# LANGUAGE MultiWayIf #-}
 
-module Lib.SSH.Key
+module Lib.SSH.Private
     ( decodePrivateSSHFile
     , Sign
     , KeyAPI (..)

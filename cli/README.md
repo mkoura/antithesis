@@ -138,7 +138,7 @@ This is the role of the user that wants to run an oracle service for the Antithe
 To create the Antithesis token, you can use the `anti oracle token create` command.
 
 ```bash
-anti oracle token create
+anti oracle token boot
 ```
 
 It will create the Antithesis token. This token is a unique identifier for the Antithesis platform and will be used by all users to interact with the platform. You have to distribute it so that users can set the `ANTI_TOKEN_ID` environment variable to point to it.
@@ -180,3 +180,33 @@ anti oracle token delete
 ## Antithesis Agent Role
 
 TBD
+
+## Testing the code
+
+Set the needed environment variables
+
+``` bash
+    export ANTI_TEST_REQUESTER_WALLET=tmp/my-wallet.json
+    export ANTI_TEST_ORACLE_WALLET=tmp/my-wallet.json
+    export ANTI_MPFS_HOST=https://mpfs.plutimus.com
+    export ANTI_CONFIG_FILE=test/fixtures/anti-config.json
+    export ANTI_WALLET_FILE=tmp/my-wallet.json
+    export ANTI_WAIT=180
+```
+
+### Using cabal
+
+``` bash
+    nix develop
+    cabal test
+```
+
+### Using justfile
+
+``` bash
+    nix shell .#anti
+    just unit
+    just E2E
+```
+
+Refer to `justfile` for more ready run/build/polish code options.

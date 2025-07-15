@@ -21,7 +21,6 @@ import Test.QuickCheck
     ( ASCIIString (..)
     , Gen
     , Testable (..)
-    , arbitrary
     , elements
     , forAll
     , forAllBlind
@@ -58,14 +57,9 @@ roundTrip value = do
 
 testRunRejectionGen :: Gen TestRunRejection
 testRunRejectionGen = do
-    ASCIIString message <- arbitrary
     elements
-        [ UnacceptableDuration
-        , UnacceptableCommit
-        , UnacceptableDirectory
-        , UnacceptableTryIndex
-        , UnacceptableRole
-        , AnyReason message
+        [ BrokenInstructions
+        , UnclearIntent
         ]
 
 spec :: Spec

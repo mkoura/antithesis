@@ -159,48 +159,33 @@ instance (Monad m, ReportSchemaErrors m) => FromJSON m TestRun where
 
 data Phase = PendingT | DoneT | RunningT
 
-newtype URL = URL String
-    deriving (Show, Eq)
-
 data TestRunRejection
-    = UnacceptableDuration
-    | UnacceptableCommit
-    | UnacceptableTryIndex
-    | UnacceptableRole
-    | UnacceptableDirectory
-    | UnacceptableSignature
-    | AnyReason String
+    = BrokenInstructions
+    | UnclearIntent
     deriving (Eq, Show)
 
 instance Monad m => ToJSON m TestRunRejection where
-    toJSON UnacceptableDuration =
-        stringJSON "unacceptable duration"
-    toJSON UnacceptableCommit =
-        stringJSON "unacceptable commit"
-    toJSON UnacceptableTryIndex =
-        stringJSON "unacceptable try index"
-    toJSON UnacceptableRole =
-        stringJSON "unacceptable role"
-    toJSON UnacceptableDirectory =
-        stringJSON "unacceptable directory"
-    toJSON UnacceptableSignature =
-        stringJSON "unacceptable signature"
-    toJSON (AnyReason reason) =
-        stringJSON reason
+    toJSON BrokenInstructions =
+        stringJSON "broken instructions"
+    toJSON UnclearIntent =
+        stringJSON "unclear intent"
 
 instance ReportSchemaErrors m => FromJSON m TestRunRejection where
     fromJSON (JSString jsString) = do
         let reason = fromJSString jsString
         case reason of
-            "unacceptable duration" -> pure UnacceptableDuration
-            "unacceptable commit" -> pure UnacceptableCommit
-            "unacceptable try index" -> pure UnacceptableTryIndex
-            "unacceptable role" -> pure UnacceptableRole
-            "unacceptable directory" -> pure UnacceptableDirectory
-            "unacceptable signature" -> pure UnacceptableSignature
-            _ -> pure $ AnyReason reason
+            "broken instructions" -> pure BrokenInstructions
+            "unclear intent" -> pure UnclearIntent
+            _ ->
+                expectedButGotValue
+                    "a known test run rejection reason"
+                    (JSString jsString)
     fromJSON other =
-        expectedButGotValue "a string representing a reason" other
+        expectedButGotValue
+            "a string representing a test run rejection reason"
+            other
+newtype URL = URL String
+    deriving (Show, Eq)
 
 data TestRunState a where
     Pending :: Duration -> Ed25519.Signature -> TestRunState PendingT

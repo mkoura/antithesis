@@ -12,7 +12,7 @@ module Lib.SSH.Private
     ) where
 
 import Control.Applicative (many, (<|>))
-import Control.Monad (join, replicateM, void, when, (<=<))
+import Control.Monad (replicateM, void, when, (<=<))
 import Crypto.Cipher.AES qualified as Cipher
 import Crypto.Cipher.Types qualified as Cipher
 import Crypto.Error

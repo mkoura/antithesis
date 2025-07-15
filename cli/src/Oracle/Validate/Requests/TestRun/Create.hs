@@ -2,6 +2,7 @@
 
 module Oracle.Validate.Requests.TestRun.Create
     ( validateCreateTestRun
+    , TestRunRejection (..)
     ) where
 
 import Core.Types
@@ -13,21 +14,68 @@ import Core.Types
 import Crypto.PubKey.Ed25519 qualified as Ed25519
 import Data.ByteString.Lazy qualified as BL
 import Data.Maybe (catMaybes, mapMaybe)
+import Lib.JSON (stringJSON)
 import Lib.SSH.Public (decodePublicKey)
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig (..)
     )
-import Text.JSON.Canonical (ToJSON (..), renderCanonicalJSON)
+import Text.JSON.Canonical
+    ( FromJSON (..)
+    , JSValue (..)
+    , ReportSchemaErrors
+    , ToJSON (..)
+    , expectedButGotValue
+    , fromJSString
+    , renderCanonicalJSON
+    )
 import User.Types
     ( Phase (PendingT)
     , RegisterUserKey (..)
     , TestRun (..)
-    , TestRunRejection (..)
     , TestRunState (..)
     , roleOfATestRun
     )
 import Validation (Validation (..))
 
+data TestRunRejection
+    = UnacceptableDuration
+    | UnacceptableCommit
+    | UnacceptableTryIndex
+    | UnacceptableRole
+    | UnacceptableDirectory
+    | UnacceptableSignature
+    | AnyReason String
+    deriving (Eq, Show)
+
+instance Monad m => ToJSON m TestRunRejection where
+    toJSON UnacceptableDuration =
+        stringJSON "unacceptable duration"
+    toJSON UnacceptableCommit =
+        stringJSON "unacceptable commit"
+    toJSON UnacceptableTryIndex =
+        stringJSON "unacceptable try index"
+    toJSON UnacceptableRole =
+        stringJSON "unacceptable role"
+    toJSON UnacceptableDirectory =
+        stringJSON "unacceptable directory"
+    toJSON UnacceptableSignature =
+        stringJSON "unacceptable signature"
+    toJSON (AnyReason reason) =
+        stringJSON reason
+
+instance ReportSchemaErrors m => FromJSON m TestRunRejection where
+    fromJSON (JSString jsString) = do
+        let reason = fromJSString jsString
+        case reason of
+            "unacceptable duration" -> pure UnacceptableDuration
+            "unacceptable commit" -> pure UnacceptableCommit
+            "unacceptable try index" -> pure UnacceptableTryIndex
+            "unacceptable role" -> pure UnacceptableRole
+            "unacceptable directory" -> pure UnacceptableDirectory
+            "unacceptable signature" -> pure UnacceptableSignature
+            _ -> pure $ AnyReason reason
+    fromJSON other =
+        expectedButGotValue "a string representing a reason" other
 checkDuration
     :: TestRunValidationConfig -> Duration -> Maybe TestRunRejection
 checkDuration TestRunValidationConfig{maxDuration, minDuration} (Duration n)

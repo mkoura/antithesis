@@ -74,20 +74,16 @@ acceptTestOptions =
             <*> tryOption
             <*> usernameOption
 
-reasonParser :: Parser TestRunRejection
-reasonParser =
+testRejectionParser :: Parser TestRunRejection
+testRejectionParser =
     option
         (eitherReader readReason)
         (long "reason" <> help "TestRunRejection for rejection")
   where
     readReason :: String -> Either String TestRunRejection
-    readReason "duration" = pure UnacceptableDuration
-    readReason "commit" = pure UnacceptableCommit
-    readReason "try" = pure UnacceptableTryIndex
-    readReason "role" = pure UnacceptableRole
-    readReason "directory" = pure UnacceptableDirectory
-    readReason "signature" = pure UnacceptableSignature
-    readReason s = Right $ AnyReason s
+    readReason "broken-instructions" = Right BrokenInstructions
+    readReason "unclear-intent" = Right UnclearIntent
+    readReason _ = Left "Unknown reason for rejection"
 
 rejectTestOptions
     :: Parser (AgentCommand NotReady (WithTxHash (TestRunState DoneT)))
@@ -100,7 +96,7 @@ rejectTestOptions = do
             <*> commitOption
             <*> tryOption
             <*> usernameOption
-    reason <- many reasonParser
+    reason <- many testRejectionParser
     pure $ Reject testRun () reason
 
 reportTestOptions

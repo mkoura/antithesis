@@ -23,7 +23,10 @@ import Lib.SSH.Public (encodePublicKey)
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig (..)
     )
-import Oracle.Validate.Requests.TestRun.Create (validateCreateTestRun)
+import Oracle.Validate.Requests.TestRun.Create
+    ( TestRunRejection (..)
+    , validateCreateTestRun
+    )
 import Test.Hspec
     ( Spec
     , describe
@@ -50,7 +53,6 @@ import User.Types
     ( RegisterRoleKey (..)
     , RegisterUserKey (..)
     , TestRun (..)
-    , TestRunRejection (..)
     , TestRunState (..)
     , commitIdL
     , directoryL

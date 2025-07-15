@@ -50,7 +50,7 @@ result=$(anti agent reject-test \
     --commit test-commit \
     --username test-user \
     --try 1 \
-    --reason "I am not ready yet")
+    --reason broken-instructions)
 
 outputRef=$(getOutputRef "$result")
 log "Created a test-run rejection with output reference: $outputRef"

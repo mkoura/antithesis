@@ -28,26 +28,20 @@ oracleCmd
     -> Maybe TokenId
     -> OracleCommand a
     -> ClientM a
-oracleCmd sbmt wallet testRunConfig (Just tk) = \case
+oracleCmd sbmt wallet testRunConfig mtk = \case
     OracleTokenCommand tokenCommand ->
         tokenCmdCore
             sbmt
             wallet
-            (Just tk)
+            mtk
             tokenCommand
     OracleValidateCommand validateCommand -> do
+        tk <- case mtk of
+            Just tokenId -> pure tokenId
+            Nothing -> error "TokenId is required for ValidateCommand"
         let validation = mkValidation tk
         validateCmd
             testRunConfig
             validation
             tk
             validateCommand
-oracleCmd sbmt wallet _testRunConfig Nothing = \case
-    OracleTokenCommand tokenCommand ->
-        tokenCmdCore
-            sbmt
-            wallet
-            Nothing
-            tokenCommand
-    OracleValidateCommand _validateCommand ->
-        error "TokenId is required for ValidateCommand"

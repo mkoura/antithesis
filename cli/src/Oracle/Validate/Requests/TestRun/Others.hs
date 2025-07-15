@@ -3,6 +3,7 @@ module Oracle.Validate.Requests.TestRun.Others
     , validateToDoneUpdate
     , validateToRunningCore
     , validateToRunningUpdate
+    , AgentRejection (..)
     ) where
 
 import Core.Types

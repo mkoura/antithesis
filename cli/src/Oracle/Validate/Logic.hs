@@ -153,9 +153,10 @@ validateRequest
 validateRequest testRunConfig _ validation (CreateTestRequest rq) =
     (,) (outputRefId rq)
         <$> validateCreateTestRun testRunConfig validation rq
-validateRequest _ pkh validation (RejectRequest rq) =
-    (,) (outputRefId rq) <$> validateToDoneUpdate pkh validation rq
-validateRequest _ pkh validation (AcceptRequest rq) =
-    (,) (outputRefId rq) <$> validateToRunningUpdate pkh validation rq
-validateRequest _ pkh validation (FinishedRequest rq) =
-    (,) (outputRefId rq) <$> validateToDoneUpdate pkh validation rq
+validateRequest _ antiOwner validation (RejectRequest rq) =
+    (,) (outputRefId rq) <$> validateToDoneUpdate antiOwner validation rq
+validateRequest _ antiOwner validation (AcceptRequest rq) =
+    (,) (outputRefId rq)
+        <$> validateToRunningUpdate antiOwner validation rq
+validateRequest _ antiOwner validation (FinishedRequest rq) =
+    (,) (outputRefId rq) <$> validateToDoneUpdate antiOwner validation rq

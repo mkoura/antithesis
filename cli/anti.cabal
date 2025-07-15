@@ -239,6 +239,7 @@ test-suite anti-test
     MPFS.APISpec
     Oracle.Github.OracleValidationSpec
     Oracle.Validate.Requests.TestRun.CreateSpec
+    Oracle.Validate.Requests.TestRun.OthersSpec
     User.TypesSpec
 
   -- LANGUAGE extensions used by modules in this package.

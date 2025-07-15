@@ -29,6 +29,7 @@ import Oracle.Validate.Requests.TestRun.Config
 import Oracle.Validate.Requests.TestRun.Create (validateCreateTestRun)
 import Oracle.Validate.Requests.TestRun.Others
     ( validateToDoneUpdate
+    , validateToRunningUpdate
     )
 import Oracle.Validate.Types (ValidationResult (..))
 import Servant.Client (ClientM)
@@ -154,7 +155,7 @@ validateRequest testRunConfig _ validation (CreateTestRequest rq) =
         <$> validateCreateTestRun testRunConfig validation rq
 validateRequest _ pkh validation (RejectRequest rq) =
     (,) (outputRefId rq) <$> validateToDoneUpdate pkh validation rq
-validateRequest _ _ _validation (AcceptRequest (Request refId _owner _change)) =
-    pure (refId, NotEvaluated)
+validateRequest _ pkh validation (AcceptRequest rq) =
+    (,) (outputRefId rq) <$> validateToRunningUpdate pkh validation rq
 validateRequest _ pkh validation (FinishedRequest rq) =
     (,) (outputRefId rq) <$> validateToDoneUpdate pkh validation rq

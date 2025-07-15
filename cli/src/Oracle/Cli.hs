@@ -3,7 +3,7 @@ module Oracle.Cli
     , oracleCmd
     ) where
 
-import Core.Types (TokenId, Wallet)
+import Core.Types (Owner, TokenId, Wallet)
 import Oracle.Token.Cli (TokenCommand, tokenCmdCore)
 import Oracle.Validate.Cli (ValidateCommand, validateCmd)
 import Oracle.Validate.Requests.TestRun.Config
@@ -25,10 +25,11 @@ oracleCmd
     :: Submitting
     -> Wallet
     -> TestRunValidationConfig
+    -> Owner
     -> Maybe TokenId
     -> OracleCommand a
     -> ClientM a
-oracleCmd sbmt wallet testRunConfig mtk = \case
+oracleCmd sbmt wallet testRunConfig agentPkh mtk = \case
     OracleTokenCommand tokenCommand ->
         tokenCmdCore
             sbmt
@@ -42,6 +43,7 @@ oracleCmd sbmt wallet testRunConfig mtk = \case
         let validation = mkValidation tk
         validateCmd
             testRunConfig
+            agentPkh
             validation
             tk
             validateCommand

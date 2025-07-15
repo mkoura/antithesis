@@ -112,6 +112,8 @@ library
     Oracle.Validate.Options
     Oracle.Validate.Requests.TestRun.Config
     Oracle.Validate.Requests.TestRun.Create
+    Oracle.Validate.Requests.TestRun.Others
+    Oracle.Validate.Types
     Submitting
     User.Agent.Cli
     User.Agent.Options

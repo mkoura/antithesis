@@ -9,7 +9,8 @@ module Oracle.Validate.Cli
 import Control.Monad (forM)
 import Control.Monad.Trans.Except (runExceptT)
 import Core.Types
-    ( RequestRefId (..)
+    ( Owner
+    , RequestRefId (..)
     , TokenId
     )
 import Data.Functor ((<&>))
@@ -45,11 +46,12 @@ data ValidateCommand
 
 validateCmd
     :: TestRunValidationConfig
+    -> Owner
     -> Validation ClientM
     -> TokenId
     -> ValidateCommand
     -> ClientM JSValue
-validateCmd testRunConfig validation tk command = do
+validateCmd testRunConfig pkh validation tk command = do
     rus <- case command of
         ValidateRequests -> do
             canonicalJSON <- getToken tk
@@ -63,7 +65,7 @@ validateCmd testRunConfig validation tk command = do
                     Left e -> error $ "Failed to parse token: " ++ e
                     Right jsValue -> pure jsValue
             forM requests $ \request -> do
-                validateRequest testRunConfig validation request
+                validateRequest testRunConfig pkh validation request
                     >>= uncurry mkResult
     toJSON rus
 

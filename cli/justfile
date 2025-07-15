@@ -61,6 +61,7 @@ E2E match="":
     export ANTI_WALLET_FILE=tmp/test.json
     export ANTI_TEST_REQUESTER_WALLET=tmp/test.json
     export ANTI_TEST_ORACLE_WALLET=tmp/test.json
+    export ANTI_TEST_AGENT_WALLET=tmp/test.json
     export ANTI_CONFIG_FILE=test/fixtures/anti-config.json
     export ANTI_SSH_FILE=test/fixtures/test_ed25519
     export ANTI_SSH_PASSWORD=pw
@@ -89,6 +90,8 @@ E2E match="":
         echo "Retrying topup..."
         sleep 2
     done
+    owner=$(anti wallet info | jq -r '.result.owner')
+    export ANTI_AGENT_PUBLIC_KEY_HASH=$owner
     echo "Starting E2E tests..."
     just E2E-tests "{{match}}"
 

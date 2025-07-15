@@ -115,6 +115,10 @@ loadOracleWallet :: IO Wallet
 loadOracleWallet = do
     loadEnvWallet "ANTI_TEST_ORACLE_WALLET"
 
+loadAgentWallet :: IO Wallet
+loadAgentWallet = do
+    loadEnvWallet "ANTI_TEST_AGENT_WALLET"
+
 getHostFromEnv :: IO String
 getHostFromEnv = getEnv "ANTI_MPFS_HOST"
 
@@ -138,12 +142,14 @@ data Context = Context
     , tokenId :: TokenId
     , requesterWallet :: Wallet
     , oracleWallet :: Wallet
+    , agentWallet :: Wallet
     }
 
 setup :: IO Context
 setup = do
     requesterWallet <- loadRequesterWallet
     oracleWallet <- loadOracleWallet
+    agentWallet <- loadAgentWallet
     host <- getHostFromEnv
     url <- parseBaseUrl host
     nm <-
@@ -177,6 +183,7 @@ setup = do
                     , tokenId
                     , requesterWallet
                     , oracleWallet
+                    , agentWallet
                     }
 
 teardown :: ActionWith Context
@@ -346,7 +353,7 @@ spec = do
                         pure ()
 
             it "can update the anti token with a registered user"
-                $ \(Context{mpfs = Call call, wait180, tokenId}) -> do
+                $ \(Context{mpfs = Call call, wait180, tokenId, agentWallet}) -> do
                     requester <- loadRequesterWallet
                     oracle <- loadOracleWallet
                     let key =
@@ -361,7 +368,12 @@ spec = do
                             requesterCmd wait180 requester tokenId undefined
                                 $ RegisterUser key
                         _updateInsertTx <-
-                            oracleCmd wait180 oracle undefined (Just tokenId)
+                            oracleCmd
+                                wait180
+                                oracle
+                                undefined
+                                agentWallet.owner
+                                (Just tokenId)
                                 $ OracleTokenCommand
                                 $ UpdateToken
                                     [ RequestRefId
@@ -380,7 +392,12 @@ spec = do
                             requesterCmd wait180 requester tokenId undefined
                                 $ UnregisterUser key
                         _updateDeleteTx <-
-                            oracleCmd wait180 oracle undefined (Just tokenId)
+                            oracleCmd
+                                wait180
+                                oracle
+                                undefined
+                                agentWallet.owner
+                                (Just tokenId)
                                 $ OracleTokenCommand
                                 $ UpdateToken
                                     [ RequestRefId

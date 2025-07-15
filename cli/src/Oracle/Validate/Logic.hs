@@ -12,6 +12,7 @@ import Core.Types
     ( Change (..)
     , Key (..)
     , Operation (..)
+    , Owner
     , Platform (..)
     , Repository (..)
     , RequestRefId
@@ -20,9 +21,6 @@ import Core.Types
     , parseFacts
     )
 import Data.List (find)
-import Lib.JSON
-    ( stringJSON
-    )
 import Oracle.Github.GetRepoRole qualified as Github
 import Oracle.Github.ListPublicKeys qualified as Github
 import Oracle.Types (Request (..), RequestZoo (..))
@@ -30,37 +28,24 @@ import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig
     )
 import Oracle.Validate.Requests.TestRun.Create (validateCreateTestRun)
+import Oracle.Validate.Requests.TestRun.Others
+    ( validateToDoneUpdate
+    )
+import Oracle.Validate.Types (ValidationResult (..))
 import Servant.Client (ClientM)
-import Text.JSON.Canonical.Class (ToJSON (..))
 import User.Types
     ( RegisterRoleKey (..)
     , RegisterUserKey (..)
     )
 import Validation (Validation (..))
 
-data ValidationResult
-    = Validated
-    | NotValidated String
-    | CannotValidate String
-    | NotEvaluated
-    deriving (Eq, Show)
-
-instance Monad m => ToJSON m ValidationResult where
-    toJSON = \case
-        Validated -> stringJSON "validated"
-        NotValidated reason -> stringJSON $ "not validated: " <> reason
-        CannotValidate reason -> stringJSON $ "cannot validate: " <> reason
-        NotEvaluated -> stringJSON "not evaluated"
-
-instance MonadFail ClientM where
-    fail = error
-
 validateRequest
     :: TestRunValidationConfig
+    -> Owner
     -> Validation ClientM
     -> RequestZoo
     -> ClientM (RequestRefId, ValidationResult)
-validateRequest _ _validation (RegisterUserRequest (Request refId _owner (Change k _v))) = do
+validateRequest _ _ _validation (RegisterUserRequest (Request refId _owner (Change k _v))) = do
     res <- case k of
         Key (RegisterUserKey{platform, username, pubkeyhash}) ->
             case platform of
@@ -77,6 +62,7 @@ validateRequest _ _validation (RegisterUserRequest (Request refId _owner (Change
                             "expecting github platform as we are validating only this at this moment"
     pure (refId, res)
 validateRequest
+    _
     _
     Validation{mpfsGetFacts}
     (UnregisterUserRequest (Request refId _owner (Change (Key k) _v))) = do
@@ -98,6 +84,7 @@ validateRequest
             else
                 pure (refId, Validated)
 validateRequest
+    _
     _
     Validation{mpfsGetFacts}
     (RegisterRoleRequest (Request refId _owner (Change k _v))) = do
@@ -145,6 +132,7 @@ validateRequest
                         pure (refId, NotValidated (Github.emitRepoRoleMsg validationRes))
 validateRequest
     _
+    _
     Validation{mpfsGetFacts}
     (UnregisterRoleRequest (Request refId _owner (Change (Key k) _v))) = do
         facts <- mpfsGetFacts
@@ -164,6 +152,7 @@ validateRequest
                 pure (refId, Validated)
 validateRequest
     testRunConfig
+    _
     validation
     ( CreateTestRequest
             (Request refId _owner (Change (Key testRun) operation))
@@ -188,9 +177,9 @@ validateRequest
                     pure
                         $ CannotValidate
                             "only insert operation is supported for test runs"
-validateRequest _ _validation (RejectRequest (Request refId _owner _change)) =
+validateRequest _ pkh validation (RejectRequest rq) =
+    (,) (outputRefId rq) <$> validateToDoneUpdate pkh validation rq
+validateRequest _ _ _validation (AcceptRequest (Request refId _owner _change)) =
     pure (refId, NotEvaluated)
-validateRequest _ _validation (AcceptRequest (Request refId _owner _change)) =
-    pure (refId, NotEvaluated)
-validateRequest _ _validation (FinishedRequest (Request refId _owner _change)) =
-    pure (refId, NotEvaluated)
+validateRequest _ pkh validation (FinishedRequest rq) =
+    (,) (outputRefId rq) <$> validateToDoneUpdate pkh validation rq

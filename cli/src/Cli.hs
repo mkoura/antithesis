@@ -6,7 +6,8 @@ module Cli
 
 import Control.Monad.IO.Class (MonadIO (..))
 import Core.Types
-    ( RequestRefId
+    ( Owner (Owner)
+    , RequestRefId
     , TokenId
     , TxHash
     , Wallet
@@ -115,7 +116,15 @@ cmdCore
             requesterCmd sbmt wallet tokenId (sign keyAPI) requesterCommand
         OracleCommand oracleCommand -> do
             wallet <- failLeft ("No wallet @ " <>) mWallet
-            oracleCmd sbmt wallet testRunValidationConfig mTokenId oracleCommand
+            antithesisPKH <-
+                liftIO $ Owner <$> getEnv "ANTI_AGENT_PUBLIC_KEY_HASH"
+            oracleCmd
+                sbmt
+                wallet
+                testRunValidationConfig
+                antithesisPKH
+                mTokenId
+                oracleCommand
         AgentCommand agentCommand -> do
             tokenId <- failNothing "No TokenId" mTokenId
             wallet <- failLeft ("No wallet @ " <>) mWallet

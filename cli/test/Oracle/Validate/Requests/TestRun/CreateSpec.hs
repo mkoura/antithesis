@@ -25,7 +25,7 @@ import Oracle.Validate.Requests.TestRun.Config
     )
 import Oracle.Validate.Requests.TestRun.Create
     ( TestRunRejection (..)
-    , validateCreateTestRun
+    , validateCreateTestRunCore
     )
 import Test.Hspec
     ( Spec
@@ -266,7 +266,7 @@ spec = do
                                         $ BL.unpack
                                         $ renderCanonicalJSON testRunJ
                             mresult <-
-                                validateCreateTestRun
+                                validateCreateTestRunCore
                                     testConfig
                                     validation
                                     testRun
@@ -281,9 +281,14 @@ spec = do
                     let testRun = emptyTestRun
                         testRunState = Pending (Duration n) $ sign message
                     mresult <-
-                        validateCreateTestRun testConfig noValidation testRun testRunState
+                        validateCreateTestRunCore
+                            testConfig
+                            noValidation
+                            testRun
+                            testRunState
                     onConditionHaveReason mresult UnacceptableDuration
                         $ n < minDuration testConfig || n > maxDuration testConfig
+
         it "reports unacceptable role"
             $ property
             $ \platform organization project username message ->
@@ -323,7 +328,7 @@ spec = do
                                         & set requesterL (Username $ same username)
                                 testRunState = Pending (Duration 5) $ sign message
                             mresult <-
-                                validateCreateTestRun
+                                validateCreateTestRunCore
                                     testConfig
                                     validation
                                     testRun
@@ -382,7 +387,7 @@ spec = do
                                             & set requesterL (Username username)
                                     testRunState = Pending (Duration 5) $ sign message
                                 mresult <-
-                                    validateCreateTestRun
+                                    validateCreateTestRunCore
                                         testConfig
                                         validation
                                         testRun
@@ -444,7 +449,7 @@ spec = do
                                                 & set requesterL (Username username)
                                         testRunState = Pending (Duration 5) $ sign message
                                     mresult <-
-                                        validateCreateTestRun
+                                        validateCreateTestRunCore
                                             testConfig
                                             validation
                                             testRun

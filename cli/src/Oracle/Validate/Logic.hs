@@ -11,7 +11,6 @@ import Control.Monad.IO.Class (liftIO)
 import Core.Types
     ( Change (..)
     , Key (..)
-    , Operation (..)
     , Owner
     , Platform (..)
     , Repository (..)
@@ -150,33 +149,9 @@ validateRequest
                     )
             else
                 pure (refId, Validated)
-validateRequest
-    testRunConfig
-    _
-    validation
-    ( CreateTestRequest
-            (Request refId _owner (Change (Key testRun) operation))
-        ) =
-        (,) refId <$> do
-            case operation of
-                Insert state -> do
-                    result <-
-                        validateCreateTestRun
-                            testRunConfig
-                            validation
-                            testRun
-                            state
-                    case result of
-                        Nothing -> pure Validated
-                        Just rejections ->
-                            pure
-                                $ CannotValidate
-                                $ "test run validation failed for the following reasons: "
-                                    <> unwords (fmap show rejections)
-                _ ->
-                    pure
-                        $ CannotValidate
-                            "only insert operation is supported for test runs"
+validateRequest testRunConfig _ validation (CreateTestRequest rq) =
+    (,) (outputRefId rq)
+        <$> validateCreateTestRun testRunConfig validation rq
 validateRequest _ pkh validation (RejectRequest rq) =
     (,) (outputRefId rq) <$> validateToDoneUpdate pkh validation rq
 validateRequest _ _ _validation (AcceptRequest (Request refId _owner _change)) =

@@ -2,12 +2,16 @@
 
 module Oracle.Validate.Requests.TestRun.Create
     ( validateCreateTestRun
+    , validateCreateTestRunCore
     , TestRunRejection (..)
     ) where
 
 import Core.Types
-    ( Duration (..)
+    ( Change (..)
+    , Duration (..)
     , Fact (..)
+    , Key (..)
+    , Operation (..)
     , Try (..)
     , parseFacts
     )
@@ -16,9 +20,11 @@ import Data.ByteString.Lazy qualified as BL
 import Data.Maybe (catMaybes, mapMaybe)
 import Lib.JSON (stringJSON)
 import Lib.SSH.Public (decodePublicKey)
+import Oracle.Types (Request (..))
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig (..)
     )
+import Oracle.Validate.Types (ValidationResult (..))
 import Text.JSON.Canonical
     ( FromJSON (..)
     , JSValue (..)
@@ -36,6 +42,36 @@ import User.Types
     , roleOfATestRun
     )
 import Validation (Validation (..))
+
+validateCreateTestRun
+    :: Monad m
+    => TestRunValidationConfig
+    -> Validation m
+    -> Request TestRun (TestRunState PendingT)
+    -> m ValidationResult
+validateCreateTestRun
+    testRunConfig
+    validation
+    (Request _refId _owner (Change (Key testRun) operation)) =
+        case operation of
+            Insert state -> do
+                result <-
+                    validateCreateTestRunCore
+                        testRunConfig
+                        validation
+                        testRun
+                        state
+                case result of
+                    Nothing -> pure Validated
+                    Just rejections ->
+                        pure
+                            $ CannotValidate
+                            $ "test run validation failed for the following reasons: "
+                                <> unwords (fmap show rejections)
+            _ ->
+                pure
+                    $ CannotValidate
+                        "only insert operation is supported for test runs"
 
 data TestRunRejection
     = UnacceptableDuration
@@ -175,14 +211,14 @@ checkSignature
             then return Nothing
             else return $ Just UnacceptableSignature
 
-validateCreateTestRun
+validateCreateTestRunCore
     :: Monad m
     => TestRunValidationConfig
     -> Validation m
     -> TestRun
     -> TestRunState PendingT
     -> m (Maybe [TestRunRejection])
-validateCreateTestRun
+validateCreateTestRunCore
     config
     validation
     testRun

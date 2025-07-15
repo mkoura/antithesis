@@ -10,7 +10,6 @@ import GHC.Generics (Generic)
 data TestRunValidationConfig = TestRunValidationConfig
     { maxDuration :: Int
     , minDuration :: Int
-    , sshKeySelector :: String
     }
     deriving (Show, Eq, Generic)
 

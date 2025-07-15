@@ -167,7 +167,6 @@ testConfig =
     TestRunValidationConfig
         { maxDuration = 6
         , minDuration = 1
-        , sshKeySelector = ""
         }
 
 shouldHaveReason :: (Show a, Eq a) => Maybe [a] -> a -> IO ()

@@ -53,15 +53,17 @@ data Command a where
 deriving instance Show (Command a)
 deriving instance Eq (Command a)
 
-newtype Config = Config
-    { agentValidationConfig :: TestRunValidationConfig
+data Config = Config
+    { testRunValidationConfig :: TestRunValidationConfig
+    , sshKeySelector :: String
     }
     deriving (Show, Eq)
 
 instance Aeson.FromJSON Config where
     parseJSON = Aeson.withObject "Config" $ \v ->
         Config
-            <$> v Aeson..: "agentValidationConfig"
+            <$> v Aeson..: "testRunValidationConfig"
+            <*> v Aeson..: "sshKeySelector"
 
 cmd
     :: Submitting
@@ -98,7 +100,7 @@ cmdCore
     -> ClientM a
 cmdCore
     sbmt
-    Config{agentValidationConfig}
+    Config{testRunValidationConfig, sshKeySelector}
     mWallet
     mSigning
     mTokenId = \case
@@ -107,14 +109,13 @@ cmdCore
             keyAPI <-
                 failNothing "No SSH selector"
                     $ signing
-                    $ SSHKeySelector
-                    $ sshKeySelector agentValidationConfig
+                    $ SSHKeySelector sshKeySelector
             tokenId <- failNothing "No TokenId" mTokenId
             wallet <- failLeft ("No wallet @ " <>) mWallet
             requesterCmd sbmt wallet tokenId (sign keyAPI) requesterCommand
         OracleCommand oracleCommand -> do
             wallet <- failLeft ("No wallet @ " <>) mWallet
-            oracleCmd sbmt wallet agentValidationConfig mTokenId oracleCommand
+            oracleCmd sbmt wallet testRunValidationConfig mTokenId oracleCommand
         AgentCommand agentCommand -> do
             tokenId <- failNothing "No TokenId" mTokenId
             wallet <- failLeft ("No wallet @ " <>) mWallet

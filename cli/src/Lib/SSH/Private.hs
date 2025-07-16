@@ -12,30 +12,31 @@ module Lib.SSH.Private
     ) where
 
 import Control.Applicative (many, (<|>))
-import Control.Monad (replicateM, void, when, (<=<))
-import Crypto.Cipher.AES qualified as Cipher
-import Crypto.Cipher.Types qualified as Cipher
+import Control.Monad (replicateM, unless, void, when, (<=<))
+import Crypto.Cipher.AES (AES256)
+import Crypto.Cipher.Types
+    ( BlockCipher (blockSize, cbcDecrypt, ctrCombine)
+    , Cipher (cipherInit, cipherKeySize)
+    , KeySizeSpecifier (KeySizeFixed)
+    , makeIV
+    )
 import Crypto.Error
-    ( CryptoError
-        ( CryptoError_IvSizeInvalid
-        , CryptoError_KeySizeInvalid
-        )
-    , CryptoFailable (..)
+    ( CryptoFailable (..)
     )
 import Crypto.KDF.BCryptPBKDF qualified as BCryptPBKDF
 import Crypto.PubKey.Ed25519 qualified as Ed25519
-import Data.Binary
 import Data.Binary.Get
     ( Decoder (..)
+    , Get
     , getByteString
     , getRemainingLazyByteString
     , getWord32be
+    , getWord8
     , isolate
     , pushChunk
     , runGet
     , runGetIncremental
     , runGetOrFail
-    , skip
     )
 import Data.Bits (Bits (shiftL, shiftR, (.&.)))
 import Data.ByteString (ByteString)
@@ -44,6 +45,7 @@ import Data.ByteString.Char8 qualified as BC
 import Data.ByteString.Lazy qualified as BL
 import Data.Map.Strict qualified as Map
 import Data.String (IsString)
+import Data.Word (Word8)
 
 newtype SSHKeySelector = SSHKeySelector
     { sshKeySelector :: String
@@ -90,11 +92,11 @@ parsePrivateKeyFile
     :: ByteString
     -> Get [(KeyPair, ByteString)]
 parsePrivateKeyFile passphrase = do
-    matchBytes "-----BEGIN OPENSSH PRIVATE KEY-----"
+    bytes "-----BEGIN OPENSSH PRIVATE KEY-----"
     void $ many space
     keys <- feedingBase64 $ parseKeys passphrase
     void $ many space
-    matchBytes "-----END OPENSSH PRIVATE KEY-----"
+    bytes "-----END OPENSSH PRIVATE KEY-----"
     void $ many space
     pure keys
 
@@ -110,7 +112,7 @@ feedingBase64 = fromDecoder <=< s0 . runGetIncremental
     b1 i j = (i `shiftL` 2) + (j `shiftR` 4)
     b2 j k = ((j .&. 15) `shiftL` 4) + (k `shiftR` 2)
     b3 k l = ((k .&. 3) `shiftL` 6) + l
-    wc f = getWord8 >>= mapChar >>= f
+    wc f = getWord8 >>= base64Value >>= f
     ws f = space1 >> f
     -- Initial state and final state.
     s0 xs = wc (s1 xs) <|> ws (s0 xs) <|> pure xs
@@ -126,10 +128,10 @@ feedingBase64 = fromDecoder <=< s0 . runGetIncremental
     r2 xs i j = end >> end >> continue xs [b1 i j]
     -- Read one '=' char as finalizer. Only valid from state s1.
     r3 xs i j k = end >> continue xs [b1 i j, b2 j k]
-    end = byte 61 -- '='
+    end = byte (== 61) -- '='
 
-mapChar :: Word8 -> Get Word8
-mapChar c
+base64Value :: Word8 -> Get Word8
+base64Value c
     | c == 43 = pure 62 -- '+'
     | c == 47 = pure 63 -- '/'
     | c >= 48 && c <= 57 = pure $ c - 48 + 52 -- '0'..'9'
@@ -137,115 +139,103 @@ mapChar c
     | c >= 97 && c <= 122 = pure $ c - 97 + 26 -- 'a'..'z'
     | otherwise = fail "Invalid base64 character"
 
-byte :: Word8 -> Get ()
-byte b =
-    getWord8 >>= \c ->
-        if c == b
-            then pure ()
-            else fail $ "Expected byte " ++ show b ++ ", got " ++ show c
+byte :: (Word8 -> Bool) -> Get ()
+byte t = do
+    c <- getWord8
+    unless (t c)
+        $ fail
+        $ "Expected byte matching predicate, got " ++ show c
 
 isSpace :: Word8 -> Bool
 isSpace c = c == 32 || c == 10 || c == 13 || c == 9
 
 space :: Get ()
-space =
-    getWord8 >>= \c ->
-        if isSpace c
-            then pure ()
-            else fail $ "Expected space, got " ++ show c
+space = byte isSpace
 
 space1 :: Get ()
 space1 = space >> many space >> pure ()
 
-getChunk :: Get ByteString
-getChunk = getByteString . fromIntegral =<< getWord32be
+bytestring :: Get ByteString
+bytestring = num >>= getByteString
 
-matchBytes :: ByteString -> Get ()
-matchBytes bs = do
-    let len = B.length bs
-    when (len == 0) (fail "Empty byte string")
-    bs' <- getByteString len
-    when
-        (bs /= bs')
-        (fail $ "Expected " ++ show bs ++ ", got " ++ show bs')
+num :: Num a => Get a
+num = fromIntegral <$> getWord32be
 
-embeddingDecryption
+bytes :: ByteString -> Get ()
+bytes bs = do
+    bs' <- getByteString $ B.length bs
+    when (bs /= bs') $ failB $ "Expected " <> bs <> ", got " <> bs'
+
+feedingDecrypted
     :: Get a -- to run on decrypted
     -> (ByteString -> Get ByteString) -- decryptor
     -> Get a
-embeddingDecryption p f = do
-    len <- getWord32be
-    s <- isolate (fromIntegral len) $ f =<< rest
+feedingDecrypted p f = do
+    len <- num
+    s <- isolate len $ rest >>= f
     case runGetOrFail p $ BL.fromStrict s of
         Left (_, _, err) -> fail err
         Right (_, _, a) -> pure a
+  where
+    rest :: Get B.StrictByteString
+    rest = BL.toStrict <$> getRemainingLazyByteString
 
-rest :: Get B.StrictByteString
-rest = BL.toStrict <$> getRemainingLazyByteString
+aes256T :: AES256
+aes256T = undefined :: AES256
+
+aes256CipherSize :: Int
+aes256CipherSize = case cipherKeySize aes256T of
+    KeySizeFixed keySize -> keySize
+    _ -> error "Unsupported key size for AES-256"
+
+a256IVSize :: Int
+a256IVSize = blockSize aes256T
+
+failB :: MonadFail m => B.ByteString -> m a
+failB = fail . BC.unpack
+
+-- https://github.com/openssh/openssh-portable/blob/master/PROTOCOL.key
 
 parseKeys
     :: ()
     => ByteString
     -> Get [(KeyPair, ByteString)]
 parseKeys passphrase = do
-    matchBytes "openssh-key-v1\NUL"
-    cipherAlgo <- getChunk
-    kdfAlgo <- getChunk
-    skip 4 -- size of the kdf section
-    deriveKey <- case kdfAlgo of
+    bytes "openssh-key-v1\NUL"
+    cipherAlgo <- bytestring
+    kdfAlgo <- bytestring
+    keyAndIV <- selfIsolate $ \_ -> case kdfAlgo of
         "bcrypt" -> do
-            salt <- getChunk
-            rounds <- fromIntegral <$> getWord32be
-            pure $ \case
-                Cipher.KeySizeFixed len ->
-                    CryptoPassed
-                        $ BCryptPBKDF.generate
-                            (BCryptPBKDF.Parameters rounds len)
-                            passphrase
-                            salt
-                _ -> CryptoFailed CryptoError_KeySizeInvalid
-        _ ->
-            fail
-                $ "Unsupported key derivation function "
-                    ++ BC.unpack kdfAlgo
+            salt <- bytestring
+            rounds <- num
+            let len = aes256CipherSize + a256IVSize
+            pure
+                $ BCryptPBKDF.generate
+                    (BCryptPBKDF.Parameters rounds len)
+                    passphrase
+                    salt
+        _ -> failB $ "Unsupported key derivation function " <> kdfAlgo
+    let (key, ivBytes) = B.splitAt aes256CipherSize keyAndIV
+    cipher <- cryptoFail $ cipherInit @AES256 key
+    iv <- case makeIV ivBytes of
+        Nothing -> fail "Invalid IV size"
+        Just iv' -> pure iv'
+    numberOfKeys <- num
+    _publicKeysRaw <- bytestring
+    feedingDecrypted (parsePrivateKeys numberOfKeys) $ case cipherAlgo of
+        "none" -> pure
+        "aes256-cbc" -> pure . cbcDecrypt cipher iv
+        "aes256-ctr" -> pure . ctrCombine cipher iv
+        _ -> const $ failB $ "Unsupported cipher algorithm " <> cipherAlgo
 
-    numberOfKeys <- fromIntegral <$> getWord32be
-    _publicKeysRaw <- getChunk -- not used
-    case cipherAlgo of
-        "none" -> embeddingDecryption (parsePrivateKeys numberOfKeys) pure
-        "aes256-cbc" -> do
-            embeddingDecryption (parsePrivateKeys numberOfKeys)
-                $ \encrypted ->
-                    decryptPrivateKeys deriveKey $ \cipher iv ->
-                        Cipher.cbcDecrypt cipher iv encrypted
-        "aes256-ctr" -> do
-            embeddingDecryption (parsePrivateKeys numberOfKeys)
-                $ \encrypted ->
-                    decryptPrivateKeys deriveKey $ \cipher iv ->
-                        Cipher.ctrCombine cipher iv encrypted
-        _ ->
-            fail $ "Unsupported cipher algorithm " ++ BC.unpack cipherAlgo
+cryptoFail :: MonadFail m => CryptoFailable a -> m a
+cryptoFail (CryptoPassed a) = pure a
+cryptoFail (CryptoFailed e) = fail $ show e
 
-decryptPrivateKeys
-    :: (Cipher.BlockCipher c, MonadFail m)
-    => (Cipher.KeySizeSpecifier -> CryptoFailable ByteString)
-    -> (Cipher.AES256 -> Cipher.IV c -> b)
-    -> m b
-decryptPrivateKeys deriveKey how = do
-    let result = case Cipher.cipherKeySize (undefined :: Cipher.AES256) of
-            Cipher.KeySizeFixed keySize -> do
-                let ivSize = Cipher.blockSize (undefined :: Cipher.AES256)
-                keyIV <- deriveKey $ Cipher.KeySizeFixed (keySize + ivSize)
-                let key = B.take keySize keyIV
-                case Cipher.makeIV (B.drop keySize keyIV) of
-                    Nothing -> CryptoFailed CryptoError_IvSizeInvalid
-                    Just iv -> do
-                        cipher <- Cipher.cipherInit key
-                        pure $ how cipher iv
-            _ -> CryptoFailed CryptoError_KeySizeInvalid
-    case result of
-        CryptoPassed a -> pure a
-        CryptoFailed e -> fail (show e)
+selfIsolate :: (Int -> Get a) -> Get a
+selfIsolate p = do
+    len <- num
+    isolate len $ p len
 
 parsePrivateKeys
     :: Int
@@ -253,32 +243,19 @@ parsePrivateKeys
 parsePrivateKeys count = do
     check1 <- getWord32be
     check2 <- getWord32be
-    when (check1 /= check2) (fail "Unsuccessful decryption")
+    when (check1 /= check2) $ fail "Unsuccessful decryption"
     replicateM count $ do
-        key <-
-            getChunk >>= \algo -> case algo of
-                "ssh-ed25519" -> do
-                    skip 3
-                    byte 32 -- length field (is always 32 for ssh-ed25519)
-                    skip Ed25519.publicKeySize
-                    skip 3
-                    byte 64 -- length field (is always 64 for ssh-ed25519)
-                    secretKeyRaw <- getByteString 32
-                    publicKeyRaw <- getByteString 32
-                    let key =
-                            KeyPairEd25519
-                                <$> Ed25519.publicKey publicKeyRaw
-                                <*> Ed25519.secretKey secretKeyRaw
-                    case key of
-                        CryptoPassed a -> pure a
-                        CryptoFailed _ ->
-                            fail
-                                $ "Invalid "
-                                    ++ BC.unpack algo
-                                    ++ " key"
-                _ ->
-                    fail
-                        $ "Unsupported algorithm "
-                            ++ BC.unpack algo
-        comment <- getChunk
+        algo <- bytestring
+        key <- case algo of
+            "ssh-ed25519" -> do
+                _pkCopy <- bytestring -- public key copy
+                selfIsolate $ \_ -> do
+                    secretKeyRaw <- getByteString Ed25519.secretKeySize
+                    publicKeyRaw <- getByteString Ed25519.publicKeySize
+                    cryptoFail
+                        $ KeyPairEd25519
+                            <$> Ed25519.publicKey publicKeyRaw
+                            <*> Ed25519.secretKey secretKeyRaw
+            _ -> failB $ "Unsupported algorithm for private key " <> algo
+        comment <- bytestring
         pure (key, comment)

@@ -40,8 +40,7 @@ import Test.QuickCheck
 import Test.QuickCheck.Commit (CommitValue (..))
 import Test.QuickCheck.Crypton (sshGen)
 import Test.QuickCheck.Same
-    ( Same (..)
-    , isTheSame
+    ( isTheSame
     , theSame
     , tryDifferent
     )

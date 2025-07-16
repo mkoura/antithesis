@@ -115,7 +115,7 @@ spec = do
     it "should download CODEOWNERS file from repo with main" $ do
         downloadCodeownersFile
             (Repository "cardano-foundation" "hal-fixture-sin")
-            `shouldReturn` ResponseCodeownersFile "* @notunrandom\n"
+            `shouldReturn` ResponseCodeownersFile "antithesis: @notunrandom @cfhal\n"
 
     it "should download CODEOWNERS file from repo with master" $ do
         downloadCodeownersFile

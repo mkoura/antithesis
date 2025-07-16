@@ -9,6 +9,7 @@ module Oracle.Validate.Requests.TestRun.Create
 import Core.Types
     ( Change (..)
     , Duration (..)
+    , Fact (..)
     , Key (..)
     , Operation (..)
     , Try (..)
@@ -123,7 +124,7 @@ checkRole
     testRun = do
         fs <- mpfsGetFacts
         let roleFact = roleOfATestRun testRun
-        if (roleFact, ()) `elem` fs
+        if Fact roleFact () `elem` fs
             then return Nothing
             else return $ Just UnacceptableRole
 
@@ -135,10 +136,10 @@ checkTryIndex
 checkTryIndex
     Validation{mpfsGetFacts}
     testRun = do
-        testRuns :: [(TestRun, TestRunState PendingT)] <- mpfsGetFacts
+        testRuns :: [Fact TestRun (TestRunState PendingT)] <- mpfsGetFacts
         let sameCommitTestRuns =
                 filter
-                    ( \(tr, _) ->
+                    ( \(Fact tr _) ->
                         repository tr == repository testRun
                             && commitId tr == commitId testRun
                             && tr.platform == testRun.platform
@@ -147,7 +148,7 @@ checkTryIndex
                     testRuns
             latest = case sameCommitTestRuns of
                 [] -> Try 0
-                _ -> maximum $ map (tryIndex . fst) sameCommitTestRuns
+                _ -> maximum $ map (tryIndex . factKey) sameCommitTestRuns
 
         if tryIndex testRun == succ latest
             then return Nothing
@@ -193,14 +194,14 @@ checkSignature
     Validation{mpfsGetFacts}
     testRun
     signature = do
-        registeredUsers :: [(RegisterUserKey, ())] <- mpfsGetFacts
+        registeredUsers :: [Fact RegisterUserKey ()] <- mpfsGetFacts
         testRunJ <- toJSON testRun
         let
             userKeys =
                 mapMaybe
                     (decodePublicKey . pubkeyhash)
                     . filter (\(RegisterUserKey _ u _) -> u == requester testRun)
-                    $ fst <$> registeredUsers
+                    $ factKey <$> registeredUsers
             load = BL.toStrict $ renderCanonicalJSON testRunJ
         if any (\verify -> verify signature load) userKeys
             then return Nothing

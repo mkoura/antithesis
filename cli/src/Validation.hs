@@ -7,6 +7,7 @@ import Control.Monad.IO.Class (MonadIO (..))
 import Core.Types
     ( Commit
     , Directory
+    , Fact
     , Repository
     , TokenId
     , parseFacts
@@ -21,7 +22,7 @@ data Validation m = Validation
     { mpfsGetFacts
         :: forall k v
          . (FromJSON Maybe k, FromJSON Maybe v)
-        => m [(k, v)]
+        => m [Fact k v]
     , githubCommitExists :: Repository -> Commit -> m Bool
     , githubDirectoryExists :: Repository -> Commit -> Directory -> m Bool
     }

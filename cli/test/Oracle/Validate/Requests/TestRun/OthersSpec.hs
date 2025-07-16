@@ -10,6 +10,7 @@ import Core.Types
     , Directory (Directory)
     , Duration (..)
     , Fact (..)
+    , JSFact
     , Platform (Platform)
     , PublicKeyHash
     , Repository (Repository, organization, project)
@@ -57,7 +58,7 @@ import Validation (Validation (..))
 
 mkValidation
     :: Monad m
-    => [Fact]
+    => [JSFact]
     -> [(Repository, Commit)]
     -> [(Repository, Commit, Directory)]
     -> Validation m
@@ -72,7 +73,7 @@ mkValidation fs rs ds =
             return $ (repository, commit, dir) `elem` ds
         }
 
-registerRole :: Monad m => TestRun -> m Fact
+registerRole :: Monad m => TestRun -> m JSFact
 registerRole testRun = do
     key <-
         toJSON
@@ -82,9 +83,9 @@ registerRole testRun = do
                 , username = testRun.requester
                 }
     value <- toJSON ()
-    return $ Fact{key, value}
+    return $ Fact key value
 
-registerUser :: (Monad m) => TestRun -> PublicKeyHash -> m Fact
+registerUser :: (Monad m) => TestRun -> PublicKeyHash -> m JSFact
 registerUser testRun pubkeyhash = do
     key <-
         toJSON
@@ -94,7 +95,7 @@ registerUser testRun pubkeyhash = do
                 , pubkeyhash
                 }
     value <- toJSON ()
-    return $ Fact{key, value}
+    return $ Fact key value
 
 testRunGen :: Gen TestRun
 testRunGen = do
@@ -141,8 +142,8 @@ spec = do
                     pendingStateJ <- toJSON pendingState
                     let testRunFact =
                             Fact
-                                { key = testRunJ
-                                , value = pendingStateJ
+                                { factKey = testRunJ
+                                , factValue = pendingStateJ
                                 }
                         validation =
                             mkValidation
@@ -215,8 +216,8 @@ spec = do
                         pendingStateJ <- toJSON pendingState
                         let testRunFact =
                                 Fact
-                                    { key = testRunJ
-                                    , value = pendingStateJ
+                                    { factKey = testRunJ
+                                    , factValue = pendingStateJ
                                     }
                             validation =
                                 mkValidation

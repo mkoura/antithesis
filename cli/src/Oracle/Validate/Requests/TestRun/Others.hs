@@ -8,6 +8,7 @@ module Oracle.Validate.Requests.TestRun.Others
 
 import Core.Types
     ( Change (..)
+    , Fact (..)
     , Key (..)
     , Operation (..)
     , Owner
@@ -90,7 +91,7 @@ checkPastState
     -> m (Maybe AgentRejection)
 checkPastState Validation{mpfsGetFacts} testRun accepted = do
     testRuns <- mpfsGetFacts
-    if (testRun, accepted) `elem` testRuns
+    if Fact testRun accepted `elem` testRuns
         then pure Nothing
         else pure $ Just PreviousStateWrong
 

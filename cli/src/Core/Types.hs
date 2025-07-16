@@ -32,6 +32,7 @@ module Core.Types
     , WithTxHash (..)
     , WithUnsignedTx (..)
     , parseFacts
+    , JSFact
     ) where
 
 import Control.Exception (Exception)
@@ -449,27 +450,35 @@ newtype Duration = Duration Int
 newtype Try = Try Int
     deriving (Eq, Show, Ord, Enum)
 
-data Fact = Fact
-    { key :: JSValue
-    , value :: JSValue
+data Fact k v = Fact
+    { factKey :: k
+    , factValue :: v
     }
     deriving (Eq, Show)
 
-instance ReportSchemaErrors m => FromJSON m Fact where
+instance
+    ( ReportSchemaErrors m
+    , FromJSON m k
+    , FromJSON m v
+    )
+    => FromJSON m (Fact k v)
+    where
     fromJSON = withObject "Fact" $ \v -> do
         key <- v .: "key"
         value <- v .: "value"
-        pure $ Fact{key, value}
+        pure $ Fact key value
 
-instance Monad m => ToJSON m Fact where
+instance (Monad m, ToJSON m k, ToJSON m v) => ToJSON m (Fact k v) where
     toJSON (Fact key value) =
         object
             [ "key" .= key
             , "value" .= value
             ]
 
+type JSFact = Fact JSValue JSValue
+
 parseFacts
-    :: (FromJSON Maybe key, FromJSON Maybe val) => JSValue -> [(key, val)]
+    :: (FromJSON Maybe key, FromJSON Maybe val) => JSValue -> [Fact key val]
 parseFacts v = fromMaybe [] $ do
     factsJSON <- fromJSON v
     pure $ mapMaybe f factsJSON
@@ -477,4 +486,4 @@ parseFacts v = fromMaybe [] $ do
     f (Fact key value) = do
         key' <- fromJSON key
         value' <- fromJSON value
-        Just (key', value')
+        Just $ Fact key' value'

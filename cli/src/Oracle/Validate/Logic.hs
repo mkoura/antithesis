@@ -10,6 +10,7 @@ module Oracle.Validate.Logic
 import Control.Monad.IO.Class (liftIO)
 import Core.Types
     ( Change (..)
+    , Fact (..)
     , Key (..)
     , Owner
     , Platform (..)
@@ -66,7 +67,7 @@ validateRequest
     Validation{mpfsGetFacts}
     (UnregisterUserRequest (Request refId _owner (Change (Key k) _v))) = do
         facts <- mpfsGetFacts
-        let registration = find (\(k', ()) -> k' == k) facts
+        let registration = find (\(Fact k' ()) -> k' == k) facts
         if null registration
             then
                 pure
@@ -95,7 +96,7 @@ validateRequest
                         username
                     ) = k
         let registration = flip find facts
-                $ \(RegisterUserKey platform' username' _, ()) ->
+                $ \(Fact (RegisterUserKey platform' username' _) ()) ->
                     platform' == platform
                         && username' == username
 
@@ -135,7 +136,7 @@ validateRequest
     Validation{mpfsGetFacts}
     (UnregisterRoleRequest (Request refId _owner (Change (Key k) _v))) = do
         facts <- mpfsGetFacts
-        let registration = find (\(k', ()) -> k' == k) facts
+        let registration = find (\(Fact k' ()) -> k' == k) facts
         if null registration
             then
                 pure

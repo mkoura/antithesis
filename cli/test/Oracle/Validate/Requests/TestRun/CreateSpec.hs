@@ -10,6 +10,7 @@ import Core.Types
     , Directory (Directory)
     , Duration (..)
     , Fact (..)
+    , JSFact
     , Platform (Platform)
     , PublicKeyHash
     , Repository (Repository, organization, project)
@@ -49,7 +50,7 @@ import Test.QuickCheck.Crypton (sshGen)
 import Test.QuickCheck.JSString (JSStringValue (..))
 import Test.QuickCheck.Lib (withAPresence, withNothing)
 import Test.QuickCheck.Same (isTheSame, theSame, tryDifferent)
-import Text.JSON.Canonical (ToJSON (..), renderCanonicalJSON)
+import Text.JSON.Canonical (JSValue, ToJSON (..), renderCanonicalJSON)
 import User.Types
     ( RegisterRoleKey (..)
     , RegisterUserKey (..)
@@ -69,7 +70,7 @@ noValidation = mkValidation [] [] []
 
 mkValidation
     :: Monad m
-    => [Fact]
+    => [Fact JSValue JSValue]
     -> [(Repository, Commit)]
     -> [(Repository, Commit, Directory)]
     -> Validation m
@@ -85,7 +86,7 @@ mkValidation fs rs ds =
         }
 
 registerRole
-    :: Monad m => String -> String -> String -> String -> m Fact
+    :: Monad m => String -> String -> String -> String -> m JSFact
 registerRole platform organization project requester = do
     key <-
         toJSON
@@ -99,9 +100,10 @@ registerRole platform organization project requester = do
                 , username = Username requester
                 }
     value <- toJSON ()
-    return $ Fact{key, value}
+    return $ Fact key value
 
-registerUser :: Monad m => String -> String -> PublicKeyHash -> m Fact
+registerUser
+    :: Monad m => String -> String -> PublicKeyHash -> m JSFact
 registerUser platform username publicKeyHash = do
     key <-
         toJSON
@@ -111,7 +113,7 @@ registerUser platform username publicKeyHash = do
                 , pubkeyhash = publicKeyHash
                 }
     value <- toJSON ()
-    return $ Fact{key, value}
+    return $ Fact key value
 
 registerTestRun
     :: Monad m
@@ -124,7 +126,7 @@ registerTestRun
     -> String
     -> Int
     -> Ed25519.Signature
-    -> m Fact
+    -> m JSFact
 registerTestRun
     platform
     organization
@@ -150,7 +152,7 @@ registerTestRun
                     , requester = Username requester
                     }
         value <- toJSON (Pending (Duration duration) signature)
-        return $ Fact{key, value}
+        return $ Fact key value
 
 emptyTestRun :: TestRun
 emptyTestRun =
@@ -240,7 +242,7 @@ spec = do
                                                     $ BL.unpack
                                                     $ renderCanonicalJSON k
                                                 )
-                                        Just $ Fact{key = k, value = v}
+                                        Just $ Fact k v
                             let validation =
                                     mkValidation
                                         ([user, role] <> maybeToList previous)

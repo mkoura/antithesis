@@ -9,11 +9,9 @@ module Oracle.Validate.Requests.TestRun.Create
 import Core.Types
     ( Change (..)
     , Duration (..)
-    , Fact (..)
     , Key (..)
     , Operation (..)
     , Try (..)
-    , parseFacts
     )
 import Crypto.PubKey.Ed25519 qualified as Ed25519
 import Data.ByteString.Lazy qualified as BL
@@ -125,9 +123,7 @@ checkRole
     testRun = do
         fs <- mpfsGetFacts
         let roleFact = roleOfATestRun testRun
-        roleFactKey <- toJSON roleFact
-        roleFactValue <- toJSON ()
-        if Fact roleFactKey roleFactValue `elem` fs
+        if (roleFact, ()) `elem` fs
             then return Nothing
             else return $ Just UnacceptableRole
 
@@ -139,8 +135,7 @@ checkTryIndex
 checkTryIndex
     Validation{mpfsGetFacts}
     testRun = do
-        fs <- mpfsGetFacts
-        let testRuns :: [(TestRun, TestRunState PendingT)] = parseFacts fs
+        testRuns :: [(TestRun, TestRunState PendingT)] <- mpfsGetFacts
         let sameCommitTestRuns =
                 filter
                     ( \(tr, _) ->
@@ -198,9 +193,9 @@ checkSignature
     Validation{mpfsGetFacts}
     testRun
     signature = do
-        fs <- mpfsGetFacts
+        registeredUsers :: [(RegisterUserKey, ())] <- mpfsGetFacts
         testRunJ <- toJSON testRun
-        let registeredUsers :: [(RegisterUserKey, ())] = parseFacts fs
+        let
             userKeys =
                 mapMaybe
                     (decodePublicKey . pubkeyhash)

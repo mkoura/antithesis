@@ -11,7 +11,6 @@ import Core.Types
     , Key (..)
     , Operation (..)
     , Owner
-    , parseFacts
     )
 import Oracle.Types (Request (..))
 import Oracle.Validate.Types (ValidationResult (..))
@@ -90,8 +89,7 @@ checkPastState
     -> TestRunState t
     -> m (Maybe AgentRejection)
 checkPastState Validation{mpfsGetFacts} testRun accepted = do
-    facts <- mpfsGetFacts
-    let testRuns = parseFacts facts
+    testRuns <- mpfsGetFacts
     if (testRun, accepted) `elem` testRuns
         then pure Nothing
         else pure $ Just PreviousStateWrong

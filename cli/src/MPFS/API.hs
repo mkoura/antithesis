@@ -255,8 +255,10 @@ updateToken
     -> ClientM (WithUnsignedTx JSValue)
 updateToken address tokenId requests =
     fmap fromAesonThrow <$> updateToken' address tokenId requests
+
 getToken :: TokenId -> ClientM JSValue
 getToken tokenId = fromAesonThrow <$> getToken' tokenId
+
 getTokenFacts :: TokenId -> ClientM JSValue
 getTokenFacts tokenId = do
     aesonFacts <- getTokenFacts' tokenId

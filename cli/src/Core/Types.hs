@@ -39,7 +39,7 @@ import Data.Aeson qualified as Aeson
 import Data.ByteString.Base16 (encode)
 import Data.ByteString.Char8 qualified as B
 import Data.ByteString.Lazy.Char8 qualified as BL
-import Data.Maybe (mapMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Lib.JSON
@@ -461,9 +461,18 @@ instance ReportSchemaErrors m => FromJSON m Fact where
         value <- v .: "value"
         pure $ Fact{key, value}
 
+instance Monad m => ToJSON m Fact where
+    toJSON (Fact key value) =
+        object
+            [ "key" .= key
+            , "value" .= value
+            ]
+
 parseFacts
-    :: (FromJSON Maybe key, FromJSON Maybe val) => [Fact] -> [(key, val)]
-parseFacts = mapMaybe f
+    :: (FromJSON Maybe key, FromJSON Maybe val) => JSValue -> [(key, val)]
+parseFacts v = fromMaybe [] $ do
+    factsJSON <- fromJSON v
+    pure $ mapMaybe f factsJSON
   where
     f (Fact key value) = do
         key' <- fromJSON key

@@ -7,7 +7,6 @@ import Control.Monad.IO.Class (MonadIO (..))
 import Core.Types
     ( Commit
     , Directory
-    , Fact (..)
     , Repository
     , TokenId
     , parseFacts
@@ -19,7 +18,10 @@ import Text.JSON.Canonical (FromJSON (..))
 
 -- | Abstract the side effects necessary for validation.
 data Validation m = Validation
-    { mpfsGetFacts :: m [Fact]
+    { mpfsGetFacts
+        :: forall k v
+         . (FromJSON Maybe k, FromJSON Maybe v)
+        => m [(k, v)]
     , githubCommitExists :: Repository -> Commit -> m Bool
     , githubDirectoryExists :: Repository -> Commit -> Directory -> m Bool
     }
@@ -31,9 +33,7 @@ mkValidation tk =
             factsObject <- getTokenFacts tk
             case fromJSON factsObject of
                 Nothing -> error "Failed to parse facts from JSON"
-                Just factsObject' -> do
-                    let factsList = parseFacts factsObject'
-                    return $ uncurry Fact <$> factsList
+                Just factsObject' -> pure $ parseFacts factsObject'
         , githubCommitExists = \repository commit ->
             liftIO $ GitHub.githubCommitExists repository commit
         , githubDirectoryExists = \repository commit dir ->

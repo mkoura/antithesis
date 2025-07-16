@@ -17,7 +17,6 @@ import Core.Types
     , RequestRefId
     , Role (..)
     , Username (..)
-    , parseFacts
     )
 import Data.List (find)
 import Oracle.Github.GetRepoRole qualified as Github
@@ -67,7 +66,7 @@ validateRequest
     Validation{mpfsGetFacts}
     (UnregisterUserRequest (Request refId _owner (Change (Key k) _v))) = do
         facts <- mpfsGetFacts
-        let registration = find (\(k', ()) -> k' == k) $ parseFacts facts
+        let registration = find (\(k', ()) -> k' == k) facts
         if null registration
             then
                 pure
@@ -95,7 +94,7 @@ validateRequest
                         repository
                         username
                     ) = k
-        let registration = flip find (parseFacts facts)
+        let registration = flip find facts
                 $ \(RegisterUserKey platform' username' _, ()) ->
                     platform' == platform
                         && username' == username
@@ -136,7 +135,7 @@ validateRequest
     Validation{mpfsGetFacts}
     (UnregisterRoleRequest (Request refId _owner (Change (Key k) _v))) = do
         facts <- mpfsGetFacts
-        let registration = find (\(k', ()) -> k' == k) $ parseFacts facts
+        let registration = find (\(k', ()) -> k' == k) facts
         if null registration
             then
                 pure

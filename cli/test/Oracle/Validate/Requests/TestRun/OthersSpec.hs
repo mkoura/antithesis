@@ -15,6 +15,7 @@ import Core.Types
     , Repository (Repository, organization, project)
     , Try (Try)
     , Username (Username)
+    , parseFacts
     )
 import Data.ByteString.Lazy.Char8 qualified as BL
 import Lib.SSH.Public (encodePublicKey)
@@ -62,7 +63,9 @@ mkValidation
     -> Validation m
 mkValidation fs rs ds =
     Validation
-        { mpfsGetFacts = return fs
+        { mpfsGetFacts = do
+            db <- toJSON fs
+            return $ parseFacts db
         , githubCommitExists = \repository commit ->
             return $ (repository, commit) `elem` rs
         , githubDirectoryExists = \repository commit dir ->

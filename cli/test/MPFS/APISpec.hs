@@ -36,6 +36,7 @@ import Core.Types
     ( CageDatum (..)
     , Change (..)
     , Key (..)
+    , Op (..)
     , Operation (..)
     , Owner (..)
     , Platform (..)
@@ -51,7 +52,7 @@ import Core.Types
     , textOf
     )
 import Data.Bifunctor (first)
-import Data.ByteString.Base16
+import Data.ByteString.Base16 ( decode, encode )
 import Data.ByteString.Char8 qualified as B
 import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.Sequence.Strict qualified as Seq
@@ -274,7 +275,7 @@ spec = do
                             $ JSString "value"
                     let dtx = deserializeTx tx
                     Just (policyId', datum) <- pure $ getFirstOutput dtx
-                    Just (Just (cageDatum :: CageDatum String String)) <-
+                    Just (Just (cageDatum :: CageDatum String (OpI String))) <-
                         pure $ fromData datum
                     policyId' `shouldBe` mpfsPolicyId
                     cageDatum
@@ -297,7 +298,7 @@ spec = do
                             $ RequestDeleteBody (JSString "key") (JSString "value")
                     let dtx = deserializeTx tx
                     Just (policyId', datum) <- pure $ getFirstOutput dtx
-                    Just (Just (cageDatum :: CageDatum String String)) <-
+                    Just (Just (cageDatum :: CageDatum String (OpD String))) <-
                         pure $ fromData datum
                     policyId' `shouldBe` mpfsPolicyId
                     cageDatum
@@ -323,7 +324,7 @@ spec = do
                                 (JSString "newValue")
                     let dtx = deserializeTx tx
                     Just (policyId', datum) <- pure $ getFirstOutput dtx
-                    Just (Just (cageDatum :: CageDatum String String)) <-
+                    Just (Just (cageDatum :: CageDatum String (OpU String String))) <-
                         pure $ fromData datum
                     policyId' `shouldBe` mpfsPolicyId
                     cageDatum

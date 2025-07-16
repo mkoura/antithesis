@@ -33,6 +33,7 @@ module Core.Types
     , WithUnsignedTx (..)
     , parseFacts
     , JSFact
+    , Op (..)
     ) where
 
 import Control.Exception (Exception)
@@ -51,7 +52,7 @@ import Lib.JSON
     , (.=)
     )
 import PlutusTx (Data (..), builtinDataToData)
-import PlutusTx.IsData.Class
+import PlutusTx.IsData.Class (FromData (..), fromData)
 import Servant.API (FromHttpApiData (..), ToHttpApiData (..))
 import Text.JSON.Canonical
     ( FromJSON (..)
@@ -154,33 +155,58 @@ instance
         keyString :: String <- fromJSON v
         Key <$> parseJSValue (B.pack keyString)
 
-data Operation a
-    = Insert a
-    | Delete a
-    | Update a a
-    deriving (Eq, Show)
+data Op a b = OpI a | OpD b | OpU a b
+    deriving (Show, Eq)
 
-instance FromJSON Maybe a => FromData (Operation a) where
+data Operation s where
+    Insert :: a -> Operation (OpI a)
+    Delete :: a -> Operation (OpD a)
+    Update :: a -> b -> Operation (OpU a b)
+
+deriving instance Show a => Show (Operation (OpI a))
+deriving instance Show a => Show (Operation (OpD a))
+deriving instance (Show a, Show b) => Show (Operation (OpU a b))
+
+deriving instance Eq a => Eq (Operation (OpI a))
+deriving instance Eq a => Eq (Operation (OpD a))
+deriving instance (Eq a, Eq b) => Eq (Operation (OpU a b))
+
+instance FromJSON Maybe a => FromData (Operation (OpI a)) where
     fromBuiltinData = parse . builtinDataToData
       where
         parse = \case
             Constr 0 [B b] -> Insert <$> parseJSValue b
+            _ -> Nothing
+instance FromJSON Maybe a => FromData (Operation (OpD a)) where
+    fromBuiltinData = parse . builtinDataToData
+      where
+        parse = \case
             Constr 1 [B b] -> Delete <$> parseJSValue b
-            Constr 2 [B old, B new] -> do
-                oldVal <- parseJSValue old
-                newVal <- parseJSValue new
-                Just (Update oldVal newVal)
             _ -> Nothing
 
-instance (ToJSON m a, Monad m) => ToJSON m (Operation a) where
+instance (FromJSON Maybe a, FromJSON Maybe b) => FromData (Operation (OpU a b)) where
+    fromBuiltinData = parse . builtinDataToData
+      where
+        parse = \case
+            Constr 2 [B old, B new] -> do
+                oldValue <- parseJSValue old
+                newValue <- parseJSValue new
+                pure $ Update oldValue newValue
+            _ -> Nothing
+
+instance (ToJSON m a, Monad m) => ToJSON m (Operation (OpI a)) where
     toJSON (Insert a) = do
         v <- BL.unpack . renderCanonicalJSON <$> toJSON a
         object
             ["type" .= ("insert" :: String), "value" .= v]
+
+instance (ToJSON m a, Monad m) => ToJSON m (Operation (OpD a)) where
     toJSON (Delete a) = do
         v <- BL.unpack . renderCanonicalJSON <$> toJSON a
         object
             ["type" .= ("delete" :: String), "value" .= v]
+
+instance (ToJSON m a, ToJSON m b, Monad m) => ToJSON m (Operation (OpU a b)) where
     toJSON (Update old new) = do
         oldValue <- BL.unpack . renderCanonicalJSON <$> toJSON old
         newValue <- BL.unpack . renderCanonicalJSON <$> toJSON new
@@ -190,16 +216,37 @@ instance (ToJSON m a, Monad m) => ToJSON m (Operation a) where
             , "newValue" .= newValue
             ]
 
-instance (ReportSchemaErrors m, FromJSON m a) => FromJSON m (Operation a) where
+instance
+    (ReportSchemaErrors m, FromJSON m a)
+    => FromJSON m (Operation (OpI a))
+    where
     fromJSON = withObject "Operation" $ \v -> do
         op <- v .: "type"
         case op of
             JSString "insert" -> do
                 valueString <- v .: "value"
                 Insert <$> parseJSValue (B.pack valueString)
+            _ -> expectedButGotValue "insert operation" op
+
+instance
+    (ReportSchemaErrors m, FromJSON m a)
+    => FromJSON m (Operation (OpD a))
+    where
+    fromJSON = withObject "Operation" $ \v -> do
+        op <- v .: "type"
+        case op of
             JSString "delete" -> do
                 valueString <- v .: "value"
                 Delete <$> parseJSValue (B.pack valueString)
+            _ -> expectedButGotValue "delete operation" op
+
+instance
+    (ReportSchemaErrors m, FromJSON m a, FromJSON m b)
+    => FromJSON m (Operation (OpU a b))
+    where
+    fromJSON = withObject "Operation" $ \v -> do
+        op <- v .: "type"
+        case op of
             JSString "update" -> do
                 oldValueString <- v .: "oldValue"
                 oldValue <- parseJSValue (B.pack oldValueString)
@@ -224,15 +271,17 @@ instance Monad m => ToJSON m Root where
 instance (ReportSchemaErrors m) => FromJSON m Root where
     fromJSON v = Root <$> fromJSON v
 
-data Change k v = Change
+data Change k op = Change
     { key :: Key k
-    , operation :: Operation v
+    , operation :: Operation op
     }
-    deriving (Eq, Show)
+
+deriving instance (Show k, Show (Operation op)) => Show (Change k op)
+deriving instance (Eq k, Eq (Operation op)) => Eq (Change k op)
 
 instance
-    (FromJSON m k, FromJSON m v, ReportSchemaErrors m)
-    => FromJSON m (Change k v)
+    (FromJSON m k, FromJSON m (Operation op), ReportSchemaErrors m)
+    => FromJSON m (Change k op)
     where
     fromJSON w = flip (withObject "Change") w $ \v -> do
         key <- v .: "key"
@@ -240,8 +289,8 @@ instance
         pure $ Change key operation
 
 instance
-    (Monad m, ToJSON m k, ToJSON m v)
-    => ToJSON m (Change k v)
+    (Monad m, ToJSON m k, ToJSON m (Operation op))
+    => ToJSON m (Change k op)
     where
     toJSON (Change key operation) =
         object
@@ -249,19 +298,24 @@ instance
             , "operation" .= operation
             ]
 
-data CageDatum k v
+data CageDatum k op
     = RequestDatum
         { tokenId :: TokenId
         , owner :: Owner
-        , change :: Change k v
+        , change :: Change k op
         }
     | StateDatum
         { owner :: Owner
         , root :: Root
         }
-    deriving (Eq, Show)
 
-instance (FromJSON Maybe k, FromJSON Maybe v) => FromData (CageDatum k v) where
+deriving instance Show (Change k op) => Show (CageDatum k op)
+deriving instance Eq (Change k op) => Eq (CageDatum k op)
+
+instance
+    (FromJSON Maybe k, FromData (Operation op))
+    => FromData (CageDatum k op)
+    where
     fromBuiltinData = parse . builtinDataToData
       where
         parse = \case

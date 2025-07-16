@@ -11,6 +11,7 @@ import Core.Types
     , Duration (..)
     , Fact (..)
     , Key (..)
+    , Op (..)
     , Operation (..)
     , Try (..)
     )
@@ -46,7 +47,7 @@ validateCreateTestRun
     :: Monad m
     => TestRunValidationConfig
     -> Validation m
-    -> Request TestRun (TestRunState PendingT)
+    -> Request TestRun (OpI (TestRunState PendingT))
     -> m ValidationResult
 validateCreateTestRun
     testRunConfig
@@ -67,10 +68,6 @@ validateCreateTestRun
                             $ CannotValidate
                             $ "test run validation failed for the following reasons: "
                                 <> unwords (fmap show rejections)
-            _ ->
-                pure
-                    $ CannotValidate
-                        "only insert operation is supported for test runs"
 
 data TestRunRejection
     = UnacceptableDuration

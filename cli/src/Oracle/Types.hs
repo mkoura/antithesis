@@ -10,13 +10,18 @@ module Oracle.Types
 import Control.Applicative (Alternative, (<|>))
 import Core.Types
     ( Change (..)
+    , Op (..)
     , Operation (..)
     , Owner
     , RequestRefId
     , Root
     )
-import Lib.JSON
+import Lib.JSON (object, withObject, (.:), (.=))
 import Text.JSON.Canonical
+    ( FromJSON (..)
+    , ReportSchemaErrors
+    , ToJSON (..)
+    )
 import User.Types
     ( Phase (..)
     , RegisterRoleKey
@@ -25,14 +30,19 @@ import User.Types
     , TestRunState
     )
 
-data Request k v = Request
+data Request k op = Request
     { outputRefId :: RequestRefId
     , owner :: Owner
-    , change :: Change k v
+    , change :: Change k op
     }
-    deriving (Show, Eq)
 
-instance (Monad m, ToJSON m k, ToJSON m v) => ToJSON m (Request k v) where
+deriving instance (Show k, Show (Operation op)) => Show (Request k op)
+deriving instance (Eq k, Eq (Operation op)) => Eq (Request k op)
+
+instance
+    (Monad m, ToJSON m k, ToJSON m (Operation op))
+    => ToJSON m (Request k op)
+    where
     toJSON (Request refId owner change) =
         object
             [ "outputRefId" .= refId
@@ -41,8 +51,8 @@ instance (Monad m, ToJSON m k, ToJSON m v) => ToJSON m (Request k v) where
             ]
 
 instance
-    (ReportSchemaErrors m, FromJSON m k, FromJSON m v)
-    => FromJSON m (Request k v)
+    (ReportSchemaErrors m, FromJSON m k, FromJSON m (Operation op))
+    => FromJSON m (Request k op)
     where
     fromJSON = withObject "Request" $ \v -> do
         refId <- v .: "outputRefId"
@@ -75,126 +85,45 @@ instance ReportSchemaErrors m => FromJSON m TokenState where
 
 data RequestZoo where
     RegisterUserRequest
-        :: Request RegisterUserKey () -> RequestZoo
+        :: Request RegisterUserKey (OpI ()) -> RequestZoo
     UnregisterUserRequest
-        :: Request RegisterUserKey () -> RequestZoo
+        :: Request RegisterUserKey (OpD ()) -> RequestZoo
     RegisterRoleRequest
-        :: Request RegisterRoleKey () -> RequestZoo
+        :: Request RegisterRoleKey (OpI ()) -> RequestZoo
     UnregisterRoleRequest
-        :: Request RegisterRoleKey () -> RequestZoo
+        :: Request RegisterRoleKey (OpD ()) -> RequestZoo
     CreateTestRequest
-        :: Request TestRun (TestRunState PendingT) -> RequestZoo
+        :: Request TestRun (OpI (TestRunState PendingT)) -> RequestZoo
     RejectRequest
-        :: Request TestRun (TestRunState DoneT) -> RequestZoo
+        :: Request TestRun (OpU (TestRunState PendingT) (TestRunState DoneT))
+        -> RequestZoo
     AcceptRequest
-        :: Request TestRun (TestRunState RunningT) -> RequestZoo
+        :: Request TestRun (OpU (TestRunState PendingT) (TestRunState RunningT))
+        -> RequestZoo
     FinishedRequest
-        :: Request TestRun (TestRunState DoneT) -> RequestZoo
-
-parseRegisterUserKey
-    :: (ReportSchemaErrors m, Alternative m) => JSValue -> m RequestZoo
-parseRegisterUserKey v = do
-    r@(Request{change}) <- fromJSON v
-    case operation change of
-        Insert _ -> pure $ RegisterUserRequest r
-        Delete _ -> pure $ UnregisterUserRequest r
-        Update _ _ -> expected "insert or delete" $ Just "update"
-
-parseRegisterRoleKey
-    :: (Alternative m, ReportSchemaErrors m) => JSValue -> m RequestZoo
-parseRegisterRoleKey v = do
-    r@(Request{change}) <- fromJSON v
-    case operation change of
-        Insert _ -> pure $ RegisterRoleRequest r
-        Delete _ -> pure $ UnregisterRoleRequest r
-        Update _ _ -> expected "insert or delete" $ Just "update"
-
-parseCreateTestRequest
-    :: (Alternative m, ReportSchemaErrors m) => JSValue -> m RequestZoo
-parseCreateTestRequest v = do
-    r@(Request{change}) <- fromJSON v
-    case operation change of
-        Insert _ -> pure $ CreateTestRequest r
-        Delete _ -> expected "insert" $ Just "delete"
-        Update _ _ -> expected "insert" $ Just "update"
-
-parseRejectRequest
-    :: (Alternative m, ReportSchemaErrors m) => JSValue -> m RequestZoo
-parseRejectRequest v = do
-    r@(Request{change}) <- fromJSON v
-    case operation change of
-        Insert _ -> expected "insert" $ Just "delete"
-        Delete _ -> expected "delete" $ Just "insert"
-        Update _ _ -> pure $ RejectRequest r
-
-parseAcceptRequest
-    :: (Alternative m, ReportSchemaErrors m) => JSValue -> m RequestZoo
-parseAcceptRequest v = do
-    r@(Request{change}) <- fromJSON v
-    case operation change of
-        Insert _ -> expected "insert" $ Just "delete"
-        Delete _ -> expected "delete" $ Just "insert"
-        Update _ _ -> pure $ AcceptRequest r
-
-parseFinishedRequest
-    :: (Alternative m, ReportSchemaErrors m) => JSValue -> m RequestZoo
-parseFinishedRequest v = do
-    r@(Request{change}) <- fromJSON v
-    case operation change of
-        Insert _ -> expected "insert" $ Just "delete"
-        Delete _ -> expected "delete" $ Just "insert"
-        Update _ _ -> pure $ FinishedRequest r
+        :: Request TestRun (OpU (TestRunState RunningT) (TestRunState DoneT))
+        -> RequestZoo
 
 instance (Alternative m, ReportSchemaErrors m) => FromJSON m RequestZoo where
     fromJSON v = do
-        parseRegisterUserKey v
-            <|> parseRegisterRoleKey v
-            <|> parseCreateTestRequest v
-            <|> parseRejectRequest v
-            <|> parseAcceptRequest v
-            <|> parseFinishedRequest v
+        (RegisterUserRequest <$> fromJSON v)
+            <|> (UnregisterUserRequest <$> fromJSON v)
+            <|> (RegisterRoleRequest <$> fromJSON v)
+            <|> (UnregisterRoleRequest <$> fromJSON v)
+            <|> (CreateTestRequest <$> fromJSON v)
+            <|> (RejectRequest <$> fromJSON v)
+            <|> (AcceptRequest <$> fromJSON v)
+            <|> (FinishedRequest <$> fromJSON v)
 
 instance Monad m => ToJSON m RequestZoo where
-    toJSON (RegisterUserRequest req) =
-        object
-            [ "type" .= ("register-user" :: String)
-            , "request" .= req
-            ]
-    toJSON (UnregisterUserRequest req) =
-        object
-            [ "type" .= ("unregister-user" :: String)
-            , "request" .= req
-            ]
-    toJSON (RegisterRoleRequest req) =
-        object
-            [ "type" .= ("register-role" :: String)
-            , "request" .= req
-            ]
-    toJSON (UnregisterRoleRequest req) =
-        object
-            [ "type" .= ("unregister-role" :: String)
-            , "request" .= req
-            ]
-    toJSON (CreateTestRequest req) =
-        object
-            [ "type" .= ("create-test" :: String)
-            , "request" .= req
-            ]
-    toJSON (RejectRequest req) =
-        object
-            [ "type" .= ("reject-test" :: String)
-            , "request" .= req
-            ]
-    toJSON (AcceptRequest req) =
-        object
-            [ "type" .= ("accept-test" :: String)
-            , "request" .= req
-            ]
-    toJSON (FinishedRequest req) =
-        object
-            [ "type" .= ("finished-test" :: String)
-            , "request" .= req
-            ]
+    toJSON (RegisterUserRequest req) = toJSON req
+    toJSON (UnregisterUserRequest req) = toJSON req
+    toJSON (RegisterRoleRequest req) = toJSON req
+    toJSON (UnregisterRoleRequest req) = toJSON req
+    toJSON (CreateTestRequest req) = toJSON req
+    toJSON (RejectRequest req) = toJSON req
+    toJSON (AcceptRequest req) = toJSON req
+    toJSON (FinishedRequest req) = toJSON req
 
 data Token = Token
     { tokenRefId :: RequestRefId

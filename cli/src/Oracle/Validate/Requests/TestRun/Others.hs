@@ -10,6 +10,7 @@ import Core.Types
     ( Change (..)
     , Fact (..)
     , Key (..)
+    , Op (..)
     , Operation (..)
     , Owner
     )
@@ -39,8 +40,8 @@ checkingOwner owner pkh f =
 
 checkingUpdates
     :: (Monad m, Show a)
-    => Operation t
-    -> (t -> m (Maybe a))
+    => Operation (OpU x b)
+    -> (b -> m (Maybe a))
     -> m ValidationResult
 checkingUpdates operation f = case operation of
     Update _ newState -> do
@@ -52,16 +53,12 @@ checkingUpdates operation f = case operation of
                     $ CannotValidate
                     $ "test run validation failed for the following reasons: "
                         <> show rejection
-    _ ->
-        pure
-            $ CannotValidate
-                "only update operation is supported for test run updates"
 
 validateToDoneUpdate
     :: Monad m
     => Owner
     -> Validation m
-    -> Request TestRun (TestRunState DoneT)
+    -> Request TestRun (OpU x (TestRunState DoneT))
     -> m ValidationResult
 validateToDoneUpdate
     antiOwner
@@ -99,7 +96,7 @@ validateToRunningUpdate
     :: Monad m
     => Owner
     -> Validation m
-    -> Request TestRun (TestRunState RunningT)
+    -> Request TestRun (OpU (TestRunState PendingT) (TestRunState RunningT))
     -> m ValidationResult
 validateToRunningUpdate
     antiOwner

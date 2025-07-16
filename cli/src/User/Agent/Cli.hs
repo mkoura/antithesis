@@ -16,7 +16,9 @@ import Core.Types
     , TokenId
     , Wallet
     , WithTxHash (..)
+    , parseFacts
     )
+import Data.Functor ((<&>))
 import Data.List (find)
 import MPFS.API
     ( RequestUpdateBody (..)
@@ -30,6 +32,7 @@ import Text.JSON.Canonical
     , JSValue (..)
     , ToJSON (..)
     )
+import User.Agent.Types (TestRunMap (..), TestRunStatus (..))
 import User.Types
     ( Phase (..)
     , TestRun (..)
@@ -89,6 +92,7 @@ resolveOldState tokenId cmd = case cmd of
     Report key () duration url ->
         withExpectedState tokenId key $ \runningState ->
             pure $ Report key runningState duration url
+    Query -> pure $ Just Query
 
 data IsReady = NotReady | Ready
     deriving (Show, Eq)
@@ -116,6 +120,7 @@ data AgentCommand (phase :: IsReady) result where
         -> Duration
         -> URL
         -> AgentCommand phase (WithTxHash (TestRunState DoneT))
+    Query :: AgentCommand phase TestRunMap
 
 deriving instance Show (AgentCommand NotReady result)
 deriving instance Eq (AgentCommand NotReady result)
@@ -134,6 +139,20 @@ agentCmdCore sbmt wallet tokenId cmd = case cmd of
         rejectCommand sbmt wallet tokenId key pending reason
     Report key running duration url ->
         reportCommand sbmt wallet tokenId key running duration url
+    Query -> queryCommand tokenId
+
+queryCommand :: TokenId -> ClientM TestRunMap
+queryCommand tokenId = do
+    facts <- getTokenFacts tokenId
+    let testRunsPending = parseFacts facts
+        testRunsRunning = parseFacts facts
+        testRunsDone = parseFacts facts
+    pure
+        $ TestRunMap
+            { pending = testRunsPending <&> StatusPending
+            , running = testRunsRunning <&> StatusRunning
+            , done = testRunsDone <&> StatusDone
+            }
 
 signAndSubmitAnUpdate
     :: (ToJSON ClientM old, ToJSON ClientM new, ToJSON ClientM res)

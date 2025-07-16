@@ -117,6 +117,7 @@ library
     Submitting
     User.Agent.Cli
     User.Agent.Options
+    User.Agent.Types
     User.Requester.Cli
     User.Requester.Options
     User.Types

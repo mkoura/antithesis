@@ -30,6 +30,7 @@ import Options.Applicative
     , str
     )
 import User.Agent.Cli (AgentCommand (..), IsReady (NotReady))
+import User.Agent.Types (TestRunMap)
 import User.Types
     ( Phase (..)
     , TestRun (..)
@@ -60,7 +61,18 @@ agentCommandParser =
                     (Box <$> reportTestOptions)
                     (progDesc "Report the result of a test run")
                 )
+            <> command
+                "query"
+                ( info
+                    (Box <$> queryOptions)
+                    (progDesc "Query the status of test runs")
+                )
         )
+
+queryOptions
+    :: Parser (AgentCommand NotReady TestRunMap)
+queryOptions =
+    pure Query
 
 acceptTestOptions
     :: Parser (AgentCommand NotReady (WithTxHash (TestRunState RunningT)))

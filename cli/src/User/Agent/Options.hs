@@ -5,14 +5,6 @@ module User.Agent.Options
     ( agentCommandParser
     ) where
 
-import Core.Options
-    ( commitOption
-    , directoryOption
-    , platformOption
-    , repositoryOption
-    , tryOption
-    , usernameOption
-    )
 import Core.Types.Basic (Duration (..))
 import Core.Types.Tx (WithTxHash)
 import Lib.Box (Box (..))
@@ -28,13 +20,17 @@ import Options.Applicative
     , long
     , option
     , progDesc
+    , short
     , str
     )
-import User.Agent.Cli (AgentCommand (..), IsReady (NotReady))
+import User.Agent.Cli
+    ( AgentCommand (..)
+    , IsReady (NotReady)
+    , TestRunId (..)
+    )
 import User.Agent.Types (TestRunMap)
 import User.Types
     ( Phase (..)
-    , TestRun (..)
     , TestRunRejection (..)
     , TestRunState
     , URL (..)
@@ -75,17 +71,21 @@ queryOptions
 queryOptions =
     pure Query
 
+testRunIdOption
+    :: Parser TestRunId
+testRunIdOption =
+    TestRunId
+        <$> option
+            str
+            ( short 'i'
+                <> long "test-run-id"
+                <> help "The ID of the test run to accept/reject/report"
+            )
+
 acceptTestOptions
     :: Parser (AgentCommand NotReady (WithTxHash (TestRunState RunningT)))
 acceptTestOptions =
-    fmap (`Accept` ())
-        $ TestRun
-            <$> platformOption
-            <*> repositoryOption
-            <*> directoryOption
-            <*> commitOption
-            <*> tryOption
-            <*> usernameOption
+    Accept <$> testRunIdOption <*> pure ()
 
 testRejectionParser :: Parser TestRunRejection
 testRejectionParser =
@@ -101,28 +101,14 @@ testRejectionParser =
 rejectTestOptions
     :: Parser (AgentCommand NotReady (WithTxHash (TestRunState DoneT)))
 rejectTestOptions = do
-    testRun <-
-        TestRun
-            <$> platformOption
-            <*> repositoryOption
-            <*> directoryOption
-            <*> commitOption
-            <*> tryOption
-            <*> usernameOption
+    testRunId <- testRunIdOption
     reason <- many testRejectionParser
-    pure $ Reject testRun () reason
+    pure $ Reject testRunId () reason
 
 reportTestOptions
     :: Parser (AgentCommand NotReady (WithTxHash (TestRunState DoneT)))
 reportTestOptions = do
-    testRun <-
-        TestRun
-            <$> platformOption
-            <*> repositoryOption
-            <*> directoryOption
-            <*> commitOption
-            <*> tryOption
-            <*> usernameOption
+    testRunId <- testRunIdOption
     duration <-
         Duration
             <$> option
@@ -130,4 +116,4 @@ reportTestOptions = do
                 (long "duration" <> help "Duration of the test run in hours")
     url <-
         URL <$> option str (long "url" <> help "URL of the test report")
-    pure $ Report testRun () duration url
+    pure $ Report testRunId () duration url

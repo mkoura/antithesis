@@ -5,6 +5,7 @@
 
 module User.Agent.Cli
     ( AgentCommand (..)
+    , TestRunId (..)
     , IsReady (..)
     , agentCmd
     , agentCmdCore
@@ -12,7 +13,7 @@ module User.Agent.Cli
 where
 
 import Core.Types.Basic (Duration, TokenId)
-import Core.Types.Fact (parseFacts)
+import Core.Types.Fact (Fact (..), keyHash, parseFacts)
 import Core.Types.Tx (WithTxHash (..))
 import Core.Types.Wallet (Wallet)
 import Data.Functor ((<&>))
@@ -77,18 +78,39 @@ withExpectedState tokenId testRun cont = do
                 _ -> pure Nothing
         _ -> pure Nothing
 
+withResolvedTestRun
+    :: TokenId
+    -> TestRunId
+    -> (TestRun -> ClientM (Maybe a))
+    -> ClientM (Maybe a)
+withResolvedTestRun tk (TestRunId testRunId) cont = do
+    facts <- getTokenFacts tk
+    let testRuns = parseFacts facts
+        finder :: Fact TestRun JSValue -> Bool
+        finder (Fact key _) = case keyHash key of
+            Nothing -> False
+            Just keyId -> keyId == testRunId
+    let mtr = factKey <$> find finder testRuns
+    case mtr of
+        Nothing -> pure Nothing
+        Just testRun -> cont testRun
+
 resolveOldState
     :: TokenId
     -> AgentCommand NotReady result
     -> ClientM (Maybe (AgentCommand Ready result))
 resolveOldState tokenId cmd = case cmd of
-    Accept key () -> withExpectedState tokenId key $ pure . Accept key
+    Accept key () ->
+        withResolvedTestRun tokenId key $ \testRun ->
+            withExpectedState tokenId testRun $ pure . Accept testRun
     Reject key () reason ->
-        withExpectedState tokenId key
-            $ \pending -> pure $ Reject key pending reason
+        withResolvedTestRun tokenId key $ \testRun ->
+            withExpectedState tokenId testRun
+                $ \pending -> pure $ Reject testRun pending reason
     Report key () duration url ->
-        withExpectedState tokenId key $ \runningState ->
-            pure $ Report key runningState duration url
+        withResolvedTestRun tokenId key $ \testRun ->
+            withExpectedState tokenId testRun $ \runningState ->
+                pure $ Report testRun runningState duration url
     Query -> pure $ Just Query
 
 data IsReady = NotReady | Ready
@@ -101,18 +123,27 @@ type family IfReady a b where
 data Role = Internal | External
     deriving (Show, Eq)
 
+newtype TestRunId = TestRunId
+    { unTestRunId :: String
+    }
+    deriving (Show, Eq)
+
+type family ResolveId phase where
+    ResolveId NotReady = TestRunId
+    ResolveId Ready = TestRun
+
 data AgentCommand (phase :: IsReady) result where
     Accept
-        :: TestRun
+        :: ResolveId phase
         -> IfReady phase (TestRunState PendingT)
         -> AgentCommand phase (WithTxHash (TestRunState RunningT))
     Reject
-        :: TestRun
+        :: ResolveId phase
         -> IfReady phase (TestRunState PendingT)
         -> [TestRunRejection]
         -> AgentCommand phase (WithTxHash (TestRunState DoneT))
     Report
-        :: TestRun
+        :: ResolveId phase
         -> IfReady phase (TestRunState RunningT)
         -> Duration
         -> URL

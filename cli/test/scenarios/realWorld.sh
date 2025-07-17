@@ -58,7 +58,7 @@ being_requester (){
 include_requests() {
     being_oracle
     validation=$(anti oracle requests validate)
-    references=$(echo "$validation" | jq -r '.result[] | select(.validation == "validated") | .reference')
+    references=$(echo "$validation" | jq -r '.result | .[] | select(.validation == "validated") | .reference')
     if [ -z "$references" ]; then
         log "No references validated: $validation"
         exit 1
@@ -66,6 +66,7 @@ include_requests() {
     # shellcheck disable=SC2046
     anti oracle token update $(echo "$references" | xargs -I {} echo -o {}) > /dev/null
 }
+
 
 being_agent
 agent=$(anti wallet info | jq -r '.result.owner')
@@ -149,14 +150,10 @@ include_requests
 
 log "Reject the test run with no reasons..."
 being_agent
-anti agent reject-test \
-    --platform github \
-    --username cfhal \
-    --repository cardano-foundation/hal-fixture-sin \
-    --directory antithesis-test \
-    --commit 8e99893bf511dc75041b0347dc5af4bec54ce5d4 \
-    --try 1 \
-    > /dev/null
+validation=$(anti agent query)
+references=$(echo "$validation" | jq -r '.result | .pending | .[] | .id')
+echo "References: $references"
+anti agent reject-test -i "$references" > /dev/null
 
 log "Include the test run rejection"
 include_requests
@@ -178,29 +175,20 @@ include_requests
 
 log "Accept the new test run request because it's a scenario"
 being_agent
-anti agent accept-test \
-    --platform github \
-    --username cfhal \
-    --repository cardano-foundation/hal-fixture-sin \
-    --directory antithesis-test \
-    --commit 8e99893bf511dc75041b0347dc5af4bec54ce5d4 \
-    --try 2 \
-    > /dev/null
+validation=$(anti agent query)
+references=$(echo "$validation" | jq -r '.result | .pending | .[] | .id')
+anti agent accept-test -i "$references" > /dev/null
 
 log "Include the test run acceptance"
 include_requests
 
 log "Finish the test run"
 being_agent
-anti agent report-test \
-    --platform github \
-    --username cfhal \
-    --repository cardano-foundation/hal-fixture-sin \
-    --directory antithesis-test \
-    --commit 8e99893bf511dc75041b0347dc5af4bec54ce5d4 \
-    --try 2 \
+validation=$(anti agent query)
+references=$(echo "$validation" | jq -r '.result | .running | .[] | .id')
+anti agent report-test -i "$references" \
     --duration 1 \
-    --url "http://example.com/test-run-report" \
+    --url "https://example.com/report" \
     > /dev/null
 
 log "Include the test run report"

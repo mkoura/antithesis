@@ -126,12 +126,12 @@ checkTryIndex
     -> TestRun
     -> m (Maybe TestRunRejection)
 checkTryIndex
-    Validation{mpfsGetFacts}
+    Validation{mpfsGetTestRuns}
     testRun = do
-        testRuns :: [Fact TestRun (TestRunState PendingT)] <- mpfsGetFacts
+        testRuns :: [TestRun] <- mpfsGetTestRuns
         let sameCommitTestRuns =
                 filter
-                    ( \(Fact tr _) ->
+                    ( \tr ->
                         repository tr == repository testRun
                             && commitId tr == commitId testRun
                             && tr.platform == testRun.platform
@@ -140,7 +140,7 @@ checkTryIndex
                     testRuns
             latest = case sameCommitTestRuns of
                 [] -> Try 0
-                _ -> maximum $ map (tryIndex . factKey) sameCommitTestRuns
+                _ -> maximum $ map tryIndex sameCommitTestRuns
 
         if tryIndex testRun == succ latest
             then return Nothing

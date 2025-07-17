@@ -17,6 +17,7 @@ import Core.Types.Basic
     )
 import Core.Types.Fact (Fact (..), JSFact, parseFacts)
 import Data.ByteString.Lazy.Char8 qualified as BL
+import Data.Maybe (mapMaybe)
 import Lib.SSH.Public (encodePublicKey)
 import Oracle.Validate.Requests.TestRun.Others
     ( AgentRejection (..)
@@ -44,7 +45,11 @@ import Test.QuickCheck.Same
     , theSame
     , tryDifferent
     )
-import Text.JSON.Canonical (ToJSON (..), renderCanonicalJSON)
+import Text.JSON.Canonical
+    ( FromJSON (..)
+    , ToJSON (..)
+    , renderCanonicalJSON
+    )
 import User.Types
     ( RegisterRoleKey (..)
     , RegisterUserKey (..)
@@ -65,6 +70,8 @@ mkValidation fs rs ds =
         { mpfsGetFacts = do
             db <- toJSON fs
             return $ parseFacts db
+        , mpfsGetTestRuns =
+            pure $ mapMaybe (\(Fact k _ :: JSFact) -> fromJSON k) fs
         , githubCommitExists = \repository commit ->
             return $ (repository, commit) `elem` rs
         , githubDirectoryExists = \repository commit dir ->

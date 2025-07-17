@@ -1,7 +1,6 @@
 module Cli
     ( cmd
     , Command (..)
-    , Config (..)
     ) where
 
 import Control.Monad.IO.Class (MonadIO (..))
@@ -9,7 +8,6 @@ import Core.Types.Basic (Owner (Owner), RequestRefId, TokenId)
 import Core.Types.Tx (TxHash, WithTxHash (..))
 import Core.Types.Wallet (Wallet)
 import Data.Aeson (eitherDecodeFileStrict')
-import Data.Aeson.Types qualified as Aeson
 import Lib.SSH.Private
     ( KeyAPI (..)
     , SSHKeySelector (SSHKeySelector)
@@ -49,18 +47,6 @@ data Command a where
 deriving instance Show (Command a)
 deriving instance Eq (Command a)
 
-data Config = Config
-    { testRunValidationConfig :: TestRunValidationConfig
-    , sshKeySelector :: String
-    }
-    deriving (Show, Eq)
-
-instance Aeson.FromJSON Config where
-    parseJSON = Aeson.withObject "Config" $ \v ->
-        Config
-            <$> v Aeson..: "testRunValidationConfig"
-            <*> v Aeson..: "sshKeySelector"
-
 cmd
     :: Submitting
     -> Either FilePath Wallet
@@ -72,7 +58,8 @@ cmd sbmt mwf msign tokenId command = do
     cfg <- liftIO $ do
         configFile <- getEnv "ANTI_CONFIG_FILE"
         config <-
-            eitherDecodeFileStrict' configFile :: IO (Either String Config)
+            eitherDecodeFileStrict' configFile
+                :: IO (Either String TestRunValidationConfig)
         case config of
             Left err -> error $ "Failed to parse config file: " ++ err
             Right cfg -> pure cfg
@@ -88,7 +75,7 @@ failLeft _ (Right x) = pure x
 
 cmdCore
     :: Submitting
-    -> Config
+    -> TestRunValidationConfig
     -> Either FilePath Wallet
     -> Maybe SigningMap
     -> Maybe TokenId
@@ -96,14 +83,15 @@ cmdCore
     -> ClientM a
 cmdCore
     sbmt
-    Config{testRunValidationConfig, sshKeySelector}
+    testRunValidationConfig
     mWallet
     mSigning
     mTokenId = \case
         RequesterCommand requesterCommand -> do
             signing <- failNothing "No SSH file" mSigning
+            sshKeySelector <- liftIO $ getEnv "ANTI_SSH_KEY_SELECTOR"
             keyAPI <-
-                failNothing "No SSH selector"
+                failNothing (sshKeySelector <> "not in the signing map")
                     $ signing
                     $ SSHKeySelector sshKeySelector
             tokenId <- failNothing "No TokenId" mTokenId

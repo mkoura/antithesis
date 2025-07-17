@@ -60,7 +60,7 @@ include_requests() {
     validation=$(anti oracle requests validate)
     references=$(echo "$validation" | jq -r '.result[] | select(.validation == "validated") | .reference')
     if [ -z "$references" ]; then
-        log "No references validated"
+        log "No references validated: $validation"
         exit 1
     fi
     # shellcheck disable=SC2046

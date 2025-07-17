@@ -74,17 +74,16 @@ import Control.Lens ((%~))
 import Control.Monad (void)
 import Control.Monad.Catch (MonadCatch (..))
 import Control.Monad.IO.Class (MonadIO (..))
-import Core.Types
-    ( Address (..)
-    , Owner (..)
-    , SignTxError (..)
+import Core.Types.Basic (Address (..), Owner (..))
+import Core.Types.Tx
+    ( SignTxError (..)
     , SignedTx (..)
     , TxHash
     , UnsignedTx (..)
-    , Wallet (..)
     , WithTxHash (WithTxHash)
     , WithUnsignedTx (..)
     )
+import Core.Types.Wallet (Wallet (..))
 import Data.Aeson
     ( FromJSON
     , ToJSON

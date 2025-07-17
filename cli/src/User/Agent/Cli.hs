@@ -11,13 +11,10 @@ module User.Agent.Cli
     )
 where
 
-import Core.Types
-    ( Duration
-    , TokenId
-    , Wallet
-    , WithTxHash (..)
-    , parseFacts
-    )
+import Core.Types.Basic (Duration, TokenId)
+import Core.Types.Fact (parseFacts)
+import Core.Types.Tx (WithTxHash (..))
+import Core.Types.Wallet (Wallet)
 import Data.Functor ((<&>))
 import Data.List (find)
 import MPFS.API

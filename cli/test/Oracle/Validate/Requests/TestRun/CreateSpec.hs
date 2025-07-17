@@ -5,19 +5,17 @@ module Oracle.Validate.Requests.TestRun.CreateSpec (spec)
 where
 
 import Control.Lens (set, (&))
-import Core.Types
+import Core.Types.Basic
     ( Commit (Commit)
     , Directory (Directory)
     , Duration (..)
-    , Fact (..)
-    , JSFact
     , Platform (Platform)
     , PublicKeyHash
     , Repository (Repository, organization, project)
     , Try (Try)
     , Username (Username)
-    , parseFacts
     )
+import Core.Types.Fact (Fact (..), JSFact, parseFacts)
 import Crypto.PubKey.Ed25519 qualified as Ed25519
 import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.Maybe (maybeToList)

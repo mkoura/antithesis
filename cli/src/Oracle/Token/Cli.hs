@@ -3,13 +3,9 @@ module Oracle.Token.Cli
     , TokenCommand (..)
     ) where
 
-import Core.Types
-    ( RequestRefId
-    , TokenId
-    , TxHash
-    , Wallet
-    , WithTxHash (WithTxHash)
-    )
+import Core.Types.Basic (RequestRefId, TokenId)
+import Core.Types.Tx (TxHash, WithTxHash (WithTxHash))
+import Core.Types.Wallet (Wallet)
 import Lib.JSON ()
 import MPFS.API
     ( bootToken

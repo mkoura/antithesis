@@ -18,14 +18,8 @@ module MPFS.API
     , endToken
     ) where
 
-import Core.Types
-    ( Address
-    , RequestRefId
-    , SignedTx
-    , TokenId
-    , TxHash
-    , WithUnsignedTx
-    )
+import Core.Types.Basic (Address, RequestRefId, TokenId)
+import Core.Types.Tx (SignedTx, TxHash, WithUnsignedTx)
 import Data.Aeson
     ( FromJSON (..)
     , ToJSON (..)

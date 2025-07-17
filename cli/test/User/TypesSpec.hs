@@ -6,7 +6,7 @@ module User.TypesSpec
     )
 where
 
-import Core.Types
+import Core.Types.Basic
     ( Commit (Commit)
     , Directory (Directory)
     , Duration (..)

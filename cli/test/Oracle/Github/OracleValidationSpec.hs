@@ -3,7 +3,7 @@ module Oracle.Github.OracleValidationSpec
     )
 where
 
-import Core.Types
+import Core.Types.Basic
     ( PublicKeyHash (..)
     , Repository (..)
     , Role (..)

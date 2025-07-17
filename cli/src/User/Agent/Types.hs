@@ -3,7 +3,7 @@ module User.Agent.Types
     , TestRunMap (..)
     ) where
 
-import Core.Types (Fact)
+import Core.Types.Fact (Fact)
 import Lib.JSON (object, (.=))
 import Text.JSON.Canonical (ToJSON (..))
 import User.Types (Phase (..), TestRun, TestRunState)

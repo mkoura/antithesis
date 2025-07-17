@@ -14,7 +14,7 @@ module Core.Options
     )
 where
 
-import Core.Types
+import Core.Types.Basic
     ( Commit (..)
     , Directory (..)
     , Duration (..)

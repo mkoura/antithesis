@@ -6,15 +6,10 @@ module Oracle.Validate.Requests.TestRun.Create
     , TestRunRejection (..)
     ) where
 
-import Core.Types
-    ( Change (..)
-    , Duration (..)
-    , Fact (..)
-    , Key (..)
-    , Op (..)
-    , Operation (..)
-    , Try (..)
-    )
+import Core.Types.Basic (Duration (..), Try (..))
+import Core.Types.Change (Change (..), Key (..))
+import Core.Types.Fact (Fact (..))
+import Core.Types.Operation (Op (..), Operation (..))
 import Crypto.PubKey.Ed25519 qualified as Ed25519
 import Data.ByteString.Lazy qualified as BL
 import Data.Maybe (catMaybes, mapMaybe)

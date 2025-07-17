@@ -13,7 +13,8 @@ import Core.Options
     , tryOption
     , usernameOption
     )
-import Core.Types (Duration (..), WithTxHash)
+import Core.Types.Basic (Duration (..))
+import Core.Types.Tx (WithTxHash)
 import Lib.Box (Box (..))
 import Options.Applicative
     ( Alternative (..)

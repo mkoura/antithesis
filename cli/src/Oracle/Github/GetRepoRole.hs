@@ -7,7 +7,7 @@ module Oracle.Github.GetRepoRole
     , emitRepoRoleMsg
     ) where
 
-import Core.Types (Repository, Role (..), Username (..))
+import Core.Types.Basic (Repository, Role (..), Username (..))
 import Data.ByteString qualified as BS
 import Data.ByteString.Char8 qualified as BC
 import Data.List qualified as L

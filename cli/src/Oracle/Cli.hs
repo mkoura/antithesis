@@ -3,7 +3,8 @@ module Oracle.Cli
     , oracleCmd
     ) where
 
-import Core.Types (Owner, TokenId, Wallet)
+import Core.Types.Basic (Owner, TokenId)
+import Core.Types.Wallet (Wallet)
 import Oracle.Token.Cli (TokenCommand, tokenCmdCore)
 import Oracle.Validate.Cli (ValidateCommand, validateCmd)
 import Oracle.Validate.Requests.TestRun.Config

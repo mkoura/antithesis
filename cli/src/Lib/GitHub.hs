@@ -8,7 +8,7 @@ import Control.Exception
     ( Exception
     , throwIO
     )
-import Core.Types (Commit (..), Directory (..), Repository (..))
+import Core.Types.Basic (Commit (..), Directory (..), Repository (..))
 import Data.ByteString.Char8 qualified as B
 import Data.Foldable (Foldable (..))
 import Data.Text qualified as T

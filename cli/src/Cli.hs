@@ -5,14 +5,9 @@ module Cli
     ) where
 
 import Control.Monad.IO.Class (MonadIO (..))
-import Core.Types
-    ( Owner (Owner)
-    , RequestRefId
-    , TokenId
-    , TxHash
-    , Wallet
-    , WithTxHash (..)
-    )
+import Core.Types.Basic (Owner (Owner), RequestRefId, TokenId)
+import Core.Types.Tx (TxHash, WithTxHash (..))
+import Core.Types.Wallet (Wallet)
 import Data.Aeson (eitherDecodeFileStrict')
 import Data.Aeson.Types qualified as Aeson
 import Lib.SSH.Private

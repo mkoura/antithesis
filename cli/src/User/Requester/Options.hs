@@ -16,7 +16,8 @@ import Core.Options
     , tryOption
     , usernameOption
     )
-import Core.Types (TxHash, WithTxHash)
+import Core.Types.Tx (TxHash, WithTxHash)
+import Lib.Box (Box (..))
 import Options.Applicative
     ( Parser
     , command
@@ -24,7 +25,6 @@ import Options.Applicative
     , info
     , progDesc
     )
-import Oracle.Token.Options (Box (..))
 import User.Requester.Cli (RequesterCommand (..))
 import User.Types
     ( Phase (PendingT)

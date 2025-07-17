@@ -27,7 +27,7 @@ where
 import Control.Applicative (Alternative)
 import Control.Lens (makeLensesFor)
 import Control.Monad (guard)
-import Core.Types
+import Core.Types.Basic
     ( Commit (..)
     , Directory (..)
     , Duration (..)

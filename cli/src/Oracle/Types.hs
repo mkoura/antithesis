@@ -8,14 +8,10 @@ module Oracle.Types
     ) where
 
 import Control.Applicative (Alternative, (<|>))
-import Core.Types
-    ( Change (..)
-    , Op (..)
-    , Operation (..)
-    , Owner
-    , RequestRefId
-    , Root
-    )
+import Core.Types.Basic (Owner, RequestRefId)
+import Core.Types.Change (Change (..))
+import Core.Types.Operation (Op (..), Operation (..))
+import Core.Types.Tx (Root)
 import Lib.JSON (object, withObject, (.:), (.=))
 import Text.JSON.Canonical
     ( FromJSON (..)

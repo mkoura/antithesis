@@ -89,7 +89,13 @@ library
     App
     Cli
     Core.Options
-    Core.Types
+    Core.Types.Basic
+    Core.Types.CageDatum
+    Core.Types.Change
+    Core.Types.Fact
+    Core.Types.Operation
+    Core.Types.Tx
+    Core.Types.Wallet
     Lib.Box
     Lib.GitHub
     Lib.JSON

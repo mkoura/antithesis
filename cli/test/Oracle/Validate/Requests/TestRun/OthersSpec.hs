@@ -5,19 +5,17 @@
 module Oracle.Validate.Requests.TestRun.OthersSpec (spec)
 where
 
-import Core.Types
+import Core.Types.Basic
     ( Commit (Commit)
     , Directory (Directory)
     , Duration (..)
-    , Fact (..)
-    , JSFact
     , Platform (Platform)
     , PublicKeyHash
     , Repository (Repository, organization, project)
     , Try (Try)
     , Username (Username)
-    , parseFacts
     )
+import Core.Types.Fact (Fact (..), JSFact, parseFacts)
 import Data.ByteString.Lazy.Char8 qualified as BL
 import Lib.SSH.Public (encodePublicKey)
 import Oracle.Validate.Requests.TestRun.Others

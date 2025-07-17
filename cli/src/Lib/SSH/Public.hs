@@ -5,7 +5,7 @@ module Lib.SSH.Public
     ) where
 
 import Control.Monad (when)
-import Core.Types (PublicKeyHash (..))
+import Core.Types.Basic (PublicKeyHash (..))
 import Crypto.Error
     ( CryptoFailable (..)
     )

@@ -7,7 +7,7 @@ module Oracle.Github.ListPublicKeys
     , emitPublicKeyMsg
     ) where
 
-import Core.Types (PublicKeyHash (..), Username)
+import Core.Types.Basic (PublicKeyHash (..), Username)
 import Data.List qualified as L
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)

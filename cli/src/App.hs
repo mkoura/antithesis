@@ -2,9 +2,7 @@ module App (client) where
 
 import Cli (cmd)
 import Control.Exception (catch)
-import Core.Types
-    ( TokenId (..)
-    )
+import Core.Types.Basic (TokenId (..))
 import Data.ByteString.Char8 qualified as B
 import Lib.Box (Box (..))
 import Lib.SSH.Private (decodePrivateSSHFile)

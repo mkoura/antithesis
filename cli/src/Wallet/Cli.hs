@@ -6,11 +6,8 @@ module Wallet.Cli
     ) where
 
 import Control.Monad (replicateM)
-import Core.Types
-    ( Address
-    , Owner
-    , Wallet (..)
-    )
+import Core.Types.Basic (Address, Owner)
+import Core.Types.Wallet (Wallet (..))
 import Lib.JSON (object, (.=))
 import Submitting (walletFromMnemonic, writeWallet)
 import System.Random (randomRIO)

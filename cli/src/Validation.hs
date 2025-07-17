@@ -4,14 +4,8 @@ module Validation
     ) where
 
 import Control.Monad.IO.Class (MonadIO (..))
-import Core.Types
-    ( Commit
-    , Directory
-    , Fact
-    , Repository
-    , TokenId
-    , parseFacts
-    )
+import Core.Types.Basic (Commit, Directory, Repository, TokenId)
+import Core.Types.Fact (Fact, parseFacts)
 import Lib.GitHub qualified as GitHub
 import MPFS.API (getTokenFacts)
 import Servant.Client (ClientM)

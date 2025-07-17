@@ -32,27 +32,27 @@ import Control.Lens (to, (^.))
 import Control.Monad (void)
 import Control.Monad.Catch (SomeException, catch)
 import Control.Monad.IO.Class (MonadIO (..))
-import Core.Types
-    ( CageDatum (..)
-    , Change (..)
-    , Key (..)
-    , Op (..)
-    , Operation (..)
-    , Owner (..)
+import Core.Types.Basic
+    ( Owner (..)
     , Platform (..)
     , PublicKeyHash (PublicKeyHash)
     , RequestRefId (RequestRefId)
     , TokenId (..)
-    , TxHash
-    , UnsignedTx (..)
     , Username (..)
-    , Wallet (..)
+    )
+import Core.Types.CageDatum (CageDatum (..))
+import Core.Types.Change (Change (..), Key (..))
+import Core.Types.Operation (Op (..), Operation (..))
+import Core.Types.Tx
+    ( TxHash
+    , UnsignedTx (..)
     , WithTxHash (..)
     , WithUnsignedTx (WithUnsignedTx)
     , textOf
     )
+import Core.Types.Wallet (Wallet (..))
 import Data.Bifunctor (first)
-import Data.ByteString.Base16 ( decode, encode )
+import Data.ByteString.Base16 (decode, encode)
 import Data.ByteString.Char8 qualified as B
 import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.Sequence.Strict qualified as Seq

@@ -1,13 +1,17 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 import Control.Monad (void)
-import Core.Types
-    ( Owner (..)
-    , SignedTx (..)
-    , UnsignedTx (..)
-    , Wallet (..)
+import Core.Types.Basic
+    ( Address (..)
+    , Owner (..)
     )
-import Core.Types qualified as Types
+import Core.Types.Tx
+    ( SignedTx (..)
+    , UnsignedTx (..)
+    )
+import Core.Types.Wallet
+    ( Wallet (..)
+    )
 import Data.Aeson (encode, (.=))
 import Data.Aeson.Types (object)
 import Data.ByteString.Lazy.Char8 qualified as BL
@@ -44,7 +48,7 @@ optionCreateWallet =
 
 optionAddress :: Parser Commands
 optionAddress =
-    Address
+    Main.Address
         <$> strArgument
             ( metavar "WALLET_FILE"
                 <> help "Path to the wallet file to get the address from"
@@ -90,7 +94,7 @@ main = do
             (info (parseArgs <**> helper) (fullDesc <> progDesc "Wallet CLI"))
     case commands of
         CreateWallet walletFile -> createWallet walletFile
-        Address walletFile -> addressCmd walletFile
+        Main.Address walletFile -> addressCmd walletFile
         SignTransaction walletFile unsignedFile signedFile ->
             signTransactionCmd walletFile unsignedFile signedFile
 
@@ -106,7 +110,7 @@ signTransactionCmd walletFile unsignedFile signedFile = do
 
 addressCmd :: FilePath -> IO ()
 addressCmd walletFile = do
-    Wallet (Types.Address address) (Owner hash) _ <-
+    Wallet (Core.Types.Basic.Address address) (Owner hash) _ <-
         readWallet walletFile
     BL.putStrLn
         $ encode

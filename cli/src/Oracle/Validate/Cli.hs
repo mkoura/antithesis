@@ -8,11 +8,7 @@ module Oracle.Validate.Cli
 
 import Control.Monad (forM)
 import Control.Monad.Trans.Except (runExceptT)
-import Core.Types
-    ( Owner
-    , RequestRefId (..)
-    , TokenId
-    )
+import Core.Types.Basic (Owner, RequestRefId (..), TokenId)
 import Data.Functor ((<&>))
 import Data.Text qualified as T
 import Lib.JSON

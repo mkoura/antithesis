@@ -7,7 +7,7 @@ module Oracle.Github.ListPublicKeysIO
     ) where
 
 import Control.Lens ((&), (.~), (^.))
-import Core.Types (Username (..))
+import Core.Types.Basic (Username (..))
 import Data.Aeson (FromJSON)
 import Data.Text (Text)
 import GHC.Generics (Generic)

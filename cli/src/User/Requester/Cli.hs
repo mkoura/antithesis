@@ -5,13 +5,9 @@ module User.Requester.Cli
     , RequesterCommand (..)
     ) where
 
-import Core.Types
-    ( Duration
-    , TokenId
-    , TxHash
-    , Wallet (..)
-    , WithTxHash (..)
-    )
+import Core.Types.Basic (Duration, TokenId)
+import Core.Types.Tx (TxHash, WithTxHash (..))
+import Core.Types.Wallet (Wallet (..))
 import Data.ByteString.Lazy qualified as BL
 import Lib.SSH.Private (Sign)
 import MPFS.API

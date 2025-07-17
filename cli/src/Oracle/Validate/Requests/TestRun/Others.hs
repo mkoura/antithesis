@@ -6,14 +6,10 @@ module Oracle.Validate.Requests.TestRun.Others
     , AgentRejection (..)
     ) where
 
-import Core.Types
-    ( Change (..)
-    , Fact (..)
-    , Key (..)
-    , Op (..)
-    , Operation (..)
-    , Owner
-    )
+import Core.Types.Basic (Owner)
+import Core.Types.Change (Change (..), Key (..))
+import Core.Types.Fact (Fact (..))
+import Core.Types.Operation (Op (..), Operation (..))
 import Oracle.Types (Request (..))
 import Oracle.Validate.Types (ValidationResult (..))
 import Text.JSON.Canonical (FromJSON)

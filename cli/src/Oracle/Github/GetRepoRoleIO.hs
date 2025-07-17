@@ -7,7 +7,7 @@ module Oracle.Github.GetRepoRoleIO
     ) where
 
 import Control.Lens ((&), (.~), (^.))
-import Core.Types (Repository (..))
+import Core.Types.Basic (Repository (..))
 import Data.ByteString.Lazy (ByteString)
 import GHC.Generics (Generic)
 import Network.Wreq qualified as Wreq

@@ -8,17 +8,16 @@ module Oracle.Validate.Logic
     ) where
 
 import Control.Monad.IO.Class (liftIO)
-import Core.Types
-    ( Change (..)
-    , Fact (..)
-    , Key (..)
-    , Owner
+import Core.Types.Basic
+    ( Owner
     , Platform (..)
     , Repository (..)
     , RequestRefId
     , Role (..)
     , Username (..)
     )
+import Core.Types.Change (Change (..), Key (..))
+import Core.Types.Fact (Fact (..))
 import Data.List (find)
 import Oracle.Github.GetRepoRole qualified as Github
 import Oracle.Github.ListPublicKeys qualified as Github

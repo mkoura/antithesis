@@ -42,6 +42,14 @@ build:
 E2E match="":
     #!/usr/bin/env bash
     mkdir -p tmp/bin
+    if [ -z "${GITHUB_PERSONAL_ACCESS_TOKEN:-}" ]; then
+        echo "Please set GITHUB_PERSONAL_ACCESS_TOKEN environment variable, this is a valid GitHub personal access token with access to the public github API"
+        exit 1
+    fi
+    if [ -z "${ANTI_SSH_PASSWORD:-}" ]; then
+        echo "Please set ANTI_SSH_PASSWORD environment variable, this is the passphrase for the cfhal encrypted SSH private key"
+        exit 1
+    fi
     cabal install --overwrite-policy=always --installdir=tmp >/dev/null
     export PATH="$PWD/tmp:$PATH"
     randomMPFSPort=$(shuf -i 1024-65636 -n 1)
@@ -49,6 +57,8 @@ E2E match="":
     export MPFS_PORT="$randomMPFSPort"
     randomYaciAdminPort=$(shuf -i 1024-65536 -n 1)
     export YACI_ADMIN_PORT="$randomYaciAdminPort"
+    export ANTI_TEST_YACI_ADMIN="http://localhost:$YACI_ADMIN_PORT"
+
     # shellcheck disable=SC2002
     randomName=$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 8 | head -n 1)
     docker compose -p "$randomName" -f test/fixtures/docker-compose.yml up -d
@@ -62,9 +72,10 @@ E2E match="":
     export ANTI_TEST_REQUESTER_WALLET=tmp/test.json
     export ANTI_TEST_ORACLE_WALLET=tmp/test.json
     export ANTI_TEST_AGENT_WALLET=tmp/test.json
+
     export ANTI_CONFIG_FILE=test/fixtures/anti-config.json
-    export ANTI_SSH_FILE=test/fixtures/test_ed25519
-    export ANTI_SSH_PASSWORD=pw
+    export ANTI_SSH_FILE=test/fixtures/cfhal_ed25519
+    export ANTI_SSH_KEY_SELECTOR=cfhal
     export ANTI_WAIT=2
     while [[ "$(curl -s "localhost:$MPFS_PORT/tokens" | jq -r '.indexerStatus.ready')" != "true" ]]; do
         echo "Waiting for indexer to be ready..."
@@ -74,7 +85,7 @@ E2E match="":
     echo "Funding address: $address"
     topup(){
         curl -s -X 'POST' \
-            "http://localhost:$YACI_ADMIN_PORT/local-cluster/api/addresses/topup" \
+            "$ANTI_TEST_YACI_ADMIN/local-cluster/api/addresses/topup" \
             -H 'accept: */*' \
             -H 'Content-Type: application/json' \
             -d '{

@@ -29,15 +29,19 @@ if [ -z "${ANTI_TEST_REQUESTER_WALLET:-}" ]; then
     exit 1
 fi
 if [ -z "${ANTI_SSH_FILE:-}" ]; then
-    echo "Please set ANTI_SSH_FILE environment variable, this is an encrypted SSH private key that the 'cfhal' github user registered on github"
+    echo "Please set ANTI_SSH_FILE environment variable, this is an encrypted SSH private key of 'cfhal'. \
+        'cfhal' github user is registered on github. Get his key from 1 password vault.\
+        https://start.1password.com/open/i?a=TYQQQLKUDBAFVHQ4P7XKFCUVYM&v=fhipthmhnufti4q2kky6d7336u&i=2mtzmygwvvj5c4wgrruwc2cb3y&h=cardanofoundation.1password.com"
     exit 1
 fi
 if [ -z "${ANTI_SSH_PASSWORD:-}" ]; then
-    echo "Please set ANTI_SSH_PASSWORD environment variable, this is the passphrase for the encrypted SSH private key"
+    echo "Please set ANTI_SSH_PASSWORD environment variable, this is the passphrase for the encrypted SSH private key \
+        available in 1password vault at the same record."
     exit 1
 fi
 if [ -z "${GITHUB_PERSONAL_ACCESS_TOKEN:-}" ]; then
-    echo "Please set GITHUB_PERSONAL_ACCESS_TOKEN environment variable, this is a valid GitHub personal access token with access to the public github API"
+    echo "Please set GITHUB_PERSONAL_ACCESS_TOKEN environment variable, this is a valid GitHub personal access token with access to the public github API \
+        Or use the pat available in 1password vault at the same record."
     exit 1
 fi
 

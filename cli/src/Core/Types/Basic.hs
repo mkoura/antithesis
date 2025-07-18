@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE StrictData #-}
 
 module Core.Types.Basic
@@ -12,17 +13,20 @@ module Core.Types.Basic
     , PublicKeyHash (..)
     , Repository (..)
     , RequestRefId (..)
-    , Role (..)
     , TokenId (..)
     , Try (..)
     , Username (..)
+    , organizationL
+    , projectL
     ) where
 
+import Control.Lens (Lens', Wrapped)
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Base16 (encode)
 import Data.ByteString.Char8 qualified as B
 import Data.Text (Text)
 import Data.Text qualified as T
+import GHC.Generics (Generic)
 import Lib.JSON ()
 import PlutusTx (Data (..), builtinDataToData)
 import PlutusTx.IsData.Class (FromData (..))
@@ -103,28 +107,39 @@ instance FromData Owner where
             _ -> Nothing
 
 newtype Platform = Platform String
-    deriving (Eq, Show)
+    deriving (Eq, Show, Generic)
+
+instance Wrapped Platform
 
 newtype PublicKeyHash = PublicKeyHash String
     deriving (Eq, Show)
 
 newtype Commit = Commit String
-    deriving (Eq, Show)
+    deriving (Eq, Show, Generic)
 
-newtype Role = Role String
-    deriving (Eq, Show)
+instance Wrapped Commit
 
 newtype Directory = Directory String
-    deriving (Eq, Show)
+    deriving (Eq, Show, Generic)
+
+instance Wrapped Directory
 
 newtype Username = Username String
-    deriving (Eq, Show)
+    deriving (Eq, Show, Generic)
+
+instance Wrapped Username
 
 data Repository = Repository
     { organization :: String
     , project :: String
     }
     deriving (Eq, Show)
+
+organizationL :: Lens' Repository String
+organizationL f (Repository org proj) = (`Repository` proj) <$> f org
+
+projectL :: Lens' Repository String
+projectL f (Repository org proj) = Repository org <$> f proj
 
 newtype Port = Port Int
     deriving (Eq, Show)
@@ -154,4 +169,6 @@ newtype Duration = Duration Int
     deriving (Eq, Show)
 
 newtype Try = Try Int
-    deriving (Eq, Show, Ord, Enum)
+    deriving (Eq, Show, Ord, Enum, Num, Generic)
+
+instance Wrapped Try

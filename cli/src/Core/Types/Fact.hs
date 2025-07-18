@@ -5,6 +5,8 @@ module Core.Types.Fact
     , keyHash
     , parseFacts
     , JSFact
+    , toJSFact
+    , fromJSFact
     ) where
 
 import Crypto.Hash (Blake2b_256, Digest)
@@ -78,3 +80,16 @@ parseFacts v = fromMaybe [] $ do
         key' <- fromJSON key
         value' <- fromJSON value
         Just $ Fact key' value'
+
+toJSFact :: (ToJSON m k, ToJSON m v, Monad m) => Fact k v -> m JSFact
+toJSFact (Fact key value) = do
+    keyJ <- toJSON key
+    valueJ <- toJSON value
+    return $ Fact keyJ valueJ
+
+fromJSFact
+    :: (FromJSON m k, FromJSON m v, Monad m) => JSFact -> m (Fact k v)
+fromJSFact (Fact key value) = do
+    key' <- fromJSON key
+    value' <- fromJSON value
+    return $ Fact key' value'

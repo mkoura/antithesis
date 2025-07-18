@@ -1,24 +1,16 @@
 {-# LANGUAGE DuplicateRecordFields #-}
-{-# OPTIONS_GHC -Wno-orphans #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 
 module Oracle.Validate.Requests.TestRun.CreateSpec (spec)
 where
 
-import Control.Lens (set, (&))
+import Control.Lens ((%~), (.~))
 import Core.Types.Basic
-    ( Commit (Commit)
-    , Directory (Directory)
-    , Duration (..)
-    , Platform (Platform)
-    , PublicKeyHash
-    , Repository (Repository, organization, project)
-    , Try (Try)
-    , Username (Username)
+    ( Duration (..)
+    , organization
+    , project
     )
-import Core.Types.Fact (Fact (..), JSFact, parseFacts)
-import Crypto.PubKey.Ed25519 qualified as Ed25519
-import Data.ByteString.Lazy.Char8 qualified as BL
-import Data.Maybe (mapMaybe, maybeToList)
+import Core.Types.Fact (Fact (..), toJSFact)
 import Lib.SSH.Public (encodePublicKey)
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig (..)
@@ -26,6 +18,23 @@ import Oracle.Validate.Requests.TestRun.Config
 import Oracle.Validate.Requests.TestRun.Create
     ( TestRunRejection (..)
     , validateCreateTestRunCore
+    )
+import Oracle.Validate.Requests.TestRun.Lib
+    ( changeDirectory
+    , changeOrganization
+    , changePlatform
+    , changeProject
+    , changeRequester
+    , changeTry
+    , gitCommit
+    , gitDirectory
+    , jsFactRole
+    , jsFactUser
+    , mkValidation
+    , noValidation
+    , signTestRun
+    , signatureGen
+    , testConfigGen
     )
 import Test.Hspec
     ( Spec
@@ -36,150 +45,19 @@ import Test.Hspec
     , shouldNotContain
     )
 import Test.QuickCheck
-    ( ASCIIString (..)
+    ( Arbitrary (..)
     , Positive (..)
     , Testable (..)
-    , cover
-    , forAll
-    , forAllBlind
+    , counterexample
+    , oneof
+    , suchThat
     )
-import Test.QuickCheck.Commit (CommitValue (..))
 import Test.QuickCheck.Crypton (sshGen)
-import Test.QuickCheck.JSString (JSStringValue (..))
-import Test.QuickCheck.Lib (withAPresence, withNothing)
-import Test.QuickCheck.Same (isTheSame, theSame, tryDifferent)
-import Text.JSON.Canonical
-    ( FromJSON (..)
-    , JSValue
-    , ToJSON (..)
-    , renderCanonicalJSON
-    )
 import User.Types
-    ( RegisterRoleKey (..)
-    , RegisterUserKey (..)
-    , TestRun (..)
+    ( TestRun (..)
     , TestRunState (..)
-    , commitIdL
-    , directoryL
-    , platformL
-    , repositoryL
-    , requesterL
     , tryIndexL
     )
-import Validation (Validation (..))
-
-noValidation :: Monad m => Validation m
-noValidation = mkValidation [] [] []
-
-mkValidation
-    :: Monad m
-    => [Fact JSValue JSValue]
-    -> [(Repository, Commit)]
-    -> [(Repository, Commit, Directory)]
-    -> Validation m
-mkValidation fs rs ds =
-    Validation
-        { mpfsGetFacts = do
-            db <- toJSON fs
-            return $ parseFacts db
-        , mpfsGetTestRuns =
-            pure $ mapMaybe (\(Fact k _ :: JSFact) -> fromJSON k) fs
-        , githubCommitExists = \repository commit ->
-            return $ (repository, commit) `elem` rs
-        , githubDirectoryExists = \repository commit dir ->
-            return $ (repository, commit, dir) `elem` ds
-        }
-
-registerRole
-    :: Monad m => String -> String -> String -> String -> m JSFact
-registerRole platform organization project requester = do
-    key <-
-        toJSON
-            $ RegisterRoleKey
-                { platform = Platform platform
-                , repository =
-                    Repository
-                        { organization
-                        , project
-                        }
-                , username = Username requester
-                }
-    value <- toJSON ()
-    return $ Fact key value
-
-registerUser
-    :: Monad m => String -> String -> PublicKeyHash -> m JSFact
-registerUser platform username publicKeyHash = do
-    key <-
-        toJSON
-            $ RegisterUserKey
-                { platform = Platform platform
-                , username = Username username
-                , pubkeyhash = publicKeyHash
-                }
-    value <- toJSON ()
-    return $ Fact key value
-
-registerTestRun
-    :: Monad m
-    => String
-    -> String
-    -> String
-    -> String
-    -> String
-    -> Int
-    -> String
-    -> Int
-    -> Ed25519.Signature
-    -> m JSFact
-registerTestRun
-    platform
-    organization
-    project
-    directory
-    commitId
-    tryIndex
-    requester
-    duration
-    signature = do
-        key <-
-            toJSON
-                $ TestRun
-                    { platform = Platform platform
-                    , repository =
-                        Repository
-                            { organization
-                            , project
-                            }
-                    , directory = Directory directory
-                    , commitId = Commit commitId
-                    , tryIndex = Try tryIndex
-                    , requester = Username requester
-                    }
-        value <- toJSON (Pending (Duration duration) signature)
-        return $ Fact key value
-
-emptyTestRun :: TestRun
-emptyTestRun =
-    TestRun
-        { platform = Platform ""
-        , repository =
-            Repository
-                { organization = ""
-                , project = ""
-                }
-        , directory = Directory ""
-        , commitId = Commit ""
-        , tryIndex = Try 1
-        , requester = Username ""
-        }
-
-testConfig :: TestRunValidationConfig
-testConfig =
-    TestRunValidationConfig
-        { maxDuration = 6
-        , minDuration = 1
-        }
 
 shouldHaveReason :: (Show a, Eq a) => Maybe [a] -> a -> IO ()
 shouldHaveReason Nothing _ = pure ()
@@ -200,269 +78,140 @@ onConditionHaveReason result reason = \case
 spec :: Spec
 spec = do
     describe "validateRequest" $ do
-        it "accepts valid test run" $ do
-            property
-                $ \(ASCIIString platform)
-                   (ASCIIString organization)
-                   (ASCIIString project)
-                   (ASCIIString directory)
-                   (CommitValue commitId)
-                   (Positive tryIndex)
-                   (ASCIIString username) ->
-                        forAllBlind sshGen $ \(sign, pk) -> do
-                            user <-
-                                registerUser
-                                    platform
-                                    username
-                                    $ encodePublicKey pk
-                            role <-
-                                registerRole
-                                    platform
-                                    organization
-                                    project
-                                    username
-                            let mkTestRun j =
-                                    emptyTestRun
-                                        & set platformL (Platform platform)
-                                        & set
-                                            repositoryL
-                                            ( Repository
-                                                { organization = organization
-                                                , project = project
-                                                }
-                                            )
-                                        & set directoryL (Directory directory)
-                                        & set commitIdL (Commit commitId)
-                                        & set tryIndexL (Try j)
-                                        & set requesterL (Username username)
-                            let previous = case tryIndex of
-                                    1 -> Nothing
-                                    n -> do
-                                        let previousTestRun = mkTestRun (n - 1)
-                                        k <- toJSON previousTestRun
-                                        v <-
-                                            toJSON
-                                                ( Pending (Duration 5)
-                                                    $ sign
-                                                    $ BL.unpack
-                                                    $ renderCanonicalJSON k
-                                                )
-                                        Just $ Fact k v
-                            let validation =
-                                    mkValidation
-                                        ([user, role] <> maybeToList previous)
-                                        [
-                                            ( Repository
-                                                { organization = organization
-                                                , project = project
-                                                }
-                                            , Commit commitId
-                                            )
-                                        ]
-                                        [
-                                            ( Repository
-                                                { organization = organization
-                                                , project = project
-                                                }
-                                            , Commit commitId
-                                            , Directory directory
-                                            )
-                                        ]
-                            let testRun = mkTestRun tryIndex
-                            testRunJ <- toJSON testRun
-                            let testRunState =
-                                    Pending (Duration 5)
-                                        $ sign
-                                        $ BL.unpack
-                                        $ renderCanonicalJSON testRunJ
-                            mresult <-
-                                validateCreateTestRunCore
-                                    testConfig
-                                    validation
-                                    testRun
-                                    testRunState
-                            mresult `shouldBe` Nothing
+        it "accepts valid test run" $ property $ do
+            testRun <- arbitrary
+            testConfig <- testConfigGen
+            Positive duration <-
+                arbitrary
+                    `suchThat` \(Positive d) ->
+                        d >= testConfig.minDuration
+                            && d <= testConfig.maxDuration
+            (sign, pk) <- sshGen
+            user <- jsFactUser testRun $ encodePublicKey pk
+            role <- jsFactRole testRun
+            let previous = case tryIndex testRun of
+                    1 -> []
+                    n -> do
+                        let previousTestRun = testRun{tryIndex = n - 1}
+                        previousState <-
+                            Pending (Duration duration)
+                                <$> signTestRun
+                                    sign
+                                    previousTestRun
+                        toJSFact $ Fact previousTestRun previousState
+                validation =
+                    mkValidation
+                        ([user, role] <> previous)
+                        [gitCommit testRun]
+                        [gitDirectory testRun]
+            testRunState <-
+                Pending (Duration duration)
+                    <$> signTestRun sign testRun
+            pure $ do
+                mresult <-
+                    validateCreateTestRunCore
+                        testConfig
+                        validation
+                        testRun
+                        testRunState
+                mresult `shouldBe` Nothing
 
-        it "reports unaccaptable duration"
-            $ property
-            $ \n message -> forAllBlind
-                sshGen
-                $ \(sign, _) -> do
-                    let testRun = emptyTestRun
-                        testRunState = Pending (Duration n) $ sign message
-                    mresult <-
-                        validateCreateTestRunCore
-                            testConfig
-                            noValidation
-                            testRun
-                            testRunState
-                    onConditionHaveReason mresult UnacceptableDuration
-                        $ n < minDuration testConfig || n > maxDuration testConfig
+        it "reports unaccaptable duration" $ property $ do
+            duration <- arbitrary
+            testRun <- arbitrary
+            testConfig <- testConfigGen
+            signature <- signatureGen
+            let testRunState = Pending (Duration duration) signature
+            pure $ do
+                mresult <-
+                    validateCreateTestRunCore
+                        testConfig
+                        noValidation
+                        testRun
+                        testRunState
+                onConditionHaveReason mresult UnacceptableDuration
+                    $ duration < minDuration testConfig
+                        || duration > maxDuration testConfig
 
-        it "reports unacceptable role"
-            $ property
-            $ \platform organization project username message ->
-                forAllBlind sshGen $ \(sign, pk) -> do
-                    let allTheSame =
-                            isTheSame platform
-                                && isTheSame organization
-                                && isTheSame project
-                                && isTheSame username
-                        different = getJSStringValue . tryDifferent
-                        same = getJSStringValue . theSame
+        it "reports unacceptable role" $ property $ do
+            testConfig <- testConfigGen
+            duration <- arbitrary
+            signature <- signatureGen
+            testRunRequest <- arbitrary
+            testRunFact <-
+                oneof
+                    [ changePlatform testRunRequest
+                    , changeRequester testRunRequest
+                    , changeOrganization testRunRequest
+                    , changeProject testRunRequest
+                    , pure testRunRequest
+                    ]
+            role <- jsFactRole testRunFact
+            let validation = mkValidation [role] [] []
+                testRunState = Pending (Duration duration) signature
+            pure $ do
+                mresult <-
+                    validateCreateTestRunCore
+                        testConfig
+                        validation
+                        testRunRequest
+                        testRunState
+                onConditionHaveReason mresult UnacceptableRole
+                    $ testRunRequest.platform /= testRunFact.platform
+                        || testRunRequest.repository.organization
+                            /= testRunFact.repository.organization
+                        || testRunRequest.repository.project
+                            /= testRunFact.repository.project
+                        || testRunRequest.requester /= testRunFact.requester
 
-                    cover 5 allTheSame "pass" $ do
-                        do
-                            user <-
-                                registerUser
-                                    (different platform)
-                                    (different username)
-                                    $ encodePublicKey pk
-                            role <-
-                                registerRole
-                                    (different platform)
-                                    (different organization)
-                                    (different project)
-                                    (different username)
-                            let validation = mkValidation [user, role] [] []
-                            let testRun =
-                                    emptyTestRun
-                                        & set platformL (Platform $ same platform)
-                                        & set
-                                            repositoryL
-                                            ( Repository
-                                                { organization = same organization
-                                                , project = same project
-                                                }
-                                            )
-                                        & set requesterL (Username $ same username)
-                                testRunState = Pending (Duration 5) $ sign message
-                            mresult <-
-                                validateCreateTestRunCore
-                                    testConfig
-                                    validation
-                                    testRun
-                                    testRunState
-                            onConditionHaveReason mresult UnacceptableRole
-                                $ not allTheSame
-        it "reports unacceptable try index" $ do
-            let factIndexGen tryIndexRequest =
-                    withNothing 0.8
-                        $ withAPresence 0.2
-                        $ tryIndexRequest + 1
-            property
-                $ \(JSStringValue platform)
-                   (JSStringValue organization)
-                   (JSStringValue project)
-                   (JSStringValue directory)
-                   (CommitValue commitId)
-                   tryIndexRequest
-                   (JSStringValue username)
-                   duration
-                   message -> forAllBlind sshGen $ \(sign, _pk) ->
-                        forAll (factIndexGen tryIndexRequest) $ \mTryIndexFact -> do
-                            let rightIndex = case mTryIndexFact of
-                                    Just tryIndexFact ->
-                                        tryIndexRequest == tryIndexFact + 1
-                                    Nothing -> tryIndexRequest == 1
-                            cover 5 rightIndex "pass" $ do
-                                validation <- case mTryIndexFact of
-                                    Just tryIndexFact -> do
-                                        testRunFact <-
-                                            registerTestRun
-                                                platform
-                                                organization
-                                                project
-                                                directory
-                                                commitId
-                                                tryIndexFact
-                                                username
-                                                duration
-                                                $ sign message
-                                        return $ mkValidation [testRunFact] [] []
-                                    Nothing -> return noValidation
-                                let testRun =
-                                        emptyTestRun
-                                            & set platformL (Platform platform)
-                                            & set
-                                                repositoryL
-                                                ( Repository
-                                                    { organization = organization
-                                                    , project = project
-                                                    }
-                                                )
-                                            & set directoryL (Directory directory)
-                                            & set commitIdL (Commit commitId)
-                                            & set tryIndexL (Try tryIndexRequest)
-                                            & set requesterL (Username username)
-                                    testRunState = Pending (Duration 5) $ sign message
-                                mresult <-
-                                    validateCreateTestRunCore
-                                        testConfig
-                                        validation
-                                        testRun
-                                        testRunState
-                                onConditionHaveReason mresult UnacceptableTryIndex
-                                    $ not rightIndex
+        it "reports unacceptable try index" $ property $ do
+            testConfig <- testConfigGen
+            duration <- arbitrary
+            signature <- signatureGen
+            testRunR <- arbitrary
+            testRunDB <-
+                oneof
+                    [ pure $ tryIndexL .~ 0 $ testRunR
+                    , pure testRunR
+                    ]
+            testRun <-
+                oneof
+                    [ changeTry testRunDB
+                    , pure $ tryIndexL %~ succ $ testRunDB
+                    ]
+            let testRunStateDB = Pending (Duration duration) signature
+            testRunFact <- toJSFact $ Fact testRunDB testRunStateDB
+            let validation =
+                    mkValidation
+                        [testRunFact | testRunDB.tryIndex > 0]
+                        []
+                        []
+            let testRunState = Pending (Duration duration) signature
+            pure $ counterexample (show testRunDB) $ property $ do
+                mresult <-
+                    validateCreateTestRunCore
+                        testConfig
+                        validation
+                        testRun
+                        testRunState
+                onConditionHaveReason mresult UnacceptableTryIndex
+                    $ testRun.tryIndex /= testRunDB.tryIndex + 1
 
-        it "reports unacceptable directory" $ do
-            let factDirectoryGen = withAPresence 0.3
-            property
-                $ \(JSStringValue platform)
-                   (JSStringValue organization)
-                   (JSStringValue project)
-                   (JSStringValue directory)
-                   (CommitValue commitId)
-                   tryIndexRequest
-                   (JSStringValue username)
-                   duration
-                   message -> forAllBlind sshGen
-                        $ \(sign, _) ->
-                            forAll (factDirectoryGen directory) $ \directoryFact -> do
-                                let rightDirectory = directory == directoryFact
-                                cover 5 rightDirectory "pass" $ do
-                                    validation <- do
-                                        testRunFact <-
-                                            registerTestRun
-                                                platform
-                                                organization
-                                                project
-                                                directory
-                                                commitId
-                                                tryIndexRequest
-                                                username
-                                                duration
-                                                $ sign message
-                                        return
-                                            $ mkValidation
-                                                [testRunFact]
-                                                []
-                                                [
-                                                    ( Repository organization project
-                                                    , Commit commitId
-                                                    , Directory directoryFact
-                                                    )
-                                                ]
-                                    let testRun =
-                                            emptyTestRun
-                                                & set platformL (Platform platform)
-                                                & set
-                                                    repositoryL
-                                                    ( Repository
-                                                        { organization = organization
-                                                        , project = project
-                                                        }
-                                                    )
-                                                & set directoryL (Directory directory)
-                                                & set commitIdL (Commit commitId)
-                                                & set tryIndexL (Try tryIndexRequest)
-                                                & set requesterL (Username username)
-                                        testRunState = Pending (Duration 5) $ sign message
-                                    mresult <-
-                                        validateCreateTestRunCore
-                                            testConfig
-                                            validation
-                                            testRun
-                                            testRunState
-                                    onConditionHaveReason mresult UnacceptableDirectory
-                                        $ not rightDirectory
+        it "reports unacceptable directory" $ property $ do
+            testConfig <- testConfigGen
+            duration <- arbitrary
+            signature <- signatureGen
+            testRun <- arbitrary
+            testRun' <- oneof [changeDirectory testRun, pure testRun]
+            let testRunState = Pending (Duration duration) signature
+            testRunFact <- toJSFact $ Fact testRun' testRunState
+            let validation = mkValidation [testRunFact] [] [gitDirectory testRun']
+            pure $ do
+                mresult <-
+                    validateCreateTestRunCore
+                        testConfig
+                        validation
+                        testRun
+                        testRunState
+                onConditionHaveReason mresult UnacceptableDirectory
+                    $ testRun /= testRun'

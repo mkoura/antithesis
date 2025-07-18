@@ -7,7 +7,6 @@ module Core.Options
     , directoryOption
     , usernameOption
     , pubkeyhashOption
-    , roleOption
     , outputReferenceParser
     , durationOption
     , tryOption
@@ -22,7 +21,6 @@ import Core.Types.Basic
     , PublicKeyHash (..)
     , Repository (..)
     , RequestRefId (..)
-    , Role (..)
     , Try (..)
     , Username (..)
     )
@@ -106,16 +104,6 @@ pubkeyhashOption =
                 <> short 'k'
                 <> metavar "PUBKEYHASH"
                 <> help "The public key hash for the user"
-            )
-
-roleOption :: Parser Role
-roleOption =
-    Role
-        <$> strOption
-            ( long "role"
-                <> short 'r'
-                <> metavar "ROLE"
-                <> help "The role to assign to the user (e.g., maintainer, contributor)"
             )
 
 outputReferenceParser :: Parser RequestRefId

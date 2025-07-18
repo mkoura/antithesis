@@ -7,7 +7,7 @@ module Oracle.Github.GetRepoRole
     , emitRepoRoleMsg
     ) where
 
-import Core.Types.Basic (Repository, Role (..), Username (..))
+import Core.Types.Basic (Repository, Username (..))
 import Data.ByteString qualified as BS
 import Data.ByteString.Char8 qualified as BC
 import Data.List qualified as L
@@ -33,8 +33,8 @@ emitRepoRoleMsg = \case
 -- the expectation there a line:
 -- role: user1 user2 .. userX .. userN
 analyzeResponseCodeownersFile
-    :: Role -> Username -> IO.ResponseCodeownersFile -> RepoRoleValidation
-analyzeResponseCodeownersFile (Role role) (Username user) (IO.ResponseCodeownersFile file)
+    :: Username -> IO.ResponseCodeownersFile -> RepoRoleValidation
+analyzeResponseCodeownersFile (Username user) (IO.ResponseCodeownersFile file)
     | null lineWithRole = NoRoleEntryInCodeowners
     | users == [Nothing] = NoUsersAssignedToRoleInCodeowners
     | foundUser == [[]] = NoUserInCodeowners
@@ -42,9 +42,9 @@ analyzeResponseCodeownersFile (Role role) (Username user) (IO.ResponseCodeowners
   where
     linefeed = 10
     fileLines = BS.splitWith (== linefeed) $ BC.toStrict file
-    strBS = BC.pack role
+    strBS = "antithesis"
     lineWithRole = L.filter (BS.isPrefixOf strBS) fileLines
-    colon = BC.pack $ role <> ": "
+    colon = BC.pack $ "antithesis" <> ": "
     getUsersWithRole = BS.stripPrefix colon
     users =
         getUsersWithRole
@@ -57,23 +57,20 @@ analyzeResponseCodeownersFile (Role role) (Username user) (IO.ResponseCodeowners
 inspectRepoRoleForUserTemplate
     :: Username
     -> Repository
-    -> Role
     -> ( Repository
          -> IO IO.ResponseCodeownersFile
        )
     -> IO RepoRoleValidation
-inspectRepoRoleForUserTemplate username repo roleExpected downloadCodeownersFile = do
+inspectRepoRoleForUserTemplate username repo downloadCodeownersFile = do
     resp <- downloadCodeownersFile repo
-    pure $ analyzeResponseCodeownersFile roleExpected username resp
+    pure $ analyzeResponseCodeownersFile username resp
 
 inspectRepoRoleForUser
     :: Username
     -> Repository
-    -> Role
     -> IO RepoRoleValidation
-inspectRepoRoleForUser username repo roleExpected =
+inspectRepoRoleForUser username repo =
     inspectRepoRoleForUserTemplate
         username
         repo
-        roleExpected
         IO.downloadCodeownersFile

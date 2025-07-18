@@ -13,7 +13,6 @@ import Core.Types.Basic
     , Platform (..)
     , Repository (..)
     , RequestRefId
-    , Role (..)
     , Username (..)
     )
 import Core.Types.Change (Change (..), Key (..))
@@ -123,7 +122,6 @@ validateRequest
                         $ Github.inspectRepoRoleForUser
                             username
                             repository
-                            (Role "antithesis")
                 if validationRes == Github.RepoRoleValidated
                     then
                         pure (refId, Validated)

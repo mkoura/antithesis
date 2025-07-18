@@ -6,7 +6,6 @@ where
 import Core.Types.Basic
     ( PublicKeyHash (..)
     , Repository (..)
-    , Role (..)
     , Username (..)
     )
 import Data.ByteString qualified as BS
@@ -145,8 +144,7 @@ spec = do
                         ]
             user = Username "user1"
             repo = Repository "org" "repo"
-            roleExp = Role "antihesis"
-        inspectRepoRoleForUserTemplate user repo roleExp noRoleEntry
+        inspectRepoRoleForUserTemplate user repo noRoleEntry
             `shouldReturn` NoRoleEntryInCodeowners
 
     it "CODEOWNERS does not have users assigned" $ do
@@ -164,8 +162,7 @@ spec = do
                         ]
             user = Username "user1"
             repo = Repository "org" "repo"
-            roleExp = Role "antithesis"
-        inspectRepoRoleForUserTemplate user repo roleExp noRoleEntry
+        inspectRepoRoleForUserTemplate user repo noRoleEntry
             `shouldReturn` NoUsersAssignedToRoleInCodeowners
 
     it "CODEOWNERS does have other users assigned" $ do
@@ -183,8 +180,7 @@ spec = do
                         ]
             user = Username "user2"
             repo = Repository "org" "repo"
-            roleExp = Role "antithesis"
-        inspectRepoRoleForUserTemplate user repo roleExp noRoleEntry
+        inspectRepoRoleForUserTemplate user repo noRoleEntry
             `shouldReturn` NoUserInCodeowners
 
     it "CODEOWNERS does have user assigned" $ do
@@ -202,6 +198,5 @@ spec = do
                         ]
             user = Username "user2"
             repo = Repository "org" "repo"
-            roleExp = Role "antithesis"
-        inspectRepoRoleForUserTemplate user repo roleExp noRoleEntry
+        inspectRepoRoleForUserTemplate user repo noRoleEntry
             `shouldReturn` RepoRoleValidated

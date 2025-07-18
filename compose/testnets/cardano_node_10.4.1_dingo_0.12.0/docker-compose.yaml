@@ -132,6 +132,7 @@ services:
     hostname: s1.example
     environment:
       POOLS: "5"
+      EXTRA_NODES: "d1"
 
   tracer-sidecar:
     image: ${registry}${testnet}_tracer-sidecar:latest

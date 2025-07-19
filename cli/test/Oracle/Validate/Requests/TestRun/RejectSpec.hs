@@ -11,6 +11,7 @@ import Oracle.Validate.Requests.TestRun.Lib
     ( mkValidation
     , noValidation
     , signatureGen
+    , testRunEGen
     )
 import Oracle.Validate.Requests.TestRun.Others
     ( AgentRejection (..)
@@ -28,6 +29,7 @@ import Test.QuickCheck
     , counterexample
     , oneof
     )
+import Test.QuickCheck.EGen (egenProperty, gen, genA)
 import Test.QuickCheck.Property (cover)
 import User.Types
     ( TestRunRejection (BrokenInstructions)
@@ -37,9 +39,9 @@ import User.Types
 spec :: Spec
 spec = do
     describe "validate agent requests" $ do
-        it "validate a reject test run" $ property $ do
-            testRun <- arbitrary
-            signature <- signatureGen
+        it "validate a reject test run" $ egenProperty $ do
+            testRun <- testRunEGen
+            signature <- gen signatureGen
             let pendingState = Pending (Duration 5) signature
             testRunFact <- toJSFact $ Fact testRun pendingState
             let validation = mkValidation [testRunFact] [] []
@@ -47,24 +49,26 @@ spec = do
                 test = validateToDoneCore validation testRun newTestRunState
             pure $ test `shouldReturn` Nothing
 
-        it "fail to validate a reject for a non-existing test run" $ property $ do
-            testRun <- arbitrary
-            signature <- signatureGen
-            duration <- arbitrary
-            let pendingState = Pending (Duration duration) signature
-                newTestRunState = Rejected pendingState [BrokenInstructions]
-                test = validateToDoneCore noValidation testRun newTestRunState
-            pure $ test `shouldReturn` Just PreviousStateWrong
+        it "fail to validate a reject for a non-existing test run"
+            $ egenProperty
+            $ do
+                testRun <- testRunEGen
+                signature <- gen signatureGen
+                duration <- genA
+                let pendingState = Pending (Duration duration) signature
+                    newTestRunState = Rejected pendingState [BrokenInstructions]
+                    test = validateToDoneCore noValidation testRun newTestRunState
+                pure $ test `shouldReturn` Just PreviousStateWrong
 
         it
             "fail to validate a reject for a pending test run with different state"
-            $ property
+            $ egenProperty
             $ do
-                duration <- arbitrary
-                differentDuration <- oneof [arbitrary, pure duration]
-                testRun <- arbitrary
-                signature <- signatureGen
-                differentSignature <- oneof [signatureGen, pure signature]
+                duration <- genA
+                differentDuration <- gen $ oneof [arbitrary, pure duration]
+                testRun <- testRunEGen
+                signature <- gen signatureGen
+                differentSignature <- gen $ oneof [signatureGen, pure signature]
                 let fact = Pending (Duration duration) signature
                     request =
                         Pending (Duration differentDuration) differentSignature

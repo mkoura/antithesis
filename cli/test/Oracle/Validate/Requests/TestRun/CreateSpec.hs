@@ -34,7 +34,8 @@ import Oracle.Validate.Requests.TestRun.Lib
     , noValidation
     , signTestRun
     , signatureGen
-    , testConfigGen
+    , testConfigEGen
+    , testRunEGen
     )
 import Test.Hspec
     ( Spec
@@ -53,6 +54,13 @@ import Test.QuickCheck
     , suchThat
     )
 import Test.QuickCheck.Crypton (sshGen)
+import Test.QuickCheck.EGen
+    ( egenProperty
+    , gen
+    , genA
+    , genBlind
+    , genShrinkA
+    )
 import User.Types
     ( TestRun (..)
     , TestRunState (..)
@@ -78,15 +86,16 @@ onConditionHaveReason result reason = \case
 spec :: Spec
 spec = do
     describe "validateRequest" $ do
-        it "accepts valid test run" $ property $ do
-            testRun <- arbitrary
-            testConfig <- testConfigGen
+        it "accepts valid test run" $ egenProperty $ do
+            testRun <- testRunEGen
+            testConfig <- testConfigEGen
             Positive duration <-
-                arbitrary
-                    `suchThat` \(Positive d) ->
-                        d >= testConfig.minDuration
-                            && d <= testConfig.maxDuration
-            (sign, pk) <- sshGen
+                gen
+                    $ arbitrary
+                        `suchThat` \(Positive d) ->
+                            d >= testConfig.minDuration
+                                && d <= testConfig.maxDuration
+            (sign, pk) <- genBlind sshGen
             user <- jsFactUser testRun $ encodePublicKey pk
             role <- jsFactRole testRun
             let previous = case tryIndex testRun of
@@ -116,11 +125,11 @@ spec = do
                         testRunState
                 mresult `shouldBe` Nothing
 
-        it "reports unaccaptable duration" $ property $ do
-            duration <- arbitrary
-            testRun <- arbitrary
-            testConfig <- testConfigGen
-            signature <- signatureGen
+        it "reports unaccaptable duration" $ egenProperty $ do
+            duration <- genShrinkA
+            testRun <- testRunEGen
+            testConfig <- testConfigEGen
+            signature <- gen signatureGen
             let testRunState = Pending (Duration duration) signature
             pure $ do
                 mresult <-
@@ -133,19 +142,20 @@ spec = do
                     $ duration < minDuration testConfig
                         || duration > maxDuration testConfig
 
-        it "reports unacceptable role" $ property $ do
-            testConfig <- testConfigGen
-            duration <- arbitrary
-            signature <- signatureGen
-            testRunRequest <- arbitrary
+        it "reports unacceptable role" $ egenProperty $ do
+            testConfig <- testConfigEGen
+            duration <- genA
+            signature <- gen signatureGen
+            testRunRequest <- testRunEGen
             testRunFact <-
-                oneof
-                    [ changePlatform testRunRequest
-                    , changeRequester testRunRequest
-                    , changeOrganization testRunRequest
-                    , changeProject testRunRequest
-                    , pure testRunRequest
-                    ]
+                gen
+                    $ oneof
+                        [ changePlatform testRunRequest
+                        , changeRequester testRunRequest
+                        , changeOrganization testRunRequest
+                        , changeProject testRunRequest
+                        , pure testRunRequest
+                        ]
             role <- jsFactRole testRunFact
             let validation = mkValidation [role] [] []
                 testRunState = Pending (Duration duration) signature
@@ -164,21 +174,23 @@ spec = do
                             /= testRunFact.repository.project
                         || testRunRequest.requester /= testRunFact.requester
 
-        it "reports unacceptable try index" $ property $ do
-            testConfig <- testConfigGen
-            duration <- arbitrary
-            signature <- signatureGen
-            testRunR <- arbitrary
+        it "reports unacceptable try index" $ egenProperty $ do
+            testConfig <- testConfigEGen
+            duration <- genA
+            signature <- gen signatureGen
+            testRunR <- testRunEGen
             testRunDB <-
-                oneof
-                    [ pure $ tryIndexL .~ 0 $ testRunR
-                    , pure testRunR
-                    ]
+                gen
+                    $ oneof
+                        [ pure $ tryIndexL .~ 0 $ testRunR
+                        , pure testRunR
+                        ]
             testRun <-
-                oneof
-                    [ changeTry testRunDB
-                    , pure $ tryIndexL %~ succ $ testRunDB
-                    ]
+                gen
+                    $ oneof
+                        [ changeTry testRunDB
+                        , pure $ tryIndexL %~ succ $ testRunDB
+                        ]
             let testRunStateDB = Pending (Duration duration) signature
             testRunFact <- toJSFact $ Fact testRunDB testRunStateDB
             let validation =
@@ -197,12 +209,12 @@ spec = do
                 onConditionHaveReason mresult UnacceptableTryIndex
                     $ testRun.tryIndex /= testRunDB.tryIndex + 1
 
-        it "reports unacceptable directory" $ property $ do
-            testConfig <- testConfigGen
-            duration <- arbitrary
-            signature <- signatureGen
-            testRun <- arbitrary
-            testRun' <- oneof [changeDirectory testRun, pure testRun]
+        it "reports unacceptable directory" $ egenProperty $ do
+            testConfig <- testConfigEGen
+            duration <- genA
+            signature <- gen signatureGen
+            testRun <- testRunEGen
+            testRun' <- gen $ oneof [changeDirectory testRun, pure testRun]
             let testRunState = Pending (Duration duration) signature
             testRunFact <- toJSFact $ Fact testRun' testRunState
             let validation = mkValidation [testRunFact] [] [gitDirectory testRun']

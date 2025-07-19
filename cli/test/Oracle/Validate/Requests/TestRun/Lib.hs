@@ -22,6 +22,9 @@ module Oracle.Validate.Requests.TestRun.Lib
     , testRunGen
     , signatureGen
     , testConfigGen
+    , testConfigShrink
+    , testConfigEGen
+    , testRunEGen
     )
 where
 
@@ -65,6 +68,7 @@ import Test.QuickCheck
     )
 import Test.QuickCheck.Commit (CommitValue (..))
 import Test.QuickCheck.Crypton ()
+import Test.QuickCheck.EGen (EGen, gen, genShrink)
 import Text.JSON.Canonical
     ( FromJSON (fromJSON)
     , ToJSON (toJSON)
@@ -151,8 +155,8 @@ testRunGen = do
             , requester = Username username
             }
 
-instance Arbitrary TestRun where
-    arbitrary = testRunGen
+testRunEGen :: EGen TestRun
+testRunEGen = gen testRunGen
 
 asciiStringL
     :: Functor f => (String -> f String) -> ASCIIString -> f ASCIIString
@@ -228,3 +232,18 @@ testConfigGen = do
             { maxDuration = getPositive maxDuration
             , minDuration
             }
+
+testConfigShrink
+    :: TestRunValidationConfig -> [TestRunValidationConfig]
+testConfigShrink config
+    | config.maxDuration == config.minDuration = []
+    | otherwise =
+        [ TestRunValidationConfig
+            { maxDuration = config.maxDuration
+            , minDuration = minDuration'
+            }
+        | minDuration' <- [config.minDuration + 1 .. config.maxDuration]
+        ]
+
+testConfigEGen :: EGen TestRunValidationConfig
+testConfigEGen = genShrink testConfigGen testConfigShrink

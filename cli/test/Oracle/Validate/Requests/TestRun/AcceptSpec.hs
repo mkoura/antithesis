@@ -6,7 +6,7 @@ where
 import Core.Types.Basic
     ( Duration (..)
     )
-import Core.Types.Fact (Fact (..), toJSFact)
+import Core.Types.Fact (toJSFact)
 import Oracle.Validate.Requests.TestRun.Lib
     ( mkValidation
     , noValidation
@@ -42,7 +42,7 @@ spec = do
             testRun <- testRunEGen
             signature <- gen signatureGen
             let pendingState = Pending (Duration 5) signature
-            testRunFact <- toJSFact $ Fact testRun pendingState
+            testRunFact <- toJSFact testRun pendingState
             let validation = mkValidation [testRunFact] [] []
                 newTestRunState = Accepted pendingState
                 test = validateToRunningCore validation testRun newTestRunState
@@ -71,7 +71,7 @@ spec = do
                 let fact = Pending (Duration duration) signature
                     request =
                         Pending (Duration differentDuration) differentSignature
-                testRunFact <- toJSFact $ Fact testRun fact
+                testRunFact <- toJSFact testRun fact
                 let validation = mkValidation [testRunFact] [] []
                     newTestRunState = Accepted request
                     test = validateToRunningCore validation testRun newTestRunState

@@ -6,7 +6,7 @@ where
 import Core.Types.Basic
     ( Duration (..)
     )
-import Core.Types.Fact (Fact (..), toJSFact)
+import Core.Types.Fact (toJSFact)
 import Oracle.Validate.Requests.TestRun.Lib
     ( mkValidation
     , noValidation
@@ -43,7 +43,7 @@ spec = do
             actualDuration <- genA
             url <- genA
             let acceptedState = Accepted $ Pending (Duration 5) signature
-            testRunFact <- toJSFact $ Fact testRun acceptedState
+            testRunFact <- toJSFact testRun acceptedState
             let validation = mkValidation [testRunFact] [] []
                 newTestRunState =
                     Finished
@@ -82,7 +82,7 @@ spec = do
                             $ Pending
                                 (Duration differentPendingDuration)
                                 differentSignature
-                testRunFact <- toJSFact $ Fact testRun fact
+                testRunFact <- toJSFact testRun fact
                 let validation = mkValidation [testRunFact] [] []
                     newTestRunState =
                         Finished

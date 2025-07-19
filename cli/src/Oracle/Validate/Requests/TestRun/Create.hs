@@ -47,22 +47,20 @@ validateCreateTestRun
 validateCreateTestRun
     testRunConfig
     validation
-    (Request _refId _owner (Change (Key testRun) operation)) =
-        case operation of
-            Insert state -> do
-                result <-
-                    validateCreateTestRunCore
-                        testRunConfig
-                        validation
-                        testRun
-                        state
-                case result of
-                    Nothing -> pure Validated
-                    Just rejections ->
-                        pure
-                            $ CannotValidate
-                            $ "test run validation failed for the following reasons: "
-                                <> unwords (fmap show rejections)
+    (Request _refId _owner (Change (Key testRun) (Insert testRunState))) = do
+        result <-
+            validateCreateTestRunCore
+                testRunConfig
+                validation
+                testRun
+                testRunState
+        case result of
+            Nothing -> pure Validated
+            Just rejections ->
+                pure
+                    $ CannotValidate
+                    $ "test run validation failed for the following reasons: "
+                        <> unwords (fmap show rejections)
 
 data TestRunRejection
     = UnacceptableDuration

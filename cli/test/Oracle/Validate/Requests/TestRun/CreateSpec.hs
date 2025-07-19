@@ -10,7 +10,7 @@ import Core.Types.Basic
     , organization
     , project
     )
-import Core.Types.Fact (Fact (..), toJSFact)
+import Core.Types.Fact (JSFact, toJSFact)
 import Lib.SSH.Public (encodePublicKey)
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig (..)
@@ -50,6 +50,9 @@ import Test.QuickCheck
     , Positive (..)
     , Testable (..)
     , counterexample
+    , cover
+    , elements
+    , listOf
     , oneof
     , suchThat
     )
@@ -63,7 +66,9 @@ import Test.QuickCheck.EGen
     )
 import User.Types
     ( TestRun (..)
+    , TestRunRejection (..)
     , TestRunState (..)
+    , URL (..)
     , tryIndexL
     )
 
@@ -107,7 +112,7 @@ spec = do
                                 <$> signTestRun
                                     sign
                                     previousTestRun
-                        toJSFact $ Fact previousTestRun previousState
+                        toJSFact previousTestRun previousState
                 validation =
                     mkValidation
                         ([user, role] <> previous)
@@ -191,23 +196,52 @@ spec = do
                         [ changeTry testRunDB
                         , pure $ tryIndexL %~ succ $ testRunDB
                         ]
-            let testRunStateDB = Pending (Duration duration) signature
-            testRunFact <- toJSFact $ Fact testRunDB testRunStateDB
+            let mkTestRunFact :: Monad m => TestRunState x -> m JSFact
+                mkTestRunFact = toJSFact testRunDB
+                pending = Pending (Duration duration) signature
+                accepted = Accepted pending
+            rejections <-
+                gen $ listOf $ elements [BrokenInstructions, UnclearIntent]
+            let rejected = Rejected pending rejections
+            finalDuration <- genA
+            finalURL <- genA
+            let finished =
+                    Finished accepted (Duration finalDuration) (URL finalURL)
+            testRunStateDB <-
+                gen
+                    $ oneof
+                        [ mkTestRunFact pending
+                        , mkTestRunFact accepted
+                        , mkTestRunFact rejected
+                        , mkTestRunFact finished
+                        ]
+            testRunFact <- toJSFact testRunDB testRunStateDB
             let validation =
                     mkValidation
                         [testRunFact | testRunDB.tryIndex > 0]
                         []
                         []
             let testRunState = Pending (Duration duration) signature
-            pure $ counterexample (show testRunDB) $ property $ do
-                mresult <-
-                    validateCreateTestRunCore
-                        testConfig
-                        validation
-                        testRun
-                        testRunState
-                onConditionHaveReason mresult UnacceptableTryIndex
-                    $ testRun.tryIndex /= testRunDB.tryIndex + 1
+            pure
+                $ counterexample (show testRunDB)
+                $ cover
+                    0.1
+                    (testRunDB.tryIndex > 0)
+                    "enough stored facts"
+                $ cover
+                    0.1
+                    (testRun.tryIndex == testRunDB.tryIndex + 1)
+                    "enough success"
+                $ property
+                $ do
+                    mresult <-
+                        validateCreateTestRunCore
+                            testConfig
+                            validation
+                            testRun
+                            testRunState
+                    onConditionHaveReason mresult UnacceptableTryIndex
+                        $ testRun.tryIndex /= testRunDB.tryIndex + 1
 
         it "reports unacceptable directory" $ egenProperty $ do
             testConfig <- testConfigEGen
@@ -216,7 +250,7 @@ spec = do
             testRun <- testRunEGen
             testRun' <- gen $ oneof [changeDirectory testRun, pure testRun]
             let testRunState = Pending (Duration duration) signature
-            testRunFact <- toJSFact $ Fact testRun' testRunState
+            testRunFact <- toJSFact testRun' testRunState
             let validation = mkValidation [testRunFact] [] [gitDirectory testRun']
             pure $ do
                 mresult <-

@@ -47,7 +47,7 @@ import Core.Types.Basic
     , projectL
     )
 import Core.Types.Fact
-    ( Fact (Fact, factKey, factValue)
+    ( Fact (Fact)
     , JSFact
     , parseFacts
     , toJSFact
@@ -90,28 +90,22 @@ import Validation (Validation (..))
 jsFactRole :: Monad m => TestRun -> m JSFact
 jsFactRole testRun =
     toJSFact
-        $ Fact
-            { factKey =
-                RegisterRoleKey
-                    { platform = testRun.platform
-                    , repository = testRun.repository
-                    , username = testRun.requester
-                    }
-            , factValue = ()
+        RegisterRoleKey
+            { platform = testRun.platform
+            , repository = testRun.repository
+            , username = testRun.requester
             }
+        ()
 
 jsFactUser :: (Monad m) => TestRun -> PublicKeyHash -> m JSFact
 jsFactUser testRun pubkeyhash =
     toJSFact
-        $ Fact
-            { factKey =
-                RegisterUserKey
-                    { platform = testRun.platform
-                    , username = testRun.requester
-                    , pubkeyhash
-                    }
-            , factValue = ()
+        RegisterUserKey
+            { platform = testRun.platform
+            , username = testRun.requester
+            , pubkeyhash
             }
+        ()
 
 mkValidation
     :: Monad m

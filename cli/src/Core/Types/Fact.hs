@@ -81,8 +81,8 @@ parseFacts v = fromMaybe [] $ do
         value' <- fromJSON value
         Just $ Fact key' value'
 
-toJSFact :: (ToJSON m k, ToJSON m v, Monad m) => Fact k v -> m JSFact
-toJSFact (Fact key value) = do
+toJSFact :: (ToJSON m k, ToJSON m v, Monad m) => k -> v -> m JSFact
+toJSFact key value = do
     keyJ <- toJSON key
     valueJ <- toJSON value
     return $ Fact keyJ valueJ

@@ -247,6 +247,7 @@ test-suite anti-test
     Oracle.Github.OracleValidationSpec
     Oracle.Validate.Requests.TestRun.AcceptSpec
     Oracle.Validate.Requests.TestRun.CreateSpec
+    Oracle.Validate.Requests.TestRun.FinishSpec
     Oracle.Validate.Requests.TestRun.Lib
     Oracle.Validate.Requests.TestRun.RejectSpec
     User.TypesSpec

@@ -113,6 +113,7 @@ library
     Oracle.Validate.Cli
     Oracle.Validate.Logic
     Oracle.Validate.Options
+    Oracle.Validate.Requests.RegisterRole
     Oracle.Validate.Requests.RegisterUser
     Oracle.Validate.Requests.TestRun.Config
     Oracle.Validate.Requests.TestRun.Create

@@ -1,7 +1,3 @@
-{-# LANGUAGE OverloadedRecordDot #-}
-{-# LANGUAGE StrictData #-}
-{-# OPTIONS_GHC -Wno-orphans #-}
-
 module Oracle.Validate.Logic
     ( ValidationResult (..)
     , validateRequest
@@ -9,16 +5,13 @@ module Oracle.Validate.Logic
 
 import Core.Types.Basic
     ( Owner
-    , Platform (..)
-    , Repository (..)
     , RequestRefId
-    , Username (..)
     )
-import Core.Types.Change (Change (..), Key (..))
-import Core.Types.Fact (Fact (..))
-import Data.List (find)
-import Lib.Github.GetRepoRole qualified as Github
 import Oracle.Types (Request (..), RequestZoo (..))
+import Oracle.Validate.Requests.RegisterRole
+    ( validateRegisterRole
+    , validateUnregisterRole
+    )
 import Oracle.Validate.Requests.RegisterUser
     ( validateRegisterUser
     , validateUnregisterUser
@@ -33,10 +26,6 @@ import Oracle.Validate.Requests.TestRun.Others
     )
 import Oracle.Validate.Types (ValidationResult (..))
 import Servant.Client (ClientM)
-import User.Types
-    ( RegisterRoleKey (..)
-    , RegisterUserKey (..)
-    )
 import Validation (Validation (..))
 
 validateRequest
@@ -60,68 +49,15 @@ validateRequest
 validateRequest
     _
     _
-    Validation{mpfsGetFacts, githubRepositoryRole}
-    (RegisterRoleRequest (Request refId _owner (Change k _v))) = do
-        facts <- mpfsGetFacts
-        let Key
-                ( RegisterRoleKey
-                        platform
-                        repository
-                        username
-                    ) = k
-        let registration = flip find facts
-                $ \(Fact (RegisterUserKey platform' username' _) ()) ->
-                    platform' == platform
-                        && username' == username
-
-        if null registration
-            then
-                let (Platform p) = platform
-                    (Repository o r) = repository
-                    (Username u) = username
-                in  pure
-                        ( refId
-                        , NotValidated
-                            $ "no registration for platform '"
-                                <> show p
-                                <> "' and repository '"
-                                <> show r
-                                <> "' of owner '"
-                                <> show o
-                                <> "' and user '"
-                                <> show u
-                                <> "' found"
-                        )
-            else do
-                validationRes <-
-                    githubRepositoryRole
-                        username
-                        repository
-                if validationRes == Github.RepoRoleValidated
-                    then
-                        pure (refId, Validated)
-                    else
-                        pure (refId, NotValidated (Github.emitRepoRoleMsg validationRes))
+    validation
+    (RegisterRoleRequest (Request refId _owner change)) =
+        (,) refId <$> validateRegisterRole validation change
 validateRequest
     _
     _
-    Validation{mpfsGetFacts}
-    (UnregisterRoleRequest (Request refId _owner (Change (Key k) _v))) = do
-        facts <- mpfsGetFacts
-        let registration = find (\(Fact k' ()) -> k' == k) facts
-        if null registration
-            then
-                pure
-                    ( refId
-                    , NotValidated
-                        $ "no registration of the 'antithesis' role for '"
-                            <> show k.platform
-                            <> "' platform and '"
-                            <> show k.repository
-                            <> "' repository found"
-                    )
-            else
-                pure (refId, Validated)
+    validation
+    (UnregisterRoleRequest (Request refId _owner change)) =
+        (,) refId <$> validateUnregisterRole validation change
 validateRequest testRunConfig _ validation (CreateTestRequest rq) =
     (,) (outputRefId rq)
         <$> validateCreateTestRun testRunConfig validation (change rq)

@@ -36,6 +36,8 @@ oracleCmd sbmt wallet testRunConfig agentPkh mtk = \case
             sbmt
             wallet
             mtk
+            testRunConfig
+            agentPkh
             tokenCommand
     OracleValidateCommand validateCommand -> do
         tk <- case mtk of

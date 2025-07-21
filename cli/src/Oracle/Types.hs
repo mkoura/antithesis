@@ -5,6 +5,7 @@ module Oracle.Types
     , Token (..)
     , TokenState (..)
     , RequestZoo (..)
+    , requestId
     ) where
 
 import Control.Applicative (Alternative, (<|>))
@@ -99,6 +100,16 @@ data RequestZoo where
     FinishedRequest
         :: Request TestRun (OpU (TestRunState RunningT) (TestRunState DoneT))
         -> RequestZoo
+
+requestId :: RequestZoo -> RequestRefId
+requestId (RegisterUserRequest req) = outputRefId req
+requestId (UnregisterUserRequest req) = outputRefId req
+requestId (RegisterRoleRequest req) = outputRefId req
+requestId (UnregisterRoleRequest req) = outputRefId req
+requestId (CreateTestRequest req) = outputRefId req
+requestId (RejectRequest req) = outputRefId req
+requestId (AcceptRequest req) = outputRefId req
+requestId (FinishedRequest req) = outputRefId req
 
 instance (Alternative m, ReportSchemaErrors m) => FromJSON m RequestZoo where
     fromJSON v = do

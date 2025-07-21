@@ -172,7 +172,7 @@ setup = do
                 Left err -> throwIO err
                 Right res -> return res
     WithTxHash txHash mTokenId <- calling call $ do
-        tokenCmdCore wait180 oracle Nothing BootToken
+        tokenCmdCore wait180 oracle Nothing undefined undefined BootToken
     liftIO $ waitTx call txHash
     case mTokenId of
         Nothing -> error "BootToken failed, no TokenId returned"
@@ -191,7 +191,13 @@ teardown :: ActionWith Context
 teardown Context{mpfs, tokenId, wait180} = do
     wallet <- loadOracleWallet
     txHash <- calling mpfs $ do
-        tokenCmdCore wait180 wallet (Just tokenId) EndToken
+        tokenCmdCore
+            wait180
+            wallet
+            (Just tokenId)
+            undefined
+            undefined
+            EndToken
     liftIO $ waitTx mpfs txHash
 
 getFirstOutput :: AlonzoTx ConwayEra -> Maybe (String, Data)
@@ -359,9 +365,11 @@ spec = do
                     oracle <- loadOracleWallet
                     let key =
                             RegisterUserKey
-                                { platform = Platform "test-platform"
-                                , username = Username "test-user"
-                                , pubkeyhash = PublicKeyHash "test-pubkeyhash"
+                                { platform = Platform "github"
+                                , username = Username "cfhal"
+                                , pubkeyhash =
+                                    PublicKeyHash
+                                        "AAAAC3NzaC1lZDI1NTE5AAAAILjwzNvy87HbzYV2lsW3UjVoxtpq4Nrj84kjo3puarCH"
                                 }
                     keyJ <- toJSON key
                     call $ do

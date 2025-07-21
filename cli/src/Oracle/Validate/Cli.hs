@@ -19,7 +19,7 @@ import MPFS.API
     ( getToken
     )
 import Oracle.Types (Token (..))
-import Oracle.Validate.Logic
+import Oracle.Validate.Request
     ( ValidationResult
     , validateRequest
     )

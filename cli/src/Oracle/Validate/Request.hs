@@ -1,4 +1,4 @@
-module Oracle.Validate.Logic
+module Oracle.Validate.Request
     ( ValidationResult (..)
     , validateRequest
     ) where

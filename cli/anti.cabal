@@ -111,8 +111,8 @@ library
     Oracle.Token.Options
     Oracle.Types
     Oracle.Validate.Cli
-    Oracle.Validate.Logic
     Oracle.Validate.Options
+    Oracle.Validate.Request
     Oracle.Validate.Requests.RegisterRole
     Oracle.Validate.Requests.RegisterUser
     Oracle.Validate.Requests.TestRun.Config

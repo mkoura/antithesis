@@ -15,7 +15,10 @@ import MPFS.API
     , updateToken
     )
 import Oracle.Types (Token (..), requestId)
-import Oracle.Validate.Logic (ValidationResult (..), validateRequest)
+import Oracle.Validate.Request
+    ( ValidationResult (..)
+    , validateRequest
+    )
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig
     )

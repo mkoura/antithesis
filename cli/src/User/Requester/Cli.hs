@@ -19,7 +19,7 @@ import MPFS.API
     , requestDelete
     , requestInsert
     )
-import Oracle.Validate.Logic (ValidationResult (..))
+import Oracle.Validate.Request (ValidationResult (..))
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig
     )

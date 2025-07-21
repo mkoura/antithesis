@@ -352,9 +352,11 @@ spec = do
                             requesterCmd wait180 wallet undefined tokenId undefined
                                 $ RegisterUser
                                 $ RegisterUserKey
-                                    { platform = Platform "test-platform"
-                                    , username = Username "test-user"
-                                    , pubkeyhash = PublicKeyHash "test-pubkeyhash"
+                                    { platform = Platform "github"
+                                    , username = Username "cfhal"
+                                    , pubkeyhash =
+                                        PublicKeyHash
+                                            "AAAAC3NzaC1lZDI1NTE5AAAAILjwzNvy87HbzYV2lsW3UjVoxtpq4Nrj84kjo3puarCH"
                                     }
                         retractTx wait180 wallet insert
                         pure ()

@@ -24,6 +24,10 @@ import Oracle.Validate.Requests.RegisterRole
     ( validateRegisterRole
     , validateUnregisterRole
     )
+import Oracle.Validate.Requests.RegisterUser
+    ( validateRegisterUser
+    , validateUnregisterUser
+    )
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig
     )
@@ -124,6 +128,12 @@ registerUser
     request = fmap txHash
         $ signAndSubmit sbmt wallet
         $ \address -> do
+            valid <-
+                validateRegisterUser (mkValidation tokenId)
+                    $ Change (Key request) (Insert ())
+            when (valid /= Validated)
+                $ error
+                $ "Invalid register user request: " ++ show valid
             key <- toJSON request
             value <- toJSON ()
             requestInsert address tokenId
@@ -142,6 +152,12 @@ unregisterUser
     request = fmap txHash
         $ signAndSubmit sbmt wallet
         $ \address -> do
+            validation <-
+                validateUnregisterUser (mkValidation tokenId)
+                    $ Change (Key request) (Delete ())
+            when (validation /= Validated)
+                $ error
+                $ "Invalid unregister user request: " ++ show validation
             key <- toJSON request
             value <- toJSON ()
             requestDelete address tokenId

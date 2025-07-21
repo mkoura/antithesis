@@ -19,8 +19,11 @@ import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Fact (Fact (..))
 import Data.List (find)
 import Lib.Github.GetRepoRole qualified as Github
-import Lib.Github.ListPublicKeys qualified as Github
 import Oracle.Types (Request (..), RequestZoo (..))
+import Oracle.Validate.Requests.RegisterUser
+    ( validateRegisterUser
+    , validateUnregisterUser
+    )
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig
     )
@@ -43,44 +46,18 @@ validateRequest
     -> Validation ClientM
     -> RequestZoo
     -> ClientM (RequestRefId, ValidationResult)
-validateRequest _ _ Validation{githubUserPublicKeys} (RegisterUserRequest (Request refId _owner (Change k _v))) = do
-    res <- case k of
-        Key (RegisterUserKey{platform, username, pubkeyhash}) ->
-            case platform of
-                Platform "github" -> do
-                    validationRes <- githubUserPublicKeys username pubkeyhash
-                    if validationRes == Github.PublicKeyValidated
-                        then
-                            pure Validated
-                        else
-                            pure $ NotValidated (Github.emitPublicKeyMsg validationRes)
-                Platform _other ->
-                    pure
-                        $ CannotValidate
-                            "expecting github platform as we are validating only this at this moment"
-    pure (refId, res)
 validateRequest
     _
     _
-    Validation{mpfsGetFacts}
-    (UnregisterUserRequest (Request refId _owner (Change (Key k) _v))) = do
-        facts <- mpfsGetFacts
-        let registration = find (\(Fact k' ()) -> k' == k) facts
-        if null registration
-            then
-                pure
-                    ( refId
-                    , NotValidated
-                        $ "no registration for platform '"
-                            <> show k.platform
-                            <> "' and user '"
-                            <> show k.username
-                            <> "' and public key hash '"
-                            <> show k.pubkeyhash
-                            <> "' found"
-                    )
-            else
-                pure (refId, Validated)
+    validation
+    (RegisterUserRequest (Request refId _owner change)) =
+        (,) refId <$> validateRegisterUser validation change
+validateRequest
+    _
+    _
+    validation
+    (UnregisterUserRequest (Request refId _owner change)) =
+        (,) refId <$> validateUnregisterUser validation change
 validateRequest
     _
     _

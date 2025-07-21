@@ -4,10 +4,21 @@ module Validation
     ) where
 
 import Control.Monad.IO.Class (MonadIO (..))
-import Core.Types.Basic (Commit, Directory, Repository, TokenId)
+import Core.Types.Basic
+    ( Commit
+    , Directory
+    , PublicKeyHash
+    , Repository
+    , TokenId
+    , Username
+    )
 import Core.Types.Fact (Fact (..), JSFact, parseFacts)
 import Data.Maybe (mapMaybe)
 import Lib.GitHub qualified as GitHub
+import Lib.Github.ListPublicKeys
+    ( PublicKeyValidation
+    , inspectPublicKey
+    )
 import MPFS.API (getTokenFacts)
 import Servant.Client (ClientM)
 import Text.JSON.Canonical (FromJSON (..))
@@ -22,6 +33,10 @@ data Validation m = Validation
     , mpfsGetTestRuns :: m [TestRun]
     , githubCommitExists :: Repository -> Commit -> m Bool
     , githubDirectoryExists :: Repository -> Commit -> Directory -> m Bool
+    , githubUserPublicKeys
+        :: Username
+        -> PublicKeyHash
+        -> m PublicKeyValidation
     }
 
 mkValidation :: TokenId -> Validation ClientM
@@ -35,4 +50,6 @@ mkValidation tk =
             liftIO $ GitHub.githubCommitExists repository commit
         , githubDirectoryExists = \repository commit dir ->
             liftIO $ GitHub.githubDirectoryExists repository commit dir
+        , githubUserPublicKeys = \username publicKey ->
+            liftIO $ inspectPublicKey username publicKey
         }

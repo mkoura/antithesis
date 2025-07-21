@@ -43,12 +43,12 @@ validateRequest
     -> Validation ClientM
     -> RequestZoo
     -> ClientM (RequestRefId, ValidationResult)
-validateRequest _ _ _validation (RegisterUserRequest (Request refId _owner (Change k _v))) = do
+validateRequest _ _ Validation{githubUserPublicKeys} (RegisterUserRequest (Request refId _owner (Change k _v))) = do
     res <- case k of
         Key (RegisterUserKey{platform, username, pubkeyhash}) ->
             case platform of
                 Platform "github" -> do
-                    validationRes <- liftIO $ Github.inspectPublicKey username pubkeyhash
+                    validationRes <- githubUserPublicKeys username pubkeyhash
                     if validationRes == Github.PublicKeyValidated
                         then
                             pure Validated

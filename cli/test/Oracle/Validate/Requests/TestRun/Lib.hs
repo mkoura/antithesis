@@ -56,6 +56,7 @@ import Crypto.PubKey.Ed25519 qualified as Ed25519
 import Data.ByteString (ByteString)
 import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.Maybe (mapMaybe)
+import Lib.Github.ListPublicKeys (PublicKeyValidation (..))
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig (..)
     )
@@ -112,8 +113,9 @@ mkValidation
     => [JSFact]
     -> [(Repository, Commit)]
     -> [(Repository, Commit, Directory)]
+    -> [(Username, PublicKeyHash)]
     -> Validation m
-mkValidation fs rs ds =
+mkValidation fs rs ds upk =
     Validation
         { mpfsGetFacts = do
             db <- toJSON fs
@@ -124,6 +126,11 @@ mkValidation fs rs ds =
             return $ (repository, commit) `elem` rs
         , githubDirectoryExists = \repository commit dir ->
             return $ (repository, commit, dir) `elem` ds
+        , githubUserPublicKeys = \username publicKey ->
+            return
+                $ if (username, publicKey) `elem` upk
+                    then PublicKeyValidated
+                    else NoEd25519KeyMatch
         }
 
 testRunGen :: Gen TestRun
@@ -192,7 +199,7 @@ changeTestRun l qc testRun = do
     pure $ testRun & l .~ (new ^. qc)
 
 noValidation :: Monad m => Validation m
-noValidation = mkValidation [] [] []
+noValidation = mkValidation [] [] [] []
 
 gitCommit :: TestRun -> (Repository, Commit)
 gitCommit testRun =

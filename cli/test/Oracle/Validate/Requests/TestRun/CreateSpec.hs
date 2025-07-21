@@ -118,6 +118,7 @@ spec = do
                         ([user, role] <> previous)
                         [gitCommit testRun]
                         [gitDirectory testRun]
+                        []
             testRunState <-
                 Pending (Duration duration)
                     <$> signTestRun sign testRun
@@ -162,7 +163,7 @@ spec = do
                         , pure testRunRequest
                         ]
             role <- jsFactRole testRunFact
-            let validation = mkValidation [role] [] []
+            let validation = mkValidation [role] [] [] []
                 testRunState = Pending (Duration duration) signature
             pure $ do
                 mresult <-
@@ -221,6 +222,7 @@ spec = do
                         [testRunFact | testRunDB.tryIndex > 0]
                         []
                         []
+                        []
             let testRunState = Pending (Duration duration) signature
             pure
                 $ counterexample (show testRunDB)
@@ -251,7 +253,7 @@ spec = do
             testRun' <- gen $ oneof [changeDirectory testRun, pure testRun]
             let testRunState = Pending (Duration duration) signature
             testRunFact <- toJSFact testRun' testRunState
-            let validation = mkValidation [testRunFact] [] [gitDirectory testRun']
+            let validation = mkValidation [testRunFact] [] [gitDirectory testRun'] []
             pure $ do
                 mresult <-
                     validateCreateTestRunCore

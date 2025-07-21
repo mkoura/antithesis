@@ -34,37 +34,20 @@ validateRequest
     -> Validation ClientM
     -> RequestZoo
     -> ClientM (RequestRefId, ValidationResult)
-validateRequest
-    _
-    _
-    validation
-    (RegisterUserRequest (Request refId _owner change)) =
-        (,) refId <$> validateRegisterUser validation change
-validateRequest
-    _
-    _
-    validation
-    (UnregisterUserRequest (Request refId _owner change)) =
-        (,) refId <$> validateUnregisterUser validation change
-validateRequest
-    _
-    _
-    validation
-    (RegisterRoleRequest (Request refId _owner change)) =
-        (,) refId <$> validateRegisterRole validation change
-validateRequest
-    _
-    _
-    validation
-    (UnregisterRoleRequest (Request refId _owner change)) =
-        (,) refId <$> validateUnregisterRole validation change
-validateRequest testRunConfig _ validation (CreateTestRequest rq) =
-    (,) (outputRefId rq)
-        <$> validateCreateTestRun testRunConfig validation (change rq)
-validateRequest _ antiOwner validation (RejectRequest rq) =
-    (,) (outputRefId rq) <$> validateToDoneUpdate antiOwner validation rq
-validateRequest _ antiOwner validation (AcceptRequest rq) =
-    (,) (outputRefId rq)
-        <$> validateToRunningUpdate antiOwner validation rq
-validateRequest _ antiOwner validation (FinishedRequest rq) =
-    (,) (outputRefId rq) <$> validateToDoneUpdate antiOwner validation rq
+validateRequest _ _ validation (RegisterUserRequest (Request refId _ change)) =
+    (,) refId <$> validateRegisterUser validation change
+validateRequest _ _ validation (UnregisterUserRequest (Request refId _ change)) =
+    (,) refId <$> validateUnregisterUser validation change
+validateRequest _ _ validation (RegisterRoleRequest (Request refId _ change)) =
+    (,) refId <$> validateRegisterRole validation change
+validateRequest _ _ validation (UnregisterRoleRequest (Request refId _ change)) =
+    (,) refId <$> validateUnregisterRole validation change
+validateRequest testRunConfig _ validation (CreateTestRequest (Request refId _ change)) =
+    (,) refId <$> validateCreateTestRun testRunConfig validation change
+validateRequest _ antiOwner validation (RejectRequest (Request refId owner change)) =
+    (,) refId <$> validateToDoneUpdate antiOwner validation owner change
+validateRequest _ antiOwner validation (AcceptRequest (Request refId owner change)) =
+    (,) refId
+        <$> validateToRunningUpdate antiOwner validation owner change
+validateRequest _ antiOwner validation (FinishedRequest (Request refId owner change)) =
+    (,) refId <$> validateToDoneUpdate antiOwner validation owner change

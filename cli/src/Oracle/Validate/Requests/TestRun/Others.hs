@@ -10,7 +10,6 @@ import Core.Types.Basic (Owner)
 import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Fact (Fact (..))
 import Core.Types.Operation (Op (..), Operation (..))
-import Oracle.Types (Request (..))
 import Oracle.Validate.Types (ValidationResult (..))
 import Text.JSON.Canonical (FromJSON)
 import User.Types
@@ -54,12 +53,14 @@ validateToDoneUpdate
     :: Monad m
     => Owner
     -> Validation m
-    -> Request TestRun (OpU x (TestRunState DoneT))
+    -> Owner
+    -> Change TestRun (OpU x (TestRunState DoneT))
     -> m ValidationResult
 validateToDoneUpdate
     antiOwner
     validation
-    (Request _refId owner (Change (Key testRun) operation)) = do
+    owner
+    (Change (Key testRun) operation) = do
         checkingOwner owner antiOwner
             $ checkingUpdates operation
             $ validateToDoneCore validation testRun
@@ -92,12 +93,14 @@ validateToRunningUpdate
     :: Monad m
     => Owner
     -> Validation m
-    -> Request TestRun (OpU (TestRunState PendingT) (TestRunState RunningT))
+    -> Owner
+    -> Change TestRun (OpU (TestRunState PendingT) (TestRunState RunningT))
     -> m ValidationResult
 validateToRunningUpdate
     antiOwner
     validation
-    (Request _refId owner (Change (Key testRun) operation)) = do
+    owner
+    (Change (Key testRun) operation) = do
         checkingOwner owner antiOwner
             $ checkingUpdates operation
             $ validateToRunningCore validation testRun

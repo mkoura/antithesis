@@ -29,8 +29,8 @@ log "Creating a registration user request..."
 
 resultReg1=$(anti requester register-user \
     --platform github \
-    --username paolino \
-    --pubkeyhash AAAAC3NzaC1lZDI1NTE5AAAAIO773JHqlyLm5XzOjSe+Q5yFJyLFuMLL6+n63t4t7HR8)
+    --username cfhal \
+    --pubkeyhash AAAAC3NzaC1lZDI1NTE5AAAAILjwzNvy87HbzYV2lsW3UjVoxtpq4Nrj84kjo3puarCH)
 
 outputRegRef1=$(getOutputRef "$resultReg1")
 log "Created registration request with valid public key with output reference: $outputRegRef1"
@@ -66,8 +66,8 @@ fi
 
 resultReg2=$(anti requester register-user \
     --platform github \
-    --username paolino \
-    --pubkeyhash AAAAC3NzaC1lZDI1NTE5AAAAIO773JHqlyLm5XzOjSe+Q5yFJyLFuMLL6+n63t4t7HR9)
+    --username cfhal \
+    --pubkeyhash AAAAC3NzaC1lZDI1NTE5AAAAILjwzNvy87HbzYV2lsW3UjVoxtpq4Nrj84djo3puarCH)
 
 outputRegRef2=$(getOutputRef "$resultReg2")
 log "Created registration request with invalid public key with output reference: $outputRegRef2"
@@ -93,14 +93,15 @@ if [[ "$(echo "$resultVal2" | jq -S 'sort_by(.reference)')" != "$(echo "$expecte
     emitMismatch 2 "validation" "$resultVal2" "$expectedVal2"
 fi
 
-log "Trying to register a role before token updating"
+log "Trying to register a role before token updating xxx"
 resultRole1=$(anti requester register-role \
     --platform github \
-    --repository paweljakubas/j-data-analysis \
-    --username paolino \
+    --repository cardano-foundation/hal-fixture-sin \
+    --username cfhal \
     )
 outputRoleRef1=$(getOutputRef "$resultRole1")
 
+log "Created role registration request with output reference: $outputRoleRef1"
 resultVal3=$(anti oracle requests validate | jq -r '.result')
 
 expectedVal3=$(
@@ -116,7 +117,7 @@ expectedVal3=$(
   },
   {
     "reference": "$outputRoleRef1",
-    "validation": "not validated: no registration for platform '\"github\"' and repository '\"j-data-analysis\"' of owner '\"paweljakubas\"' and user '\"paolino\"' found"
+    "validation": "not validated: no registration for platform '\"github\"' and repository '\"hal-fixture-sin\"' of owner '\"cardano-foundation\"' and user '\"cfhal\"' found"
   }
 ]
 EOF
@@ -139,7 +140,7 @@ expectedGet1=$(
 [
   {
     "change": {
-      "key": "{\"platform\":\"github\",\"publickeyhash\":\"AAAAC3NzaC1lZDI1NTE5AAAAIO773JHqlyLm5XzOjSe+Q5yFJyLFuMLL6+n63t4t7HR9\",\"type\":\"register-user\",\"user\":\"paolino\"}",
+      "key": "{\"platform\":\"github\",\"publickeyhash\":\"AAAAC3NzaC1lZDI1NTE5AAAAILjwzNvy87HbzYV2lsW3UjVoxtpq4Nrj84kjo3puarCH\",\"type\":\"register-user\",\"user\":\"cfhal\"}",
       "type": "insert",
       "value": "null"
     },
@@ -148,7 +149,7 @@ expectedGet1=$(
   },
   {
     "change": {
-      "key": "{\"platform\":\"github\",\"repository\":{\"organization\":\"paweljakubas\",\"project\":\"j-data-analysis\"},\"type\":\"register-role\",\"user\":\"paolino\"}",
+      "key": "{\"platform\":\"github\",\"repository\":{\"organization\":\"cardano-foundation\",\"project\":\"hal-fixture-sin\"},\"type\":\"register-role\",\"user\":\"cfhal\"}",
       "type": "insert",
       "value": "null"
     },
@@ -196,7 +197,7 @@ expectedGet2=$(
 [
   {
     "change": {
-      "key": "{\"platform\":\"github\",\"publickeyhash\":\"AAAAC3NzaC1lZDI1NTE5AAAAIO773JHqlyLm5XzOjSe+Q5yFJyLFuMLL6+n63t4t7HR9\",\"type\":\"register-user\",\"user\":\"paolino\"}",
+      "key": "{\"platform\":\"github\",\"publickeyhash\":\"AAAAC3NzaC1lZDI1NTE5AAAAILjwzNvy87HbzYV2lsW3UjVoxtpq4Nrj84kjo3puarCH\",\"type\":\"register-user\",\"user\":\"cfhal\"}",
       "type": "insert",
       "value": "null"
     },

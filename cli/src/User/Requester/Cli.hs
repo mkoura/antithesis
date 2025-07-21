@@ -20,6 +20,10 @@ import MPFS.API
     , requestInsert
     )
 import Oracle.Validate.Request (ValidationResult (..))
+import Oracle.Validate.Requests.RegisterRole
+    ( validateRegisterRole
+    , validateUnregisterRole
+    )
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig
     )
@@ -156,6 +160,12 @@ registerRole
     request = fmap txHash
         $ signAndSubmit sbmt wallet
         $ \address -> do
+            valid <-
+                validateRegisterRole (mkValidation tokenId)
+                    $ Change (Key request) (Insert ())
+            when (valid /= Validated)
+                $ error
+                $ "Invalid register role request: " ++ show valid
             key <- toJSON request
             value <- toJSON ()
             requestInsert address tokenId
@@ -174,6 +184,12 @@ unregisterRole
     request = fmap txHash
         $ signAndSubmit sbmt wallet
         $ \address -> do
+            validation <-
+                validateUnregisterRole (mkValidation tokenId)
+                    $ Change (Key request) (Delete ())
+            when (validation /= Validated)
+                $ error
+                $ "Invalid unregister role request: " ++ show validation
             key <- toJSON request
             value <- toJSON ()
             requestDelete address tokenId

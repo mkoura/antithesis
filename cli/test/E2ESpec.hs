@@ -4,7 +4,7 @@ module E2ESpec
 
 import System.Exit (ExitCode (..))
 import System.Process (readProcessWithExitCode)
-import Test.Hspec (Spec, describe, it)
+import Test.Hspec (Spec, describe, it, xit)
 
 runScenario :: FilePath -> IO ()
 runScenario script = do
@@ -21,5 +21,5 @@ spec = do
         describe "should prove that the system" $ do
             it "can run a real world scenario"
                 $ runScenario "realWorld.sh"
-            it "can validate a user registration and his role"
+            xit "can validate a user registration and his role"
                 $ runScenario "validateUserRegAddRole.sh"

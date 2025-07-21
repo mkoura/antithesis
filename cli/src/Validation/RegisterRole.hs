@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StrictData #-}
 
-module Lib.Github.GetRepoRole
+module Validation.RegisterRole
     ( RepoRoleValidation (..)
     , inspectRepoRoleForUserTemplate
     , inspectRepoRoleForUser

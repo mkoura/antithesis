@@ -1,6 +1,6 @@
 {-# LANGUAGE StrictData #-}
 
-module Lib.Github.ListPublicKeys
+module Validation.RegisterUser
     ( PublicKeyValidation (..)
     , inspectPublicKeyTemplate
     , inspectPublicKey

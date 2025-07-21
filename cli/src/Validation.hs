@@ -15,18 +15,18 @@ import Core.Types.Basic
 import Core.Types.Fact (Fact (..), JSFact, parseFacts)
 import Data.Maybe (mapMaybe)
 import Lib.GitHub qualified as GitHub
-import Lib.Github.GetRepoRole
-    ( RepoRoleValidation
-    , inspectRepoRoleForUser
-    )
-import Lib.Github.ListPublicKeys
-    ( PublicKeyValidation
-    , inspectPublicKey
-    )
 import MPFS.API (getTokenFacts)
 import Servant.Client (ClientM)
 import Text.JSON.Canonical (FromJSON (..))
 import User.Types (TestRun)
+import Validation.RegisterRole
+    ( RepoRoleValidation
+    , inspectRepoRoleForUser
+    )
+import Validation.RegisterUser
+    ( PublicKeyValidation
+    , inspectPublicKey
+    )
 
 -- | Abstract the side effects necessary for validation.
 data Validation m = Validation

@@ -56,8 +56,6 @@ import Crypto.PubKey.Ed25519 qualified as Ed25519
 import Data.ByteString (ByteString)
 import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.Maybe (mapMaybe)
-import Lib.Github.GetRepoRole (RepoRoleValidation (..))
-import Lib.Github.ListPublicKeys (PublicKeyValidation (..))
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig (..)
     )
@@ -88,6 +86,8 @@ import User.Types
     , tryIndexL
     )
 import Validation (Validation (..))
+import Validation.RegisterRole (RepoRoleValidation (..))
+import Validation.RegisterUser (PublicKeyValidation (..))
 
 jsFactRole :: Monad m => TestRun -> m JSFact
 jsFactRole testRun =

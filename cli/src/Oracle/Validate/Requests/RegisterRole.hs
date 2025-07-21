@@ -16,7 +16,6 @@ import Core.Types.Operation
     ( Op (..)
     )
 import Data.List (find)
-import Lib.Github.GetRepoRole qualified as Github
 import Oracle.Validate.Types (ValidationResult (..))
 import Servant.Client (ClientM)
 import User.Types
@@ -24,6 +23,7 @@ import User.Types
     , RegisterUserKey (..)
     )
 import Validation (Validation (..))
+import Validation.RegisterRole qualified as Github
 
 validateRegisterRole
     :: Validation ClientM

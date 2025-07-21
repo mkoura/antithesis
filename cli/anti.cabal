@@ -98,8 +98,6 @@ library
     Core.Types.Wallet
     Lib.Box
     Lib.GitHub
-    Lib.Github.GetRepoRole
-    Lib.Github.ListPublicKeys
     Lib.JSON
     Lib.SSH.Private
     Lib.SSH.Public
@@ -127,6 +125,8 @@ library
     User.Requester.Options
     User.Types
     Validation
+    Validation.RegisterRole
+    Validation.RegisterUser
     Wallet.Cli
     Wallet.Options
     Words

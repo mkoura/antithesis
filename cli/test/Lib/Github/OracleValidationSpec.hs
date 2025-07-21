@@ -10,20 +10,20 @@ import Core.Types.Basic
     )
 import Data.Text qualified as T
 import Lib.GitHub (githubGetCodeOwnersFile)
-import Lib.Github.GetRepoRole
-    ( RepoRoleValidation (..)
-    , inspectRepoRoleForUserTemplate
-    )
-import Lib.Github.ListPublicKeys
-    ( PublicKeyValidation (..)
-    , inspectPublicKeyTemplate
-    )
 import Test.Hspec
     ( Spec
     , anyException
     , it
     , shouldReturn
     , shouldThrow
+    )
+import Validation.RegisterRole
+    ( RepoRoleValidation (..)
+    , inspectRepoRoleForUserTemplate
+    )
+import Validation.RegisterUser
+    ( PublicKeyValidation (..)
+    , inspectPublicKeyTemplate
     )
 
 spec :: Spec

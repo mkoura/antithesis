@@ -10,13 +10,13 @@ import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Fact (Fact (..))
 import Core.Types.Operation (Op (..))
 import Data.List (find)
-import Lib.Github.ListPublicKeys qualified as Github
 import Oracle.Validate.Types (ValidationResult (..))
 import Servant.Client (ClientM)
 import User.Types
     ( RegisterUserKey (..)
     )
 import Validation (Validation (..))
+import Validation.RegisterUser qualified as Github
 
 validateRegisterUser
     :: Validation ClientM

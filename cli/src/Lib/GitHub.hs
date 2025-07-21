@@ -8,7 +8,12 @@ import Control.Exception
     ( Exception
     , throwIO
     )
-import Core.Types.Basic (Commit (..), Directory (..), Repository (..))
+import Core.Types.Basic
+    ( Commit (..)
+    , Directory (..)
+    , Repository (..)
+    , Username (..)
+    )
 import Data.ByteString.Char8 qualified as B
 import Data.Foldable (Foldable (..))
 import Data.Text qualified as T
@@ -94,8 +99,8 @@ githubDirectoryExists (Repository owner repo) (Commit sha) (Directory dir) = do
     repo' = N $ T.pack repo
     sha' = T.pack sha
 
-githubUserPublicKeys :: String -> IO [T.Text]
-githubUserPublicKeys name = do
+githubUserPublicKeys :: Username -> IO [T.Text]
+githubUserPublicKeys (Username name) = do
     auth <- getOAUth
     result <-
         github auth $ GH.publicSSHKeysForR (N $ T.pack name) FetchAll

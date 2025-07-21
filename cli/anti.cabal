@@ -102,7 +102,6 @@ library
     Lib.Github.GetRepoRole
     Lib.Github.GetRepoRoleIO
     Lib.Github.ListPublicKeys
-    Lib.Github.ListPublicKeysIO
     Lib.JSON
     Lib.SSH.Private
     Lib.SSH.Public

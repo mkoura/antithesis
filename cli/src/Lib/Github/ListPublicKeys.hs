@@ -12,8 +12,7 @@ import Data.List qualified as L
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Lib.Github.CommonIO qualified as IO
-import Lib.Github.ListPublicKeysIO qualified as IO
+import Lib.GitHub (githubUserPublicKeys)
 
 data PublicKeyValidation
     = PublicKeyValidated
@@ -38,7 +37,7 @@ expectedPrefix = "ssh-ed25519 "
 
 analyzePublicKeyResponse
     :: PublicKeyHash
-    -> [IO.ResponsePublicKey]
+    -> [Text]
     -> PublicKeyValidation
 analyzePublicKeyResponse (PublicKeyHash pubkeyToValidate) = cond
   where
@@ -48,20 +47,18 @@ analyzePublicKeyResponse (PublicKeyHash pubkeyToValidate) = cond
         | hasNotTheKey resp = NoEd25519KeyMatch
         | otherwise = PublicKeyValidated
 
-    hasExpectedPrefix = T.isPrefixOf expectedPrefix . IO.key
+    hasExpectedPrefix = T.isPrefixOf expectedPrefix
     hasNotTheKey =
         L.notElem (T.pack pubkeyToValidate)
-            . mapMaybe (T.stripPrefix expectedPrefix . IO.key)
+            . mapMaybe (T.stripPrefix expectedPrefix)
 
 inspectPublicKeyTemplate
     :: Username
     -> PublicKeyHash
-    -> IO IO.GithubAccessToken
-    -> (IO.GithubAccessToken -> Username -> IO [IO.ResponsePublicKey])
+    -> (Username -> IO [Text])
     -> IO PublicKeyValidation
-inspectPublicKeyTemplate username pubKeyExpected getAccessToken requestPublicKeysForUser = do
-    token <- getAccessToken
-    resp <- requestPublicKeysForUser token username
+inspectPublicKeyTemplate username pubKeyExpected requestPublicKeysForUser = do
+    resp <- requestPublicKeysForUser username
     pure $ analyzePublicKeyResponse pubKeyExpected resp
 
 inspectPublicKey
@@ -72,5 +69,4 @@ inspectPublicKey username pubKeyExpected =
     inspectPublicKeyTemplate
         username
         pubKeyExpected
-        IO.getGithubAccessToken
-        IO.requestListingOfPublicKeysForUser
+        githubUserPublicKeys

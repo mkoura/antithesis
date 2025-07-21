@@ -8,15 +8,11 @@ import Core.Types.Basic
     , Repository (..)
     , Username (..)
     )
-import Data.ByteString qualified as BS
-import Data.ByteString.Char8 qualified as BC
+import Data.Text qualified as T
+import Lib.GitHub (githubGetCodeOwnersFile)
 import Lib.Github.GetRepoRole
     ( RepoRoleValidation (..)
     , inspectRepoRoleForUserTemplate
-    )
-import Lib.Github.GetRepoRoleIO
-    ( ResponseCodeownersFile (..)
-    , downloadCodeownersFile
     )
 import Lib.Github.ListPublicKeys
     ( PublicKeyValidation (..)
@@ -94,32 +90,29 @@ spec = do
         `shouldReturn` PublicKeyValidated
 
     it "should download CODEOWNERS file from repo with main" $ do
-        downloadCodeownersFile
+        githubGetCodeOwnersFile
             (Repository "cardano-foundation" "hal-fixture-sin")
-            `shouldReturn` ResponseCodeownersFile "antithesis: @notunrandom @cfhal\n"
+            `shouldReturn` "antithesis: @notunrandom @cfhal\n"
 
     it "should download CODEOWNERS file from repo with master" $ do
-        downloadCodeownersFile
+        githubGetCodeOwnersFile
             (Repository "cardano-foundation" "hal-fixture-cos")
-            `shouldReturn` ResponseCodeownersFile "* @notunrandom\n"
+            `shouldReturn` "* @notunrandom\n"
 
     it "should download CODEOWNERS file from repo with trunk" $ do
-        downloadCodeownersFile
+        githubGetCodeOwnersFile
             (Repository "cardano-foundation" "hal-fixture-tan")
-            `shouldReturn` ResponseCodeownersFile "* @notunrandom\n"
+            `shouldReturn` "* @notunrandom\n"
 
     it "should throw if missing CODEOWNERS file" $ do
-        downloadCodeownersFile
+        githubGetCodeOwnersFile
             (Repository "cardano-foundation" "hal-fixture-sec")
             `shouldThrow` anyException
 
     it "CODEOWNERS does not have role entry" $ do
         let noRoleEntry _ =
                 pure
-                    $ ResponseCodeownersFile
-                    $ BS.fromStrict
-                    $ BC.pack
-                    $ unlines
+                    $ T.unlines
                         [ "# Haskell components"
                         , "core        /     @user"
                         , "command-line/     @user"
@@ -132,10 +125,7 @@ spec = do
     it "CODEOWNERS does not have users assigned" $ do
         let noRoleEntry _ =
                 pure
-                    $ ResponseCodeownersFile
-                    $ BS.fromStrict
-                    $ BC.pack
-                    $ unlines
+                    $ T.unlines
                         [ "# Haskell components"
                         , "core        /     @user"
                         , "command-line/     @user"
@@ -150,10 +140,7 @@ spec = do
     it "CODEOWNERS does have other users assigned" $ do
         let noRoleEntry _ =
                 pure
-                    $ ResponseCodeownersFile
-                    $ BS.fromStrict
-                    $ BC.pack
-                    $ unlines
+                    $ T.unlines
                         [ "# Haskell components"
                         , "core        /     @user"
                         , "command-line/     @user"
@@ -168,10 +155,7 @@ spec = do
     it "CODEOWNERS does have user assigned" $ do
         let noRoleEntry _ =
                 pure
-                    $ ResponseCodeownersFile
-                    $ BS.fromStrict
-                    $ BC.pack
-                    $ unlines
+                    $ T.unlines
                         [ "# Haskell components"
                         , "core        /     @user"
                         , "command-line/     @user"

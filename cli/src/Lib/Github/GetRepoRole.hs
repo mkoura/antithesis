@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StrictData #-}
 
 module Lib.Github.GetRepoRole
@@ -8,11 +9,11 @@ module Lib.Github.GetRepoRole
     ) where
 
 import Core.Types.Basic (Repository, Username (..))
-import Data.ByteString qualified as BS
-import Data.ByteString.Char8 qualified as BC
 import Data.List qualified as L
 import Data.Maybe (catMaybes)
-import Lib.Github.GetRepoRoleIO qualified as IO
+import Data.Text (Text)
+import Data.Text qualified as T
+import Lib.GitHub (githubGetCodeOwnersFile)
 
 data RepoRoleValidation
     = RepoRoleValidated
@@ -33,32 +34,30 @@ emitRepoRoleMsg = \case
 -- the expectation there a line:
 -- role: user1 user2 .. userX .. userN
 analyzeResponseCodeownersFile
-    :: Username -> IO.ResponseCodeownersFile -> RepoRoleValidation
-analyzeResponseCodeownersFile (Username user) (IO.ResponseCodeownersFile file)
+    :: Username -> Text -> RepoRoleValidation
+analyzeResponseCodeownersFile (Username user) file
     | null lineWithRole = NoRoleEntryInCodeowners
     | users == [Nothing] = NoUsersAssignedToRoleInCodeowners
     | foundUser == [[]] = NoUserInCodeowners
     | otherwise = RepoRoleValidated
   where
-    linefeed = 10
-    fileLines = BS.splitWith (== linefeed) $ BC.toStrict file
+    fileLines = T.lines file
     strBS = "antithesis"
-    lineWithRole = L.filter (BS.isPrefixOf strBS) fileLines
-    colon = BC.pack $ "antithesis" <> ": "
-    getUsersWithRole = BS.stripPrefix colon
+    lineWithRole = L.filter (T.isPrefixOf strBS) fileLines
+    colon = "antithesis" <> ": "
+    getUsersWithRole = T.stripPrefix colon
     users =
         getUsersWithRole
             <$> L.take 1 lineWithRole
-    space = 32
     foundUser =
-        L.filter (== (BC.pack $ "@" <> user)) . BS.split space
+        L.filter (== ("@" <> T.pack user)) . T.words
             <$> catMaybes users
 
 inspectRepoRoleForUserTemplate
     :: Username
     -> Repository
     -> ( Repository
-         -> IO IO.ResponseCodeownersFile
+         -> IO Text
        )
     -> IO RepoRoleValidation
 inspectRepoRoleForUserTemplate username repo downloadCodeownersFile = do
@@ -73,4 +72,4 @@ inspectRepoRoleForUser username repo =
     inspectRepoRoleForUserTemplate
         username
         repo
-        IO.downloadCodeownersFile
+        githubGetCodeOwnersFile

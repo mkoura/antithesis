@@ -2,6 +2,7 @@ module Lib.GitHub
     ( githubCommitExists
     , githubDirectoryExists
     , githubUserPublicKeys
+    , githubGetCodeOwnersFile
     ) where
 
 import Control.Exception
@@ -14,9 +15,11 @@ import Core.Types.Basic
     , Repository (..)
     , Username (..)
     )
+import Data.ByteString.Base64 qualified as B64
 import Data.ByteString.Char8 qualified as B
 import Data.Foldable (Foldable (..))
 import Data.Text qualified as T
+import Data.Text.Encoding qualified as T
 import GitHub (Auth (..), FetchCount (..), GitHubRW, github)
 import GitHub qualified as GH
 import GitHub.Data.Name (Name (..))
@@ -38,7 +41,7 @@ callGithub req = do
     auth <- getOAUth
     github auth req
 
-data GithubError = RepositoryNotFound | DirectoryNotFound
+data GithubError = RepositoryNotFound | DirectoryNotFound | NotAfile
     deriving (Show)
 
 instance Exception GithubError
@@ -107,3 +110,36 @@ githubUserPublicKeys (Username name) = do
     case result of
         Left e -> throwIO e
         Right r -> pure $ GH.basicPublicSSHKeyKey <$> toList r
+
+githubGetCodeOwnersFile
+    :: Repository -> IO T.Text
+githubGetCodeOwnersFile (Repository owner repo) = do
+    response <-
+        callGithub
+            $ GH.contentsForR
+                owner'
+                repo'
+                "CODEOWNERS"
+                Nothing
+    case response of
+        Left e -> onStatusCodeOfException e $ \c -> do
+            case c of
+                404 -> throwIO DirectoryNotFound
+                _ -> throwIO e
+        Right (GH.ContentFile contents) -> do
+            let content = GH.contentFileContent contents
+            case GH.contentFileEncoding contents of
+                "base64" ->
+                    pure
+                        . T.decodeUtf8
+                        . B64.decodeLenient
+                        . T.encodeUtf8
+                        $ content
+                enc ->
+                    error
+                        $ "Unsupported encoding for CODEOWNERS file: "
+                            ++ T.unpack enc
+        Right _ -> throwIO NotAfile
+  where
+    owner' = N $ T.pack owner
+    repo' = N $ T.pack repo

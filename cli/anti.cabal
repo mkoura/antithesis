@@ -98,9 +98,7 @@ library
     Core.Types.Wallet
     Lib.Box
     Lib.GitHub
-    Lib.Github.CommonIO
     Lib.Github.GetRepoRole
-    Lib.Github.GetRepoRoleIO
     Lib.Github.ListPublicKeys
     Lib.JSON
     Lib.SSH.Private
@@ -171,7 +169,6 @@ library
     , text
     , transformers
     , vector
-    , wreq
 
   -- Directories containing source files.
   hs-source-dirs:   src

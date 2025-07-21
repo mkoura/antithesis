@@ -15,6 +15,10 @@ import Core.Types.Basic
 import Core.Types.Fact (Fact (..), JSFact, parseFacts)
 import Data.Maybe (mapMaybe)
 import Lib.GitHub qualified as GitHub
+import Lib.Github.GetRepoRole
+    ( RepoRoleValidation
+    , inspectRepoRoleForUser
+    )
 import Lib.Github.ListPublicKeys
     ( PublicKeyValidation
     , inspectPublicKey
@@ -37,6 +41,10 @@ data Validation m = Validation
         :: Username
         -> PublicKeyHash
         -> m PublicKeyValidation
+    , githubRepositoryRole
+        :: Username
+        -> Repository
+        -> m RepoRoleValidation
     }
 
 mkValidation :: TokenId -> Validation ClientM
@@ -52,4 +60,6 @@ mkValidation tk =
             liftIO $ GitHub.githubDirectoryExists repository commit dir
         , githubUserPublicKeys = \username publicKey ->
             liftIO $ inspectPublicKey username publicKey
+        , githubRepositoryRole = \username repository ->
+            liftIO $ inspectRepoRoleForUser username repository
         }

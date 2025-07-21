@@ -56,9 +56,7 @@ analyzeResponseCodeownersFile (Username user) file
 inspectRepoRoleForUserTemplate
     :: Username
     -> Repository
-    -> ( Repository
-         -> IO Text
-       )
+    -> (Repository -> IO Text)
     -> IO RepoRoleValidation
 inspectRepoRoleForUserTemplate username repo downloadCodeownersFile = do
     resp <- downloadCodeownersFile repo

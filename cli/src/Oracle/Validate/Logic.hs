@@ -7,7 +7,6 @@ module Oracle.Validate.Logic
     , validateRequest
     ) where
 
-import Control.Monad.IO.Class (liftIO)
 import Core.Types.Basic
     ( Owner
     , Platform (..)
@@ -61,7 +60,7 @@ validateRequest
 validateRequest
     _
     _
-    Validation{mpfsGetFacts}
+    Validation{mpfsGetFacts, githubRepositoryRole}
     (RegisterRoleRequest (Request refId _owner (Change k _v))) = do
         facts <- mpfsGetFacts
         let Key
@@ -95,10 +94,9 @@ validateRequest
                         )
             else do
                 validationRes <-
-                    liftIO
-                        $ Github.inspectRepoRoleForUser
-                            username
-                            repository
+                    githubRepositoryRole
+                        username
+                        repository
                 if validationRes == Github.RepoRoleValidated
                     then
                         pure (refId, Validated)

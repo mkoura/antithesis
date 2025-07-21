@@ -15,7 +15,6 @@ import Data.ByteString.Lazy qualified as BL
 import Data.Maybe (catMaybes, mapMaybe)
 import Lib.JSON (stringJSON)
 import Lib.SSH.Public (decodePublicKey)
-import Oracle.Types (Request (..))
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig (..)
     )
@@ -42,12 +41,12 @@ validateCreateTestRun
     :: Monad m
     => TestRunValidationConfig
     -> Validation m
-    -> Request TestRun (OpI (TestRunState PendingT))
+    -> Change TestRun (OpI (TestRunState PendingT))
     -> m ValidationResult
 validateCreateTestRun
     testRunConfig
     validation
-    (Request _refId _owner (Change (Key testRun) (Insert testRunState))) = do
+    (Change (Key testRun) (Insert testRunState)) = do
         result <-
             validateCreateTestRunCore
                 testRunConfig

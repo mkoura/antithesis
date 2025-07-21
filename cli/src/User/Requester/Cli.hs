@@ -5,7 +5,10 @@ module User.Requester.Cli
     , RequesterCommand (..)
     ) where
 
+import Control.Monad (when)
 import Core.Types.Basic (Duration, TokenId)
+import Core.Types.Change (Change (..), Key (..))
+import Core.Types.Operation (Operation (..))
 import Core.Types.Tx (TxHash, WithTxHash (..))
 import Core.Types.Wallet (Wallet (..))
 import Data.ByteString.Lazy qualified as BL
@@ -15,6 +18,13 @@ import MPFS.API
     , RequestInsertBody (..)
     , requestDelete
     , requestInsert
+    )
+import Oracle.Validate.Logic (ValidationResult (..))
+import Oracle.Validate.Requests.TestRun.Config
+    ( TestRunValidationConfig
+    )
+import Oracle.Validate.Requests.TestRun.Create
+    ( validateCreateTestRun
     )
 import Servant.Client (ClientM)
 import Submitting (Submitting, signAndSubmit)
@@ -26,6 +36,7 @@ import User.Types
     , TestRun (..)
     , TestRunState (..)
     )
+import Validation (mkValidation)
 
 data RequesterCommand a where
     RegisterUser :: RegisterUserKey -> RequesterCommand TxHash
@@ -46,11 +57,12 @@ deriving instance Eq (RequesterCommand a)
 requesterCmd
     :: Submitting
     -> Wallet
+    -> TestRunValidationConfig
     -> TokenId
     -> Sign
     -> RequesterCommand a
     -> ClientM a
-requesterCmd sbmt wallet tokenId sign command = do
+requesterCmd sbmt wallet testRunConfig tokenId sign command = do
     case command of
         RegisterUser request ->
             registerUser sbmt wallet tokenId request
@@ -64,6 +76,7 @@ requesterCmd sbmt wallet tokenId sign command = do
             createCommand
                 sbmt
                 wallet
+                testRunConfig
                 tokenId
                 sign
                 testRun
@@ -72,15 +85,22 @@ requesterCmd sbmt wallet tokenId sign command = do
 createCommand
     :: Submitting
     -> Wallet
+    -> TestRunValidationConfig
     -> TokenId
     -> Sign
     -> TestRun
     -> Duration
     -> ClientM (WithTxHash (TestRunState PendingT))
-createCommand sbmt wallet tokenId sign testRun duration = do
+createCommand sbmt wallet testRunConfig tokenId sign testRun duration = do
     key <- toJSON testRun
     let signature = sign $ BL.toStrict $ renderCanonicalJSON key
     let newState = Pending duration signature
+    valid <-
+        validateCreateTestRun testRunConfig (mkValidation tokenId)
+            $ Change (Key testRun) (Insert newState)
+    when (valid /= Validated)
+        $ error
+        $ "Invalid test run: " ++ show valid
     value <- toJSON newState
     WithTxHash txHash _ <- signAndSubmit sbmt wallet $ \address -> do
         requestInsert address tokenId

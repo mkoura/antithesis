@@ -149,7 +149,7 @@ validateRequest
                 pure (refId, Validated)
 validateRequest testRunConfig _ validation (CreateTestRequest rq) =
     (,) (outputRefId rq)
-        <$> validateCreateTestRun testRunConfig validation rq
+        <$> validateCreateTestRun testRunConfig validation (change rq)
 validateRequest _ antiOwner validation (RejectRequest rq) =
     (,) (outputRefId rq) <$> validateToDoneUpdate antiOwner validation rq
 validateRequest _ antiOwner validation (AcceptRequest rq) =

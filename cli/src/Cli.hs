@@ -96,7 +96,13 @@ cmdCore
                     $ SSHKeySelector sshKeySelector
             tokenId <- failNothing "No TokenId" mTokenId
             wallet <- failLeft ("No wallet @ " <>) mWallet
-            requesterCmd sbmt wallet tokenId (sign keyAPI) requesterCommand
+            requesterCmd
+                sbmt
+                wallet
+                testRunValidationConfig
+                tokenId
+                (sign keyAPI)
+                requesterCommand
         OracleCommand oracleCommand -> do
             wallet <- failLeft ("No wallet @ " <>) mWallet
             antithesisPKH <-

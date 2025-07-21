@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE StrictData #-}
 
-module Oracle.Github.ListPublicKeysIO
+module Lib.Github.ListPublicKeysIO
     ( ResponsePublicKey (..)
     , requestListingOfPublicKeysForUser
     ) where
@@ -11,8 +11,8 @@ import Core.Types.Basic (Username (..))
 import Data.Aeson (FromJSON)
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import Lib.Github.CommonIO (GithubAccessToken (..))
 import Network.Wreq qualified as Wreq
-import Oracle.Github.CommonIO (GithubAccessToken (..))
 
 -- https://docs.github.com/en/rest/users/keys?apiVersion=2022-11-28#list-public-keys-for-a-user
 data ResponsePublicKey = ResponsePublicKey

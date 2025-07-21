@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE StrictData #-}
 
-module Oracle.Github.GetRepoRoleIO
+module Lib.Github.GetRepoRoleIO
     ( ResponseCodeownersFile (..)
     , downloadCodeownersFile
     ) where

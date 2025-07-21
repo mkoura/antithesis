@@ -1,4 +1,4 @@
-module Oracle.Github.OracleValidationSpec
+module Lib.Github.OracleValidationSpec
     ( spec
     )
 where
@@ -10,22 +10,22 @@ import Core.Types.Basic
     )
 import Data.ByteString qualified as BS
 import Data.ByteString.Char8 qualified as BC
-import Oracle.Github.CommonIO
+import Lib.Github.CommonIO
     ( GithubAccessToken (..)
     )
-import Oracle.Github.GetRepoRole
+import Lib.Github.GetRepoRole
     ( RepoRoleValidation (..)
     , inspectRepoRoleForUserTemplate
     )
-import Oracle.Github.GetRepoRoleIO
+import Lib.Github.GetRepoRoleIO
     ( ResponseCodeownersFile (..)
     , downloadCodeownersFile
     )
-import Oracle.Github.ListPublicKeys
+import Lib.Github.ListPublicKeys
     ( PublicKeyValidation (..)
     , inspectPublicKeyTemplate
     )
-import Oracle.Github.ListPublicKeysIO
+import Lib.Github.ListPublicKeysIO
     ( ResponsePublicKey (..)
     )
 import Test.Hspec

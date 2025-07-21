@@ -18,8 +18,8 @@ import Core.Types.Basic
 import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Fact (Fact (..))
 import Data.List (find)
-import Oracle.Github.GetRepoRole qualified as Github
-import Oracle.Github.ListPublicKeys qualified as Github
+import Lib.Github.GetRepoRole qualified as Github
+import Lib.Github.ListPublicKeys qualified as Github
 import Oracle.Types (Request (..), RequestZoo (..))
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig

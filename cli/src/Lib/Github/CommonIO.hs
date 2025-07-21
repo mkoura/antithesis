@@ -1,6 +1,6 @@
 {-# LANGUAGE StrictData #-}
 
-module Oracle.Github.CommonIO
+module Lib.Github.CommonIO
     ( GithubAccessToken (..)
     , getGithubAccessToken
     ) where

@@ -1,6 +1,6 @@
 {-# LANGUAGE StrictData #-}
 
-module Oracle.Github.ListPublicKeys
+module Lib.Github.ListPublicKeys
     ( PublicKeyValidation (..)
     , inspectPublicKeyTemplate
     , inspectPublicKey
@@ -12,8 +12,8 @@ import Data.List qualified as L
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Oracle.Github.CommonIO qualified as IO
-import Oracle.Github.ListPublicKeysIO qualified as IO
+import Lib.Github.CommonIO qualified as IO
+import Lib.Github.ListPublicKeysIO qualified as IO
 
 data PublicKeyValidation
     = PublicKeyValidated

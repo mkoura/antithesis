@@ -98,17 +98,17 @@ library
     Core.Types.Wallet
     Lib.Box
     Lib.GitHub
+    Lib.Github.CommonIO
+    Lib.Github.GetRepoRole
+    Lib.Github.GetRepoRoleIO
+    Lib.Github.ListPublicKeys
+    Lib.Github.ListPublicKeysIO
     Lib.JSON
     Lib.SSH.Private
     Lib.SSH.Public
     MPFS.API
     Options
     Oracle.Cli
-    Oracle.Github.CommonIO
-    Oracle.Github.GetRepoRole
-    Oracle.Github.GetRepoRoleIO
-    Oracle.Github.ListPublicKeys
-    Oracle.Github.ListPublicKeysIO
     Oracle.Options
     Oracle.Token.Cli
     Oracle.Token.Options
@@ -241,10 +241,10 @@ test-suite anti-test
   -- Modules included in this executable, other than Main.
   other-modules:
     E2ESpec
+    Lib.Github.OracleValidationSpec
     Lib.JSONSpec
     Lib.SSH.KeySpec
     MPFS.APISpec
-    Oracle.Github.OracleValidationSpec
     Oracle.Validate.Requests.TestRun.AcceptSpec
     Oracle.Validate.Requests.TestRun.CreateSpec
     Oracle.Validate.Requests.TestRun.FinishSpec

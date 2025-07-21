@@ -1,6 +1,6 @@
 {-# LANGUAGE StrictData #-}
 
-module Oracle.Github.GetRepoRole
+module Lib.Github.GetRepoRole
     ( RepoRoleValidation (..)
     , inspectRepoRoleForUserTemplate
     , inspectRepoRoleForUser
@@ -12,7 +12,7 @@ import Data.ByteString qualified as BS
 import Data.ByteString.Char8 qualified as BC
 import Data.List qualified as L
 import Data.Maybe (catMaybes)
-import Oracle.Github.GetRepoRoleIO qualified as IO
+import Lib.Github.GetRepoRoleIO qualified as IO
 
 data RepoRoleValidation
     = RepoRoleValidated

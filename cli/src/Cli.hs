@@ -115,9 +115,11 @@ cmdCore
                 mTokenId
                 oracleCommand
         AgentCommand agentCommand -> do
+            antithesisPKH <-
+                liftIO $ Owner <$> getEnv "ANTI_AGENT_PUBLIC_KEY_HASH"
             tokenId <- failNothing "No TokenId" mTokenId
             wallet <- failLeft ("No wallet @ " <>) mWallet
-            agentCmd sbmt wallet tokenId agentCommand
+            agentCmd sbmt wallet tokenId antithesisPKH agentCommand
         RetractRequest refId -> do
             wallet <- failLeft ("No wallet @ " <>) mWallet
             fmap txHash $ signAndSubmit sbmt wallet $ \address ->

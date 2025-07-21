@@ -45,7 +45,7 @@ checkingUpdates operation f = case operation of
             Nothing -> pure Validated
             Just rejection ->
                 pure
-                    $ CannotValidate
+                    $ NotValidated
                     $ "test run validation failed for the following reasons: "
                         <> show rejection
 

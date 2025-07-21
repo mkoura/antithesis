@@ -11,7 +11,6 @@ data ValidationResult
     = Validated
     | NotValidated String
     | CannotValidate String
-    | NotEvaluated
     deriving (Eq, Show)
 
 instance Monad m => ToJSON m ValidationResult where
@@ -19,4 +18,3 @@ instance Monad m => ToJSON m ValidationResult where
         Validated -> stringJSON "validated"
         NotValidated reason -> stringJSON $ "not validated: " <> reason
         CannotValidate reason -> stringJSON $ "cannot validate: " <> reason
-        NotEvaluated -> stringJSON "not evaluated"

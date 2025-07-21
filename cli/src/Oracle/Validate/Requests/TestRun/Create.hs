@@ -57,7 +57,7 @@ validateCreateTestRun
             Nothing -> pure Validated
             Just rejections ->
                 pure
-                    $ CannotValidate
+                    $ NotValidated
                     $ "test run validation failed for the following reasons: "
                         <> unwords (fmap show rejections)
 

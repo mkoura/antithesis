@@ -218,9 +218,8 @@ signAndSubmitAnUpdate sbmt wallet validate tokenId agentId testRun oldState newS
             $ Update oldState newState
     case validation of
         Validated -> pure ()
-        CannotValidate reason -> error $ "Validation failed: " ++ show reason
-        NotValidated _ -> error "Validation not performed"
-        NotEvaluated -> error "Validation not evaluated"
+        CannotValidate reason -> error $ "Couldn't validate: " ++ show reason
+        NotValidated reason -> error $ "Validation failed: " ++ reason
     WithTxHash txHash _ <- signAndSubmit sbmt wallet $ \address -> do
         key <- toJSON testRun
         oldValue <- toJSON oldState

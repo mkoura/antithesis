@@ -32,7 +32,7 @@ import Servant.Client (ClientM)
 import Text.JSON.Canonical (FromJSON (..))
 import User.Types (TestRun)
 import Validation.RegisterRole
-    ( RepoRoleValidation
+    ( RepositoryRoleFailure
     , inspectRepoRoleForUser
     )
 import Validation.RegisterUser
@@ -56,7 +56,7 @@ data Validation m = Validation
     , githubRepositoryRole
         :: Username
         -> Repository
-        -> m RepoRoleValidation
+        -> m (Maybe RepositoryRoleFailure)
     }
 
 mkValidation :: TokenId -> Validation ClientM

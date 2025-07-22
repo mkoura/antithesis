@@ -8,7 +8,7 @@ import Core.Types.Basic
     )
 import Oracle.Types
     ( Request (..)
-    , RequestValidationFailure (GenericFailure, RegisterUserFailure)
+    , RequestValidationFailure (..)
     , RequestZoo (..)
     )
 import Oracle.Validate.Requests.RegisterRole
@@ -41,10 +41,10 @@ validateRequest _ _ validation (RegisterUserRequest (Request refId _ change)) =
     (,) refId . withValidationResult RegisterUserFailure
         <$> validateRegisterUser validation change
 validateRequest _ _ validation (UnregisterUserRequest (Request refId _ change)) =
-    (,) refId . withValidationResult GenericFailure
+    (,) refId . withValidationResult UnregisterUserFailure
         <$> validateUnregisterUser validation change
 validateRequest _ _ validation (RegisterRoleRequest (Request refId _ change)) =
-    (,) refId . withValidationResult GenericFailure
+    (,) refId . withValidationResult RegisterRoleFailure
         <$> validateRegisterRole validation change
 validateRequest _ _ validation (UnregisterRoleRequest (Request refId _ change)) =
     (,) refId . withValidationResult GenericFailure

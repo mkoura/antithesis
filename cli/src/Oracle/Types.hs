@@ -15,7 +15,11 @@ import Core.Types.Change (Change (..))
 import Core.Types.Operation (Op (..), Operation (..))
 import Core.Types.Tx (Root)
 import Lib.JSON (object, withObject, (.:), (.=))
-import Oracle.Validate.Requests.RegisterUser (RegisterUserFailure)
+import Oracle.Validate.Requests.RegisterRole (RegisterRoleFailure)
+import Oracle.Validate.Requests.RegisterUser
+    ( RegisterUserFailure
+    , UnregisterUserFailure
+    )
 import Text.JSON.Canonical
     ( FromJSON (..)
     , ReportSchemaErrors
@@ -166,4 +170,6 @@ instance
 data RequestValidationFailure
     = GenericFailure String
     | RegisterUserFailure RegisterUserFailure
+    | UnregisterUserFailure UnregisterUserFailure
+    | RegisterRoleFailure RegisterRoleFailure
     deriving (Eq, Show)

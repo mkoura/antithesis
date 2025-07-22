@@ -2,17 +2,15 @@ module Oracle.Validate.Requests.RegisterUser
     ( validateRegisterUser
     , validateUnregisterUser
     , RegisterUserFailure (..)
+    , UnregisterUserFailure (..)
     ) where
 
-import Control.Monad (when)
 import Control.Monad.Trans.Class (lift)
 import Core.Types.Basic
     ( Platform (..)
     )
 import Core.Types.Change (Change (..), Key (..))
-import Core.Types.Fact (Fact (..))
 import Core.Types.Operation (Op (..))
-import Data.List (find)
 import Oracle.Validate.Types
     ( ValidationResult
     , mapFailure
@@ -53,23 +51,23 @@ validateRegisterUser
                     mapFailure PublicKeyValidationFailure $ throwJusts validationRes
                 Platform other -> notValidated $ RegisterUserPlatformNotSupported other
 
+data UnregisterUserFailure
+    = UnregisterUserPlatformNotSupported String
+    | UnregisterUserKeyFailure KeyFailure
+    | PublicKeyIsPresent -- issue 19300550b3b776dde1b08059780f617e182f067f
+    deriving (Show, Eq)
+
 validateUnregisterUser
     :: Monad m
     => Validation m
     -> Change RegisterUserKey (OpD ())
-    -> m (ValidationResult String)
+    -> m (ValidationResult UnregisterUserFailure)
 validateUnregisterUser
-    validation@Validation{mpfsGetFacts}
-    change@(Change (Key k) _v) = runValidate $ do
-        mapFailure show $ deleteValidation validation change
-        facts <- lift mpfsGetFacts
-        let registration = find (\(Fact k' ()) -> k' == k) facts
-        when (null registration)
-            $ notValidated
-            $ "no registration for platform '"
-                <> show (platform k)
-                <> "' and user '"
-                <> show (username k)
-                <> "' and public key hash '"
-                <> show (pubkeyhash k)
-                <> "' found"
+    validation
+    change@(Change (Key (RegisterUserKey{platform})) _v) =
+        runValidate $ do
+            mapFailure UnregisterUserKeyFailure
+                $ deleteValidation validation change
+            case platform of
+                Platform "github" -> pure () -- issue 19300550b3b776dde1b08059780f617e182f067f
+                Platform other -> notValidated $ UnregisterUserPlatformNotSupported other

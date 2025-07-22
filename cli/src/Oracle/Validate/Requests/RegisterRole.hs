@@ -3,14 +3,13 @@
 module Oracle.Validate.Requests.RegisterRole
     ( validateRegisterRole
     , validateUnregisterRole
+    , RegisterRoleFailure (..)
     ) where
 
-import Control.Monad (unless, when)
+import Control.Monad (when)
 import Control.Monad.Trans.Class (lift)
 import Core.Types.Basic
-    ( Platform (..)
-    , Repository (..)
-    , Username (..)
+    ( Username (..)
     )
 import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Fact (Fact (..))
@@ -29,46 +28,41 @@ import User.Types
     , RegisterUserKey (..)
     )
 import Validation
-    ( Validation (..)
+    ( KeyFailure
+    , Validation (..)
     , deleteValidation
     , insertValidation
     )
-import Validation.RegisterRole qualified as Github
+import Validation.RegisterRole (RepositoryRoleFailure)
+
+data RegisterRoleFailure
+    = RoleNotPresentOnPlatform RepositoryRoleFailure
+    | RegisterRolePlatformNotSupported String
+    | RegisterRoleKeyFailure KeyFailure
+    | RegisterRoleUserNotRegistered Username
+    deriving (Eq, Show)
 
 validateRegisterRole
     :: Monad m
     => Validation m
     -> Change RegisterRoleKey (OpI ())
-    -> m (ValidationResult String)
+    -> m (ValidationResult RegisterRoleFailure)
 validateRegisterRole
     validation@Validation{mpfsGetFacts, githubRepositoryRole}
     change@(Change (Key k) _) = runValidate $ do
-        mapFailure show $ insertValidation validation change
+        mapFailure RegisterRoleKeyFailure $ insertValidation validation change
         facts <- lift mpfsGetFacts
         let RegisterRoleKey platform repository username = k
             registration = flip find facts
                 $ \(Fact (RegisterUserKey platform' username' _) ()) ->
                     platform' == platform && username' == username
-        if null registration
-            then
-                let Platform p = platform
-                    Repository o r = repository
-                    Username u = username
-                in  notValidated
-                        $ "no registration for platform '"
-                            <> show p
-                            <> "' and repository '"
-                            <> show r
-                            <> "' of owner '"
-                            <> show o
-                            <> "' and user '"
-                            <> show u
-                            <> "' found"
-            else do
-                validationRes <- lift $ githubRepositoryRole username repository
-                unless (validationRes == Github.RepoRoleValidated)
-                    $ notValidated
-                    $ Github.emitRepoRoleMsg validationRes
+        when (null registration)
+            $ notValidated
+            $ RegisterRoleUserNotRegistered username
+        validationRes <- lift $ githubRepositoryRole username repository
+        case validationRes of
+            Just failure -> notValidated $ RoleNotPresentOnPlatform failure
+            Nothing -> pure ()
 
 validateUnregisterRole
     :: Monad m

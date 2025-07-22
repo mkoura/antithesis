@@ -18,7 +18,7 @@ import Test.Hspec
     , shouldThrow
     )
 import Validation.RegisterRole
-    ( RepoRoleValidation (..)
+    ( RepositoryRoleFailure (..)
     , inspectRepoRoleForUserTemplate
     )
 import Validation.RegisterUser
@@ -120,7 +120,7 @@ spec = do
             user = Username "user1"
             repo = Repository "org" "repo"
         inspectRepoRoleForUserTemplate user repo noRoleEntry
-            `shouldReturn` NoRoleEntryInCodeowners
+            `shouldReturn` Just NoRoleEntryInCodeowners
 
     it "CODEOWNERS does not have users assigned" $ do
         let noRoleEntry _ =
@@ -135,7 +135,7 @@ spec = do
             user = Username "user1"
             repo = Repository "org" "repo"
         inspectRepoRoleForUserTemplate user repo noRoleEntry
-            `shouldReturn` NoUsersAssignedToRoleInCodeowners
+            `shouldReturn` Just NoUsersAssignedToRoleInCodeowners
 
     it "CODEOWNERS does have other users assigned" $ do
         let noRoleEntry _ =
@@ -150,7 +150,7 @@ spec = do
             user = Username "user2"
             repo = Repository "org" "repo"
         inspectRepoRoleForUserTemplate user repo noRoleEntry
-            `shouldReturn` NoUserInCodeowners
+            `shouldReturn` Just NoUserInCodeowners
 
     it "CODEOWNERS does have user assigned" $ do
         let noRoleEntry _ =
@@ -165,4 +165,4 @@ spec = do
             user = Username "user2"
             repo = Repository "org" "repo"
         inspectRepoRoleForUserTemplate user repo noRoleEntry
-            `shouldReturn` RepoRoleValidated
+            `shouldReturn` Nothing

@@ -2,7 +2,7 @@
 {-# LANGUAGE StrictData #-}
 
 module Validation.RegisterRole
-    ( RepoRoleValidation (..)
+    ( RepositoryRoleFailure (..)
     , inspectRepoRoleForUserTemplate
     , inspectRepoRoleForUser
     , emitRepoRoleMsg
@@ -15,16 +15,14 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Lib.GitHub (githubGetCodeOwnersFile)
 
-data RepoRoleValidation
-    = RepoRoleValidated
-    | NoRoleEntryInCodeowners
+data RepositoryRoleFailure
+    = NoRoleEntryInCodeowners
     | NoUsersAssignedToRoleInCodeowners
     | NoUserInCodeowners
     deriving (Eq, Show)
 
-emitRepoRoleMsg :: RepoRoleValidation -> String
+emitRepoRoleMsg :: RepositoryRoleFailure -> String
 emitRepoRoleMsg = \case
-    RepoRoleValidated -> "The user's role is validated in a given Github repository."
     NoRoleEntryInCodeowners -> "CODEOWNERS in the repository does not contain the role entry."
     NoUsersAssignedToRoleInCodeowners ->
         "CODEOWNERS in the repository does not contain any users assigned to the role."
@@ -34,12 +32,12 @@ emitRepoRoleMsg = \case
 -- the expectation there a line:
 -- role: user1 user2 .. userX .. userN
 analyzeResponseCodeownersFile
-    :: Username -> Text -> RepoRoleValidation
+    :: Username -> Text -> Maybe RepositoryRoleFailure
 analyzeResponseCodeownersFile (Username user) file
-    | null lineWithRole = NoRoleEntryInCodeowners
-    | users == [Nothing] = NoUsersAssignedToRoleInCodeowners
-    | foundUser == [[]] = NoUserInCodeowners
-    | otherwise = RepoRoleValidated
+    | null lineWithRole = Just NoRoleEntryInCodeowners
+    | users == [Nothing] = Just NoUsersAssignedToRoleInCodeowners
+    | foundUser == [[]] = Just NoUserInCodeowners
+    | otherwise = Nothing
   where
     fileLines = T.lines file
     strBS = "antithesis"
@@ -57,7 +55,7 @@ inspectRepoRoleForUserTemplate
     :: Username
     -> Repository
     -> (Repository -> IO Text)
-    -> IO RepoRoleValidation
+    -> IO (Maybe RepositoryRoleFailure)
 inspectRepoRoleForUserTemplate username repo downloadCodeownersFile = do
     resp <- downloadCodeownersFile repo
     pure $ analyzeResponseCodeownersFile username resp
@@ -65,7 +63,7 @@ inspectRepoRoleForUserTemplate username repo downloadCodeownersFile = do
 inspectRepoRoleForUser
     :: Username
     -> Repository
-    -> IO RepoRoleValidation
+    -> IO (Maybe RepositoryRoleFailure)
 inspectRepoRoleForUser username repo =
     inspectRepoRoleForUserTemplate
         username

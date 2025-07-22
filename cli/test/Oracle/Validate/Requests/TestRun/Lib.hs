@@ -86,7 +86,7 @@ import User.Types
     , tryIndexL
     )
 import Validation (Validation (..))
-import Validation.RegisterRole (RepoRoleValidation (..))
+import Validation.RegisterRole (RepositoryRoleFailure (..))
 import Validation.RegisterUser (PublicKeyFailure (..))
 
 jsFactRole :: Monad m => TestRun -> m JSFact
@@ -136,8 +136,8 @@ mkValidation fs rs ds upk rr =
         , githubRepositoryRole = \username repository ->
             return
                 $ if (username, repository) `elem` rr
-                    then RepoRoleValidated
-                    else NoRoleEntryInCodeowners
+                    then Nothing
+                    else Just NoRoleEntryInCodeowners
         }
 
 testRunGen :: Gen TestRun

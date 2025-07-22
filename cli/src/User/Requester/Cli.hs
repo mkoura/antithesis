@@ -5,7 +5,6 @@ module User.Requester.Cli
     , RequesterCommand (..)
     ) where
 
-import Control.Arrow (left)
 import Core.Types.Basic (Duration, TokenId)
 import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Operation (Operation (..))
@@ -33,7 +32,7 @@ import Oracle.Validate.Requests.TestRun.Config
 import Oracle.Validate.Requests.TestRun.Create
     ( validateCreateTestRun
     )
-import Oracle.Validate.Types (throwNotValid)
+import Oracle.Validate.Types (throwNotValid, withValidationResult)
 import Servant.Client (ClientM)
 import Submitting (Submitting, signAndSubmit)
 import Text.JSON.Canonical (ToJSON (..), renderCanonicalJSON)
@@ -129,7 +128,7 @@ registerUser
             valid <-
                 validateRegisterUser (mkValidation tokenId)
                     $ Change (Key request) (Insert ())
-            throwNotValid $ left (fmap show) valid
+            throwNotValid $ withValidationResult show valid
             key <- toJSON request
             value <- toJSON ()
             requestInsert address tokenId
@@ -151,7 +150,7 @@ unregisterUser
             valid <-
                 validateUnregisterUser (mkValidation tokenId)
                     $ Change (Key request) (Delete ())
-            throwNotValid valid
+            throwNotValid $ withValidationResult show valid
             key <- toJSON request
             value <- toJSON ()
             requestDelete address tokenId
@@ -173,7 +172,7 @@ registerRole
             valid <-
                 validateRegisterRole (mkValidation tokenId)
                     $ Change (Key request) (Insert ())
-            throwNotValid valid
+            throwNotValid $ withValidationResult show valid
             key <- toJSON request
             value <- toJSON ()
             requestInsert address tokenId

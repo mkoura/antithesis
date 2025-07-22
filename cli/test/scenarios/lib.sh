@@ -71,7 +71,7 @@ getOutputRef() {
 fund () {
     export ANTI_WALLET_FILE=$1
     address=$(anti wallet info | jq -r '.result.address')
-    echo "Funding address: $address"
+    log "Funding address: $address"
     curl -s -X 'POST' \
         "$ANTI_TEST_YACI_ADMIN/local-cluster/api/addresses/topup" \
         -H 'accept: */*' \
@@ -79,7 +79,7 @@ fund () {
         -d '{
         "address": "'"$address"'",
         "adaAmount": 10000
-        }' | jq -r '.message'
+        }' > /dev/null
 }
 
 fund_wallets(){

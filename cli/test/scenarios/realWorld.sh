@@ -4,6 +4,7 @@ set -euo pipefail
 
 # shellcheck disable=SC1091
 source "$(dirname "$0")/lib.sh"
+unset ANTI_TOKEN_ID
 
 export ANTI_WAIT=240
 
@@ -17,7 +18,6 @@ log "Create an anti token"
 being_oracle
 result=$(anti oracle token boot)
 tokenId=$(echo "$result" | jq -r '.result.value')
-unset ANTI_TOKEN_ID
 export ANTI_TOKEN_ID="$tokenId"
 log "Anti token id $tokenId"
 
@@ -50,8 +50,7 @@ anti requester register-role \
 log "Include the role registration"
 include_requests
 
-log "Register a test run from cfhal to run an antithesis test on the cardano-foundation/hal-fixture-sin repository, \
-     using the antithesis-test directory and commit 8e99893bf511dc75041b0347dc5af4bec54ce5d4, duration 1 hour, first try"
+log "Register a test run from cfhal to run an antithesis test on the cardano-foundation/hal-fixture-sin repository, first try"
 being_requester
 anti requester create-test \
     --platform github \
@@ -70,7 +69,6 @@ log "Reject the test run with no reasons..."
 being_agent
 validation=$(anti agent query)
 references=$(echo "$validation" | jq -r '.result | .pending | .[] | .id')
-echo "References: $references"
 anti agent reject-test -i "$references" > /dev/null
 
 log "Include the test run rejection"

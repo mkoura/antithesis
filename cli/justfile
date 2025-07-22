@@ -95,7 +95,6 @@ E2E match="":
         }
     while true; do
         if topup | grep -q "Topup successful"; then
-            echo "Topup successful"
             break
         fi
         echo "Retrying topup..."

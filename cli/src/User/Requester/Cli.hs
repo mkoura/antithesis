@@ -194,7 +194,7 @@ unregisterRole
             valid <-
                 validateUnregisterRole (mkValidation tokenId)
                     $ Change (Key request) (Delete ())
-            throwNotValid valid
+            throwNotValid $ withValidationResult show valid
             key <- toJSON request
             value <- toJSON ()
             requestDelete address tokenId

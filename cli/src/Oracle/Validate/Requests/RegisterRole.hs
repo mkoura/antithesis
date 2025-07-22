@@ -1,9 +1,8 @@
-{-# LANGUAGE OverloadedRecordDot #-}
-
 module Oracle.Validate.Requests.RegisterRole
     ( validateRegisterRole
     , validateUnregisterRole
     , RegisterRoleFailure (..)
+    , UnregisterRoleFailure (..)
     ) where
 
 import Control.Monad (when)
@@ -64,21 +63,21 @@ validateRegisterRole
             Just failure -> notValidated $ RoleNotPresentOnPlatform failure
             Nothing -> pure ()
 
+data UnregisterRoleFailure
+    = UnregisterRolePlatformNotSupported String
+    | UnregisterRoleKeyFailure KeyFailure
+    | RoleIsPresentOnPlatform -- issue 1b6d49bb5fc6b7e4fcd8ab22436294a118451cb3
+    deriving (Show, Eq)
+
 validateUnregisterRole
     :: Monad m
     => Validation m
     -> Change RegisterRoleKey (OpD ())
-    -> m (ValidationResult String)
+    -> m (ValidationResult UnregisterRoleFailure)
 validateUnregisterRole
-    validation@Validation{mpfsGetFacts}
-    change@(Change (Key k) _) = runValidate $ do
-        mapFailure show $ deleteValidation validation change
-        facts <- lift mpfsGetFacts
-        let registration = find (\(Fact k' ()) -> k' == k) facts
-        when (null registration)
-            $ notValidated
-            $ "no registration of the 'antithesis' role for '"
-                <> show k.platform
-                <> "' platform and '"
-                <> show k.repository
-                <> "' repository found"
+    validation
+    change@(Change (Key _k) _) = runValidate $ do
+        mapFailure UnregisterRoleKeyFailure
+            $ deleteValidation validation change
+
+-- issue 1b6d49bb5fc6b7e4fcd8ab22436294a118451cb3

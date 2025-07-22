@@ -47,7 +47,7 @@ validateRequest _ _ validation (RegisterRoleRequest (Request refId _ change)) =
     (,) refId . withValidationResult RegisterRoleFailure
         <$> validateRegisterRole validation change
 validateRequest _ _ validation (UnregisterRoleRequest (Request refId _ change)) =
-    (,) refId . withValidationResult GenericFailure
+    (,) refId . withValidationResult UnregisterRoleFailure
         <$> validateUnregisterRole validation change
 validateRequest testRunConfig _ validation (CreateTestRequest (Request refId _ change)) =
     (,) refId . withValidationResult GenericFailure

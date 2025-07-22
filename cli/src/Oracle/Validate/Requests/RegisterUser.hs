@@ -54,7 +54,7 @@ validateRegisterUser
 data UnregisterUserFailure
     = UnregisterUserPlatformNotSupported String
     | UnregisterUserKeyFailure KeyFailure
-    | PublicKeyIsPresent -- issue 19300550b3b776dde1b08059780f617e182f067f
+    | PublicKeyIsPresentOnPlatform -- issue 19300550b3b776dde1b08059780f617e182f067f
     deriving (Show, Eq)
 
 validateUnregisterUser

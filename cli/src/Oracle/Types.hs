@@ -15,7 +15,10 @@ import Core.Types.Change (Change (..))
 import Core.Types.Operation (Op (..), Operation (..))
 import Core.Types.Tx (Root)
 import Lib.JSON (object, withObject, (.:), (.=))
-import Oracle.Validate.Requests.RegisterRole (RegisterRoleFailure)
+import Oracle.Validate.Requests.RegisterRole
+    ( RegisterRoleFailure
+    , UnregisterRoleFailure
+    )
 import Oracle.Validate.Requests.RegisterUser
     ( RegisterUserFailure
     , UnregisterUserFailure
@@ -172,4 +175,5 @@ data RequestValidationFailure
     | RegisterUserFailure RegisterUserFailure
     | UnregisterUserFailure UnregisterUserFailure
     | RegisterRoleFailure RegisterRoleFailure
+    | UnregisterRoleFailure UnregisterRoleFailure
     deriving (Eq, Show)

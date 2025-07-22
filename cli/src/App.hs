@@ -1,7 +1,10 @@
-module App (client) where
+module App
+    ( client
+    , Result (..)
+    ) where
 
 import Cli (cmd)
-import Control.Exception (catch)
+import Control.Exception (SomeException, catch)
 import Core.Types.Basic (TokenId (..))
 import Data.ByteString.Char8 qualified as B
 import Lib.Box (Box (..))
@@ -28,47 +31,59 @@ import Submitting (IfToWait (..), Submitting (..), readWallet)
 import System.Environment (getArgs, getEnv, lookupEnv)
 import Text.JSON.Canonical (JSValue, ToJSON (..))
 
+data Result
+    = Success
+        { options :: Box Options
+        , walletFile :: FilePath
+        , mpfsHost :: String
+        , result :: Either ClientError JSValue
+        }
+    | Failure SomeException
+    deriving (Show)
+
 client
-    :: IO (Box Options, FilePath, String, Either ClientError JSValue)
+    :: IO Result
 client = do
-    args <- getArgs
-    o@(Box (Options command)) <- parseArgs args
-    mpfs_host <- getEnv "ANTI_MPFS_HOST"
-    mtk <- fmap TokenId <$> lookupEnv "ANTI_TOKEN_ID"
-    baseUrl <- parseBaseUrl mpfs_host
-    walletFile <- getEnv "ANTI_WALLET_FILE"
-    mWallet <-
-        (Right <$> readWallet walletFile)
-            `catch` \(_ :: IOError) -> return $ Left walletFile
-    mSigning <- do
-        mf <- lookupEnv "ANTI_SSH_FILE"
-        case mf of
-            Just f -> do
-                pw <- getEnv "ANTI_SSH_PASSWORD"
-                r <- decodePrivateSSHFile (B.pack pw) f
-                return $ Just r
-            Nothing -> return Nothing
-    manger <-
-        newManager
-            $ if baseUrlScheme baseUrl == Https
-                then tlsManagerSettings
-                else defaultManagerSettings
-    let clientEnv = mkClientEnv manger baseUrl
-    eiftw <- lookupEnv "ANTI_WAIT"
-    let iftw = case eiftw of
-            Just s -> Wait (read s)
-            Nothing -> NoWait
-        runClient :: forall a. ClientM a -> IO a
-        runClient c = do
-            e <- runClientM c clientEnv
-            case e of
-                Left err -> error $ "Client error: " ++ show err
-                Right r -> return r
-    let sbmt = Submitting{ifToWait = iftw, runClient}
-    (o,walletFile,mpfs_host,)
-        <$> runClientM
-            (cmd sbmt mWallet mSigning mtk command >>= toJSON)
-            clientEnv
+    let action = do
+            args <- getArgs
+            o@(Box (Options command)) <- parseArgs args
+            mpfs_host <- getEnv "ANTI_MPFS_HOST"
+            mtk <- fmap TokenId <$> lookupEnv "ANTI_TOKEN_ID"
+            baseUrl <- parseBaseUrl mpfs_host
+            walletFile <- getEnv "ANTI_WALLET_FILE"
+            mWallet <-
+                (Right <$> readWallet walletFile)
+                    `catch` \(_ :: IOError) -> return $ Left walletFile
+            mSigning <- do
+                mf <- lookupEnv "ANTI_SSH_FILE"
+                case mf of
+                    Just f -> do
+                        pw <- getEnv "ANTI_SSH_PASSWORD"
+                        r <- decodePrivateSSHFile (B.pack pw) f
+                        return $ Just r
+                    Nothing -> return Nothing
+            manger <-
+                newManager
+                    $ if baseUrlScheme baseUrl == Https
+                        then tlsManagerSettings
+                        else defaultManagerSettings
+            let clientEnv = mkClientEnv manger baseUrl
+            eiftw <- lookupEnv "ANTI_WAIT"
+            let iftw = case eiftw of
+                    Just s -> Wait (read s)
+                    Nothing -> NoWait
+                runClient :: forall a. ClientM a -> IO a
+                runClient c = do
+                    e <- runClientM c clientEnv
+                    case e of
+                        Left err -> error $ "Client error: " ++ show err
+                        Right r -> return r
+            let sbmt = Submitting{ifToWait = iftw, runClient}
+            Success o walletFile mpfs_host
+                <$> runClientM
+                    (cmd sbmt mWallet mSigning mtk command >>= toJSON)
+                    clientEnv
+    action `catch` (return . Failure)
 
 _logRequests :: ManagerSettings -> ManagerSettings
 _logRequests settings =

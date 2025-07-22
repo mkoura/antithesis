@@ -25,6 +25,7 @@ import Oracle.Validate.Request
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig
     )
+import Oracle.Validate.Types (AValidationResult (..), Validated (..))
 import Servant.Client (ClientM)
 import Submitting (Submitting, signAndSubmit)
 import Text.JSON.Canonical
@@ -75,8 +76,8 @@ tokenCmdCore sbmt wallet (Just tk) testRunConfig pkh = \case
                                     (mkValidation tk)
                                     r
                         case validationResult of
-                            Right () -> pure ()
-                            Left validation ->
+                            ValidationSuccess Validated -> pure ()
+                            ValidationFailure validation ->
                                 error
                                     $ "RequestRefId "
                                         ++ show reqId

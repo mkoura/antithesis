@@ -11,6 +11,7 @@ import Core.Types.Operation (Operation (..))
 import Core.Types.Tx (TxHash, WithTxHash (..))
 import Core.Types.Wallet (Wallet (..))
 import Data.ByteString.Lazy qualified as BL
+import Data.Functor (($>))
 import Lib.SSH.Private (Sign)
 import MPFS.API
     ( RequestDeleteBody (..)
@@ -19,14 +20,14 @@ import MPFS.API
     , requestInsert
     )
 import Oracle.Validate.Requests.RegisterRole
-    ( renderRegisterRoleFailure
-    , renderUnregisterRoleFailure
+    ( RegisterRoleFailure
+    , UnregisterRoleFailure
     , validateRegisterRole
     , validateUnregisterRole
     )
 import Oracle.Validate.Requests.RegisterUser
-    ( renderRegisterUserFailure
-    , renderUnregisterUserFailure
+    ( RegisterUserFailure
+    , UnregisterUserFailure
     , validateRegisterUser
     , validateUnregisterUser
     )
@@ -34,10 +35,12 @@ import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig
     )
 import Oracle.Validate.Requests.TestRun.Create
-    ( renderCreateTestRunFailure
+    ( CreateTestRunFailure
     , validateCreateTestRun
     )
-import Oracle.Validate.Types (throwNotValid, withValidationResult)
+import Oracle.Validate.Types
+    ( AValidationResult
+    )
 import Servant.Client (ClientM)
 import Submitting (Submitting, signAndSubmit)
 import Text.JSON.Canonical (ToJSON (..), renderCanonicalJSON)
@@ -51,17 +54,26 @@ import User.Types
 import Validation (mkValidation)
 
 data RequesterCommand a where
-    RegisterUser :: RegisterUserKey -> RequesterCommand TxHash
+    RegisterUser
+        :: RegisterUserKey
+        -> RequesterCommand (AValidationResult RegisterUserFailure TxHash)
     UnregisterUser
-        :: RegisterUserKey -> RequesterCommand TxHash
+        :: RegisterUserKey
+        -> RequesterCommand (AValidationResult UnregisterUserFailure TxHash)
     RegisterRole
-        :: RegisterRoleKey -> RequesterCommand TxHash
+        :: RegisterRoleKey
+        -> RequesterCommand (AValidationResult RegisterRoleFailure TxHash)
     UnregisterRole
-        :: RegisterRoleKey -> RequesterCommand TxHash
+        :: RegisterRoleKey
+        -> RequesterCommand (AValidationResult UnregisterRoleFailure TxHash)
     RequestTest
         :: TestRun
         -> Duration
-        -> RequesterCommand (WithTxHash (TestRunState PendingT))
+        -> RequesterCommand
+            ( AValidationResult
+                CreateTestRunFailure
+                (WithTxHash (TestRunState PendingT))
+            )
 
 deriving instance Show (RequesterCommand a)
 deriving instance Eq (RequesterCommand a)
@@ -102,7 +114,11 @@ createCommand
     -> Sign
     -> TestRun
     -> Duration
-    -> ClientM (WithTxHash (TestRunState PendingT))
+    -> ClientM
+        ( AValidationResult
+            CreateTestRunFailure
+            (WithTxHash (TestRunState PendingT))
+        )
 createCommand sbmt wallet testRunConfig tokenId sign testRun duration = do
     key <- toJSON testRun
     let signature = sign $ BL.toStrict $ renderCanonicalJSON key
@@ -110,97 +126,101 @@ createCommand sbmt wallet testRunConfig tokenId sign testRun duration = do
     valid <-
         validateCreateTestRun testRunConfig (mkValidation tokenId)
             $ Change (Key testRun) (Insert newState)
-    throwNotValid $ withValidationResult renderCreateTestRunFailure valid
     value <- toJSON newState
     WithTxHash txHash _ <- signAndSubmit sbmt wallet $ \address -> do
         requestInsert address tokenId
             $ RequestInsertBody{key, value}
-    pure $ WithTxHash txHash $ Just newState
+    pure $ valid $> WithTxHash txHash (Just newState)
 
 registerUser
     :: Submitting
     -> Wallet
     -> TokenId
     -> RegisterUserKey
-    -> ClientM TxHash
+    -> ClientM (AValidationResult RegisterUserFailure TxHash)
 registerUser
     sbmt
     wallet
     tokenId
-    request = fmap txHash
-        $ signAndSubmit sbmt wallet
-        $ \address -> do
-            valid <-
-                validateRegisterUser (mkValidation tokenId)
-                    $ Change (Key request) (Insert ())
-            throwNotValid $ withValidationResult renderRegisterUserFailure valid
-            key <- toJSON request
-            value <- toJSON ()
-            requestInsert address tokenId
-                $ RequestInsertBody{key = key, value = value}
+    request = do
+        valid <-
+            validateRegisterUser (mkValidation tokenId)
+                $ Change (Key request) (Insert ())
+
+        r <- fmap txHash
+            $ signAndSubmit sbmt wallet
+            $ \address -> do
+                key <- toJSON request
+                value <- toJSON ()
+                requestInsert address tokenId
+                    $ RequestInsertBody{key = key, value = value}
+        pure $ valid $> r
 
 unregisterUser
     :: Submitting
     -> Wallet
     -> TokenId
     -> RegisterUserKey
-    -> ClientM TxHash
+    -> ClientM (AValidationResult UnregisterUserFailure TxHash)
 unregisterUser
     sbmt
     wallet
     tokenId
-    request = fmap txHash
-        $ signAndSubmit sbmt wallet
-        $ \address -> do
-            valid <-
-                validateUnregisterUser (mkValidation tokenId)
-                    $ Change (Key request) (Delete ())
-            throwNotValid $ withValidationResult renderUnregisterUserFailure valid
-            key <- toJSON request
-            value <- toJSON ()
-            requestDelete address tokenId
-                $ RequestDeleteBody{key = key, value = value}
+    request = do
+        valid <-
+            validateUnregisterUser (mkValidation tokenId)
+                $ Change (Key request) (Delete ())
+        r <- fmap txHash
+            $ signAndSubmit sbmt wallet
+            $ \address -> do
+                key <- toJSON request
+                value <- toJSON ()
+                requestDelete address tokenId
+                    $ RequestDeleteBody{key = key, value = value}
+        pure $ valid $> r
 
 registerRole
     :: Submitting
     -> Wallet
     -> TokenId
     -> RegisterRoleKey
-    -> ClientM TxHash
+    -> ClientM (AValidationResult RegisterRoleFailure TxHash)
 registerRole
     sbmt
     wallet
     tokenId
-    request = fmap txHash
-        $ signAndSubmit sbmt wallet
-        $ \address -> do
-            valid <-
-                validateRegisterRole (mkValidation tokenId)
-                    $ Change (Key request) (Insert ())
-            throwNotValid $ withValidationResult renderRegisterRoleFailure valid
-            key <- toJSON request
-            value <- toJSON ()
-            requestInsert address tokenId
-                $ RequestInsertBody{key = key, value = value}
+    request = do
+        valid <-
+            validateRegisterRole (mkValidation tokenId)
+                $ Change (Key request) (Insert ())
+        r <- fmap txHash
+            $ signAndSubmit sbmt wallet
+            $ \address -> do
+                key <- toJSON request
+                value <- toJSON ()
+                requestInsert address tokenId
+                    $ RequestInsertBody{key = key, value = value}
+        pure $ valid $> r
 
 unregisterRole
     :: Submitting
     -> Wallet
     -> TokenId
     -> RegisterRoleKey
-    -> ClientM TxHash
+    -> ClientM (AValidationResult UnregisterRoleFailure TxHash)
 unregisterRole
     sbmt
     wallet
     tokenId
-    request = fmap txHash
-        $ signAndSubmit sbmt wallet
-        $ \address -> do
-            valid <-
-                validateUnregisterRole (mkValidation tokenId)
-                    $ Change (Key request) (Delete ())
-            throwNotValid $ withValidationResult renderUnregisterRoleFailure valid
-            key <- toJSON request
-            value <- toJSON ()
-            requestDelete address tokenId
-                $ RequestDeleteBody{key = key, value = value}
+    request = do
+        valid <-
+            validateUnregisterRole (mkValidation tokenId)
+                $ Change (Key request) (Delete ())
+        r <- fmap txHash
+            $ signAndSubmit sbmt wallet
+            $ \address -> do
+                key <- toJSON request
+                value <- toJSON ()
+                requestDelete address tokenId
+                    $ RequestDeleteBody{key = key, value = value}
+        pure $ valid $> r

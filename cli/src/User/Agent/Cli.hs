@@ -18,7 +18,7 @@ import Core.Types.Fact (Fact (..), keyHash, parseFacts)
 import Core.Types.Operation (Op (..), Operation (..))
 import Core.Types.Tx (WithTxHash (..))
 import Core.Types.Wallet (Wallet (..))
-import Data.Functor ((<&>))
+import Data.Functor (($>), (<&>))
 import Data.List (find)
 import MPFS.API
     ( RequestUpdateBody (..)
@@ -27,14 +27,12 @@ import MPFS.API
     )
 import Oracle.Validate.Requests.TestRun.Update
     ( UpdateTestRunFailure
-    , renderUpdateTestRunFailure
     , validateToDoneUpdate
     , validateToRunningUpdate
     )
 import Oracle.Validate.Types
-    ( ValidationResult
-    , throwNotValid
-    , withValidationResult
+    ( AValidationResult
+    , ValidationResult
     )
 import Servant.Client (ClientM)
 import Submitting (Submitting, signAndSubmit)
@@ -150,18 +148,33 @@ data AgentCommand (phase :: IsReady) result where
     Accept
         :: ResolveId phase
         -> IfReady phase (TestRunState PendingT)
-        -> AgentCommand phase (WithTxHash (TestRunState RunningT))
+        -> AgentCommand
+            phase
+            ( AValidationResult
+                UpdateTestRunFailure
+                (WithTxHash (TestRunState RunningT))
+            )
     Reject
         :: ResolveId phase
         -> IfReady phase (TestRunState PendingT)
         -> [TestRunRejection]
-        -> AgentCommand phase (WithTxHash (TestRunState DoneT))
+        -> AgentCommand
+            phase
+            ( AValidationResult
+                UpdateTestRunFailure
+                (WithTxHash (TestRunState DoneT))
+            )
     Report
         :: ResolveId phase
         -> IfReady phase (TestRunState RunningT)
         -> Duration
         -> URL
-        -> AgentCommand phase (WithTxHash (TestRunState DoneT))
+        -> AgentCommand
+            phase
+            ( AValidationResult
+                UpdateTestRunFailure
+                (WithTxHash (TestRunState DoneT))
+            )
     Query :: AgentCommand phase TestRunMap
 
 deriving instance Show (AgentCommand NotReady result)
@@ -213,7 +226,7 @@ signAndSubmitAnUpdate
     -> key
     -> old
     -> new
-    -> ClientM (WithTxHash new)
+    -> ClientM (AValidationResult UpdateTestRunFailure (WithTxHash new))
 signAndSubmitAnUpdate sbmt wallet validate tokenId agentId testRun oldState newState = do
     valid <-
         validate
@@ -222,14 +235,13 @@ signAndSubmitAnUpdate sbmt wallet validate tokenId agentId testRun oldState newS
             (owner wallet)
             $ Change (Key testRun)
             $ Update oldState newState
-    throwNotValid $ withValidationResult renderUpdateTestRunFailure valid
     WithTxHash txHash _ <- signAndSubmit sbmt wallet $ \address -> do
         key <- toJSON testRun
         oldValue <- toJSON oldState
         newValue <- toJSON newState
         requestUpdate address tokenId
             $ RequestUpdateBody{key, oldValue, newValue}
-    pure $ WithTxHash txHash $ Just newState
+    pure $ valid $> WithTxHash txHash (Just newState)
 
 reportCommand
     :: Submitting
@@ -240,7 +252,11 @@ reportCommand
     -> TestRunState RunningT
     -> Duration
     -> URL
-    -> ClientM (WithTxHash (TestRunState DoneT))
+    -> ClientM
+        ( AValidationResult
+            UpdateTestRunFailure
+            (WithTxHash (TestRunState DoneT))
+        )
 reportCommand sbmt wallet tokenId agentId testRun oldState duration url =
     signAndSubmitAnUpdate
         sbmt
@@ -260,7 +276,11 @@ rejectCommand
     -> TestRun
     -> TestRunState PendingT
     -> [TestRunRejection]
-    -> ClientM (WithTxHash (TestRunState DoneT))
+    -> ClientM
+        ( AValidationResult
+            UpdateTestRunFailure
+            (WithTxHash (TestRunState DoneT))
+        )
 rejectCommand sbmt wallet tokenId agentId testRun testRunState reason =
     signAndSubmitAnUpdate
         sbmt
@@ -279,7 +299,11 @@ acceptCommand
     -> Owner
     -> TestRun
     -> TestRunState PendingT
-    -> ClientM (WithTxHash (TestRunState RunningT))
+    -> ClientM
+        ( AValidationResult
+            UpdateTestRunFailure
+            (WithTxHash (TestRunState RunningT))
+        )
 acceptCommand sbmt wallet tokenId agentId testRun testRunState =
     signAndSubmitAnUpdate
         sbmt

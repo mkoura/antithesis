@@ -7,19 +7,23 @@ module Oracle.Validate.Requests.RegisterUser
     , renderUnregisterUserFailure
     ) where
 
+import Control.Monad (void)
 import Control.Monad.Trans.Class (lift)
 import Core.Types.Basic
     ( Platform (..)
     )
 import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Operation (Op (..))
+import Lib.JSON (object, (.=))
 import Oracle.Validate.Types
-    ( ValidationResult
+    ( Validated (..)
+    , ValidationResult
     , mapFailure
     , notValidated
     , runValidate
     , throwJusts
     )
+import Text.JSON.Canonical (ToJSON (..))
 import User.Types
     ( RegisterUserKey (..)
     )
@@ -40,6 +44,15 @@ data RegisterUserFailure
     | RegisterUserPlatformNotSupported String
     | RegisterUserKeyFailure KeyFailure
     deriving (Show, Eq)
+
+instance Monad m => ToJSON m RegisterUserFailure where
+    toJSON = \case
+        PublicKeyValidationFailure reason ->
+            object ["publicKeyValidationFailure" .= renderPublicKeyFailure reason]
+        RegisterUserPlatformNotSupported platform ->
+            object ["registerUserPlatformNotSupported" .= platform]
+        RegisterUserKeyFailure keyFailure ->
+            object ["registerUserKeyFailure" .= renderKeyFailure keyFailure]
 
 renderRegisterUserFailure :: RegisterUserFailure -> String
 renderRegisterUserFailure = \case
@@ -72,6 +85,15 @@ data UnregisterUserFailure
     | PublicKeyIsPresentOnPlatform -- issue 19300550b3b776dde1b08059780f617e182f067f
     deriving (Show, Eq)
 
+instance Monad m => ToJSON m UnregisterUserFailure where
+    toJSON = \case
+        UnregisterUserPlatformNotSupported platform ->
+            object ["unregisterUserPlatformNotSupported" .= platform]
+        UnregisterUserKeyFailure keyFailure ->
+            object ["unregisterUserKeyFailure" .= renderKeyFailure keyFailure]
+        PublicKeyIsPresentOnPlatform ->
+            object ["publicKeyIsPresentOnPlatform" .= ()]
+
 renderUnregisterUserFailure :: UnregisterUserFailure -> String
 renderUnregisterUserFailure = \case
     UnregisterUserPlatformNotSupported platform ->
@@ -90,8 +112,9 @@ validateUnregisterUser
     validation
     change@(Change (Key (RegisterUserKey{platform})) _v) =
         runValidate $ do
-            mapFailure UnregisterUserKeyFailure
+            void
+                $ mapFailure UnregisterUserKeyFailure
                 $ deleteValidation validation change
             case platform of
-                Platform "github" -> pure () -- issue 19300550b3b776dde1b08059780f617e182f067f
+                Platform "github" -> pure Validated -- issue 19300550b3b776dde1b08059780f617e182f067f
                 Platform other -> notValidated $ UnregisterUserPlatformNotSupported other

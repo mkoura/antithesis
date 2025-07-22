@@ -192,6 +192,21 @@ data RequestValidationFailure
     | UpdateTestRunFailure UpdateTestRunFailure
     deriving (Eq, Show)
 
+instance Monad m => ToJSON m RequestValidationFailure where
+    toJSON = \case
+        RegisterUserFailure failure ->
+            object ["RegisterUserFailure" .= failure]
+        UnregisterUserFailure failure ->
+            object ["UnregisterUserFailure" .= failure]
+        RegisterRoleFailure failure ->
+            object ["RegisterRoleFailure" .= failure]
+        UnregisterRoleFailure failure ->
+            object ["UnregisterRoleFailure" .= failure]
+        CreateTestRunFailure failure ->
+            object ["CreateTestRunFailure" .= failure]
+        UpdateTestRunFailure failure ->
+            object ["UpdateTestRunFailure" .= failure]
+
 renderRequestValidationFailure
     :: RequestValidationFailure -> String
 renderRequestValidationFailure = \case

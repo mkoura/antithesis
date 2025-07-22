@@ -28,7 +28,7 @@ import Core.Types.Operation (Op (..))
 import Data.Maybe (mapMaybe)
 import Lib.GitHub qualified as GitHub
 import MPFS.API (getTokenFacts)
-import Oracle.Validate.Types (Validate, notValidated)
+import Oracle.Validate.Types (Validate, Validated (..), notValidated)
 import Servant.Client (ClientM)
 import Text.JSON.Canonical (FromJSON (..))
 import User.Types (TestRun)
@@ -108,13 +108,14 @@ deleteValidation
      . (Monad m, FromJSON Maybe k, Eq k, Show k, FromJSON Maybe v)
     => Validation m
     -> Change k (OpD v)
-    -> Validate KeyFailure m ()
+    -> Validate KeyFailure m Validated
 deleteValidation Validation{mpfsGetFacts} (Change (Key k) _) = do
     facts :: [Fact k v] <- lift mpfsGetFacts
     when (not $ any (\(Fact k' _) -> k' == k) facts)
         $ notValidated
         $ KeyDoesNotExist
         $ show k
+    pure Validated
 
 updateValidation
     :: forall m k v w

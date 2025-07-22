@@ -16,12 +16,15 @@ import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Operation
     ( Op (..)
     )
+import Lib.JSON (object, (.=))
 import Oracle.Validate.Types
-    ( ValidationResult
+    ( Validated (..)
+    , ValidationResult
     , mapFailure
     , notValidated
     , runValidate
     )
+import Text.JSON.Canonical (ToJSON (..))
 import User.Types
     ( RegisterRoleKey (..)
     )
@@ -42,6 +45,16 @@ data RegisterRoleFailure
     | RegisterRolePlatformNotSupported String
     | RegisterRoleKeyFailure KeyFailure
     deriving (Eq, Show)
+
+instance Monad m => ToJSON m RegisterRoleFailure where
+    toJSON = \case
+        RoleNotPresentOnPlatform reason ->
+            object
+                ["roleNotPresentOnPlatform" .= renderRepositoryRoleFailure reason]
+        RegisterRolePlatformNotSupported platform ->
+            object ["registerRolePlatformNotSupported" .= platform]
+        RegisterRoleKeyFailure keyFailure ->
+            object ["registerRoleKeyFailure" .= renderKeyFailure keyFailure]
 
 renderRegisterRoleFailure :: RegisterRoleFailure -> String
 renderRegisterRoleFailure = \case
@@ -68,13 +81,22 @@ validateRegisterRole
         validationRes <- lift $ githubRepositoryRole username repository
         case validationRes of
             Just failure -> notValidated $ RoleNotPresentOnPlatform failure
-            Nothing -> pure ()
+            Nothing -> pure Validated
 
 data UnregisterRoleFailure
     = UnregisterRolePlatformNotSupported String
     | UnregisterRoleKeyFailure KeyFailure
     | RoleIsPresentOnPlatform -- issue 1b6d49bb5fc6b7e4fcd8ab22436294a118451cb3
     deriving (Show, Eq)
+
+instance Monad m => ToJSON m UnregisterRoleFailure where
+    toJSON = \case
+        UnregisterRolePlatformNotSupported platform ->
+            object ["unregisterRolePlatformNotSupported" .= platform]
+        UnregisterRoleKeyFailure keyFailure ->
+            object ["unregisterRoleKeyFailure" .= renderKeyFailure keyFailure]
+        RoleIsPresentOnPlatform ->
+            object ["roleIsPresentOnPlatform" .= ()]
 
 renderUnregisterRoleFailure :: UnregisterRoleFailure -> String
 renderUnregisterRoleFailure = \case

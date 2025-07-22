@@ -72,6 +72,7 @@ common warnings
     MultiParamTypeClasses
     NamedFieldPuns
     OverloadedStrings
+    PatternSynonyms
     RankNTypes
     RecordWildCards
     ScopedTypeVariables
@@ -267,6 +268,7 @@ test-suite anti-test
     , aeson
     , anti
     , anti:test-lib
+    , async
     , base
     , base16-bytestring
     , bytestring
@@ -287,6 +289,7 @@ test-suite anti-test
     , process
     , QuickCheck
     , servant-client
+    , streaming
     , text
 
   build-tool-depends: hspec-discover:hspec-discover

@@ -1,20 +1,26 @@
 module Main (main) where
 
+import App (Result (..))
 import App qualified as Anti
 import Data.ByteString.Lazy.Char8 qualified as BL
-import Lib.JSON
+import Lib.JSON (object, (.=))
 import Text.JSON.Canonical (renderCanonicalJSON)
 
 main :: IO ()
 main = do
-    (_, walletFile, mpsHost, e) <- Anti.client
-    case e of
-        Left err -> error $ "Error connecting to mpfs server: " ++ show err
-        Right result -> do
-            output <-
-                object
-                    [ "walletFile" .= walletFile
-                    , "mpfsHost" .= mpsHost
-                    , "result" .= result
-                    ]
+    clientResult <- Anti.client
+    case clientResult of
+        Success _ walletFile mpsHost e -> do
+            output <- do
+                let fs =
+                        [ "walletFile" .= walletFile
+                        , "mpfsHost" .= mpsHost
+                        ]
+                            <> case e of
+                                Left err -> ["error" .= show err]
+                                Right result -> ["result" .= result]
+                object fs
+            BL.putStrLn $ renderCanonicalJSON output
+        Failure ex -> do
+            output <- object ["error" .= show ex]
             BL.putStrLn $ renderCanonicalJSON output

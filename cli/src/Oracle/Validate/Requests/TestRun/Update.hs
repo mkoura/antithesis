@@ -15,14 +15,16 @@ import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Fact (Fact (..))
 import Core.Types.Operation (Op (..), Operation (..))
 import Data.Foldable (for_)
+import Lib.JSON
 import Oracle.Validate.Types
     ( Validate
+    , Validated (..)
     , ValidationResult
     , mapFailure
     , notValidated
     , runValidate
     )
-import Text.JSON.Canonical (FromJSON)
+import Text.JSON.Canonical (FromJSON (..), ToJSON (..))
 import User.Types
     ( Phase (..)
     , TestRun (..)
@@ -43,6 +45,15 @@ data UpdateTestRunFailure
     | UpdateTestRunAgentRejection AgentRejection
     | UpdateTestRunRequestNotFromAgent Owner
     deriving (Show, Eq)
+
+instance Monad m => ToJSON m UpdateTestRunFailure where
+    toJSON = \case
+        UpdateTestRunKeyFailure keyFailure ->
+            object ["updateTestRunKeyFailure" .= renderKeyFailure keyFailure]
+        UpdateTestRunAgentRejection rejection ->
+            object ["updateTestRunAgentRejection" .= show rejection]
+        UpdateTestRunRequestNotFromAgent owner ->
+            object ["updateTestRunRequestNotFromAgent" .= show owner]
 
 renderUpdateTestRunFailure :: UpdateTestRunFailure -> String
 renderUpdateTestRunFailure = \case
@@ -67,11 +78,12 @@ checkingUpdates
     :: Monad m
     => Operation (OpU x b)
     -> (b -> m (Maybe AgentRejection))
-    -> Validate UpdateTestRunFailure m ()
+    -> Validate UpdateTestRunFailure m Validated
 checkingUpdates operation f = case operation of
     Update _ newState -> do
         result <- lift $ f newState
         for_ result $ notValidated . UpdateTestRunAgentRejection
+        pure Validated
 
 validateToDoneUpdate
     :: (Monad m, FromJSON Maybe x)

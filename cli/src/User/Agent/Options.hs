@@ -23,6 +23,8 @@ import Options.Applicative
     , short
     , str
     )
+import Oracle.Validate.Requests.TestRun.Update (UpdateTestRunFailure)
+import Oracle.Validate.Types (AValidationResult)
 import User.Agent.Cli
     ( AgentCommand (..)
     , IsReady (NotReady)
@@ -83,7 +85,14 @@ testRunIdOption =
             )
 
 acceptTestOptions
-    :: Parser (AgentCommand NotReady (WithTxHash (TestRunState RunningT)))
+    :: Parser
+        ( AgentCommand
+            NotReady
+            ( AValidationResult
+                UpdateTestRunFailure
+                (WithTxHash (TestRunState RunningT))
+            )
+        )
 acceptTestOptions =
     Accept <$> testRunIdOption <*> pure ()
 
@@ -99,14 +108,28 @@ testRejectionParser =
     readReason _ = Left "Unknown reason for rejection"
 
 rejectTestOptions
-    :: Parser (AgentCommand NotReady (WithTxHash (TestRunState DoneT)))
+    :: Parser
+        ( AgentCommand
+            NotReady
+            ( AValidationResult
+                UpdateTestRunFailure
+                (WithTxHash (TestRunState DoneT))
+            )
+        )
 rejectTestOptions = do
     testRunId <- testRunIdOption
     reason <- many testRejectionParser
     pure $ Reject testRunId () reason
 
 reportTestOptions
-    :: Parser (AgentCommand NotReady (WithTxHash (TestRunState DoneT)))
+    :: Parser
+        ( AgentCommand
+            NotReady
+            ( AValidationResult
+                UpdateTestRunFailure
+                (WithTxHash (TestRunState DoneT))
+            )
+        )
 reportTestOptions = do
     testRunId <- testRunIdOption
     duration <-

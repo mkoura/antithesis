@@ -17,13 +17,14 @@ import Core.Types.Operation (Op (..), Operation (..))
 import Crypto.PubKey.Ed25519 qualified as Ed25519
 import Data.ByteString.Lazy qualified as BL
 import Data.Maybe (catMaybes, mapMaybe)
-import Lib.JSON (stringJSON)
+import Lib.JSON (object, stringJSON, (.=))
 import Lib.SSH.Public (decodePublicKey)
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig (..)
     )
 import Oracle.Validate.Types
     ( Validate
+    , Validated (..)
     , ValidationResult
     , mapFailure
     , notValidated
@@ -56,6 +57,12 @@ data CreateTestRunFailure
     = CreateTestRunRejections [TestRunRejection]
     | CreateTestRunKeyFailure KeyFailure
     deriving (Eq, Show)
+
+instance Monad m => ToJSON m CreateTestRunFailure where
+    toJSON (CreateTestRunRejections rejections) =
+        object ["createTestRunRejections" .= rejections]
+    toJSON (CreateTestRunKeyFailure keyFailure) =
+        object ["createTestRunKeyFailure" .= renderKeyFailure keyFailure]
 
 renderCreateTestRunFailure :: CreateTestRunFailure -> String
 renderCreateTestRunFailure (CreateTestRunRejections rejections) =
@@ -224,7 +231,7 @@ validateCreateTestRunCore
     -> Validation m
     -> TestRun
     -> TestRunState PendingT
-    -> Validate [TestRunRejection] m ()
+    -> Validate [TestRunRejection] m Validated
 validateCreateTestRunCore
     config
     validation
@@ -243,3 +250,4 @@ validateCreateTestRunCore
                         ]
         unless (null result)
             $ notValidated result
+        pure Validated

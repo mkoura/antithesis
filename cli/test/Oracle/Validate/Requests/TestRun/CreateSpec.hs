@@ -38,7 +38,9 @@ import Oracle.Validate.Requests.TestRun.Lib
     , testRunEGen
     )
 import Oracle.Validate.Types
-    ( ValidationResult
+    ( AValidationResult (ValidationFailure, ValidationSuccess)
+    , Validated (..)
+    , ValidationResult
     , runValidate
     )
 import Test.Hspec
@@ -78,14 +80,14 @@ import User.Types
 
 shouldHaveReason
     :: (Show a, Eq a) => ValidationResult [a] -> a -> IO ()
-shouldHaveReason (Right ()) _ = pure ()
-shouldHaveReason (Left reasons) reason =
+shouldHaveReason (ValidationSuccess _) _ = pure ()
+shouldHaveReason (ValidationFailure reasons) reason =
     reasons `shouldContain` [reason]
 
 shouldNotHaveReason
     :: (Show a, Eq a) => ValidationResult [a] -> a -> IO ()
-shouldNotHaveReason (Right ()) _ = pure ()
-shouldNotHaveReason (Left reasons) reason =
+shouldNotHaveReason (ValidationSuccess _) _ = pure ()
+shouldNotHaveReason (ValidationFailure reasons) reason =
     reasons `shouldNotContain` [reason]
 
 onConditionHaveReason
@@ -137,7 +139,7 @@ spec = do
                             validation
                             testRun
                             testRunState
-                mresult `shouldBe` Right ()
+                mresult `shouldBe` ValidationSuccess Validated
 
         it "reports unaccaptable duration" $ egenProperty $ do
             duration <- genShrinkA

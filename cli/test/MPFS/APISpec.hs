@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module MPFS.APISpec (spec)
 where
@@ -79,6 +80,11 @@ import Oracle.Cli (OracleCommand (OracleTokenCommand), oracleCmd)
 import Oracle.Token.Cli
     ( TokenCommand (..)
     , tokenCmdCore
+    )
+import Oracle.Validate.Types
+    ( AValidationResult
+    , pattern ValidationFailure
+    , pattern ValidationSuccess
     )
 import PlutusTx (Data, fromData)
 import Servant.Client (ClientM, mkClientEnv, parseBaseUrl, runClientM)
@@ -246,6 +252,9 @@ retractTx wait180 wallet obj = do
                 RequestRefId
                     $ textOf obj <> "-0"
             }
+failValidationFailure :: Show e => AValidationResult e a -> a
+failValidationFailure (ValidationFailure e) = error $ show e
+failValidationFailure (ValidationSuccess a) = a
 
 spec :: SpecWith ()
 spec = do
@@ -348,7 +357,7 @@ spec = do
                 $ \(Context{mpfs = Call call, wait180, tokenId}) -> do
                     wallet <- loadRequesterWallet
                     call $ do
-                        insert <-
+                        (failValidationFailure -> insert) <-
                             requesterCmd wait180 wallet undefined tokenId undefined
                                 $ RegisterUser
                                 $ RegisterUserKey
@@ -375,7 +384,7 @@ spec = do
                                 }
                     keyJ <- toJSON key
                     call $ do
-                        insertTx <-
+                        (failValidationFailure -> insertTx) <-
                             requesterCmd wait180 requester undefined tokenId undefined
                                 $ RegisterUser key
                         _updateInsertTx <-
@@ -399,7 +408,7 @@ spec = do
                                     , ("value", JSNull)
                                     ]
                                 ]
-                        deleteTx <-
+                        (failValidationFailure -> deleteTx) <-
                             requesterCmd wait180 requester undefined tokenId undefined
                                 $ UnregisterUser key
                         _updateDeleteTx <-

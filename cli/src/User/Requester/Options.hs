@@ -25,6 +25,16 @@ import Options.Applicative
     , info
     , progDesc
     )
+import Oracle.Validate.Requests.RegisterRole
+    ( RegisterRoleFailure
+    , UnregisterRoleFailure
+    )
+import Oracle.Validate.Requests.RegisterUser
+    ( RegisterUserFailure
+    , UnregisterUserFailure
+    )
+import Oracle.Validate.Requests.TestRun.Create (CreateTestRunFailure)
+import Oracle.Validate.Types (AValidationResult)
 import User.Requester.Cli (RequesterCommand (..))
 import User.Types
     ( Phase (PendingT)
@@ -34,7 +44,9 @@ import User.Types
     , TestRunState
     )
 
-addPublicKeyOptions :: Parser (RequesterCommand TxHash)
+addPublicKeyOptions
+    :: Parser
+        (RequesterCommand (AValidationResult RegisterUserFailure TxHash))
 addPublicKeyOptions =
     RegisterUser
         <$> ( RegisterUserKey
@@ -43,7 +55,9 @@ addPublicKeyOptions =
                 <*> pubkeyhashOption
             )
 
-removePublicKeyOptions :: Parser (RequesterCommand TxHash)
+removePublicKeyOptions
+    :: Parser
+        (RequesterCommand (AValidationResult UnregisterUserFailure TxHash))
 removePublicKeyOptions =
     UnregisterUser
         <$> ( RegisterUserKey
@@ -52,7 +66,9 @@ removePublicKeyOptions =
                 <*> pubkeyhashOption
             )
 
-addRoleOptions :: Parser (RequesterCommand TxHash)
+addRoleOptions
+    :: Parser
+        (RequesterCommand (AValidationResult RegisterRoleFailure TxHash))
 addRoleOptions =
     RegisterRole
         <$> ( RegisterRoleKey
@@ -61,7 +77,9 @@ addRoleOptions =
                 <*> usernameOption
             )
 
-removeRoleOptions :: Parser (RequesterCommand TxHash)
+removeRoleOptions
+    :: Parser
+        (RequesterCommand (AValidationResult UnregisterRoleFailure TxHash))
 removeRoleOptions =
     UnregisterRole
         <$> ( RegisterRoleKey
@@ -106,7 +124,13 @@ requesterCommandParser =
         )
 
 requestTestOptions
-    :: Parser (RequesterCommand (WithTxHash (TestRunState PendingT)))
+    :: Parser
+        ( RequesterCommand
+            ( AValidationResult
+                CreateTestRunFailure
+                (WithTxHash (TestRunState PendingT))
+            )
+        )
 requestTestOptions =
     RequestTest
         <$> ( TestRun

@@ -10,14 +10,12 @@ module Oracle.Validate.Requests.RegisterRole
 import Control.Monad (when)
 import Control.Monad.Trans.Class (lift)
 import Core.Types.Basic
-    ( Username (..)
+    ( Platform (..)
     )
 import Core.Types.Change (Change (..), Key (..))
-import Core.Types.Fact (Fact (..))
 import Core.Types.Operation
     ( Op (..)
     )
-import Data.List (find)
 import Oracle.Validate.Types
     ( ValidationResult
     , mapFailure
@@ -26,7 +24,6 @@ import Oracle.Validate.Types
     )
 import User.Types
     ( RegisterRoleKey (..)
-    , RegisterUserKey (..)
     )
 import Validation
     ( KeyFailure
@@ -44,7 +41,6 @@ data RegisterRoleFailure
     = RoleNotPresentOnPlatform RepositoryRoleFailure
     | RegisterRolePlatformNotSupported String
     | RegisterRoleKeyFailure KeyFailure
-    | RegisterRoleUserNotRegistered Username
     deriving (Eq, Show)
 
 renderRegisterRoleFailure :: RegisterRoleFailure -> String
@@ -55,8 +51,6 @@ renderRegisterRoleFailure = \case
         "RegisterRole platform not supported: " ++ platform
     RegisterRoleKeyFailure keyFailure ->
         "RegisterRole key failure: " ++ renderKeyFailure keyFailure
-    RegisterRoleUserNotRegistered (Username user) ->
-        "RegisterRole user not registered: " ++ user
 
 validateRegisterRole
     :: Monad m
@@ -64,17 +58,13 @@ validateRegisterRole
     -> Change RegisterRoleKey (OpI ())
     -> m (ValidationResult RegisterRoleFailure)
 validateRegisterRole
-    validation@Validation{mpfsGetFacts, githubRepositoryRole}
+    validation@Validation{githubRepositoryRole}
     change@(Change (Key k) _) = runValidate $ do
         mapFailure RegisterRoleKeyFailure $ insertValidation validation change
-        facts <- lift mpfsGetFacts
-        let RegisterRoleKey platform repository username = k
-            registration = flip find facts
-                $ \(Fact (RegisterUserKey platform' username' _) ()) ->
-                    platform' == platform && username' == username
-        when (null registration)
+        let RegisterRoleKey (Platform platform) repository username = k
+        when (platform /= "github")
             $ notValidated
-            $ RegisterRoleUserNotRegistered username
+            $ RegisterRolePlatformNotSupported platform
         validationRes <- lift $ githubRepositoryRole username repository
         case validationRes of
             Just failure -> notValidated $ RoleNotPresentOnPlatform failure

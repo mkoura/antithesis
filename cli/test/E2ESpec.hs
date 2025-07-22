@@ -21,5 +21,7 @@ spec = do
         describe "should prove that the system" $ do
             it "can run a real world scenario"
                 $ runScenario "realWorld.sh"
+            it "can retract a request"
+                $ runScenario "retractions.sh"
             xit "can validate a user registration and his role"
                 $ runScenario "validateUserRegAddRole.sh"

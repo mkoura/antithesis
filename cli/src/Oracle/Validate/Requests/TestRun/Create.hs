@@ -4,6 +4,7 @@ module Oracle.Validate.Requests.TestRun.Create
     ( validateCreateTestRun
     , validateCreateTestRunCore
     , TestRunRejection (..)
+    , CreateTestRunFailure (..)
     ) where
 
 import Control.Monad (unless)
@@ -43,20 +44,26 @@ import User.Types
     , TestRunState (..)
     , roleOfATestRun
     )
-import Validation (Validation (..), insertValidation)
+import Validation (KeyFailure, Validation (..), insertValidation)
+
+data CreateTestRunFailure
+    = CreateTestRunRejections [TestRunRejection]
+    | CreateTestRunKeyFailure KeyFailure
+    deriving (Eq, Show)
 
 validateCreateTestRun
     :: Monad m
     => TestRunValidationConfig
     -> Validation m
     -> Change TestRun (OpI (TestRunState PendingT))
-    -> m (ValidationResult String)
+    -> m (ValidationResult CreateTestRunFailure)
 validateCreateTestRun
     testRunConfig
     validation
     change@(Change (Key testRun) (Insert testRunState)) = runValidate $ do
-        mapFailure show $ insertValidation validation change
-        mapFailure show
+        mapFailure CreateTestRunKeyFailure
+            $ insertValidation validation change
+        mapFailure CreateTestRunRejections
             $ validateCreateTestRunCore
                 testRunConfig
                 validation

@@ -50,7 +50,7 @@ validateRequest _ _ validation (UnregisterRoleRequest (Request refId _ change)) 
     (,) refId . withValidationResult UnregisterRoleFailure
         <$> validateUnregisterRole validation change
 validateRequest testRunConfig _ validation (CreateTestRequest (Request refId _ change)) =
-    (,) refId . withValidationResult GenericFailure
+    (,) refId . withValidationResult CreateTestRunFailure
         <$> validateCreateTestRun testRunConfig validation change
 validateRequest _ antiOwner validation (RejectRequest (Request refId owner change)) =
     (,) refId . withValidationResult GenericFailure

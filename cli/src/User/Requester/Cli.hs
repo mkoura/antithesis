@@ -105,7 +105,7 @@ createCommand sbmt wallet testRunConfig tokenId sign testRun duration = do
     valid <-
         validateCreateTestRun testRunConfig (mkValidation tokenId)
             $ Change (Key testRun) (Insert newState)
-    throwNotValid valid
+    throwNotValid $ withValidationResult show valid
     value <- toJSON newState
     WithTxHash txHash _ <- signAndSubmit sbmt wallet $ \address -> do
         requestInsert address tokenId

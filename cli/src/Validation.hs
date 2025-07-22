@@ -3,6 +3,7 @@
 {-# HLINT ignore "Use unless" #-}
 module Validation
     ( Validation (..)
+    , KeyFailure (..)
     , mkValidation
     , insertValidation
     , deleteValidation
@@ -35,7 +36,7 @@ import Validation.RegisterRole
     , inspectRepoRoleForUser
     )
 import Validation.RegisterUser
-    ( PublicKeyValidation
+    ( PublicKeyFailure
     , inspectPublicKey
     )
 
@@ -51,7 +52,7 @@ data Validation m = Validation
     , githubUserPublicKeys
         :: Username
         -> PublicKeyHash
-        -> m PublicKeyValidation
+        -> m (Maybe PublicKeyFailure)
     , githubRepositoryRole
         :: Username
         -> Repository

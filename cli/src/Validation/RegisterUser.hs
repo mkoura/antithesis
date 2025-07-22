@@ -1,7 +1,7 @@
 {-# LANGUAGE StrictData #-}
 
 module Validation.RegisterUser
-    ( PublicKeyValidation (..)
+    ( PublicKeyFailure (..)
     , inspectPublicKeyTemplate
     , inspectPublicKey
     , emitPublicKeyMsg
@@ -14,16 +14,14 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Lib.GitHub (githubUserPublicKeys)
 
-data PublicKeyValidation
-    = PublicKeyValidated
-    | NoPublicKeyFound
+data PublicKeyFailure
+    = NoPublicKeyFound
     | NoEd25519KeyFound
     | NoEd25519KeyMatch
     deriving (Eq, Show)
 
-emitPublicKeyMsg :: PublicKeyValidation -> String
+emitPublicKeyMsg :: PublicKeyFailure -> String
 emitPublicKeyMsg = \case
-    PublicKeyValidated -> "Public key of the user validated in Github."
     NoPublicKeyFound -> "The user does not have any public key exposed in Github."
     NoEd25519KeyFound ->
         "The user is expected to have public key with '"
@@ -38,14 +36,14 @@ expectedPrefix = "ssh-ed25519 "
 analyzePublicKeyResponse
     :: PublicKeyHash
     -> [Text]
-    -> PublicKeyValidation
+    -> Maybe PublicKeyFailure
 analyzePublicKeyResponse (PublicKeyHash pubkeyToValidate) = cond
   where
     cond resp
-        | null resp = NoPublicKeyFound
-        | not (any hasExpectedPrefix resp) = NoEd25519KeyFound
-        | hasNotTheKey resp = NoEd25519KeyMatch
-        | otherwise = PublicKeyValidated
+        | null resp = Just NoPublicKeyFound
+        | not (any hasExpectedPrefix resp) = Just NoEd25519KeyFound
+        | hasNotTheKey resp = Just NoEd25519KeyMatch
+        | otherwise = Nothing
 
     hasExpectedPrefix = T.isPrefixOf expectedPrefix
     hasNotTheKey =
@@ -56,7 +54,7 @@ inspectPublicKeyTemplate
     :: Username
     -> PublicKeyHash
     -> (Username -> IO [Text])
-    -> IO PublicKeyValidation
+    -> IO (Maybe PublicKeyFailure)
 inspectPublicKeyTemplate username pubKeyExpected requestPublicKeysForUser = do
     resp <- requestPublicKeysForUser username
     pure $ analyzePublicKeyResponse pubKeyExpected resp
@@ -64,7 +62,7 @@ inspectPublicKeyTemplate username pubKeyExpected requestPublicKeysForUser = do
 inspectPublicKey
     :: Username
     -> PublicKeyHash
-    -> IO PublicKeyValidation
+    -> IO (Maybe PublicKeyFailure)
 inspectPublicKey username pubKeyExpected =
     inspectPublicKeyTemplate
         username

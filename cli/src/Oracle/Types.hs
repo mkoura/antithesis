@@ -6,6 +6,7 @@ module Oracle.Types
     , TokenState (..)
     , RequestZoo (..)
     , requestId
+    , RequestValidationFailure (..)
     ) where
 
 import Control.Applicative (Alternative, (<|>))
@@ -14,6 +15,7 @@ import Core.Types.Change (Change (..))
 import Core.Types.Operation (Op (..), Operation (..))
 import Core.Types.Tx (Root)
 import Lib.JSON (object, withObject, (.:), (.=))
+import Oracle.Validate.Requests.RegisterUser (RegisterUserFailure)
 import Text.JSON.Canonical
     ( FromJSON (..)
     , ReportSchemaErrors
@@ -160,3 +162,8 @@ instance
                 , tokenState = state
                 , tokenRequests = requests
                 }
+
+data RequestValidationFailure
+    = GenericFailure String
+    | RegisterUserFailure RegisterUserFailure
+    deriving (Eq, Show)

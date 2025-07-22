@@ -22,7 +22,7 @@ import Validation.RegisterRole
     , inspectRepoRoleForUserTemplate
     )
 import Validation.RegisterUser
-    ( PublicKeyValidation (..)
+    ( PublicKeyFailure (..)
     , inspectPublicKeyTemplate
     )
 
@@ -37,7 +37,7 @@ spec = do
                 user
                 pubkey
                 emptyPubKeyOfUser
-        `shouldReturn` NoPublicKeyFound
+        `shouldReturn` Just NoPublicKeyFound
 
     it "user needs to have ssh-ed25519 public key exposed"
         $ do
@@ -49,7 +49,7 @@ spec = do
                 user
                 pubkey
                 nonEd25519PubKeyOfUser
-        `shouldReturn` NoEd25519KeyFound
+        `shouldReturn` Just NoEd25519KeyFound
 
     it "user needs to the expected ssh-ed25519 public key exposed"
         $ do
@@ -61,7 +61,7 @@ spec = do
                 user
                 pubkey
                 noExpectedEd25519PubKeyOfUser
-        `shouldReturn` NoEd25519KeyMatch
+        `shouldReturn` Just NoEd25519KeyMatch
 
     it "user needs gets the expected ssh-ed25519 public key exposed 1"
         $ do
@@ -73,7 +73,7 @@ spec = do
                 user
                 pubkey
                 okExpectedEd25519PubKeyOfUser
-        `shouldReturn` PublicKeyValidated
+        `shouldReturn` Nothing
 
     it "user needs gets the expected ssh-ed25519 public key exposed 1"
         $ do
@@ -87,7 +87,7 @@ spec = do
                 user
                 pubkey
                 okExpectedEd25519PubKeyOfUser
-        `shouldReturn` PublicKeyValidated
+        `shouldReturn` Nothing
 
     it "should download CODEOWNERS file from repo with main" $ do
         githubGetCodeOwnersFile

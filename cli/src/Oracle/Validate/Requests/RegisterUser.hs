@@ -1,9 +1,10 @@
 module Oracle.Validate.Requests.RegisterUser
     ( validateRegisterUser
     , validateUnregisterUser
+    , RegisterUserFailure (..)
     ) where
 
-import Control.Monad (unless, when)
+import Control.Monad (when)
 import Control.Monad.Trans.Class (lift)
 import Core.Types.Basic
     ( Platform (..)
@@ -14,40 +15,43 @@ import Core.Types.Operation (Op (..))
 import Data.List (find)
 import Oracle.Validate.Types
     ( ValidationResult
-    , cannotValidate
     , mapFailure
     , notValidated
     , runValidate
+    , throwJusts
     )
 import User.Types
     ( RegisterUserKey (..)
     )
 import Validation
-    ( Validation (..)
+    ( KeyFailure
+    , Validation (..)
     , deleteValidation
     , insertValidation
     )
 import Validation.RegisterUser qualified as Github
 
+data RegisterUserFailure
+    = PublicKeyValidationFailure Github.PublicKeyFailure
+    | RegisterUserPlatformNotSupported String
+    | RegisterUserKeyFailure KeyFailure
+    deriving (Show, Eq)
+
 validateRegisterUser
     :: Monad m
     => Validation m
     -> Change RegisterUserKey (OpI ())
-    -> m (ValidationResult String)
+    -> m (ValidationResult RegisterUserFailure)
 validateRegisterUser
     validation@Validation{githubUserPublicKeys}
-    change@(Change k _v) = runValidate $ do
-        mapFailure show $ insertValidation validation change
-        case k of
-            Key (RegisterUserKey{platform, username, pubkeyhash}) ->
-                case platform of
-                    Platform "github" -> do
-                        validationRes <- lift $ githubUserPublicKeys username pubkeyhash
-                        unless (validationRes == Github.PublicKeyValidated)
-                            $ notValidated (Github.emitPublicKeyMsg validationRes)
-                    Platform _other ->
-                        cannotValidate
-                            "expecting github platform as we are validating only this at this moment"
+    change@(Change (Key (RegisterUserKey{platform, username, pubkeyhash})) _) =
+        runValidate $ do
+            mapFailure RegisterUserKeyFailure $ insertValidation validation change
+            case platform of
+                Platform "github" -> do
+                    validationRes <- lift $ githubUserPublicKeys username pubkeyhash
+                    mapFailure PublicKeyValidationFailure $ throwJusts validationRes
+                Platform other -> notValidated $ RegisterUserPlatformNotSupported other
 
 validateUnregisterUser
     :: Monad m

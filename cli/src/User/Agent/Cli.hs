@@ -30,8 +30,7 @@ import Oracle.Validate.Requests.TestRun.Others
     , validateToRunningUpdate
     )
 import Oracle.Validate.Types
-    ( ValidationFailure (..)
-    , ValidationResult
+    ( ValidationResult
     , throwNotValid
     )
 import Servant.Client (ClientM)

@@ -87,7 +87,7 @@ import User.Types
     )
 import Validation (Validation (..))
 import Validation.RegisterRole (RepoRoleValidation (..))
-import Validation.RegisterUser (PublicKeyValidation (..))
+import Validation.RegisterUser (PublicKeyFailure (..))
 
 jsFactRole :: Monad m => TestRun -> m JSFact
 jsFactRole testRun =
@@ -131,8 +131,8 @@ mkValidation fs rs ds upk rr =
         , githubUserPublicKeys = \username publicKey ->
             return
                 $ if (username, publicKey) `elem` upk
-                    then PublicKeyValidated
-                    else NoEd25519KeyMatch
+                    then Nothing
+                    else Just NoEd25519KeyMatch
         , githubRepositoryRole = \username repository ->
             return
                 $ if (username, repository) `elem` rr

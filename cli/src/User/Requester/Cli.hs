@@ -5,6 +5,7 @@ module User.Requester.Cli
     , RequesterCommand (..)
     ) where
 
+import Control.Arrow (left)
 import Core.Types.Basic (Duration, TokenId)
 import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Operation (Operation (..))
@@ -128,7 +129,7 @@ registerUser
             valid <-
                 validateRegisterUser (mkValidation tokenId)
                     $ Change (Key request) (Insert ())
-            throwNotValid valid
+            throwNotValid $ left (fmap show) valid
             key <- toJSON request
             value <- toJSON ()
             requestInsert address tokenId

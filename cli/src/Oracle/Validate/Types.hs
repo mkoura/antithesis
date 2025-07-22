@@ -1,20 +1,74 @@
+{-# LANGUAGE DeriveFunctor #-}
+
 module Oracle.Validate.Types
-    ( ValidationResult (..)
+    ( ValidationResult
+    , AValidationResult
+    , Validate (..)
+    , ValidationFailure (..)
+    , runValidate
+    , notValidated
+    , cannotValidate
+    , mapFailure
+    , throwNotValid
     ) where
 
+import Control.Exception (Exception)
+import Control.Monad.Trans.Class (MonadTrans)
+import Control.Monad.Trans.Except
+    ( ExceptT (..)
+    , runExceptT
+    , throwE
+    , withExceptT
+    )
+import Data.Typeable (Typeable)
 import Lib.JSON
     ( stringJSON
     )
 import Text.JSON.Canonical.Class (ToJSON (..))
 
-data ValidationResult
-    = Validated
-    | NotValidated String
+data ValidationFailure e
+    = NotValidated e
     | CannotValidate String
-    deriving (Eq, Show)
+    deriving (Eq, Show, Functor)
 
-instance Monad m => ToJSON m ValidationResult where
+instance (Typeable e, Show e) => Exception (ValidationFailure e)
+
+newtype Validate e m a = Validate
+    { _runValidate :: ExceptT (ValidationFailure e) m a
+    }
+    deriving (Functor, Applicative, Monad)
+
+deriving instance MonadTrans (Validate e)
+
+type AValidationResult e a = Either (ValidationFailure e) a
+
+type ValidationResult e = AValidationResult e ()
+
+notValidated :: Monad m => e -> Validate e m a
+notValidated reason = Validate $ throwE $ NotValidated reason
+
+cannotValidate :: Monad m => String -> Validate e m a
+cannotValidate reason = Validate $ throwE $ CannotValidate reason
+
+runValidate :: Validate e m a -> m (AValidationResult e a)
+runValidate (Validate action) = runExceptT action
+
+throwNotValid :: Applicative m => AValidationResult String a -> m a
+throwNotValid (Left (NotValidated reason)) = error $ "Validation failed: " ++ reason
+throwNotValid (Left (CannotValidate reason)) = error $ "Cannot validate: " ++ reason
+throwNotValid (Right result) = pure result
+
+mapFailure
+    :: Functor m => (e -> e') -> Validate e m a -> Validate e' m a
+mapFailure f (Validate action) = Validate $ withExceptT (fmap f) action
+instance (Monad m, Show e) => ToJSON m (ValidationResult e) where
     toJSON = \case
-        Validated -> stringJSON "validated"
-        NotValidated reason -> stringJSON $ "not validated: " <> reason
-        CannotValidate reason -> stringJSON $ "cannot validate: " <> reason
+        Right () -> stringJSON "validated"
+        Left (NotValidated reason) ->
+            stringJSON
+                $ "not validated: "
+                    <> show reason
+        Left (CannotValidate reason) ->
+            stringJSON
+                $ "cannot validate: "
+                    <> reason

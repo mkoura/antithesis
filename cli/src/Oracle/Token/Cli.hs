@@ -16,8 +16,7 @@ import MPFS.API
     )
 import Oracle.Types (Token (..), requestId)
 import Oracle.Validate.Request
-    ( ValidationResult (..)
-    , validateRequest
+    ( validateRequest
     )
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig
@@ -71,7 +70,7 @@ tokenCmdCore sbmt wallet (Just tk) testRunConfig pkh = \case
                                     pkh
                                     (mkValidation tk)
                                     r
-                        if validationResult == Validated
+                        if validationResult == Right ()
                             then pure ()
                             else
                                 error

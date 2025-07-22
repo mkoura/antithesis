@@ -20,12 +20,12 @@ import MPFS.API
     )
 import Oracle.Types (Token (..))
 import Oracle.Validate.Request
-    ( ValidationResult
-    , validateRequest
+    ( validateRequest
     )
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig
     )
+import Oracle.Validate.Types (ValidationResult)
 import Servant.Client (ClientM)
 import Text.JSON.Canonical
     ( FromJSON (..)
@@ -65,7 +65,8 @@ validateCmd testRunConfig pkh validation tk command = do
                     >>= uncurry mkResult
     toJSON rus
 
-mkResult :: Monad m => RequestRefId -> ValidationResult -> m JSValue
+mkResult
+    :: Monad m => RequestRefId -> ValidationResult String -> m JSValue
 mkResult (RequestRefId ref) validation =
     mkObject
         [ (toJSString "reference", stringJSON $ T.unpack ref)

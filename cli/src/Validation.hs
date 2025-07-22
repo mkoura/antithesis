@@ -1,3 +1,6 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
+{-# HLINT ignore "Use unless" #-}
 module Validation
     ( Validation (..)
     , mkValidation
@@ -6,7 +9,9 @@ module Validation
     , updateValidation
     ) where
 
+import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO (..))
+import Control.Monad.Trans.Class (lift)
 import Core.Types.Basic
     ( Commit
     , Directory
@@ -21,7 +26,7 @@ import Core.Types.Operation (Op (..))
 import Data.Maybe (mapMaybe)
 import Lib.GitHub qualified as GitHub
 import MPFS.API (getTokenFacts)
-import Oracle.Validate.Types (ValidationResult (..))
+import Oracle.Validate.Types (Validate, notValidated)
 import Servant.Client (ClientM)
 import Text.JSON.Canonical (FromJSON (..))
 import User.Types (TestRun)
@@ -69,6 +74,10 @@ mkValidation tk =
         , githubRepositoryRole = \username repository ->
             liftIO $ inspectRepoRoleForUser username repository
         }
+data KeyFailure
+    = KeyAlreadyExists String
+    | KeyDoesNotExist String
+    deriving (Show, Eq)
 
 -- | Validate a change just as an mpf change.
 -- * Insert should have a fresh key
@@ -79,33 +88,36 @@ insertValidation
      . (Monad m, FromJSON Maybe k, Eq k, Show k, FromJSON Maybe v)
     => Validation m
     -> Change k (OpI v)
-    -> m ValidationResult
+    -> Validate KeyFailure m ()
 insertValidation Validation{mpfsGetFacts} (Change (Key k) _) = do
-    facts :: [Fact k v] <- mpfsGetFacts
-    if any (\(Fact k' _) -> k' == k) facts
-        then pure $ NotValidated $ "key already exists: " <> show k
-        else pure Validated
+    facts :: [Fact k v] <- lift mpfsGetFacts
+    when (any (\(Fact k' _) -> k' == k) facts)
+        $ notValidated
+        $ KeyAlreadyExists
+        $ show k
 
 deleteValidation
     :: forall m k v
      . (Monad m, FromJSON Maybe k, Eq k, Show k, FromJSON Maybe v)
     => Validation m
     -> Change k (OpD v)
-    -> m ValidationResult
+    -> Validate KeyFailure m ()
 deleteValidation Validation{mpfsGetFacts} (Change (Key k) _) = do
-    facts :: [Fact k v] <- mpfsGetFacts
-    if any (\(Fact k' _) -> k' == k) facts
-        then pure Validated
-        else pure $ NotValidated $ "key does not exist: " <> show k
+    facts :: [Fact k v] <- lift mpfsGetFacts
+    when (not $ any (\(Fact k' _) -> k' == k) facts)
+        $ notValidated
+        $ KeyDoesNotExist
+        $ show k
 
 updateValidation
     :: forall m k v w
      . (Monad m, FromJSON Maybe k, Eq k, Show k, FromJSON Maybe v)
     => Validation m
     -> Change k (OpU v w)
-    -> m ValidationResult
+    -> Validate KeyFailure m ()
 updateValidation Validation{mpfsGetFacts} (Change (Key k) _) = do
-    facts :: [Fact k v] <- mpfsGetFacts
-    if any (\(Fact k' _) -> k' == k) facts
-        then pure Validated
-        else pure $ NotValidated $ "key does not exist: " <> show k
+    facts :: [Fact k v] <- lift mpfsGetFacts
+    when (not $ any (\(Fact k' _) -> k' == k) facts)
+        $ notValidated
+        $ KeyDoesNotExist
+        $ show k

@@ -6,6 +6,8 @@ module Oracle.Validate.Requests.TestRun.Create
     , TestRunRejection (..)
     ) where
 
+import Control.Monad (unless)
+import Control.Monad.Trans.Class (lift)
 import Core.Types.Basic (Duration (..), Try (..))
 import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Fact (Fact (..))
@@ -18,7 +20,13 @@ import Lib.SSH.Public (decodePublicKey)
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig (..)
     )
-import Oracle.Validate.Types (ValidationResult (..))
+import Oracle.Validate.Types
+    ( Validate
+    , ValidationResult
+    , mapFailure
+    , notValidated
+    , runValidate
+    )
 import Text.JSON.Canonical
     ( FromJSON (..)
     , JSValue (..)
@@ -42,29 +50,18 @@ validateCreateTestRun
     => TestRunValidationConfig
     -> Validation m
     -> Change TestRun (OpI (TestRunState PendingT))
-    -> m ValidationResult
+    -> m (ValidationResult String)
 validateCreateTestRun
     testRunConfig
     validation
-    change@(Change (Key testRun) (Insert testRunState)) = do
-        insertionValidation <- insertValidation validation change
-        if insertionValidation /= Validated
-            then pure insertionValidation
-            else do
-                result <-
-                    validateCreateTestRunCore
-                        testRunConfig
-                        validation
-                        testRun
-                        testRunState
-                case result of
-                    Nothing -> pure Validated
-                    Just rejections ->
-                        pure
-                            $ NotValidated
-                            $ "test run validation failed for the following reasons: "
-                                <> unwords (fmap show rejections)
-
+    change@(Change (Key testRun) (Insert testRunState)) = runValidate $ do
+        mapFailure show $ insertValidation validation change
+        mapFailure show
+            $ validateCreateTestRunCore
+                testRunConfig
+                validation
+                testRun
+                testRunState
 data TestRunRejection
     = UnacceptableDuration
     | UnacceptableCommit
@@ -206,23 +203,22 @@ validateCreateTestRunCore
     -> Validation m
     -> TestRun
     -> TestRunState PendingT
-    -> m (Maybe [TestRunRejection])
+    -> Validate [TestRunRejection] m ()
 validateCreateTestRunCore
     config
     validation
     testRun
     (Pending duration signature) = do
         result <-
-            catMaybes
-                <$> sequence
-                    [ pure $ checkDuration config duration
-                    , checkRole validation testRun
-                    , checkTryIndex validation testRun
-                    , checkCommit validation testRun
-                    , checkDirectory validation testRun
-                    , checkSignature validation testRun signature
-                    ]
-
-        case result of
-            [] -> return Nothing
-            reasons -> return $ Just reasons
+            lift
+                $ catMaybes
+                    <$> sequence
+                        [ pure $ checkDuration config duration
+                        , checkRole validation testRun
+                        , checkTryIndex validation testRun
+                        , checkCommit validation testRun
+                        , checkDirectory validation testRun
+                        , checkSignature validation testRun signature
+                        ]
+        unless (null result)
+            $ notValidated result

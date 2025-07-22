@@ -5,6 +5,8 @@ module Oracle.Validate.Requests.RegisterRole
     , validateUnregisterRole
     ) where
 
+import Control.Monad (unless, when)
+import Control.Monad.Trans.Class (lift)
 import Core.Types.Basic
     ( Platform (..)
     , Repository (..)
@@ -16,7 +18,12 @@ import Core.Types.Operation
     ( Op (..)
     )
 import Data.List (find)
-import Oracle.Validate.Types (ValidationResult (..))
+import Oracle.Validate.Types
+    ( ValidationResult
+    , mapFailure
+    , notValidated
+    , runValidate
+    )
 import User.Types
     ( RegisterRoleKey (..)
     , RegisterUserKey (..)
@@ -32,67 +39,52 @@ validateRegisterRole
     :: Monad m
     => Validation m
     -> Change RegisterRoleKey (OpI ())
-    -> m ValidationResult
+    -> m (ValidationResult String)
 validateRegisterRole
     validation@Validation{mpfsGetFacts, githubRepositoryRole}
-    change@(Change (Key k) _) = do
-        insertionValidation <- insertValidation validation change
-        if insertionValidation /= Validated
-            then pure insertionValidation
+    change@(Change (Key k) _) = runValidate $ do
+        mapFailure show $ insertValidation validation change
+        facts <- lift mpfsGetFacts
+        let RegisterRoleKey platform repository username = k
+            registration = flip find facts
+                $ \(Fact (RegisterUserKey platform' username' _) ()) ->
+                    platform' == platform && username' == username
+        if null registration
+            then
+                let Platform p = platform
+                    Repository o r = repository
+                    Username u = username
+                in  notValidated
+                        $ "no registration for platform '"
+                            <> show p
+                            <> "' and repository '"
+                            <> show r
+                            <> "' of owner '"
+                            <> show o
+                            <> "' and user '"
+                            <> show u
+                            <> "' found"
             else do
-                facts <- mpfsGetFacts
-                let RegisterRoleKey platform repository username = k
-                    registration = flip find facts
-                        $ \(Fact (RegisterUserKey platform' username' _) ()) ->
-                            platform' == platform && username' == username
-                if null registration
-                    then
-                        let Platform p = platform
-                            Repository o r = repository
-                            Username u = username
-                        in  pure
-                                $ NotValidated
-                                $ "no registration for platform '"
-                                    <> show p
-                                    <> "' and repository '"
-                                    <> show r
-                                    <> "' of owner '"
-                                    <> show o
-                                    <> "' and user '"
-                                    <> show u
-                                    <> "' found"
-                    else do
-                        validationRes <- githubRepositoryRole username repository
-                        pure
-                            $ if validationRes == Github.RepoRoleValidated
-                                then
-                                    Validated
-                                else
-                                    NotValidated
-                                        $ Github.emitRepoRoleMsg validationRes
+                validationRes <- lift $ githubRepositoryRole username repository
+                unless (validationRes == Github.RepoRoleValidated)
+                    $ notValidated
+                    $ Github.emitRepoRoleMsg validationRes
 
 validateUnregisterRole
     :: Monad m
     => Validation m
     -> Change RegisterRoleKey (OpD ())
-    -> m ValidationResult
+    -> m (ValidationResult String)
 validateUnregisterRole
     validation@Validation{mpfsGetFacts}
-    change@(Change (Key k) _) = do
-        deletionValidation <- deleteValidation validation change
-        if deletionValidation /= Validated
-            then pure deletionValidation
-            else do
-                facts <- mpfsGetFacts
-                let registration = find (\(Fact k' ()) -> k' == k) facts
-                pure
-                    $ if null registration
-                        then
-                            NotValidated
-                                $ "no registration of the 'antithesis' role for '"
-                                    <> show k.platform
-                                    <> "' platform and '"
-                                    <> show k.repository
-                                    <> "' repository found"
-                        else
-                            Validated
+    change@(Change (Key k) _) = runValidate $ do
+        mapFailure show $ deleteValidation validation change
+        facts <- lift mpfsGetFacts
+        let registration = find (\(Fact k' ()) -> k' == k) facts
+        when (null registration)
+            $ notValidated
+            $ "no registration of the 'antithesis' role for '"
+                <> show k.platform
+                <> "' platform and '"
+                <> show k.repository
+                <> "' repository found"

@@ -6,11 +6,19 @@ module Oracle.Validate.Requests.TestRun.Others
     , AgentRejection (..)
     ) where
 
+import Control.Monad (when)
+import Control.Monad.Trans.Class (lift)
 import Core.Types.Basic (Owner)
 import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Fact (Fact (..))
 import Core.Types.Operation (Op (..), Operation (..))
-import Oracle.Validate.Types (ValidationResult (..))
+import Oracle.Validate.Types
+    ( Validate
+    , ValidationResult
+    , mapFailure
+    , notValidated
+    , runValidate
+    )
 import Text.JSON.Canonical (FromJSON)
 import User.Types
     ( Phase (..)
@@ -26,26 +34,23 @@ checkingOwner
     :: Monad m
     => Owner
     -> Owner
-    -> m ValidationResult
-    -> m ValidationResult
-checkingOwner owner pkh f =
-    if owner /= pkh
-        then pure $ NotValidated "request not from agent"
-        else f
+    -> Validate String m ()
+checkingOwner owner pkh =
+    when (owner /= pkh)
+        $ notValidated "request not from agent"
 
 checkingUpdates
     :: (Monad m, Show a)
     => Operation (OpU x b)
     -> (b -> m (Maybe a))
-    -> m ValidationResult
+    -> Validate String m ()
 checkingUpdates operation f = case operation of
     Update _ newState -> do
-        result <- f newState
+        result <- lift $ f newState
         case result of
-            Nothing -> pure Validated
+            Nothing -> pure ()
             Just rejection ->
-                pure
-                    $ NotValidated
+                notValidated
                     $ "test run validation failed for the following reasons: "
                         <> show rejection
 
@@ -55,19 +60,16 @@ validateToDoneUpdate
     -> Validation m
     -> Owner
     -> Change TestRun (OpU x (TestRunState DoneT))
-    -> m ValidationResult
+    -> m (ValidationResult String)
 validateToDoneUpdate
     antiOwner
     validation
     owner
-    change@(Change (Key testRun) operation) = do
-        updatingValidation <- updateValidation validation change
-        if updatingValidation /= Validated
-            then pure updatingValidation
-            else
-                checkingOwner owner antiOwner
-                    $ checkingUpdates operation
-                    $ validateToDoneCore validation testRun
+    change@(Change (Key testRun) operation) = runValidate $ do
+        mapFailure show $ updateValidation validation change
+        checkingOwner owner antiOwner
+        checkingUpdates operation
+            $ validateToDoneCore validation testRun
 
 validateToDoneCore
     :: Monad m
@@ -99,19 +101,15 @@ validateToRunningUpdate
     -> Validation m
     -> Owner
     -> Change TestRun (OpU (TestRunState PendingT) (TestRunState RunningT))
-    -> m ValidationResult
+    -> m (ValidationResult String)
 validateToRunningUpdate
     antiOwner
     validation
     owner
-    change@(Change (Key testRun) operation) = do
-        updatingValidation <- updateValidation validation change
-        if updatingValidation /= Validated
-            then pure updatingValidation
-            else
-                checkingOwner owner antiOwner
-                    $ checkingUpdates operation
-                    $ validateToRunningCore validation testRun
+    change@(Change (Key testRun) operation) = runValidate $ do
+        mapFailure show $ updateValidation validation change
+        checkingOwner owner antiOwner
+        checkingUpdates operation $ validateToRunningCore validation testRun
 
 validateToRunningCore
     :: Monad m

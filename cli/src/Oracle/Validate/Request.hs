@@ -1,6 +1,5 @@
 module Oracle.Validate.Request
-    ( ValidationResult (..)
-    , validateRequest
+    ( validateRequest
     ) where
 
 import Core.Types.Basic
@@ -24,7 +23,7 @@ import Oracle.Validate.Requests.TestRun.Others
     ( validateToDoneUpdate
     , validateToRunningUpdate
     )
-import Oracle.Validate.Types (ValidationResult (..))
+import Oracle.Validate.Types (ValidationResult)
 import Servant.Client (ClientM)
 import Validation (Validation (..))
 
@@ -33,7 +32,7 @@ validateRequest
     -> Owner
     -> Validation ClientM
     -> RequestZoo
-    -> ClientM (RequestRefId, ValidationResult)
+    -> ClientM (RequestRefId, ValidationResult String)
 validateRequest _ _ validation (RegisterUserRequest (Request refId _ change)) =
     (,) refId <$> validateRegisterUser validation change
 validateRequest _ _ validation (UnregisterUserRequest (Request refId _ change)) =

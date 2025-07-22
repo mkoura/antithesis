@@ -37,6 +37,11 @@ import Oracle.Validate.Requests.TestRun.Lib
     , testConfigEGen
     , testRunEGen
     )
+import Oracle.Validate.Types
+    ( ValidationFailure (..)
+    , ValidationResult
+    , runValidate
+    )
 import Test.Hspec
     ( Spec
     , describe
@@ -72,18 +77,24 @@ import User.Types
     , tryIndexL
     )
 
-shouldHaveReason :: (Show a, Eq a) => Maybe [a] -> a -> IO ()
-shouldHaveReason Nothing _ = pure ()
-shouldHaveReason (Just reasons) reason =
+shouldHaveReason
+    :: (Show a, Eq a) => ValidationResult [a] -> a -> IO ()
+shouldHaveReason (Right ()) _ = pure ()
+shouldHaveReason (Left (NotValidated reasons)) reason =
     reasons `shouldContain` [reason]
+shouldHaveReason (Left (CannotValidate reason)) _ =
+    error $ "Cannot validate: " ++ reason
 
-shouldNotHaveReason :: (Show a, Eq a) => Maybe [a] -> a -> IO ()
-shouldNotHaveReason Nothing _ = pure ()
-shouldNotHaveReason (Just reasons) reason =
+shouldNotHaveReason
+    :: (Show a, Eq a) => ValidationResult [a] -> a -> IO ()
+shouldNotHaveReason (Right ()) _ = pure ()
+shouldNotHaveReason (Left (NotValidated reasons)) reason =
     reasons `shouldNotContain` [reason]
+shouldNotHaveReason (Left (CannotValidate reason)) _ =
+    error $ "Cannot validate: " ++ reason
 
 onConditionHaveReason
-    :: (Show a, Eq a) => Maybe [a] -> a -> Bool -> IO ()
+    :: (Show a, Eq a) => ValidationResult [a] -> a -> Bool -> IO ()
 onConditionHaveReason result reason = \case
     True -> shouldHaveReason result reason
     False -> shouldNotHaveReason result reason
@@ -125,12 +136,13 @@ spec = do
                     <$> signTestRun sign testRun
             pure $ do
                 mresult <-
-                    validateCreateTestRunCore
-                        testConfig
-                        validation
-                        testRun
-                        testRunState
-                mresult `shouldBe` Nothing
+                    runValidate
+                        $ validateCreateTestRunCore
+                            testConfig
+                            validation
+                            testRun
+                            testRunState
+                mresult `shouldBe` Right ()
 
         it "reports unaccaptable duration" $ egenProperty $ do
             duration <- genShrinkA
@@ -140,11 +152,12 @@ spec = do
             let testRunState = Pending (Duration duration) signature
             pure $ do
                 mresult <-
-                    validateCreateTestRunCore
-                        testConfig
-                        noValidation
-                        testRun
-                        testRunState
+                    runValidate
+                        $ validateCreateTestRunCore
+                            testConfig
+                            noValidation
+                            testRun
+                            testRunState
                 onConditionHaveReason mresult UnacceptableDuration
                     $ duration < minDuration testConfig
                         || duration > maxDuration testConfig
@@ -168,11 +181,12 @@ spec = do
                 testRunState = Pending (Duration duration) signature
             pure $ do
                 mresult <-
-                    validateCreateTestRunCore
-                        testConfig
-                        validation
-                        testRunRequest
-                        testRunState
+                    runValidate
+                        $ validateCreateTestRunCore
+                            testConfig
+                            validation
+                            testRunRequest
+                            testRunState
                 onConditionHaveReason mresult UnacceptableRole
                     $ testRunRequest.platform /= testRunFact.platform
                         || testRunRequest.repository.organization
@@ -239,11 +253,12 @@ spec = do
                 $ property
                 $ do
                     mresult <-
-                        validateCreateTestRunCore
-                            testConfig
-                            validation
-                            testRun
-                            testRunState
+                        runValidate
+                            $ validateCreateTestRunCore
+                                testConfig
+                                validation
+                                testRun
+                                testRunState
                     onConditionHaveReason mresult UnacceptableTryIndex
                         $ testRun.tryIndex /= testRunDB.tryIndex + 1
 
@@ -264,10 +279,11 @@ spec = do
                         []
             pure $ do
                 mresult <-
-                    validateCreateTestRunCore
-                        testConfig
-                        validation
-                        testRun
-                        testRunState
+                    runValidate
+                        $ validateCreateTestRunCore
+                            testConfig
+                            validation
+                            testRun
+                            testRunState
                 onConditionHaveReason mresult UnacceptableDirectory
                     $ testRun /= testRun'

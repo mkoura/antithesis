@@ -35,7 +35,7 @@ import User.Types
     , TestRunState (..)
     , roleOfATestRun
     )
-import Validation (Validation (..))
+import Validation (Validation (..), insertValidation)
 
 validateCreateTestRun
     :: Monad m
@@ -46,20 +46,24 @@ validateCreateTestRun
 validateCreateTestRun
     testRunConfig
     validation
-    (Change (Key testRun) (Insert testRunState)) = do
-        result <-
-            validateCreateTestRunCore
-                testRunConfig
-                validation
-                testRun
-                testRunState
-        case result of
-            Nothing -> pure Validated
-            Just rejections ->
-                pure
-                    $ NotValidated
-                    $ "test run validation failed for the following reasons: "
-                        <> unwords (fmap show rejections)
+    change@(Change (Key testRun) (Insert testRunState)) = do
+        insertionValidation <- insertValidation validation change
+        if insertionValidation /= Validated
+            then pure insertionValidation
+            else do
+                result <-
+                    validateCreateTestRunCore
+                        testRunConfig
+                        validation
+                        testRun
+                        testRunState
+                case result of
+                    Nothing -> pure Validated
+                    Just rejections ->
+                        pure
+                            $ NotValidated
+                            $ "test run validation failed for the following reasons: "
+                                <> unwords (fmap show rejections)
 
 data TestRunRejection
     = UnacceptableDuration

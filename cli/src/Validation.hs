@@ -1,6 +1,9 @@
 module Validation
     ( Validation (..)
     , mkValidation
+    , insertValidation
+    , deleteValidation
+    , updateValidation
     ) where
 
 import Control.Monad.IO.Class (MonadIO (..))
@@ -12,10 +15,13 @@ import Core.Types.Basic
     , TokenId
     , Username
     )
+import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Fact (Fact (..), JSFact, parseFacts)
+import Core.Types.Operation (Op (..))
 import Data.Maybe (mapMaybe)
 import Lib.GitHub qualified as GitHub
 import MPFS.API (getTokenFacts)
+import Oracle.Validate.Types (ValidationResult (..))
 import Servant.Client (ClientM)
 import Text.JSON.Canonical (FromJSON (..))
 import User.Types (TestRun)
@@ -63,3 +69,43 @@ mkValidation tk =
         , githubRepositoryRole = \username repository ->
             liftIO $ inspectRepoRoleForUser username repository
         }
+
+-- | Validate a change just as an mpf change.
+-- * Insert should have a fresh key
+-- * Update should have a key that exists
+-- * Delete should have a key that exists
+insertValidation
+    :: forall m k v
+     . (Monad m, FromJSON Maybe k, Eq k, Show k, FromJSON Maybe v)
+    => Validation m
+    -> Change k (OpI v)
+    -> m ValidationResult
+insertValidation Validation{mpfsGetFacts} (Change (Key k) _) = do
+    facts :: [Fact k v] <- mpfsGetFacts
+    if any (\(Fact k' _) -> k' == k) facts
+        then pure $ NotValidated $ "key already exists: " <> show k
+        else pure Validated
+
+deleteValidation
+    :: forall m k v
+     . (Monad m, FromJSON Maybe k, Eq k, Show k, FromJSON Maybe v)
+    => Validation m
+    -> Change k (OpD v)
+    -> m ValidationResult
+deleteValidation Validation{mpfsGetFacts} (Change (Key k) _) = do
+    facts :: [Fact k v] <- mpfsGetFacts
+    if any (\(Fact k' _) -> k' == k) facts
+        then pure Validated
+        else pure $ NotValidated $ "key does not exist: " <> show k
+
+updateValidation
+    :: forall m k v w
+     . (Monad m, FromJSON Maybe k, Eq k, Show k, FromJSON Maybe v)
+    => Validation m
+    -> Change k (OpU v w)
+    -> m ValidationResult
+updateValidation Validation{mpfsGetFacts} (Change (Key k) _) = do
+    facts :: [Fact k v] <- mpfsGetFacts
+    if any (\(Fact k' _) -> k' == k) facts
+        then pure Validated
+        else pure $ NotValidated $ "key does not exist: " <> show k

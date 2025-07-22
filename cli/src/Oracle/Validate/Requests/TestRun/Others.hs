@@ -17,7 +17,7 @@ import User.Types
     , TestRun (..)
     , TestRunState (..)
     )
-import Validation (Validation (..))
+import Validation (Validation (..), updateValidation)
 
 data AgentRejection = PreviousStateWrong
     deriving (Show, Eq)
@@ -50,7 +50,7 @@ checkingUpdates operation f = case operation of
                         <> show rejection
 
 validateToDoneUpdate
-    :: Monad m
+    :: (Monad m, FromJSON Maybe x)
     => Owner
     -> Validation m
     -> Owner
@@ -60,10 +60,14 @@ validateToDoneUpdate
     antiOwner
     validation
     owner
-    (Change (Key testRun) operation) = do
-        checkingOwner owner antiOwner
-            $ checkingUpdates operation
-            $ validateToDoneCore validation testRun
+    change@(Change (Key testRun) operation) = do
+        updatingValidation <- updateValidation validation change
+        if updatingValidation /= Validated
+            then pure updatingValidation
+            else
+                checkingOwner owner antiOwner
+                    $ checkingUpdates operation
+                    $ validateToDoneCore validation testRun
 
 validateToDoneCore
     :: Monad m
@@ -100,10 +104,14 @@ validateToRunningUpdate
     antiOwner
     validation
     owner
-    (Change (Key testRun) operation) = do
-        checkingOwner owner antiOwner
-            $ checkingUpdates operation
-            $ validateToRunningCore validation testRun
+    change@(Change (Key testRun) operation) = do
+        updatingValidation <- updateValidation validation change
+        if updatingValidation /= Validated
+            then pure updatingValidation
+            else
+                checkingOwner owner antiOwner
+                    $ checkingUpdates operation
+                    $ validateToRunningCore validation testRun
 
 validateToRunningCore
     :: Monad m

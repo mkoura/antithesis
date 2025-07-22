@@ -115,7 +115,7 @@ library
     Oracle.Validate.Requests.RegisterUser
     Oracle.Validate.Requests.TestRun.Config
     Oracle.Validate.Requests.TestRun.Create
-    Oracle.Validate.Requests.TestRun.Others
+    Oracle.Validate.Requests.TestRun.Update
     Oracle.Validate.Types
     Submitting
     User.Agent.Cli

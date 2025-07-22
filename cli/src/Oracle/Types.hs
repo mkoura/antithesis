@@ -26,6 +26,9 @@ import Oracle.Validate.Requests.RegisterUser
 import Oracle.Validate.Requests.TestRun.Create
     ( CreateTestRunFailure
     )
+import Oracle.Validate.Requests.TestRun.Update
+    ( UpdateTestRunFailure
+    )
 import Text.JSON.Canonical
     ( FromJSON (..)
     , ReportSchemaErrors
@@ -180,4 +183,5 @@ data RequestValidationFailure
     | RegisterRoleFailure RegisterRoleFailure
     | UnregisterRoleFailure UnregisterRoleFailure
     | CreateTestRunFailure CreateTestRunFailure
+    | UpdateTestRunFailure UpdateTestRunFailure
     deriving (Eq, Show)

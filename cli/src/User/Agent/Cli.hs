@@ -25,13 +25,15 @@ import MPFS.API
     , getTokenFacts
     , requestUpdate
     )
-import Oracle.Validate.Requests.TestRun.Others
-    ( validateToDoneUpdate
+import Oracle.Validate.Requests.TestRun.Update
+    ( UpdateTestRunFailure
+    , validateToDoneUpdate
     , validateToRunningUpdate
     )
 import Oracle.Validate.Types
     ( ValidationResult
     , throwNotValid
+    , withValidationResult
     )
 import Servant.Client (ClientM)
 import Submitting (Submitting, signAndSubmit)
@@ -203,7 +205,7 @@ signAndSubmitAnUpdate
          -> Validation ClientM
          -> Owner
          -> Change key (OpU old new)
-         -> ClientM (ValidationResult String)
+         -> ClientM (ValidationResult UpdateTestRunFailure)
        )
     -> TokenId
     -> Owner
@@ -219,7 +221,7 @@ signAndSubmitAnUpdate sbmt wallet validate tokenId agentId testRun oldState newS
             (owner wallet)
             $ Change (Key testRun)
             $ Update oldState newState
-    throwNotValid valid
+    throwNotValid $ withValidationResult show valid
     WithTxHash txHash _ <- signAndSubmit sbmt wallet $ \address -> do
         key <- toJSON testRun
         oldValue <- toJSON oldState

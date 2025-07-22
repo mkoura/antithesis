@@ -13,7 +13,7 @@ import Oracle.Validate.Requests.TestRun.Lib
     , signatureGen
     , testRunEGen
     )
-import Oracle.Validate.Requests.TestRun.Others
+import Oracle.Validate.Requests.TestRun.Update
     ( AgentRejection (..)
     , validateToRunningCore
     )

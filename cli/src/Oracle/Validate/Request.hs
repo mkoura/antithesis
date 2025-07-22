@@ -23,7 +23,7 @@ import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig
     )
 import Oracle.Validate.Requests.TestRun.Create (validateCreateTestRun)
-import Oracle.Validate.Requests.TestRun.Others
+import Oracle.Validate.Requests.TestRun.Update
     ( validateToDoneUpdate
     , validateToRunningUpdate
     )
@@ -53,11 +53,11 @@ validateRequest testRunConfig _ validation (CreateTestRequest (Request refId _ c
     (,) refId . withValidationResult CreateTestRunFailure
         <$> validateCreateTestRun testRunConfig validation change
 validateRequest _ antiOwner validation (RejectRequest (Request refId owner change)) =
-    (,) refId . withValidationResult GenericFailure
+    (,) refId . withValidationResult UpdateTestRunFailure
         <$> validateToDoneUpdate antiOwner validation owner change
 validateRequest _ antiOwner validation (AcceptRequest (Request refId owner change)) =
-    (,) refId . withValidationResult GenericFailure
+    (,) refId . withValidationResult UpdateTestRunFailure
         <$> validateToRunningUpdate antiOwner validation owner change
 validateRequest _ antiOwner validation (FinishedRequest (Request refId owner change)) =
-    (,) refId . withValidationResult GenericFailure
+    (,) refId . withValidationResult UpdateTestRunFailure
         <$> validateToDoneUpdate antiOwner validation owner change

@@ -38,8 +38,7 @@ import Oracle.Validate.Requests.TestRun.Lib
     , testRunEGen
     )
 import Oracle.Validate.Types
-    ( ValidationFailure (..)
-    , ValidationResult
+    ( ValidationResult
     , runValidate
     )
 import Test.Hspec
@@ -80,18 +79,14 @@ import User.Types
 shouldHaveReason
     :: (Show a, Eq a) => ValidationResult [a] -> a -> IO ()
 shouldHaveReason (Right ()) _ = pure ()
-shouldHaveReason (Left (NotValidated reasons)) reason =
+shouldHaveReason (Left reasons) reason =
     reasons `shouldContain` [reason]
-shouldHaveReason (Left (CannotValidate reason)) _ =
-    error $ "Cannot validate: " ++ reason
 
 shouldNotHaveReason
     :: (Show a, Eq a) => ValidationResult [a] -> a -> IO ()
 shouldNotHaveReason (Right ()) _ = pure ()
-shouldNotHaveReason (Left (NotValidated reasons)) reason =
+shouldNotHaveReason (Left reasons) reason =
     reasons `shouldNotContain` [reason]
-shouldNotHaveReason (Left (CannotValidate reason)) _ =
-    error $ "Cannot validate: " ++ reason
 
 onConditionHaveReason
     :: (Show a, Eq a) => ValidationResult [a] -> a -> Bool -> IO ()

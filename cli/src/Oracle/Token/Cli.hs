@@ -14,7 +14,11 @@ import MPFS.API
     , getToken
     , updateToken
     )
-import Oracle.Types (Token (..), requestId)
+import Oracle.Types
+    ( Token (..)
+    , renderRequestValidationFailure
+    , requestId
+    )
 import Oracle.Validate.Request
     ( validateRequest
     )
@@ -70,14 +74,15 @@ tokenCmdCore sbmt wallet (Just tk) testRunConfig pkh = \case
                                     pkh
                                     (mkValidation tk)
                                     r
-                        if validationResult == Right ()
-                            then pure ()
-                            else
+                        case validationResult of
+                            Right () -> pure ()
+                            Left validation ->
                                 error
                                     $ "RequestRefId "
                                         ++ show reqId
                                         ++ " validation failed: "
-                                        ++ show validationResult
+                                        ++ renderRequestValidationFailure
+                                            validation
                     updateToken address tk reqs
         pure txHash
     BootToken -> error "BootToken command requires no TokenId"

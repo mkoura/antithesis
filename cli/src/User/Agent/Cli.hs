@@ -27,6 +27,7 @@ import MPFS.API
     )
 import Oracle.Validate.Requests.TestRun.Update
     ( UpdateTestRunFailure
+    , renderUpdateTestRunFailure
     , validateToDoneUpdate
     , validateToRunningUpdate
     )
@@ -221,7 +222,7 @@ signAndSubmitAnUpdate sbmt wallet validate tokenId agentId testRun oldState newS
             (owner wallet)
             $ Change (Key testRun)
             $ Update oldState newState
-    throwNotValid $ withValidationResult show valid
+    throwNotValid $ withValidationResult renderUpdateTestRunFailure valid
     WithTxHash txHash _ <- signAndSubmit sbmt wallet $ \address -> do
         key <- toJSON testRun
         oldValue <- toJSON oldState

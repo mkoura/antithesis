@@ -8,6 +8,7 @@ module Validation
     , insertValidation
     , deleteValidation
     , updateValidation
+    , renderKeyFailure
     ) where
 
 import Control.Monad (when)
@@ -79,6 +80,11 @@ data KeyFailure
     = KeyAlreadyExists String
     | KeyDoesNotExist String
     deriving (Show, Eq)
+
+renderKeyFailure :: KeyFailure -> String
+renderKeyFailure = \case
+    KeyAlreadyExists key -> "Key already exists: " <> key
+    KeyDoesNotExist key -> "Key does not exist: " <> key
 
 -- | Validate a change just as an mpf change.
 -- * Insert should have a fresh key

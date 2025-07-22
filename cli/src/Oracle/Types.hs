@@ -7,6 +7,7 @@ module Oracle.Types
     , RequestZoo (..)
     , requestId
     , RequestValidationFailure (..)
+    , renderRequestValidationFailure
     ) where
 
 import Control.Applicative (Alternative, (<|>))
@@ -16,18 +17,24 @@ import Core.Types.Operation (Op (..), Operation (..))
 import Core.Types.Tx (Root)
 import Lib.JSON (object, withObject, (.:), (.=))
 import Oracle.Validate.Requests.RegisterRole
-    ( RegisterRoleFailure
-    , UnregisterRoleFailure
+    ( RegisterRoleFailure (..)
+    , UnregisterRoleFailure (..)
+    , renderRegisterRoleFailure
+    , renderUnregisterRoleFailure
     )
 import Oracle.Validate.Requests.RegisterUser
-    ( RegisterUserFailure
-    , UnregisterUserFailure
+    ( RegisterUserFailure (..)
+    , UnregisterUserFailure (..)
+    , renderRegisterUserFailure
+    , renderUnregisterUserFailure
     )
 import Oracle.Validate.Requests.TestRun.Create
-    ( CreateTestRunFailure
+    ( CreateTestRunFailure (..)
+    , renderCreateTestRunFailure
     )
 import Oracle.Validate.Requests.TestRun.Update
-    ( UpdateTestRunFailure
+    ( UpdateTestRunFailure (..)
+    , renderUpdateTestRunFailure
     )
 import Text.JSON.Canonical
     ( FromJSON (..)
@@ -177,11 +184,32 @@ instance
                 }
 
 data RequestValidationFailure
-    = GenericFailure String
-    | RegisterUserFailure RegisterUserFailure
+    = RegisterUserFailure RegisterUserFailure
     | UnregisterUserFailure UnregisterUserFailure
     | RegisterRoleFailure RegisterRoleFailure
     | UnregisterRoleFailure UnregisterRoleFailure
     | CreateTestRunFailure CreateTestRunFailure
     | UpdateTestRunFailure UpdateTestRunFailure
     deriving (Eq, Show)
+
+renderRequestValidationFailure
+    :: RequestValidationFailure -> String
+renderRequestValidationFailure = \case
+    RegisterUserFailure failure ->
+        "Register User Failure: "
+            ++ renderRegisterUserFailure failure
+    UnregisterUserFailure failure ->
+        "Unregister User Failure: "
+            ++ renderUnregisterUserFailure failure
+    RegisterRoleFailure failure ->
+        "Register Role Failure: "
+            ++ renderRegisterRoleFailure failure
+    UnregisterRoleFailure failure ->
+        "Unregister Role Failure: "
+            ++ renderUnregisterRoleFailure failure
+    CreateTestRunFailure failure ->
+        "Create Test Run Failure: "
+            ++ renderCreateTestRunFailure failure
+    UpdateTestRunFailure failure ->
+        "Update Test Run Failure: "
+            ++ renderUpdateTestRunFailure failure

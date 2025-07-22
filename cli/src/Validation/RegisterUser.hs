@@ -4,7 +4,7 @@ module Validation.RegisterUser
     ( PublicKeyFailure (..)
     , inspectPublicKeyTemplate
     , inspectPublicKey
-    , emitPublicKeyMsg
+    , renderPublicKeyFailure
     ) where
 
 import Core.Types.Basic (PublicKeyHash (..), Username)
@@ -20,8 +20,8 @@ data PublicKeyFailure
     | NoEd25519KeyMatch
     deriving (Eq, Show)
 
-emitPublicKeyMsg :: PublicKeyFailure -> String
-emitPublicKeyMsg = \case
+renderPublicKeyFailure :: PublicKeyFailure -> String
+renderPublicKeyFailure = \case
     NoPublicKeyFound -> "The user does not have any public key exposed in Github."
     NoEd25519KeyFound ->
         "The user is expected to have public key with '"

@@ -19,18 +19,23 @@ import MPFS.API
     , requestInsert
     )
 import Oracle.Validate.Requests.RegisterRole
-    ( validateRegisterRole
+    ( renderRegisterRoleFailure
+    , renderUnregisterRoleFailure
+    , validateRegisterRole
     , validateUnregisterRole
     )
 import Oracle.Validate.Requests.RegisterUser
-    ( validateRegisterUser
+    ( renderRegisterUserFailure
+    , renderUnregisterUserFailure
+    , validateRegisterUser
     , validateUnregisterUser
     )
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig
     )
 import Oracle.Validate.Requests.TestRun.Create
-    ( validateCreateTestRun
+    ( renderCreateTestRunFailure
+    , validateCreateTestRun
     )
 import Oracle.Validate.Types (throwNotValid, withValidationResult)
 import Servant.Client (ClientM)
@@ -105,7 +110,7 @@ createCommand sbmt wallet testRunConfig tokenId sign testRun duration = do
     valid <-
         validateCreateTestRun testRunConfig (mkValidation tokenId)
             $ Change (Key testRun) (Insert newState)
-    throwNotValid $ withValidationResult show valid
+    throwNotValid $ withValidationResult renderCreateTestRunFailure valid
     value <- toJSON newState
     WithTxHash txHash _ <- signAndSubmit sbmt wallet $ \address -> do
         requestInsert address tokenId
@@ -128,7 +133,7 @@ registerUser
             valid <-
                 validateRegisterUser (mkValidation tokenId)
                     $ Change (Key request) (Insert ())
-            throwNotValid $ withValidationResult show valid
+            throwNotValid $ withValidationResult renderRegisterUserFailure valid
             key <- toJSON request
             value <- toJSON ()
             requestInsert address tokenId
@@ -150,7 +155,7 @@ unregisterUser
             valid <-
                 validateUnregisterUser (mkValidation tokenId)
                     $ Change (Key request) (Delete ())
-            throwNotValid $ withValidationResult show valid
+            throwNotValid $ withValidationResult renderUnregisterUserFailure valid
             key <- toJSON request
             value <- toJSON ()
             requestDelete address tokenId
@@ -172,7 +177,7 @@ registerRole
             valid <-
                 validateRegisterRole (mkValidation tokenId)
                     $ Change (Key request) (Insert ())
-            throwNotValid $ withValidationResult show valid
+            throwNotValid $ withValidationResult renderRegisterRoleFailure valid
             key <- toJSON request
             value <- toJSON ()
             requestInsert address tokenId
@@ -194,7 +199,7 @@ unregisterRole
             valid <-
                 validateUnregisterRole (mkValidation tokenId)
                     $ Change (Key request) (Delete ())
-            throwNotValid $ withValidationResult show valid
+            throwNotValid $ withValidationResult renderUnregisterRoleFailure valid
             key <- toJSON request
             value <- toJSON ()
             requestDelete address tokenId

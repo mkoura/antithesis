@@ -5,6 +5,7 @@ module Oracle.Validate.Requests.TestRun.Create
     , validateCreateTestRunCore
     , TestRunRejection (..)
     , CreateTestRunFailure (..)
+    , renderCreateTestRunFailure
     ) where
 
 import Control.Monad (unless)
@@ -44,12 +45,25 @@ import User.Types
     , TestRunState (..)
     , roleOfATestRun
     )
-import Validation (KeyFailure, Validation (..), insertValidation)
+import Validation
+    ( KeyFailure
+    , Validation (..)
+    , insertValidation
+    , renderKeyFailure
+    )
 
 data CreateTestRunFailure
     = CreateTestRunRejections [TestRunRejection]
     | CreateTestRunKeyFailure KeyFailure
     deriving (Eq, Show)
+
+renderCreateTestRunFailure :: CreateTestRunFailure -> String
+renderCreateTestRunFailure (CreateTestRunRejections rejections) =
+    "CreateTestRun failed with rejections: "
+        ++ unwords (map show rejections)
+renderCreateTestRunFailure (CreateTestRunKeyFailure keyFailure) =
+    "CreateTestRun failed with key failure: "
+        ++ renderKeyFailure keyFailure
 
 validateCreateTestRun
     :: Monad m

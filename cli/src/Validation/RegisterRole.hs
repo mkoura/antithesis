@@ -5,7 +5,7 @@ module Validation.RegisterRole
     ( RepositoryRoleFailure (..)
     , inspectRepoRoleForUserTemplate
     , inspectRepoRoleForUser
-    , emitRepoRoleMsg
+    , renderRepositoryRoleFailure
     ) where
 
 import Core.Types.Basic (Repository, Username (..))
@@ -21,8 +21,8 @@ data RepositoryRoleFailure
     | NoUserInCodeowners
     deriving (Eq, Show)
 
-emitRepoRoleMsg :: RepositoryRoleFailure -> String
-emitRepoRoleMsg = \case
+renderRepositoryRoleFailure :: RepositoryRoleFailure -> String
+renderRepositoryRoleFailure = \case
     NoRoleEntryInCodeowners -> "CODEOWNERS in the repository does not contain the role entry."
     NoUsersAssignedToRoleInCodeowners ->
         "CODEOWNERS in the repository does not contain any users assigned to the role."

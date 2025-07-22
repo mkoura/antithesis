@@ -3,6 +3,8 @@ module Oracle.Validate.Requests.RegisterUser
     , validateUnregisterUser
     , RegisterUserFailure (..)
     , UnregisterUserFailure (..)
+    , renderRegisterUserFailure
+    , renderUnregisterUserFailure
     ) where
 
 import Control.Monad.Trans.Class (lift)
@@ -26,14 +28,27 @@ import Validation
     , Validation (..)
     , deleteValidation
     , insertValidation
+    , renderKeyFailure
     )
-import Validation.RegisterUser qualified as Github
+import Validation.RegisterUser
+    ( PublicKeyFailure
+    , renderPublicKeyFailure
+    )
 
 data RegisterUserFailure
-    = PublicKeyValidationFailure Github.PublicKeyFailure
+    = PublicKeyValidationFailure PublicKeyFailure
     | RegisterUserPlatformNotSupported String
     | RegisterUserKeyFailure KeyFailure
     deriving (Show, Eq)
+
+renderRegisterUserFailure :: RegisterUserFailure -> String
+renderRegisterUserFailure = \case
+    PublicKeyValidationFailure reason ->
+        "Public key validation failure: " ++ renderPublicKeyFailure reason
+    RegisterUserPlatformNotSupported platform ->
+        "RegisterUser platform not supported: " ++ platform
+    RegisterUserKeyFailure keyFailure ->
+        "RegisterUser key failure: " ++ renderKeyFailure keyFailure
 
 validateRegisterUser
     :: Monad m
@@ -56,6 +71,15 @@ data UnregisterUserFailure
     | UnregisterUserKeyFailure KeyFailure
     | PublicKeyIsPresentOnPlatform -- issue 19300550b3b776dde1b08059780f617e182f067f
     deriving (Show, Eq)
+
+renderUnregisterUserFailure :: UnregisterUserFailure -> String
+renderUnregisterUserFailure = \case
+    UnregisterUserPlatformNotSupported platform ->
+        "UnregisterUser platform not supported: " ++ platform
+    UnregisterUserKeyFailure keyFailure ->
+        "UnregisterUser key failure: " ++ renderKeyFailure keyFailure
+    PublicKeyIsPresentOnPlatform ->
+        "Public key is present on platform, cannot unregister user."
 
 validateUnregisterUser
     :: Monad m

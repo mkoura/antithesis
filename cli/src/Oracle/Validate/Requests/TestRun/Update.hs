@@ -5,6 +5,7 @@ module Oracle.Validate.Requests.TestRun.Update
     , validateToRunningUpdate
     , AgentRejection (..)
     , UpdateTestRunFailure (..)
+    , renderUpdateTestRunFailure
     ) where
 
 import Control.Monad (when)
@@ -27,7 +28,12 @@ import User.Types
     , TestRun (..)
     , TestRunState (..)
     )
-import Validation (KeyFailure, Validation (..), updateValidation)
+import Validation
+    ( KeyFailure
+    , Validation (..)
+    , renderKeyFailure
+    , updateValidation
+    )
 
 data AgentRejection = PreviousStateWrong
     deriving (Show, Eq)
@@ -38,6 +44,15 @@ data UpdateTestRunFailure
     | UpdateTestRunRequestNotFromAgent Owner
     deriving (Show, Eq)
 
+renderUpdateTestRunFailure :: UpdateTestRunFailure -> String
+renderUpdateTestRunFailure = \case
+    UpdateTestRunKeyFailure keyFailure ->
+        "Update Test Run Key Failure: " ++ renderKeyFailure keyFailure
+    UpdateTestRunAgentRejection rejection ->
+        "Update Test Run Agent Rejection: " ++ show rejection
+    UpdateTestRunRequestNotFromAgent owner ->
+        "Update Test Run Request Not From Agent: " ++ show owner
+
 checkingOwner
     :: Monad m
     => Owner
@@ -46,7 +61,7 @@ checkingOwner
 checkingOwner owner pkh =
     when (owner /= pkh)
         $ notValidated
-        $ UpdateTestRunRequestNotFromAgent pkh
+        $ UpdateTestRunRequestNotFromAgent owner
 
 checkingUpdates
     :: Monad m

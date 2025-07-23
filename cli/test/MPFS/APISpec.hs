@@ -33,6 +33,7 @@ import Control.Lens (to, (^.))
 import Control.Monad (void)
 import Control.Monad.Catch (SomeException, catch)
 import Control.Monad.IO.Class (MonadIO (..))
+import Core.Context (withContext)
 import Core.Types.Basic
     ( Owner (..)
     , Platform (..)
@@ -376,13 +377,13 @@ spec = do
                     wallet <- loadRequesterWallet
                     call $ do
                         (failValidationFailure -> insert) <-
-                            requesterCmd
+                            withContext
                                 mpfsClient
-                                (mkValidation tokenId)
+                                undefined
+                                wallet.owner
+                                mkValidation
                                 (wait180S wallet)
-                                undefined
-                                tokenId
-                                undefined
+                                $ requesterCmd tokenId undefined
                                 $ RegisterUser
                                 $ RegisterUserKey
                                     { platform = Platform "github"
@@ -409,13 +410,13 @@ spec = do
                     keyJ <- toJSON key
                     call $ do
                         (failValidationFailure -> insertTx) <-
-                            requesterCmd
+                            withContext
                                 mpfsClient
-                                (mkValidation tokenId)
+                                undefined
+                                requester.owner
+                                mkValidation
                                 (wait180S requester)
-                                undefined
-                                tokenId
-                                undefined
+                                $ requesterCmd tokenId undefined
                                 $ RegisterUser key
                         _updateInsertTx <-
                             oracleCmd
@@ -440,13 +441,13 @@ spec = do
                                     ]
                                 ]
                         (failValidationFailure -> deleteTx) <-
-                            requesterCmd
+                            withContext
                                 mpfsClient
-                                (mkValidation tokenId)
+                                undefined
+                                requester.owner
+                                mkValidation
                                 (wait180S requester)
-                                undefined
-                                tokenId
-                                undefined
+                                $ requesterCmd tokenId undefined
                                 $ UnregisterUser key
                         _updateDeleteTx <-
                             oracleCmd

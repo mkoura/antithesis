@@ -2,6 +2,7 @@
 
 module Core.Context
     ( WithContext
+    , Context (..)
     , withContext
     , askMpfs
     , askTestRunConfig
@@ -9,6 +10,7 @@ module Core.Context
     , askMkValidation
     , askSubmit
     , withMPFS
+    , context
     ) where
 
 import Control.Monad.Trans.Class (MonadTrans, lift)
@@ -36,6 +38,9 @@ newtype WithContext m a = WithContext
 
 instance MonadTrans WithContext where
     lift = WithContext . lift
+
+context :: Monad m => WithContext m (Context m)
+context = WithContext ask
 
 askMpfs :: Monad m => WithContext m (MPFS m)
 askMpfs = ctxMPFS <$> WithContext ask

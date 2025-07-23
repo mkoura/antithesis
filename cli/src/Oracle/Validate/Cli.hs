@@ -8,7 +8,7 @@ module Oracle.Validate.Cli
 
 import Control.Monad (forM)
 import Control.Monad.Trans.Except (runExceptT)
-import Core.Types.Basic (Owner, RequestRefId (..), TokenId)
+import Core.Types.Basic (Owner, RequestRefId (RequestRefId), TokenId)
 import Data.Functor ((<&>))
 import Data.Text qualified as T
 import Lib.JSON
@@ -18,14 +18,18 @@ import Lib.JSON
 import MPFS.API
     ( getToken
     )
-import Oracle.Types (RequestValidationFailure, Token (..))
+import Oracle.Types
+    ( RequestValidationFailure
+    , Token (..)
+    , requestZooRefId
+    )
 import Oracle.Validate.Request
     ( validateRequest
     )
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig
     )
-import Oracle.Validate.Types (ValidationResult)
+import Oracle.Validate.Types (ValidationResult, runValidate)
 import Servant.Client (ClientM)
 import Text.JSON.Canonical
     ( FromJSON (..)
@@ -61,8 +65,10 @@ validateCmd testRunConfig pkh validation tk command = do
                     Left e -> error $ "Failed to parse token: " ++ e
                     Right jsValue -> pure jsValue
             forM requests $ \request -> do
-                validateRequest testRunConfig pkh validation request
-                    >>= uncurry mkResult
+                valid <-
+                    runValidate
+                        $ validateRequest testRunConfig pkh validation request
+                mkResult (requestZooRefId request) valid
     toJSON rus
 
 mkResult

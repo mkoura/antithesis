@@ -5,7 +5,7 @@ module Oracle.Types
     , Token (..)
     , TokenState (..)
     , RequestZoo (..)
-    , requestId
+    , requestZooRefId
     , RequestValidationFailure (..)
     , renderRequestValidationFailure
     ) where
@@ -123,15 +123,15 @@ data RequestZoo where
         :: Request TestRun (OpU (TestRunState RunningT) (TestRunState DoneT))
         -> RequestZoo
 
-requestId :: RequestZoo -> RequestRefId
-requestId (RegisterUserRequest req) = outputRefId req
-requestId (UnregisterUserRequest req) = outputRefId req
-requestId (RegisterRoleRequest req) = outputRefId req
-requestId (UnregisterRoleRequest req) = outputRefId req
-requestId (CreateTestRequest req) = outputRefId req
-requestId (RejectRequest req) = outputRefId req
-requestId (AcceptRequest req) = outputRefId req
-requestId (FinishedRequest req) = outputRefId req
+requestZooRefId :: RequestZoo -> RequestRefId
+requestZooRefId (RegisterUserRequest req) = outputRefId req
+requestZooRefId (UnregisterUserRequest req) = outputRefId req
+requestZooRefId (RegisterRoleRequest req) = outputRefId req
+requestZooRefId (UnregisterRoleRequest req) = outputRefId req
+requestZooRefId (CreateTestRequest req) = outputRefId req
+requestZooRefId (RejectRequest req) = outputRefId req
+requestZooRefId (AcceptRequest req) = outputRefId req
+requestZooRefId (FinishedRequest req) = outputRefId req
 
 instance (Alternative m, ReportSchemaErrors m) => FromJSON m RequestZoo where
     fromJSON v = do

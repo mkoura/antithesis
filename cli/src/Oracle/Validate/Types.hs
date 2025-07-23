@@ -11,8 +11,10 @@ module Oracle.Validate.Types
     , throwJusts
     , withValidationResult
     , throwValidationResult
+    , sequenceValidate
     ) where
 
+import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Except
     ( ExceptT (..)
     , runExceptT
@@ -72,3 +74,16 @@ instance (Monad m, ToJSON m a, ToJSON m e) => ToJSON m (AValidationResult e a) w
         ValidationSuccess a -> toJSON a
         ValidationFailure e ->
             object ["validationFailed" .= e]
+
+sequenceValidate :: Monad m => [Validate e m a] -> Validate [e] m [a]
+sequenceValidate = go [] []
+  where
+    go xs es [] =
+        if null es
+            then pure xs
+            else notValidated es
+    go xs es (v : vs) = do
+        result <- lift $ runValidate v
+        case result of
+            ValidationSuccess x -> go (x : xs) es vs
+            ValidationFailure e -> go xs (e : es) vs

@@ -25,10 +25,8 @@ import Oracle.Validate.Requests.TestRun.Config
 import Oracle.Validate.Types
     ( Validate
     , Validated (..)
-    , ValidationResult
     , mapFailure
     , notValidated
-    , runValidate
     )
 import Text.JSON.Canonical
     ( FromJSON (..)
@@ -77,11 +75,11 @@ validateCreateTestRun
     => TestRunValidationConfig
     -> Validation m
     -> Change TestRun (OpI (TestRunState PendingT))
-    -> m (ValidationResult CreateTestRunFailure)
+    -> Validate CreateTestRunFailure m Validated
 validateCreateTestRun
     testRunConfig
     validation
-    change@(Change (Key testRun) (Insert testRunState)) = runValidate $ do
+    change@(Change (Key testRun) (Insert testRunState)) = do
         mapFailure CreateTestRunKeyFailure
             $ insertValidation validation change
         mapFailure CreateTestRunRejections

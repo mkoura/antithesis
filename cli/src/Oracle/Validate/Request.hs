@@ -27,7 +27,11 @@ import Oracle.Validate.Requests.TestRun.Update
     ( validateToDoneUpdate
     , validateToRunningUpdate
     )
-import Oracle.Validate.Types (ValidationResult, withValidationResult)
+import Oracle.Validate.Types
+    ( ValidationResult
+    , mapFailure
+    , runValidate
+    )
 import Servant.Client (ClientM)
 import Validation (Validation (..))
 
@@ -38,26 +42,42 @@ validateRequest
     -> RequestZoo
     -> ClientM (RequestRefId, ValidationResult RequestValidationFailure)
 validateRequest _ _ validation (RegisterUserRequest (Request refId _ change)) =
-    (,) refId . withValidationResult RegisterUserFailure
-        <$> validateRegisterUser validation change
+    fmap (refId,)
+        $ runValidate
+        $ mapFailure RegisterUserFailure
+        $ validateRegisterUser validation change
 validateRequest _ _ validation (UnregisterUserRequest (Request refId _ change)) =
-    (,) refId . withValidationResult UnregisterUserFailure
-        <$> validateUnregisterUser validation change
+    fmap (refId,)
+        $ runValidate
+        $ mapFailure UnregisterUserFailure
+        $ validateUnregisterUser validation change
 validateRequest _ _ validation (RegisterRoleRequest (Request refId _ change)) =
-    (,) refId . withValidationResult RegisterRoleFailure
-        <$> validateRegisterRole validation change
+    fmap (refId,)
+        $ runValidate
+        $ mapFailure RegisterRoleFailure
+        $ validateRegisterRole validation change
 validateRequest _ _ validation (UnregisterRoleRequest (Request refId _ change)) =
-    (,) refId . withValidationResult UnregisterRoleFailure
-        <$> validateUnregisterRole validation change
+    fmap (refId,)
+        $ runValidate
+        $ mapFailure UnregisterRoleFailure
+        $ validateUnregisterRole validation change
 validateRequest testRunConfig _ validation (CreateTestRequest (Request refId _ change)) =
-    (,) refId . withValidationResult CreateTestRunFailure
-        <$> validateCreateTestRun testRunConfig validation change
+    fmap (refId,)
+        $ runValidate
+        $ mapFailure CreateTestRunFailure
+        $ validateCreateTestRun testRunConfig validation change
 validateRequest _ antiOwner validation (RejectRequest (Request refId owner change)) =
-    (,) refId . withValidationResult UpdateTestRunFailure
-        <$> validateToDoneUpdate antiOwner validation owner change
+    fmap (refId,)
+        $ runValidate
+        $ mapFailure UpdateTestRunFailure
+        $ validateToDoneUpdate antiOwner validation owner change
 validateRequest _ antiOwner validation (AcceptRequest (Request refId owner change)) =
-    (,) refId . withValidationResult UpdateTestRunFailure
-        <$> validateToRunningUpdate antiOwner validation owner change
+    fmap (refId,)
+        $ runValidate
+        $ mapFailure UpdateTestRunFailure
+        $ validateToRunningUpdate antiOwner validation owner change
 validateRequest _ antiOwner validation (FinishedRequest (Request refId owner change)) =
-    (,) refId . withValidationResult UpdateTestRunFailure
-        <$> validateToDoneUpdate antiOwner validation owner change
+    fmap (refId,)
+        $ runValidate
+        $ mapFailure UpdateTestRunFailure
+        $ validateToDoneUpdate antiOwner validation owner change

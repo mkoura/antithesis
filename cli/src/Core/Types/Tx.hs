@@ -146,7 +146,7 @@ data WithTxHash a = WithTxHash
     { txHash :: TxHash
     , value :: Maybe a
     }
-    deriving (Show)
+    deriving (Show, Functor, Eq)
 
 instance (Monad m, ToJSON m a) => ToJSON m (WithTxHash a) where
     toJSON (WithTxHash (TxHash txHash) value) =

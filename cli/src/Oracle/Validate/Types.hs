@@ -8,9 +8,9 @@ module Oracle.Validate.Types
     , runValidate
     , notValidated
     , mapFailure
-    , throwNotValid
     , throwJusts
     , withValidationResult
+    , throwValidationResult
     ) where
 
 import Control.Monad.Trans.Except
@@ -54,14 +54,14 @@ runValidate
     :: Functor m => Validate e m a -> m (AValidationResult e a)
 runValidate = fmap (either ValidationFailure ValidationSuccess) . runExceptT
 
-throwNotValid :: Applicative m => AValidationResult String a -> m a
-throwNotValid (ValidationFailure reason) =
-    error $ "Validation failed: " ++ reason
-throwNotValid (ValidationSuccess a) = pure a
-
 throwJusts :: Monad m => Maybe e -> Validate e m Validated
 throwJusts Nothing = pure Validated
 throwJusts (Just e) = notValidated e
+
+throwValidationResult
+    :: Monad m => ValidationResult e -> Validate e m Validated
+throwValidationResult (ValidationSuccess a) = pure a
+throwValidationResult (ValidationFailure e) = notValidated e
 
 mapFailure
     :: Functor m => (e -> e') -> Validate e m a -> Validate e' m a

@@ -12,6 +12,8 @@ module User.Agent.Cli
     )
 where
 
+import Control.Monad (void)
+import Control.Monad.Trans.Class (lift)
 import Core.Types.Basic (Duration, Owner, TokenId)
 import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Fact (Fact (..), keyHash, parseFacts)
@@ -32,7 +34,9 @@ import Oracle.Validate.Requests.TestRun.Update
     )
 import Oracle.Validate.Types
     ( AValidationResult
-    , ValidationResult
+    , Validate
+    , Validated
+    , runValidate
     )
 import Servant.Client (ClientM)
 import Submitting (Submitting, signAndSubmit)
@@ -219,7 +223,7 @@ signAndSubmitAnUpdate
          -> Validation ClientM
          -> Owner
          -> Change key (OpU old new)
-         -> ClientM (ValidationResult UpdateTestRunFailure)
+         -> Validate UpdateTestRunFailure ClientM Validated
        )
     -> TokenId
     -> Owner
@@ -227,21 +231,29 @@ signAndSubmitAnUpdate
     -> old
     -> new
     -> ClientM (AValidationResult UpdateTestRunFailure (WithTxHash new))
-signAndSubmitAnUpdate sbmt wallet validate tokenId agentId testRun oldState newState = do
-    valid <-
-        validate
-            agentId
-            (mkValidation tokenId)
-            (owner wallet)
+signAndSubmitAnUpdate
+    sbmt
+    wallet
+    validate
+    tokenId
+    agentId
+    testRun
+    oldState
+    newState = runValidate $ do
+        void
+            $ validate
+                agentId
+                (mkValidation tokenId)
+                (owner wallet)
             $ Change (Key testRun)
             $ Update oldState newState
-    WithTxHash txHash _ <- signAndSubmit sbmt wallet $ \address -> do
-        key <- toJSON testRun
-        oldValue <- toJSON oldState
-        newValue <- toJSON newState
-        requestUpdate address tokenId
-            $ RequestUpdateBody{key, oldValue, newValue}
-    pure $ valid $> WithTxHash txHash (Just newState)
+        wtx <- lift $ signAndSubmit sbmt wallet $ \address -> do
+            key <- toJSON testRun
+            oldValue <- toJSON oldState
+            newValue <- toJSON newState
+            requestUpdate address tokenId
+                $ RequestUpdateBody{key, oldValue, newValue}
+        pure $ wtx $> newState
 
 reportCommand
     :: Submitting

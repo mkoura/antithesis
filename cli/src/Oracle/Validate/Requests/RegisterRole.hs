@@ -18,11 +18,10 @@ import Core.Types.Operation
     )
 import Lib.JSON (object, (.=))
 import Oracle.Validate.Types
-    ( Validated (..)
-    , ValidationResult
+    ( Validate
+    , Validated (..)
     , mapFailure
     , notValidated
-    , runValidate
     )
 import Text.JSON.Canonical (ToJSON (..))
 import User.Types
@@ -69,10 +68,10 @@ validateRegisterRole
     :: Monad m
     => Validation m
     -> Change RegisterRoleKey (OpI ())
-    -> m (ValidationResult RegisterRoleFailure)
+    -> Validate RegisterRoleFailure m Validated
 validateRegisterRole
     validation@Validation{githubRepositoryRole}
-    change@(Change (Key k) _) = runValidate $ do
+    change@(Change (Key k) _) = do
         mapFailure RegisterRoleKeyFailure $ insertValidation validation change
         let RegisterRoleKey (Platform platform) repository username = k
         when (platform /= "github")
@@ -111,10 +110,10 @@ validateUnregisterRole
     :: Monad m
     => Validation m
     -> Change RegisterRoleKey (OpD ())
-    -> m (ValidationResult UnregisterRoleFailure)
+    -> Validate UnregisterRoleFailure m Validated
 validateUnregisterRole
     validation
-    change@(Change (Key _k) _) = runValidate $ do
+    change@(Change (Key _k) _) = do
         mapFailure UnregisterRoleKeyFailure
             $ deleteValidation validation change
 

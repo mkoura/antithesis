@@ -19,10 +19,8 @@ import Lib.JSON
 import Oracle.Validate.Types
     ( Validate
     , Validated (..)
-    , ValidationResult
     , mapFailure
     , notValidated
-    , runValidate
     )
 import Text.JSON.Canonical (FromJSON (..), ToJSON (..))
 import User.Types
@@ -91,12 +89,12 @@ validateToDoneUpdate
     -> Validation m
     -> Owner
     -> Change TestRun (OpU x (TestRunState DoneT))
-    -> m (ValidationResult UpdateTestRunFailure)
+    -> Validate UpdateTestRunFailure m Validated
 validateToDoneUpdate
     antiOwner
     validation
     owner
-    change@(Change (Key testRun) operation) = runValidate $ do
+    change@(Change (Key testRun) operation) = do
         mapFailure UpdateTestRunKeyFailure
             $ updateValidation validation change
         checkingOwner owner antiOwner
@@ -133,12 +131,12 @@ validateToRunningUpdate
     -> Validation m
     -> Owner
     -> Change TestRun (OpU (TestRunState PendingT) (TestRunState RunningT))
-    -> m (ValidationResult UpdateTestRunFailure)
+    -> Validate UpdateTestRunFailure m Validated
 validateToRunningUpdate
     antiOwner
     validation
     owner
-    change@(Change (Key testRun) operation) = runValidate $ do
+    change@(Change (Key testRun) operation) = do
         mapFailure UpdateTestRunKeyFailure
             $ updateValidation validation change
         checkingOwner owner antiOwner

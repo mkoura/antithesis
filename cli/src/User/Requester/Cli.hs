@@ -5,6 +5,8 @@ module User.Requester.Cli
     , RequesterCommand (..)
     ) where
 
+import Control.Monad (void)
+import Control.Monad.Trans.Class (lift)
 import Core.Types.Basic (Duration, TokenId)
 import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Operation (Operation (..))
@@ -40,6 +42,7 @@ import Oracle.Validate.Requests.TestRun.Create
     )
 import Oracle.Validate.Types
     ( AValidationResult
+    , runValidate
     )
 import Servant.Client (ClientM)
 import Submitting (Submitting, signAndSubmit)
@@ -119,18 +122,19 @@ createCommand
             CreateTestRunFailure
             (WithTxHash (TestRunState PendingT))
         )
-createCommand sbmt wallet testRunConfig tokenId sign testRun duration = do
-    key <- toJSON testRun
-    let signature = sign $ BL.toStrict $ renderCanonicalJSON key
-    let newState = Pending duration signature
-    valid <-
-        validateCreateTestRun testRunConfig (mkValidation tokenId)
+createCommand sbmt wallet testRunConfig tokenId sign testRun duration =
+    runValidate $ do
+        key <- toJSON testRun
+        let signature = sign $ BL.toStrict $ renderCanonicalJSON key
+        let newState = Pending duration signature
+        void
+            $ validateCreateTestRun testRunConfig (mkValidation tokenId)
             $ Change (Key testRun) (Insert newState)
-    value <- toJSON newState
-    WithTxHash txHash _ <- signAndSubmit sbmt wallet $ \address -> do
-        requestInsert address tokenId
-            $ RequestInsertBody{key, value}
-    pure $ valid $> WithTxHash txHash (Just newState)
+        value <- toJSON newState
+        wtx <- lift $ signAndSubmit sbmt wallet $ \address -> do
+            requestInsert address tokenId
+                $ RequestInsertBody{key, value}
+        pure $ wtx $> newState
 
 registerUser
     :: Submitting
@@ -142,19 +146,18 @@ registerUser
     sbmt
     wallet
     tokenId
-    request = do
-        valid <-
-            validateRegisterUser (mkValidation tokenId)
-                $ Change (Key request) (Insert ())
-
-        r <- fmap txHash
+    request = runValidate $ do
+        void
+            $ validateRegisterUser (mkValidation tokenId)
+            $ Change (Key request) (Insert ())
+        fmap txHash
+            $ lift
             $ signAndSubmit sbmt wallet
             $ \address -> do
                 key <- toJSON request
                 value <- toJSON ()
                 requestInsert address tokenId
                     $ RequestInsertBody{key = key, value = value}
-        pure $ valid $> r
 
 unregisterUser
     :: Submitting
@@ -166,18 +169,18 @@ unregisterUser
     sbmt
     wallet
     tokenId
-    request = do
-        valid <-
-            validateUnregisterUser (mkValidation tokenId)
-                $ Change (Key request) (Delete ())
-        r <- fmap txHash
+    request = runValidate $ do
+        void
+            $ validateUnregisterUser (mkValidation tokenId)
+            $ Change (Key request) (Delete ())
+        fmap txHash
+            $ lift
             $ signAndSubmit sbmt wallet
             $ \address -> do
                 key <- toJSON request
                 value <- toJSON ()
                 requestDelete address tokenId
                     $ RequestDeleteBody{key = key, value = value}
-        pure $ valid $> r
 
 registerRole
     :: Submitting
@@ -189,18 +192,18 @@ registerRole
     sbmt
     wallet
     tokenId
-    request = do
-        valid <-
-            validateRegisterRole (mkValidation tokenId)
-                $ Change (Key request) (Insert ())
-        r <- fmap txHash
+    request = runValidate $ do
+        void
+            $ validateRegisterRole (mkValidation tokenId)
+            $ Change (Key request) (Insert ())
+        fmap txHash
+            $ lift
             $ signAndSubmit sbmt wallet
             $ \address -> do
                 key <- toJSON request
                 value <- toJSON ()
                 requestInsert address tokenId
                     $ RequestInsertBody{key = key, value = value}
-        pure $ valid $> r
 
 unregisterRole
     :: Submitting
@@ -212,15 +215,15 @@ unregisterRole
     sbmt
     wallet
     tokenId
-    request = do
-        valid <-
-            validateUnregisterRole (mkValidation tokenId)
-                $ Change (Key request) (Delete ())
-        r <- fmap txHash
+    request = runValidate $ do
+        void
+            $ validateUnregisterRole (mkValidation tokenId)
+            $ Change (Key request) (Delete ())
+        fmap txHash
+            $ lift
             $ signAndSubmit sbmt wallet
             $ \address -> do
                 key <- toJSON request
                 value <- toJSON ()
                 requestDelete address tokenId
                     $ RequestDeleteBody{key = key, value = value}
-        pure $ valid $> r

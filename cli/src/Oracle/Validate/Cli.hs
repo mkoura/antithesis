@@ -10,9 +10,9 @@ import Control.Monad (forM)
 import Control.Monad.Trans.Class (lift)
 import Core.Context
     ( WithContext
-    , askMkValidation
     , askMpfs
     , askTestRunConfig
+    , askValidation
     , askWalletOwner
     )
 import Core.Types.Basic (RequestRefId (RequestRefId), TokenId)
@@ -55,7 +55,7 @@ validateCmd tk command = do
     mpfs <- askMpfs
     testRunConfig <- askTestRunConfig
     pkh <- askWalletOwner
-    validation <- askMkValidation tk
+    validation <- askValidation tk
     rus <- lift $ case command of
         ValidateRequests -> do
             canonicalJSON <- mpfsGetToken mpfs tk

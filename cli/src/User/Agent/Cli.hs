@@ -16,9 +16,9 @@ import Control.Monad (void)
 import Control.Monad.Trans.Class (lift)
 import Core.Context
     ( WithContext
-    , askMkValidation
     , askMpfs
     , askSubmit
+    , askValidation
     , askWalletOwner
     , withMPFS
     )
@@ -58,7 +58,7 @@ import User.Types
     , TestRunState (..)
     , URL (..)
     )
-import Validation (Validation, hoistValidation)
+import Validation (Validation)
 
 agentCmd
     :: Monad m
@@ -70,11 +70,7 @@ agentCmd tokenId agentId cmdNotReady = do
     mCmdReady <- resolveOldState tokenId cmdNotReady
     case mCmdReady of
         Nothing -> error "No previous state found for the command"
-        Just cmdReady ->
-            agentCmdCore
-                tokenId
-                agentId
-                cmdReady
+        Just cmdReady -> agentCmdCore tokenId agentId cmdReady
 
 withExpectedState
     :: (FromJSON Maybe (TestRunState phase), Monad m)
@@ -87,9 +83,7 @@ withExpectedState tokenId testRun cont = do
     jsonKeyValue <- toJSON testRun
     let
         hasKey (JSObject obj) =
-            any
-                (\(k, value) -> k == "key" && value == jsonKeyValue)
-                obj
+            any (\(k, value) -> k == "key" && value == jsonKeyValue) obj
         hasKey _ = False
     case facts of
         JSArray objects -> do
@@ -227,10 +221,10 @@ queryCommand tokenId = do
 signAndSubmitAnUpdate
     :: (ToJSON m key, ToJSON m old, ToJSON m new, Monad m)
     => ( Owner
-         -> Validation (WithContext m)
+         -> Validation m
          -> Owner
          -> Change key (OpU old new)
-         -> Validate UpdateTestRunFailure (WithContext m) Validated
+         -> Validate UpdateTestRunFailure m Validated
        )
     -> TokenId
     -> Owner
@@ -240,22 +234,17 @@ signAndSubmitAnUpdate
     -> WithContext
         m
         (AValidationResult UpdateTestRunFailure (WithTxHash new))
-signAndSubmitAnUpdate
-    validate
-    tokenId
-    agentId
-    testRun
-    oldState
-    newState = runValidate $ do
-        validation <- lift $ askMkValidation tokenId
-        walletOwner <- lift askWalletOwner
+signAndSubmitAnUpdate validate tokenId agentId testRun oldState newState = do
+    validation <- askValidation tokenId
+    walletOwner <- askWalletOwner
+    Submission submit <- askSubmit
+    mpfs <- askMpfs
+    lift $ runValidate $ do
         void
-            $ validate agentId (hoistValidation lift validation) walletOwner
+            $ validate agentId validation walletOwner
             $ Change (Key testRun)
             $ Update oldState newState
-        Submission submit <- lift askSubmit
-        mpfs <- lift askMpfs
-        wtx <- lift $ lift $ submit $ \address -> do
+        wtx <- lift $ submit $ \address -> do
             key <- toJSON testRun
             oldValue <- toJSON oldState
             newValue <- toJSON newState

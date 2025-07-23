@@ -9,10 +9,10 @@ import Control.Monad (void)
 import Control.Monad.Trans.Class (lift)
 import Core.Context
     ( WithContext
-    , askMkValidation
     , askMpfs
     , askSubmit
     , askTestRunConfig
+    , askValidation
     )
 import Core.Types.Basic (Duration, TokenId)
 import Core.Types.Change (Change (..), Key (..))
@@ -122,7 +122,7 @@ createCommand
     testRun
     duration = do
         testRunConfig <- askTestRunConfig
-        validation <- askMkValidation tokenId
+        validation <- askValidation tokenId
         Submission submit <- askSubmit
         mpfs <- askMpfs
         lift $ runValidate $ do
@@ -148,7 +148,7 @@ registerUser
     request = do
         mpfs <- askMpfs
         Submission submit <- askSubmit
-        validation <- askMkValidation tokenId
+        validation <- askValidation tokenId
         lift $ runValidate $ do
             void
                 $ validateRegisterUser validation
@@ -171,7 +171,7 @@ unregisterUser
     tokenId
     request = do
         mpfs <- askMpfs
-        validation <- askMkValidation tokenId
+        validation <- askValidation tokenId
         Submission submit <- askSubmit
         lift $ runValidate $ do
             void
@@ -195,7 +195,7 @@ registerRole
     tokenId
     request = do
         mpfs <- askMpfs
-        validation <- askMkValidation tokenId
+        validation <- askValidation tokenId
         Submission submit <- askSubmit
         lift $ runValidate $ do
             void
@@ -219,7 +219,7 @@ unregisterRole
     tokenId
     request = do
         mpfs <- askMpfs
-        validation <- askMkValidation tokenId
+        validation <- askValidation tokenId
         Submission submit <- askSubmit
         lift $ runValidate $ do
             void

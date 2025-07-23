@@ -2,15 +2,14 @@
 
 module Core.Context
     ( WithContext
-    , Context (..)
+    , Context
     , withContext
     , askMpfs
     , askTestRunConfig
     , askWalletOwner
-    , askMkValidation
+    , askValidation
     , askSubmit
     , withMPFS
-    , context
     ) where
 
 import Control.Monad.Trans.Class (MonadTrans, lift)
@@ -23,6 +22,8 @@ import Oracle.Validate.Requests.TestRun.Config
 import Submitting (Submission)
 import Validation (Validation)
 
+-- it would be nice to modulate it a bit depending con the command but we do not
+-- have a type for each command
 data Context m = Context
     { ctxMPFS :: MPFS m
     , ctxTestRunConfig :: TestRunValidationConfig
@@ -39,9 +40,6 @@ newtype WithContext m a = WithContext
 instance MonadTrans WithContext where
     lift = WithContext . lift
 
-context :: Monad m => WithContext m (Context m)
-context = WithContext ask
-
 askMpfs :: Monad m => WithContext m (MPFS m)
 askMpfs = ctxMPFS <$> WithContext ask
 
@@ -56,8 +54,8 @@ askTestRunConfig = ctxTestRunConfig <$> WithContext ask
 askWalletOwner :: Monad m => WithContext m Owner
 askWalletOwner = ctxWalletOwner <$> WithContext ask
 
-askMkValidation :: Monad m => TokenId -> WithContext m (Validation m)
-askMkValidation tokenId = do
+askValidation :: Monad m => TokenId -> WithContext m (Validation m)
+askValidation tokenId = do
     ctx <- WithContext ask
     return $ ctxMkValidation ctx tokenId
 

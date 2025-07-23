@@ -8,12 +8,11 @@ import Control.Monad (void)
 import Control.Monad.Trans.Class (lift)
 import Core.Context
     ( WithContext
-    , askMkValidation
     , askMpfs
     , askSubmit
     , askTestRunConfig
+    , askValidation
     , askWalletOwner
-    , withMPFS
     )
 import Core.Types.Basic (RequestRefId, TokenId)
 import Core.Types.Tx (TxHash, WithTxHash (WithTxHash))
@@ -119,47 +118,45 @@ tokenCmdCore
     => Maybe TokenId
     -> TokenCommand a
     -> WithContext m a
-tokenCmdCore (Just tk) = \case
-    GetToken -> withMPFS $ \mpfs -> mpfsGetToken mpfs tk
-    UpdateToken reqs -> do
-        mpfs <- askMpfs
-        testRunConfig <- askTestRunConfig
-        pkh <- askWalletOwner
-        validation <- askMkValidation tk
-        Submission submit <- askSubmit
-        lift $ runValidate $ do
-            mpendings <- lift $ fromJSON <$> mpfsGetToken mpfs tk
-            case mpendings of
-                Nothing -> notValidated $ TokenNotParsable tk
-                Just (token :: Token) ->
-                    void
-                        $ mapFailure TokenUpdateRequestValidations
-                        $ sequenceValidate
-                        $ promoteFailure
-                            <*> validateRequest testRunConfig pkh validation
-                            <$> tokenRequests token
-            WithTxHash txHash _ <- lift
-                $ submit
-                $ \address -> mpfsUpdateToken mpfs address tk reqs
+tokenCmdCore (Just tk) command = do
+    mpfs <- askMpfs
+    testRunConfig <- askTestRunConfig
+    pkh <- askWalletOwner
+    validation <- askValidation tk
+    Submission submit <- askSubmit
+    lift $ case command of
+        GetToken -> mpfsGetToken mpfs tk
+        UpdateToken reqs -> do
+            runValidate $ do
+                mpendings <- lift $ fromJSON <$> mpfsGetToken mpfs tk
+                case mpendings of
+                    Nothing -> notValidated $ TokenNotParsable tk
+                    Just (token :: Token) ->
+                        void
+                            $ mapFailure TokenUpdateRequestValidations
+                            $ sequenceValidate
+                            $ promoteFailure
+                                <*> validateRequest testRunConfig pkh validation
+                                <$> tokenRequests token
+                WithTxHash txHash _ <- lift
+                    $ submit
+                    $ \address -> mpfsUpdateToken mpfs address tk reqs
+                pure txHash
+        BootToken -> error "BootToken command requires no TokenId"
+        EndToken -> do
+            WithTxHash txHash _ <- submit
+                $ \address -> mpfsEndToken mpfs address tk
             pure txHash
-    BootToken -> error "BootToken command requires no TokenId"
-    EndToken -> do
-        mpfs <- askMpfs
-        Submission submit <- askSubmit
-        WithTxHash txHash _ <- lift
-            $ submit
-            $ \address -> mpfsEndToken mpfs address tk
-        pure txHash
-tokenCmdCore Nothing = \case
-    BootToken -> do
-        mpfs <- askMpfs
-        Submission submit <- askSubmit
-        WithTxHash txHash jTokenId <- lift
-            $ submit
-            $ \address -> mpfsBootToken mpfs address
-        case jTokenId of
-            Just tkId -> case fromJSON tkId of
-                Nothing -> error "BootToken failed, TokenId is not valid JSON"
-                Just tokenId -> pure $ WithTxHash txHash (Just tokenId)
-            _ -> error "BootToken failed, no TokenId returned"
-    _ -> error "TokenId is required for this command"
+tokenCmdCore Nothing command = do
+    mpfs <- askMpfs
+    Submission submit <- askSubmit
+    lift $ case command of
+        BootToken -> do
+            WithTxHash txHash jTokenId <- submit
+                $ \address -> mpfsBootToken mpfs address
+            case jTokenId of
+                Just tkId -> case fromJSON tkId of
+                    Nothing -> error "BootToken failed, TokenId is not valid JSON"
+                    Just tokenId -> pure $ WithTxHash txHash (Just tokenId)
+                _ -> error "BootToken failed, no TokenId returned"
+        _ -> error "TokenId is required for this command"

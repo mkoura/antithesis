@@ -6,7 +6,16 @@ module Oracle.Token.Cli
 import Control.Exception (Exception)
 import Control.Monad (void)
 import Control.Monad.Trans.Class (lift)
-import Core.Types.Basic (Owner, RequestRefId, TokenId)
+import Core.Context
+    ( WithContext
+    , askMkValidation
+    , askMpfs
+    , askSubmit
+    , askTestRunConfig
+    , askWalletOwner
+    , withMPFS
+    )
+import Core.Types.Basic (RequestRefId, TokenId)
 import Core.Types.Tx (TxHash, WithTxHash (WithTxHash))
 import Lib.JSON (object, (.=))
 import MPFS.API
@@ -22,9 +31,6 @@ import Oracle.Types
 import Oracle.Validate.Request
     ( validateRequest
     )
-import Oracle.Validate.Requests.TestRun.Config
-    ( TestRunValidationConfig
-    )
 import Oracle.Validate.Types
     ( AValidationResult (..)
     , Validate
@@ -39,7 +45,6 @@ import Text.JSON.Canonical
     , JSValue (..)
     , ToJSON (..)
     )
-import Validation (Validation)
 
 data TokenUpdateRequestValidation = TokenUpdateRequestValidation
     { validationRequestId :: RequestRefId
@@ -111,39 +116,46 @@ promoteFailure req =
 
 tokenCmdCore
     :: Monad m
-    => MPFS m
-    -> (TokenId -> Validation m)
-    -> Submission m
-    -> Maybe TokenId
-    -> TestRunValidationConfig
-    -> Owner
+    => Maybe TokenId
     -> TokenCommand a
-    -> m a
-tokenCmdCore mpfs mkValidation (Submission submit) (Just tk) testRunConfig pkh = \case
-    GetToken -> mpfsGetToken mpfs tk
-    UpdateToken reqs -> runValidate $ do
-        mpendings <- lift $ fromJSON <$> mpfsGetToken mpfs tk
-        case mpendings of
-            Nothing -> notValidated $ TokenNotParsable tk
-            Just (token :: Token) ->
-                void
-                    $ mapFailure TokenUpdateRequestValidations
-                    $ sequenceValidate
-                    $ promoteFailure
-                        <*> validateRequest testRunConfig pkh (mkValidation tk)
-                        <$> tokenRequests token
-        WithTxHash txHash _ <- lift
-            $ submit
-            $ \address -> mpfsUpdateToken mpfs address tk reqs
-        pure txHash
+    -> WithContext m a
+tokenCmdCore (Just tk) = \case
+    GetToken -> withMPFS $ \mpfs -> mpfsGetToken mpfs tk
+    UpdateToken reqs -> do
+        mpfs <- askMpfs
+        testRunConfig <- askTestRunConfig
+        pkh <- askWalletOwner
+        validation <- askMkValidation tk
+        Submission submit <- askSubmit
+        lift $ runValidate $ do
+            mpendings <- lift $ fromJSON <$> mpfsGetToken mpfs tk
+            case mpendings of
+                Nothing -> notValidated $ TokenNotParsable tk
+                Just (token :: Token) ->
+                    void
+                        $ mapFailure TokenUpdateRequestValidations
+                        $ sequenceValidate
+                        $ promoteFailure
+                            <*> validateRequest testRunConfig pkh validation
+                            <$> tokenRequests token
+            WithTxHash txHash _ <- lift
+                $ submit
+                $ \address -> mpfsUpdateToken mpfs address tk reqs
+            pure txHash
     BootToken -> error "BootToken command requires no TokenId"
     EndToken -> do
-        WithTxHash txHash _ <- submit
+        mpfs <- askMpfs
+        Submission submit <- askSubmit
+        WithTxHash txHash _ <- lift
+            $ submit
             $ \address -> mpfsEndToken mpfs address tk
         pure txHash
-tokenCmdCore mpfs _ (Submission submit) Nothing _ _ = \case
+tokenCmdCore Nothing = \case
     BootToken -> do
-        WithTxHash txHash jTokenId <- submit
+        mpfs <- askMpfs
+        Submission submit <- askSubmit
+        WithTxHash txHash jTokenId <- lift
+            $ submit
             $ \address -> mpfsBootToken mpfs address
         case jTokenId of
             Just tkId -> case fromJSON tkId of

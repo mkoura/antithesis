@@ -7,8 +7,15 @@ module Oracle.Validate.Cli
     ) where
 
 import Control.Monad (forM)
-import Control.Monad.Trans.Except (runExceptT)
-import Core.Types.Basic (Owner, RequestRefId (RequestRefId), TokenId)
+import Control.Monad.Trans.Class (lift)
+import Core.Context
+    ( WithContext
+    , askMkValidation
+    , askMpfs
+    , askTestRunConfig
+    , askWalletOwner
+    )
+import Core.Types.Basic (RequestRefId (RequestRefId), TokenId)
 import Data.Functor ((<&>))
 import Data.Text qualified as T
 import Lib.JSON
@@ -26,9 +33,6 @@ import Oracle.Types
 import Oracle.Validate.Request
     ( validateRequest
     )
-import Oracle.Validate.Requests.TestRun.Config
-    ( TestRunValidationConfig
-    )
 import Oracle.Validate.Types (ValidationResult, runValidate)
 import Text.JSON.Canonical
     ( FromJSON (..)
@@ -37,7 +41,6 @@ import Text.JSON.Canonical
     , mkObject
     , toJSString
     )
-import Validation (Validation)
 
 data ValidateCommand
     = ValidateRequests
@@ -45,26 +48,22 @@ data ValidateCommand
 
 validateCmd
     :: Monad m
-    => MPFS m
-    -> TestRunValidationConfig
-    -> Owner
-    -> Validation m
-    -> TokenId
+    => TokenId
     -> ValidateCommand
-    -> m JSValue
-validateCmd mpfs testRunConfig pkh validation tk command = do
-    rus <- case command of
+    -> WithContext m JSValue
+validateCmd tk command = do
+    mpfs <- askMpfs
+    testRunConfig <- askTestRunConfig
+    pkh <- askWalletOwner
+    validation <- askMkValidation tk
+    rus <- lift $ case command of
         ValidateRequests -> do
             canonicalJSON <- mpfsGetToken mpfs tk
             requests <- do
-                v <-
-                    runExceptT
-                        $ runParsing
-                        $ fromJSON canonicalJSON
-                        <&> tokenRequests
-                case v of
-                    Left e -> error $ "Failed to parse token: " ++ e
-                    Right jsValue -> pure jsValue
+                let mv = fromJSON canonicalJSON <&> tokenRequests
+                case mv of
+                    Nothing -> error "Failed to parse token"
+                    Just jsValue -> pure jsValue
             forM requests $ \request -> do
                 valid <-
                     runValidate

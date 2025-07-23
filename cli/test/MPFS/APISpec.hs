@@ -179,7 +179,6 @@ setup = do
             case r of
                 Left err -> throwIO err
                 Right res -> return res
-    oracle <- loadOracleWallet
     let wait180 :: Submitting
         wait180 = Submitting (Wait 180) $ \c -> do
             r <- runClientM c (mkClientEnv nm url)
@@ -188,14 +187,15 @@ setup = do
                 Right res -> return res
         wait180S = signAndSubmitMPFS wait180
     WithTxHash txHash mTokenId <- calling call $ do
-        tokenCmdCore
+        withContext
             mpfsClient
+            undefined
+            agentWallet.owner
             mkValidation
-            (wait180S oracle)
-            Nothing
-            undefined
-            undefined
-            BootToken
+            (wait180S oracleWallet)
+            $ tokenCmdCore
+                Nothing
+                BootToken
     liftIO $ waitTx call txHash
     case mTokenId of
         Nothing -> error "BootToken failed, no TokenId returned"
@@ -211,17 +211,17 @@ setup = do
                     }
 
 teardown :: ActionWith Context
-teardown Context{mpfs, tokenId, wait180S} = do
-    wallet <- loadOracleWallet
+teardown Context{mpfs, tokenId, wait180S, oracleWallet, agentWallet} = do
     txHash <- calling mpfs $ do
-        tokenCmdCore
+        withContext
             mpfsClient
+            undefined
+            agentWallet.owner
             mkValidation
-            (wait180S wallet)
-            (Just tokenId)
-            undefined
-            undefined
-            EndToken
+            (wait180S oracleWallet)
+            $ tokenCmdCore
+                (Just tokenId)
+                EndToken
     liftIO $ waitTx mpfs txHash
 
 getFirstOutput :: AlonzoTx ConwayEra -> Maybe (String, Data)
@@ -413,24 +413,25 @@ spec = do
                             withContext
                                 mpfsClient
                                 undefined
-                                requester.owner
+                                agentWallet.owner
                                 mkValidation
                                 (wait180S requester)
                                 $ requesterCmd tokenId undefined
                                 $ RegisterUser key
                         _updateInsertTx <-
-                            oracleCmd
+                            withContext
                                 mpfsClient
-                                mkValidation
-                                (wait180S oracle)
                                 undefined
                                 agentWallet.owner
-                                (Just tokenId)
+                                mkValidation
+                                (wait180S oracle)
+                                $ oracleCmd (Just tokenId)
                                 $ OracleTokenCommand
                                 $ UpdateToken
                                     [ RequestRefId
                                         $ textOf insertTx <> "-0"
                                     ]
+
                         facts <- getTokenFacts tokenId
                         liftIO
                             $ facts
@@ -444,19 +445,20 @@ spec = do
                             withContext
                                 mpfsClient
                                 undefined
-                                requester.owner
+                                agentWallet.owner
                                 mkValidation
                                 (wait180S requester)
                                 $ requesterCmd tokenId undefined
                                 $ UnregisterUser key
                         _updateDeleteTx <-
-                            oracleCmd
+                            withContext
                                 mpfsClient
-                                mkValidation
-                                (wait180S oracle)
                                 undefined
                                 agentWallet.owner
-                                (Just tokenId)
+                                mkValidation
+                                (wait180S agentWallet)
+                                $ oracleCmd
+                                    (Just tokenId)
                                 $ OracleTokenCommand
                                 $ UpdateToken
                                     [ RequestRefId

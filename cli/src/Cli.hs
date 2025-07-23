@@ -96,12 +96,14 @@ cmdCore
                 failNothing (sshKeySelector <> "not in the signing map")
                     $ signing
                     $ SSHKeySelector sshKeySelector
+            antithesisPKH <-
+                liftIO $ Owner <$> getEnv "ANTI_AGENT_PUBLIC_KEY_HASH"
             tokenId <- failNothing "No TokenId" mTokenId
             wallet <- failLeft ("No wallet @ " <>) mWallet
             withContext
                 mpfsClient
                 testRunValidationConfig
-                (owner wallet)
+                antithesisPKH
                 mkValidation
                 (submit wallet)
                 $ requesterCmd tokenId (sign keyAPI) requesterCommand
@@ -109,14 +111,15 @@ cmdCore
             wallet <- failLeft ("No wallet @ " <>) mWallet
             antithesisPKH <-
                 liftIO $ Owner <$> getEnv "ANTI_AGENT_PUBLIC_KEY_HASH"
-            oracleCmd
+            withContext
                 mpfsClient
-                mkValidation
-                (submit wallet)
                 testRunValidationConfig
                 antithesisPKH
-                mTokenId
-                oracleCommand
+                mkValidation
+                (submit wallet)
+                $ oracleCmd
+                    mTokenId
+                    oracleCommand
         AgentCommand agentCommand -> do
             antithesisPKH <-
                 liftIO $ Owner <$> getEnv "ANTI_AGENT_PUBLIC_KEY_HASH"
@@ -125,10 +128,10 @@ cmdCore
             withContext
                 mpfsClient
                 testRunValidationConfig
-                (owner wallet)
+                antithesisPKH
                 mkValidation
                 (submit wallet)
-                $ agentCmd tokenId antithesisPKH agentCommand
+                $ agentCmd tokenId (owner wallet) agentCommand
         RetractRequest refId -> do
             wallet <- failLeft ("No wallet @ " <>) mWallet
             let Submission submit' = submit wallet

@@ -86,7 +86,7 @@ push-tracer-sidecar: TESTNET ## Push tracer container image
 	docker push ${registry}${testnet}_tracer-sidecar:latest
 
 push-dingo: TESTNET ## Push dingo container image
-       docker push ${registry}${testnet}_dingo:latest
+	docker push ${registry}${testnet}_dingo:latest
 
 up: TESTNET ## Start Run local Docker Compose
 	cd testnets/${testnet} ; docker compose up --detach

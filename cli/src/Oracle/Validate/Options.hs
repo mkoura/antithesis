@@ -13,9 +13,18 @@ import Options.Applicative
     , progDesc
     , (<**>)
     )
-import Oracle.Validate.Cli (ValidateCommand (..))
+import Oracle.Validate.Cli
+    ( OracleValidateFailure
+    , RequestValidation
+    , ValidateCommand (..)
+    )
+import Oracle.Validate.Types (AValidationResult)
 
-validateCommandParser :: Parser ValidateCommand
+validateCommandParser
+    :: Parser
+        ( ValidateCommand
+            (AValidationResult OracleValidateFailure [RequestValidation])
+        )
 validateCommandParser =
     hsubparser
         ( command

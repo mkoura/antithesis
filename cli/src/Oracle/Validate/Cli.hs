@@ -3,7 +3,9 @@
 module Oracle.Validate.Cli
     ( validateCmd
     , ValidateCommand (..)
-    , Parsing (..)
+    , RequestValidation (..)
+    , OracleValidateFailure (..)
+    , renderOracleValidateFailure
     ) where
 
 import Control.Monad (forM)
@@ -15,12 +17,11 @@ import Core.Context
     , askValidation
     , askWalletOwner
     )
-import Core.Types.Basic (RequestRefId (RequestRefId), TokenId)
+import Core.Types.Basic (RequestRefId, TokenId)
 import Data.Functor ((<&>))
-import Data.Text qualified as T
 import Lib.JSON
-    ( Parsing (..)
-    , stringJSON
+    ( object
+    , (.=)
     )
 import MPFS.API
     ( MPFS (..)
@@ -33,51 +34,75 @@ import Oracle.Types
 import Oracle.Validate.Request
     ( validateRequest
     )
-import Oracle.Validate.Types (ValidationResult, runValidate)
+import Oracle.Validate.Types
+    ( AValidationResult
+    , ValidationResult
+    , notValidated
+    , runValidate
+    )
 import Text.JSON.Canonical
     ( FromJSON (..)
-    , JSValue (..)
     , ToJSON (..)
-    , mkObject
-    , toJSString
     )
 
-data ValidateCommand
-    = ValidateRequests
-    deriving (Eq, Show)
+data ValidateCommand a where
+    ValidateRequests
+        :: ValidateCommand
+            ( AValidationResult
+                OracleValidateFailure
+                [RequestValidation]
+            )
+
+deriving instance Show (ValidateCommand a)
+deriving instance Eq (ValidateCommand a)
+
+newtype OracleValidateFailure
+    = OracleValidateFailToParseToken TokenId
+    deriving (Show, Eq)
+
+instance Monad m => ToJSON m OracleValidateFailure where
+    toJSON (OracleValidateFailToParseToken tk) =
+        object ["error" .= ("Failed to parse token with ID: " ++ show tk)]
+
+renderOracleValidateFailure :: OracleValidateFailure -> String
+renderOracleValidateFailure (OracleValidateFailToParseToken tk) =
+    "Failed to parse token with ID: " ++ show tk
 
 validateCmd
     :: Monad m
     => TokenId
-    -> ValidateCommand
-    -> WithContext m JSValue
-validateCmd tk command = do
-    mpfs <- askMpfs
-    testRunConfig <- askTestRunConfig
-    pkh <- askWalletOwner
-    validation <- askValidation tk
-    rus <- lift $ case command of
-        ValidateRequests -> do
-            canonicalJSON <- mpfsGetToken mpfs tk
-            requests <- do
-                let mv = fromJSON canonicalJSON <&> tokenRequests
-                case mv of
-                    Nothing -> error "Failed to parse token"
-                    Just jsValue -> pure jsValue
-            forM requests $ \request -> do
-                valid <-
-                    runValidate
-                        $ validateRequest testRunConfig pkh validation request
-                mkResult (requestZooRefId request) valid
-    toJSON rus
+    -> ValidateCommand a
+    -> WithContext m a
+validateCmd tk command = case command of
+    ValidateRequests -> do
+        mpfs <- askMpfs
+        testRunConfig <- askTestRunConfig
+        pkh <- askWalletOwner
+        validation <- askValidation tk
+        lift $ runValidate $ case command of
+            ValidateRequests -> do
+                canonicalJSON <- lift $ mpfsGetToken mpfs tk
+                requests <- do
+                    let mv = fromJSON canonicalJSON <&> tokenRequests
+                    case mv of
+                        Nothing ->
+                            notValidated
+                                $ OracleValidateFailToParseToken tk
+                        Just jsValue -> pure jsValue
+                forM requests $ \request -> lift $ do
+                    RequestValidation (requestZooRefId request)
+                        <$> runValidate
+                            (validateRequest testRunConfig pkh validation request)
 
-mkResult
-    :: Monad m
-    => RequestRefId
-    -> ValidationResult RequestValidationFailure
-    -> m JSValue
-mkResult (RequestRefId ref) validation =
-    mkObject
-        [ (toJSString "reference", stringJSON $ T.unpack ref)
-        , (toJSString "validation", toJSON validation)
-        ]
+data RequestValidation = RequestValidation
+    { requestRefId :: RequestRefId
+    , validationResult :: ValidationResult RequestValidationFailure
+    }
+    deriving (Eq, Show)
+
+instance Monad m => ToJSON m RequestValidation where
+    toJSON (RequestValidation refId validation) =
+        object
+            [ "reference" .= refId
+            , "validation" .= validation
+            ]

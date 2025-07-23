@@ -7,11 +7,10 @@ import Core.Context (WithContext)
 import Core.Types.Basic (TokenId)
 import Oracle.Token.Cli (TokenCommand, tokenCmdCore)
 import Oracle.Validate.Cli (ValidateCommand, validateCmd)
-import Text.JSON.Canonical (JSValue)
 
 data OracleCommand a where
     OracleTokenCommand :: TokenCommand a -> OracleCommand a
-    OracleValidateCommand :: ValidateCommand -> OracleCommand JSValue
+    OracleValidateCommand :: ValidateCommand a -> OracleCommand a
 
 deriving instance Show (OracleCommand a)
 deriving instance Eq (OracleCommand a)

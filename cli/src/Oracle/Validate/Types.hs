@@ -14,7 +14,7 @@ module Oracle.Validate.Types
     , sequenceValidate
     ) where
 
-import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.Class (MonadTrans, lift)
 import Control.Monad.Trans.Except
     ( ExceptT (..)
     , runExceptT
@@ -27,8 +27,11 @@ import Lib.JSON
     )
 import Text.JSON.Canonical.Class (ToJSON (..))
 
-type Validate e m a = ExceptT e m a
+newtype Validate e m a = Validate (ExceptT e m a)
+    deriving (Functor, Applicative, Monad)
 
+instance MonadTrans (Validate e) where
+    lift = Validate . lift
 data AValidationResult e a
     = ValidationSuccess a
     | ValidationFailure e
@@ -50,11 +53,12 @@ instance Monad m => ToJSON m Validated where
 type ValidationResult e = AValidationResult e Validated
 
 notValidated :: Monad m => e -> Validate e m a
-notValidated = throwE
+notValidated = Validate . throwE
 
 runValidate
     :: Functor m => Validate e m a -> m (AValidationResult e a)
-runValidate = fmap (either ValidationFailure ValidationSuccess) . runExceptT
+runValidate (Validate f) =
+    fmap (either ValidationFailure ValidationSuccess) . runExceptT $ f
 
 throwJusts :: Monad m => Maybe e -> Validate e m Validated
 throwJusts Nothing = pure Validated
@@ -67,7 +71,7 @@ throwValidationResult (ValidationFailure e) = notValidated e
 
 mapFailure
     :: Functor m => (e -> e') -> Validate e m a -> Validate e' m a
-mapFailure = withExceptT
+mapFailure f (Validate a) = Validate $ withExceptT f a
 
 instance (Monad m, ToJSON m a, ToJSON m e) => ToJSON m (AValidationResult e a) where
     toJSON = \case

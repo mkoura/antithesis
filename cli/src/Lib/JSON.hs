@@ -22,11 +22,9 @@ module Lib.JSON
     , fromAeson
     , fromAesonThrow
     , toAeson
-    , runCanonicalJSONThrow
     , toAesonString
     , fromAesonString
     , parseJSValue
-    , Parsing (..)
     , fromAesonStructurally
     , fromJSValueStructurally
     , byteStringToJSON
@@ -34,9 +32,7 @@ module Lib.JSON
     )
 where
 
-import Control.Applicative (Alternative)
-import Control.Monad (MonadPlus (..), (<=<))
-import Control.Monad.Trans.Except (ExceptT)
+import Control.Monad ((<=<))
 import Data.Aeson (Value, decode, encode)
 import Data.Aeson qualified as Aeson
 import Data.Aeson.Types qualified as AesonInternal
@@ -139,12 +135,6 @@ newtype CanonicalJSON m a = CanonicalJSON
     {runCanonicalJSON :: m (Either CanonicalJSONError a)}
     deriving (Functor)
 
-runCanonicalJSONThrow :: Monad m => CanonicalJSON m a -> m a
-runCanonicalJSONThrow (CanonicalJSON x) = do
-    result <- x
-    case result of
-        Left err -> error $ "CanonicalJSON error: " ++ show err
-        Right value -> pure value
 instance Applicative m => Applicative (CanonicalJSON m) where
     pure x = CanonicalJSON $ pure $ Right x
     CanonicalJSON f <*> CanonicalJSON x = CanonicalJSON $ liftA2 (<*>) f x
@@ -242,14 +232,6 @@ parseJSValue b = do
         Left err -> expected "JSValue" (Just err)
         Right js -> pure js
     fromJSON js
-
-newtype Parsing m a = Parsing
-    { runParsing :: ExceptT String m a
-    }
-    deriving (Functor, Applicative, Monad, Alternative)
-
-instance Monad m => ReportSchemaErrors (Parsing m) where
-    expected _expct _actual = Parsing mzero
 
 instance Applicative m => ToJSON m () where
     toJSON () = pure JSNull

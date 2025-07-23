@@ -4,6 +4,7 @@ module Cli
     ) where
 
 import Control.Monad.IO.Class (MonadIO (..))
+import Core.Context (withContext)
 import Core.Types.Basic (Owner (Owner), RequestRefId, TokenId)
 import Core.Types.Tx (TxHash, WithTxHash (..))
 import Core.Types.Wallet (Wallet (owner))
@@ -122,14 +123,13 @@ cmdCore
                 liftIO $ Owner <$> getEnv "ANTI_AGENT_PUBLIC_KEY_HASH"
             tokenId <- failNothing "No TokenId" mTokenId
             wallet <- failLeft ("No wallet @ " <>) mWallet
-            agentCmd
+            withContext
                 mpfsClient
-                (mkValidation tokenId)
-                (submit wallet)
+                testRunValidationConfig
                 (owner wallet)
-                tokenId
-                antithesisPKH
-                agentCommand
+                mkValidation
+                (submit wallet)
+                $ agentCmd tokenId antithesisPKH agentCommand
         RetractRequest refId -> do
             wallet <- failLeft ("No wallet @ " <>) mWallet
             let Submission submit' = submit wallet

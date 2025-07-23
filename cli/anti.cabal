@@ -89,6 +89,7 @@ library
   exposed-modules:
     App
     Cli
+    Core.Context
     Core.Options
     Core.Types.Basic
     Core.Types.CageDatum

@@ -9,6 +9,7 @@ module Validation
     , deleteValidation
     , updateValidation
     , renderKeyFailure
+    , hoistValidation
     ) where
 
 import Control.Monad (when)
@@ -59,6 +60,33 @@ data Validation m = Validation
         -> Repository
         -> m (Maybe RepositoryRoleFailure)
     }
+
+hoistValidation
+    :: (forall a. m a -> n a)
+    -> Validation m
+    -> Validation n
+hoistValidation
+    f
+    Validation
+        { mpfsGetFacts
+        , mpfsGetTestRuns
+        , githubCommitExists
+        , githubDirectoryExists
+        , githubUserPublicKeys
+        , githubRepositoryRole
+        } =
+        Validation
+            { mpfsGetFacts = f mpfsGetFacts
+            , mpfsGetTestRuns = f mpfsGetTestRuns
+            , githubCommitExists =
+                \repo commit -> f $ githubCommitExists repo commit
+            , githubDirectoryExists =
+                \repo commit dir -> f $ githubDirectoryExists repo commit dir
+            , githubUserPublicKeys =
+                \username publicKey -> f $ githubUserPublicKeys username publicKey
+            , githubRepositoryRole =
+                \username repository -> f $ githubRepositoryRole username repository
+            }
 
 mkValidation :: TokenId -> Validation ClientM
 mkValidation tk =

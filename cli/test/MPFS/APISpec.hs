@@ -88,7 +88,13 @@ import Oracle.Validate.Types
     )
 import PlutusTx (Data, fromData)
 import Servant.Client (ClientM, mkClientEnv, parseBaseUrl, runClientM)
-import Submitting (IfToWait (..), Submitting (..), readWallet)
+import Submitting
+    ( IfToWait (..)
+    , Submission
+    , Submitting (..)
+    , readWallet
+    , signAndSubmitMPFS
+    )
 import System.Environment (getEnv)
 import Test.Hspec
     ( ActionWith
@@ -145,7 +151,7 @@ deserializeTx tx = case decode (T.encodeUtf8 tx) of
 
 data Context = Context
     { mpfs :: Call
-    , wait180 :: Submitting
+    , wait180S :: Wallet -> Submission ClientM
     , tokenId :: TokenId
     , requesterWallet :: Wallet
     , oracleWallet :: Wallet
@@ -177,8 +183,9 @@ setup = do
             case r of
                 Left err -> throwIO err
                 Right res -> return res
+        wait180S = signAndSubmitMPFS wait180
     WithTxHash txHash mTokenId <- calling call $ do
-        tokenCmdCore wait180 oracle Nothing undefined undefined BootToken
+        tokenCmdCore (wait180S oracle) Nothing undefined undefined BootToken
     liftIO $ waitTx call txHash
     case mTokenId of
         Nothing -> error "BootToken failed, no TokenId returned"
@@ -186,7 +193,7 @@ setup = do
             return
                 Context
                     { mpfs = call
-                    , wait180
+                    , wait180S
                     , tokenId
                     , requesterWallet
                     , oracleWallet
@@ -194,12 +201,11 @@ setup = do
                     }
 
 teardown :: ActionWith Context
-teardown Context{mpfs, tokenId, wait180} = do
+teardown Context{mpfs, tokenId, wait180S} = do
     wallet <- loadOracleWallet
     txHash <- calling mpfs $ do
         tokenCmdCore
-            wait180
-            wallet
+            (wait180S wallet)
             (Just tokenId)
             undefined
             undefined
@@ -239,11 +245,12 @@ waitTx (Call call) txHash = void $ go 600
                 liftIO $ threadDelay 1000000
                 go (n - 1)
 
-retractTx :: Submitting -> Wallet -> TxHash -> ClientM ()
-retractTx wait180 wallet obj = do
+retractTx
+    :: (Wallet -> Submission ClientM) -> Wallet -> TxHash -> ClientM ()
+retractTx wait180S wallet obj = do
     void
         $ cmd
-            wait180
+            wait180S
             (Right wallet)
             Nothing
             Nothing
@@ -354,11 +361,11 @@ spec = do
                             }
 
             it "can submit and retract a request-insert tx"
-                $ \(Context{mpfs = Call call, wait180, tokenId}) -> do
+                $ \(Context{mpfs = Call call, wait180S, tokenId}) -> do
                     wallet <- loadRequesterWallet
                     call $ do
                         (failValidationFailure -> insert) <-
-                            requesterCmd wait180 wallet undefined tokenId undefined
+                            requesterCmd (wait180S wallet) undefined tokenId undefined
                                 $ RegisterUser
                                 $ RegisterUserKey
                                     { platform = Platform "github"
@@ -367,11 +374,11 @@ spec = do
                                         PublicKeyHash
                                             "AAAAC3NzaC1lZDI1NTE5AAAAILjwzNvy87HbzYV2lsW3UjVoxtpq4Nrj84kjo3puarCH"
                                     }
-                        retractTx wait180 wallet insert
+                        retractTx wait180S wallet insert
                         pure ()
 
             it "can update the anti token with a registered user"
-                $ \(Context{mpfs = Call call, wait180, tokenId, agentWallet}) -> do
+                $ \(Context{mpfs = Call call, wait180S, tokenId, agentWallet}) -> do
                     requester <- loadRequesterWallet
                     oracle <- loadOracleWallet
                     let key =
@@ -385,12 +392,11 @@ spec = do
                     keyJ <- toJSON key
                     call $ do
                         (failValidationFailure -> insertTx) <-
-                            requesterCmd wait180 requester undefined tokenId undefined
+                            requesterCmd (wait180S requester) undefined tokenId undefined
                                 $ RegisterUser key
                         _updateInsertTx <-
                             oracleCmd
-                                wait180
-                                oracle
+                                (wait180S oracle)
                                 undefined
                                 agentWallet.owner
                                 (Just tokenId)
@@ -409,12 +415,11 @@ spec = do
                                     ]
                                 ]
                         (failValidationFailure -> deleteTx) <-
-                            requesterCmd wait180 requester undefined tokenId undefined
+                            requesterCmd (wait180S requester) undefined tokenId undefined
                                 $ UnregisterUser key
                         _updateDeleteTx <-
                             oracleCmd
-                                wait180
-                                oracle
+                                (wait180S oracle)
                                 undefined
                                 agentWallet.owner
                                 (Just tokenId)

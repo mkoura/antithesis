@@ -27,7 +27,12 @@ import Servant.Client
     , parseBaseUrl
     , runClientM
     )
-import Submitting (IfToWait (..), Submitting (..), readWallet)
+import Submitting
+    ( IfToWait (..)
+    , Submitting (..)
+    , readWallet
+    , signAndSubmitMPFS
+    )
 import System.Environment (getArgs, getEnv, lookupEnv)
 import Text.JSON.Canonical (JSValue, ToJSON (..))
 
@@ -79,9 +84,10 @@ client = do
                         Left err -> error $ "Client error: " ++ show err
                         Right r -> return r
             let sbmt = Submitting{ifToWait = iftw, runClient}
+                submit = signAndSubmitMPFS sbmt
             Success o walletFile mpfs_host
                 <$> runClientM
-                    (cmd sbmt mWallet mSigning mtk command >>= toJSON)
+                    (cmd submit mWallet mSigning mtk command >>= toJSON)
                     clientEnv
     action `catch` (return . Failure)
 

@@ -19,7 +19,6 @@ import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Fact (Fact (..), keyHash, parseFacts)
 import Core.Types.Operation (Op (..), Operation (..))
 import Core.Types.Tx (WithTxHash (..))
-import Core.Types.Wallet (Wallet (..))
 import Data.Functor (($>), (<&>))
 import Data.List (find)
 import MPFS.API
@@ -39,7 +38,7 @@ import Oracle.Validate.Types
     , runValidate
     )
 import Servant.Client (ClientM)
-import Submitting (Submitting, signAndSubmit)
+import Submitting (Submission)
 import Text.JSON.Canonical
     ( FromJSON (..)
     , JSValue (..)
@@ -56,17 +55,17 @@ import User.Types
 import Validation (Validation, mkValidation)
 
 agentCmd
-    :: Submitting
-    -> Wallet
+    :: Submission ClientM
+    -> Owner
     -> TokenId
     -> Owner
     -> AgentCommand NotReady a
     -> ClientM a
-agentCmd sbmt wallet tokenId agentId cmdNotReady = do
+agentCmd submit walletOwner tokenId agentId cmdNotReady = do
     mCmdReady <- resolveOldState tokenId cmdNotReady
     case mCmdReady of
         Nothing -> error "No previous state found for the command"
-        Just cmdReady -> agentCmdCore sbmt wallet tokenId agentId cmdReady
+        Just cmdReady -> agentCmdCore submit walletOwner tokenId agentId cmdReady
 
 withExpectedState
     :: FromJSON Maybe (TestRunState phase)
@@ -187,19 +186,27 @@ deriving instance Show (AgentCommand Ready result)
 deriving instance Eq (AgentCommand Ready result)
 
 agentCmdCore
-    :: Submitting
-    -> Wallet
+    :: Submission ClientM
+    -> Owner
     -> TokenId
     -> Owner
     -> AgentCommand Ready result
     -> ClientM result
-agentCmdCore sbmt wallet tokenId agentId cmd = case cmd of
+agentCmdCore submit walletOwner tokenId agentId cmd = case cmd of
     Accept key pending ->
-        acceptCommand sbmt wallet tokenId agentId key pending
+        acceptCommand submit walletOwner tokenId agentId key pending
     Reject key pending reason ->
-        rejectCommand sbmt wallet tokenId agentId key pending reason
+        rejectCommand submit walletOwner tokenId agentId key pending reason
     Report key running duration url ->
-        reportCommand sbmt wallet tokenId agentId key running duration url
+        reportCommand
+            submit
+            walletOwner
+            tokenId
+            agentId
+            key
+            running
+            duration
+            url
     Query -> queryCommand tokenId
 
 queryCommand :: TokenId -> ClientM TestRunMap
@@ -217,8 +224,8 @@ queryCommand tokenId = do
 
 signAndSubmitAnUpdate
     :: (ToJSON ClientM key, ToJSON ClientM old, ToJSON ClientM new)
-    => Submitting
-    -> Wallet
+    => Submission ClientM
+    -> Owner
     -> ( Owner
          -> Validation ClientM
          -> Owner
@@ -232,8 +239,8 @@ signAndSubmitAnUpdate
     -> new
     -> ClientM (AValidationResult UpdateTestRunFailure (WithTxHash new))
 signAndSubmitAnUpdate
-    sbmt
-    wallet
+    submit
+    walletOwner
     validate
     tokenId
     agentId
@@ -244,10 +251,10 @@ signAndSubmitAnUpdate
             $ validate
                 agentId
                 (mkValidation tokenId)
-                (owner wallet)
+                walletOwner
             $ Change (Key testRun)
             $ Update oldState newState
-        wtx <- lift $ signAndSubmit sbmt wallet $ \address -> do
+        wtx <- lift $ submit $ \address -> do
             key <- toJSON testRun
             oldValue <- toJSON oldState
             newValue <- toJSON newState
@@ -256,8 +263,8 @@ signAndSubmitAnUpdate
         pure $ wtx $> newState
 
 reportCommand
-    :: Submitting
-    -> Wallet
+    :: Submission ClientM
+    -> Owner
     -> TokenId
     -> Owner
     -> TestRun
@@ -269,10 +276,10 @@ reportCommand
             UpdateTestRunFailure
             (WithTxHash (TestRunState DoneT))
         )
-reportCommand sbmt wallet tokenId agentId testRun oldState duration url =
+reportCommand submit walletOwner tokenId agentId testRun oldState duration url =
     signAndSubmitAnUpdate
-        sbmt
-        wallet
+        submit
+        walletOwner
         validateToDoneUpdate
         tokenId
         agentId
@@ -281,8 +288,8 @@ reportCommand sbmt wallet tokenId agentId testRun oldState duration url =
         $ Finished oldState duration url
 
 rejectCommand
-    :: Submitting
-    -> Wallet
+    :: Submission ClientM
+    -> Owner
     -> TokenId
     -> Owner
     -> TestRun
@@ -293,10 +300,10 @@ rejectCommand
             UpdateTestRunFailure
             (WithTxHash (TestRunState DoneT))
         )
-rejectCommand sbmt wallet tokenId agentId testRun testRunState reason =
+rejectCommand submit walletOwner tokenId agentId testRun testRunState reason =
     signAndSubmitAnUpdate
-        sbmt
-        wallet
+        submit
+        walletOwner
         validateToDoneUpdate
         tokenId
         agentId
@@ -305,8 +312,8 @@ rejectCommand sbmt wallet tokenId agentId testRun testRunState reason =
         $ Rejected testRunState reason
 
 acceptCommand
-    :: Submitting
-    -> Wallet
+    :: Submission ClientM
+    -> Owner
     -> TokenId
     -> Owner
     -> TestRun
@@ -316,10 +323,10 @@ acceptCommand
             UpdateTestRunFailure
             (WithTxHash (TestRunState RunningT))
         )
-acceptCommand sbmt wallet tokenId agentId testRun testRunState =
+acceptCommand submit walletOwner tokenId agentId testRun testRunState =
     signAndSubmitAnUpdate
-        sbmt
-        wallet
+        submit
+        walletOwner
         validateToRunningUpdate
         tokenId
         agentId

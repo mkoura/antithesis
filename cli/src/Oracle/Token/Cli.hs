@@ -8,7 +8,6 @@ import Control.Monad (void)
 import Control.Monad.Trans.Class (lift)
 import Core.Types.Basic (Owner, RequestRefId, TokenId)
 import Core.Types.Tx (TxHash, WithTxHash (WithTxHash))
-import Core.Types.Wallet (Wallet)
 import Lib.JSON (object, (.=))
 import MPFS.API
     ( bootToken
@@ -37,7 +36,7 @@ import Oracle.Validate.Types
     , sequenceValidate
     )
 import Servant.Client (ClientM)
-import Submitting (Submitting, signAndSubmit)
+import Submitting (Submission)
 import Text.JSON.Canonical
     ( FromJSON (fromJSON)
     , JSValue (..)
@@ -114,14 +113,13 @@ promoteFailure req =
         )
 
 tokenCmdCore
-    :: Submitting
-    -> Wallet
+    :: Submission ClientM
     -> Maybe TokenId
     -> TestRunValidationConfig
     -> Owner
     -> TokenCommand a
     -> ClientM a
-tokenCmdCore sbmt wallet (Just tk) testRunConfig pkh = \case
+tokenCmdCore submit (Just tk) testRunConfig pkh = \case
     GetToken -> getToken tk
     UpdateToken reqs -> runValidate $ do
         mpendings <- lift $ fromJSON <$> getToken tk
@@ -135,17 +133,17 @@ tokenCmdCore sbmt wallet (Just tk) testRunConfig pkh = \case
                         <*> validateRequest testRunConfig pkh (mkValidation tk)
                         <$> tokenRequests token
         WithTxHash txHash _ <- lift
-            $ signAndSubmit sbmt wallet
+            $ submit
             $ \address -> updateToken address tk reqs
         pure txHash
     BootToken -> error "BootToken command requires no TokenId"
     EndToken -> do
-        WithTxHash txHash _ <- signAndSubmit sbmt wallet
+        WithTxHash txHash _ <- submit
             $ \address -> endToken address tk
         pure txHash
-tokenCmdCore sbmt wallet Nothing _ _ = \case
+tokenCmdCore signAndSubmit Nothing _ _ = \case
     BootToken -> do
-        WithTxHash txHash jTokenId <- signAndSubmit sbmt wallet
+        WithTxHash txHash jTokenId <- signAndSubmit
             $ \address -> bootToken address
         case jTokenId of
             Just tkId -> case fromJSON tkId of

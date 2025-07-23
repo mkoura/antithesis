@@ -10,7 +10,8 @@
 {-# HLINT ignore "Use newtype instead of data" #-}
 
 module Submitting
-    ( signAndSubmit
+    ( Submission
+    , signAndSubmitMPFS
     , readWallet
     , walletFromMnemonic
     , writeWallet
@@ -118,6 +119,11 @@ data Submitting = Submitting
     , runClient :: forall a. ClientM a -> IO a
     }
 
+type Submission m =
+    forall a
+     . (Address -> m (WithUnsignedTx a))
+    -> m (WithTxHash a)
+
 waitTx :: Submitting -> TxHash -> IO ()
 waitTx (Submitting (Wait maxCycles) runClient) txHash = void $ go maxCycles
   where
@@ -130,12 +136,11 @@ waitTx (Submitting (Wait maxCycles) runClient) txHash = void $ go maxCycles
                 go (n - 1)
 waitTx (Submitting NoWait _) _ = return ()
 
-signAndSubmit
+signAndSubmitMPFS
     :: Submitting
     -> Wallet
-    -> (Address -> ClientM (WithUnsignedTx JSValue))
-    -> ClientM (WithTxHash JSValue)
-signAndSubmit sbmt Wallet{address, sign} action = do
+    -> Submission ClientM
+signAndSubmitMPFS sbmt Wallet{address, sign} action = do
     WithUnsignedTx unsignedTx value <- action address
     case sign unsignedTx of
         Right (SignedTx signedTx) -> do

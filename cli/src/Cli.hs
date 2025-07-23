@@ -6,7 +6,7 @@ module Cli
 import Control.Monad.IO.Class (MonadIO (..))
 import Core.Types.Basic (Owner (Owner), RequestRefId, TokenId)
 import Core.Types.Tx (TxHash, WithTxHash (..))
-import Core.Types.Wallet (Wallet)
+import Core.Types.Wallet (Wallet (owner))
 import Data.Aeson (eitherDecodeFileStrict')
 import Lib.SSH.Private
     ( KeyAPI (..)
@@ -19,7 +19,7 @@ import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig (..)
     )
 import Servant.Client (ClientM)
-import Submitting (Submitting, signAndSubmit)
+import Submitting (Submission)
 import System.Environment (getEnv)
 import Text.JSON.Canonical (JSValue)
 import User.Agent.Cli
@@ -48,13 +48,13 @@ deriving instance Show (Command a)
 deriving instance Eq (Command a)
 
 cmd
-    :: Submitting
+    :: (Wallet -> Submission ClientM)
     -> Either FilePath Wallet
     -> Maybe SigningMap
     -> Maybe TokenId
     -> Command a
     -> ClientM a
-cmd sbmt mwf msign tokenId command = do
+cmd submit mwf msign tokenId command = do
     cfg <- liftIO $ do
         configFile <- getEnv "ANTI_CONFIG_FILE"
         config <-
@@ -63,7 +63,7 @@ cmd sbmt mwf msign tokenId command = do
         case config of
             Left err -> error $ "Failed to parse config file: " ++ err
             Right cfg -> pure cfg
-    cmdCore sbmt cfg mwf msign tokenId command
+    cmdCore submit cfg mwf msign tokenId command
 
 failNothing :: Applicative m => [Char] -> Maybe a -> m a
 failNothing w Nothing = error w
@@ -74,7 +74,7 @@ failLeft f (Left err) = error $ f err
 failLeft _ (Right x) = pure x
 
 cmdCore
-    :: Submitting
+    :: (Wallet -> Submission ClientM)
     -> TestRunValidationConfig
     -> Either FilePath Wallet
     -> Maybe SigningMap
@@ -82,7 +82,7 @@ cmdCore
     -> Command a
     -> ClientM a
 cmdCore
-    sbmt
+    submit
     testRunValidationConfig
     mWallet
     mSigning
@@ -97,8 +97,7 @@ cmdCore
             tokenId <- failNothing "No TokenId" mTokenId
             wallet <- failLeft ("No wallet @ " <>) mWallet
             requesterCmd
-                sbmt
-                wallet
+                (submit wallet)
                 testRunValidationConfig
                 tokenId
                 (sign keyAPI)
@@ -108,8 +107,7 @@ cmdCore
             antithesisPKH <-
                 liftIO $ Owner <$> getEnv "ANTI_AGENT_PUBLIC_KEY_HASH"
             oracleCmd
-                sbmt
-                wallet
+                (submit wallet)
                 testRunValidationConfig
                 antithesisPKH
                 mTokenId
@@ -119,10 +117,15 @@ cmdCore
                 liftIO $ Owner <$> getEnv "ANTI_AGENT_PUBLIC_KEY_HASH"
             tokenId <- failNothing "No TokenId" mTokenId
             wallet <- failLeft ("No wallet @ " <>) mWallet
-            agentCmd sbmt wallet tokenId antithesisPKH agentCommand
+            agentCmd
+                (submit wallet)
+                (owner wallet)
+                tokenId
+                antithesisPKH
+                agentCommand
         RetractRequest refId -> do
             wallet <- failLeft ("No wallet @ " <>) mWallet
-            fmap txHash $ signAndSubmit sbmt wallet $ \address ->
+            fmap txHash $ submit wallet $ \address ->
                 retractChange address refId
         GetFacts -> do
             tokenId <- failNothing "No TokenId" mTokenId

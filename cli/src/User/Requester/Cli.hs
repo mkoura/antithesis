@@ -11,7 +11,6 @@ import Core.Types.Basic (Duration, TokenId)
 import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Operation (Operation (..))
 import Core.Types.Tx (TxHash, WithTxHash (..))
-import Core.Types.Wallet (Wallet (..))
 import Data.ByteString.Lazy qualified as BL
 import Data.Functor (($>))
 import Lib.SSH.Private (Sign)
@@ -45,7 +44,7 @@ import Oracle.Validate.Types
     , runValidate
     )
 import Servant.Client (ClientM)
-import Submitting (Submitting, signAndSubmit)
+import Submitting (Submission)
 import Text.JSON.Canonical (ToJSON (..), renderCanonicalJSON)
 import User.Types
     ( Phase (PendingT)
@@ -82,27 +81,25 @@ deriving instance Show (RequesterCommand a)
 deriving instance Eq (RequesterCommand a)
 
 requesterCmd
-    :: Submitting
-    -> Wallet
+    :: Submission ClientM
     -> TestRunValidationConfig
     -> TokenId
     -> Sign
     -> RequesterCommand a
     -> ClientM a
-requesterCmd sbmt wallet testRunConfig tokenId sign command = do
+requesterCmd submit testRunConfig tokenId sign command = do
     case command of
         RegisterUser request ->
-            registerUser sbmt wallet tokenId request
+            registerUser submit tokenId request
         UnregisterUser request ->
-            unregisterUser sbmt wallet tokenId request
+            unregisterUser submit tokenId request
         RegisterRole request ->
-            registerRole sbmt wallet tokenId request
+            registerRole submit tokenId request
         UnregisterRole request ->
-            unregisterRole sbmt wallet tokenId request
+            unregisterRole submit tokenId request
         RequestTest testRun duration ->
             createCommand
-                sbmt
-                wallet
+                submit
                 testRunConfig
                 tokenId
                 sign
@@ -110,8 +107,7 @@ requesterCmd sbmt wallet testRunConfig tokenId sign command = do
                 duration
 
 createCommand
-    :: Submitting
-    -> Wallet
+    :: Submission ClientM
     -> TestRunValidationConfig
     -> TokenId
     -> Sign
@@ -122,7 +118,7 @@ createCommand
             CreateTestRunFailure
             (WithTxHash (TestRunState PendingT))
         )
-createCommand sbmt wallet testRunConfig tokenId sign testRun duration =
+createCommand submit testRunConfig tokenId sign testRun duration =
     runValidate $ do
         key <- toJSON testRun
         let signature = sign $ BL.toStrict $ renderCanonicalJSON key
@@ -131,20 +127,18 @@ createCommand sbmt wallet testRunConfig tokenId sign testRun duration =
             $ validateCreateTestRun testRunConfig (mkValidation tokenId)
             $ Change (Key testRun) (Insert newState)
         value <- toJSON newState
-        wtx <- lift $ signAndSubmit sbmt wallet $ \address -> do
+        wtx <- lift $ submit $ \address -> do
             requestInsert address tokenId
                 $ RequestInsertBody{key, value}
         pure $ wtx $> newState
 
 registerUser
-    :: Submitting
-    -> Wallet
+    :: Submission ClientM
     -> TokenId
     -> RegisterUserKey
     -> ClientM (AValidationResult RegisterUserFailure TxHash)
 registerUser
-    sbmt
-    wallet
+    submit
     tokenId
     request = runValidate $ do
         void
@@ -152,7 +146,7 @@ registerUser
             $ Change (Key request) (Insert ())
         fmap txHash
             $ lift
-            $ signAndSubmit sbmt wallet
+            $ submit
             $ \address -> do
                 key <- toJSON request
                 value <- toJSON ()
@@ -160,14 +154,12 @@ registerUser
                     $ RequestInsertBody{key = key, value = value}
 
 unregisterUser
-    :: Submitting
-    -> Wallet
+    :: Submission ClientM
     -> TokenId
     -> RegisterUserKey
     -> ClientM (AValidationResult UnregisterUserFailure TxHash)
 unregisterUser
-    sbmt
-    wallet
+    submit
     tokenId
     request = runValidate $ do
         void
@@ -175,7 +167,7 @@ unregisterUser
             $ Change (Key request) (Delete ())
         fmap txHash
             $ lift
-            $ signAndSubmit sbmt wallet
+            $ submit
             $ \address -> do
                 key <- toJSON request
                 value <- toJSON ()
@@ -183,14 +175,12 @@ unregisterUser
                     $ RequestDeleteBody{key = key, value = value}
 
 registerRole
-    :: Submitting
-    -> Wallet
+    :: Submission ClientM
     -> TokenId
     -> RegisterRoleKey
     -> ClientM (AValidationResult RegisterRoleFailure TxHash)
 registerRole
-    sbmt
-    wallet
+    submit
     tokenId
     request = runValidate $ do
         void
@@ -198,7 +188,7 @@ registerRole
             $ Change (Key request) (Insert ())
         fmap txHash
             $ lift
-            $ signAndSubmit sbmt wallet
+            $ submit
             $ \address -> do
                 key <- toJSON request
                 value <- toJSON ()
@@ -206,14 +196,12 @@ registerRole
                     $ RequestInsertBody{key = key, value = value}
 
 unregisterRole
-    :: Submitting
-    -> Wallet
+    :: Submission ClientM
     -> TokenId
     -> RegisterRoleKey
     -> ClientM (AValidationResult UnregisterRoleFailure TxHash)
 unregisterRole
-    sbmt
-    wallet
+    submit
     tokenId
     request = runValidate $ do
         void
@@ -221,7 +209,7 @@ unregisterRole
             $ Change (Key request) (Delete ())
         fmap txHash
             $ lift
-            $ signAndSubmit sbmt wallet
+            $ submit
             $ \address -> do
                 key <- toJSON request
                 value <- toJSON ()

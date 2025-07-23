@@ -42,7 +42,7 @@ import Oracle.Validate.Types
     ( AValidationResult
     , runValidate
     )
-import Submitting (Submission)
+import Submitting (Submission (..))
 import Text.JSON.Canonical (ToJSON (..), renderCanonicalJSON)
 import User.Types
     ( Phase (PendingT)
@@ -124,19 +124,27 @@ createCommand
             CreateTestRunFailure
             (WithTxHash (TestRunState PendingT))
         )
-createCommand mpfs validation submit testRunConfig tokenId sign testRun duration =
-    runValidate $ do
-        key <- toJSON testRun
-        let signature = sign $ BL.toStrict $ renderCanonicalJSON key
-        let newState = Pending duration signature
-        void
-            $ validateCreateTestRun testRunConfig validation
-            $ Change (Key testRun) (Insert newState)
-        value <- toJSON newState
-        wtx <- lift $ submit $ \address -> do
-            mpfsRequestInsert mpfs address tokenId
-                $ RequestInsertBody{key, value}
-        pure $ wtx $> newState
+createCommand
+    mpfs
+    validation
+    (Submission submit)
+    testRunConfig
+    tokenId
+    sign
+    testRun
+    duration =
+        runValidate $ do
+            key <- toJSON testRun
+            let signature = sign $ BL.toStrict $ renderCanonicalJSON key
+            let newState = Pending duration signature
+            void
+                $ validateCreateTestRun testRunConfig validation
+                $ Change (Key testRun) (Insert newState)
+            value <- toJSON newState
+            wtx <- lift $ submit $ \address -> do
+                mpfsRequestInsert mpfs address tokenId
+                    $ RequestInsertBody{key, value}
+            pure $ wtx $> newState
 
 registerUser
     :: Monad m
@@ -149,7 +157,7 @@ registerUser
 registerUser
     mpfs
     validation
-    submit
+    (Submission submit)
     tokenId
     request = runValidate $ do
         void
@@ -175,7 +183,7 @@ unregisterUser
 unregisterUser
     mpfs
     validation
-    submit
+    (Submission submit)
     tokenId
     request = runValidate $ do
         void
@@ -201,7 +209,7 @@ registerRole
 registerRole
     mpfs
     validation
-    submit
+    (Submission submit)
     tokenId
     request = runValidate $ do
         void
@@ -227,7 +235,7 @@ unregisterRole
 unregisterRole
     mpfs
     validation
-    submit
+    (Submission submit)
     tokenId
     request = runValidate $ do
         void

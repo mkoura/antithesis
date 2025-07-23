@@ -36,7 +36,7 @@ import Oracle.Validate.Types
     , Validated
     , runValidate
     )
-import Submitting (Submission)
+import Submitting (Submission (..))
 import Text.JSON.Canonical
     ( FromJSON (..)
     , JSValue (..)
@@ -279,7 +279,7 @@ signAndSubmitAnUpdate
 signAndSubmitAnUpdate
     mpfs
     validation
-    submit
+    (Submission submit)
     walletOwner
     validate
     tokenId

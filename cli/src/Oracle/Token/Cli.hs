@@ -33,7 +33,7 @@ import Oracle.Validate.Types
     , runValidate
     , sequenceValidate
     )
-import Submitting (Submission)
+import Submitting (Submission (..))
 import Text.JSON.Canonical
     ( FromJSON (fromJSON)
     , JSValue (..)
@@ -119,7 +119,7 @@ tokenCmdCore
     -> Owner
     -> TokenCommand a
     -> m a
-tokenCmdCore mpfs mkValidation submit (Just tk) testRunConfig pkh = \case
+tokenCmdCore mpfs mkValidation (Submission submit) (Just tk) testRunConfig pkh = \case
     GetToken -> mpfsGetToken mpfs tk
     UpdateToken reqs -> runValidate $ do
         mpendings <- lift $ fromJSON <$> mpfsGetToken mpfs tk
@@ -141,7 +141,7 @@ tokenCmdCore mpfs mkValidation submit (Just tk) testRunConfig pkh = \case
         WithTxHash txHash _ <- submit
             $ \address -> mpfsEndToken mpfs address tk
         pure txHash
-tokenCmdCore mpfs _ submit Nothing _ _ = \case
+tokenCmdCore mpfs _ (Submission submit) Nothing _ _ = \case
     BootToken -> do
         WithTxHash txHash jTokenId <- submit
             $ \address -> mpfsBootToken mpfs address

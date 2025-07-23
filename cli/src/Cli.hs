@@ -19,7 +19,7 @@ import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig (..)
     )
 import Servant.Client (ClientM)
-import Submitting (Submission)
+import Submitting (Submission (..))
 import System.Environment (getEnv)
 import Text.JSON.Canonical (JSValue)
 import User.Agent.Cli
@@ -132,7 +132,8 @@ cmdCore
                 agentCommand
         RetractRequest refId -> do
             wallet <- failLeft ("No wallet @ " <>) mWallet
-            fmap txHash $ submit wallet $ \address ->
+            let Submission submit' = submit wallet
+            fmap txHash $ submit' $ \address ->
                 retractChange address refId
         GetFacts -> do
             tokenId <- failNothing "No TokenId" mTokenId

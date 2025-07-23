@@ -31,15 +31,15 @@ import Oracle.Validate.Types
     , Validated
     , mapFailure
     )
-import Servant.Client (ClientM)
 import Validation (Validation (..))
 
 validateRequest
-    :: TestRunValidationConfig
+    :: Monad m
+    => TestRunValidationConfig
     -> Owner
-    -> Validation ClientM
+    -> Validation m
     -> RequestZoo
-    -> Validate RequestValidationFailure ClientM Validated
+    -> Validate RequestValidationFailure m Validated
 validateRequest _ _ validation (RegisterUserRequest (Request _ _ change)) =
     mapFailure RegisterUserFailure
         $ validateRegisterUser validation change

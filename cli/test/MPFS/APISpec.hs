@@ -66,6 +66,7 @@ import MPFS.API
     , getToken
     , getTokenFacts
     , getTransaction
+    , mpfsClient
     , requestDelete
     , requestInsert
     , requestUpdate
@@ -113,6 +114,7 @@ import Text.JSON.Canonical
     )
 import User.Requester.Cli (RequesterCommand (..), requesterCmd)
 import User.Types (RegisterUserKey (..))
+import Validation (mkValidation)
 
 mpfsPolicyId :: String
 mpfsPolicyId = "c1e392ee7da9415f946de9d2aef9607322b47d6e84e8142ef0c340bf"
@@ -185,7 +187,14 @@ setup = do
                 Right res -> return res
         wait180S = signAndSubmitMPFS wait180
     WithTxHash txHash mTokenId <- calling call $ do
-        tokenCmdCore (wait180S oracle) Nothing undefined undefined BootToken
+        tokenCmdCore
+            mpfsClient
+            mkValidation
+            (wait180S oracle)
+            Nothing
+            undefined
+            undefined
+            BootToken
     liftIO $ waitTx call txHash
     case mTokenId of
         Nothing -> error "BootToken failed, no TokenId returned"
@@ -205,6 +214,8 @@ teardown Context{mpfs, tokenId, wait180S} = do
     wallet <- loadOracleWallet
     txHash <- calling mpfs $ do
         tokenCmdCore
+            mpfsClient
+            mkValidation
             (wait180S wallet)
             (Just tokenId)
             undefined
@@ -365,7 +376,13 @@ spec = do
                     wallet <- loadRequesterWallet
                     call $ do
                         (failValidationFailure -> insert) <-
-                            requesterCmd (wait180S wallet) undefined tokenId undefined
+                            requesterCmd
+                                mpfsClient
+                                (mkValidation tokenId)
+                                (wait180S wallet)
+                                undefined
+                                tokenId
+                                undefined
                                 $ RegisterUser
                                 $ RegisterUserKey
                                     { platform = Platform "github"
@@ -392,10 +409,18 @@ spec = do
                     keyJ <- toJSON key
                     call $ do
                         (failValidationFailure -> insertTx) <-
-                            requesterCmd (wait180S requester) undefined tokenId undefined
+                            requesterCmd
+                                mpfsClient
+                                (mkValidation tokenId)
+                                (wait180S requester)
+                                undefined
+                                tokenId
+                                undefined
                                 $ RegisterUser key
                         _updateInsertTx <-
                             oracleCmd
+                                mpfsClient
+                                mkValidation
                                 (wait180S oracle)
                                 undefined
                                 agentWallet.owner
@@ -415,10 +440,18 @@ spec = do
                                     ]
                                 ]
                         (failValidationFailure -> deleteTx) <-
-                            requesterCmd (wait180S requester) undefined tokenId undefined
+                            requesterCmd
+                                mpfsClient
+                                (mkValidation tokenId)
+                                (wait180S requester)
+                                undefined
+                                tokenId
+                                undefined
                                 $ UnregisterUser key
                         _updateDeleteTx <-
                             oracleCmd
+                                mpfsClient
+                                mkValidation
                                 (wait180S oracle)
                                 undefined
                                 agentWallet.owner

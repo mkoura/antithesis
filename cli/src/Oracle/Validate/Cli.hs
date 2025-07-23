@@ -16,7 +16,7 @@ import Lib.JSON
     , stringJSON
     )
 import MPFS.API
-    ( getToken
+    ( MPFS (..)
     )
 import Oracle.Types
     ( RequestValidationFailure
@@ -30,7 +30,6 @@ import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig
     )
 import Oracle.Validate.Types (ValidationResult, runValidate)
-import Servant.Client (ClientM)
 import Text.JSON.Canonical
     ( FromJSON (..)
     , JSValue (..)
@@ -45,16 +44,18 @@ data ValidateCommand
     deriving (Eq, Show)
 
 validateCmd
-    :: TestRunValidationConfig
+    :: Monad m
+    => MPFS m
+    -> TestRunValidationConfig
     -> Owner
-    -> Validation ClientM
+    -> Validation m
     -> TokenId
     -> ValidateCommand
-    -> ClientM JSValue
-validateCmd testRunConfig pkh validation tk command = do
+    -> m JSValue
+validateCmd mpfs testRunConfig pkh validation tk command = do
     rus <- case command of
         ValidateRequests -> do
-            canonicalJSON <- getToken tk
+            canonicalJSON <- mpfsGetToken mpfs tk
             requests <- do
                 v <-
                     runExceptT

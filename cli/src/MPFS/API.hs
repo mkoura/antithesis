@@ -16,6 +16,8 @@ module MPFS.API
     , getTransaction
     , bootToken
     , endToken
+    , MPFS (..)
+    , mpfsClient
     ) where
 
 import Core.Types.Basic (Address, RequestRefId, TokenId)
@@ -323,3 +325,54 @@ bootToken'
     :<|> waitNBlocks'
     :<|> getTransaction' =
         client tokenApi
+
+mpfsClient :: MPFS ClientM
+mpfsClient =
+    MPFS
+        { mpfsBootToken = bootToken
+        , mpfsEndToken = endToken
+        , mpfsRequestInsert = requestInsert
+        , mpfsRequestDelete = requestDelete
+        , mpfsRequestUpdate = requestUpdate
+        , mpfsRetractChange = retractChange
+        , mpfsUpdateToken = updateToken
+        , mpfsGetToken = getToken
+        , mpfsGetTokenFacts = getTokenFacts
+        , mpfsSubmitTransaction = submitTransaction
+        , mpfsWaitNBlocks = waitNBlocks
+        , mpfsGetTransaction = getTransaction
+        }
+
+data MPFS m = MPFS
+    { mpfsBootToken :: Address -> m (WithUnsignedTx JSValue)
+    , mpfsEndToken :: Address -> TokenId -> m (WithUnsignedTx JSValue)
+    , mpfsRequestInsert
+        :: Address
+        -> TokenId
+        -> RequestInsertBody
+        -> m (WithUnsignedTx JSValue)
+    , mpfsRequestDelete
+        :: Address
+        -> TokenId
+        -> RequestDeleteBody
+        -> m (WithUnsignedTx JSValue)
+    , mpfsRequestUpdate
+        :: Address
+        -> TokenId
+        -> RequestUpdateBody
+        -> m (WithUnsignedTx JSValue)
+    , mpfsRetractChange
+        :: Address
+        -> RequestRefId
+        -> m (WithUnsignedTx JSValue)
+    , mpfsUpdateToken
+        :: Address
+        -> TokenId
+        -> [RequestRefId]
+        -> m (WithUnsignedTx JSValue)
+    , mpfsGetToken :: TokenId -> m JSValue
+    , mpfsGetTokenFacts :: TokenId -> m JSValue
+    , mpfsSubmitTransaction :: SignedTx -> m TxHash
+    , mpfsWaitNBlocks :: Int -> m JSValue
+    , mpfsGetTransaction :: TxHash -> m JSValue
+    }

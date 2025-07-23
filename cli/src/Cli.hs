@@ -13,7 +13,7 @@ import Lib.SSH.Private
     , SSHKeySelector (SSHKeySelector)
     , SigningMap
     )
-import MPFS.API (getTokenFacts, retractChange)
+import MPFS.API (getTokenFacts, mpfsClient, retractChange)
 import Oracle.Cli (OracleCommand (..), oracleCmd)
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig (..)
@@ -31,6 +31,7 @@ import User.Requester.Cli
     ( RequesterCommand
     , requesterCmd
     )
+import Validation (mkValidation)
 import Wallet.Cli (WalletCommand, walletCmd)
 
 data Command a where
@@ -97,6 +98,8 @@ cmdCore
             tokenId <- failNothing "No TokenId" mTokenId
             wallet <- failLeft ("No wallet @ " <>) mWallet
             requesterCmd
+                mpfsClient
+                (mkValidation tokenId)
                 (submit wallet)
                 testRunValidationConfig
                 tokenId
@@ -107,6 +110,8 @@ cmdCore
             antithesisPKH <-
                 liftIO $ Owner <$> getEnv "ANTI_AGENT_PUBLIC_KEY_HASH"
             oracleCmd
+                mpfsClient
+                mkValidation
                 (submit wallet)
                 testRunValidationConfig
                 antithesisPKH
@@ -118,6 +123,8 @@ cmdCore
             tokenId <- failNothing "No TokenId" mTokenId
             wallet <- failLeft ("No wallet @ " <>) mWallet
             agentCmd
+                mpfsClient
+                (mkValidation tokenId)
                 (submit wallet)
                 (owner wallet)
                 tokenId

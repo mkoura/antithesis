@@ -15,10 +15,9 @@ import Data.ByteString.Lazy qualified as BL
 import Data.Functor (($>))
 import Lib.SSH.Private (Sign)
 import MPFS.API
-    ( RequestDeleteBody (..)
+    ( MPFS (..)
+    , RequestDeleteBody (..)
     , RequestInsertBody (..)
-    , requestDelete
-    , requestInsert
     )
 import Oracle.Validate.Requests.RegisterRole
     ( RegisterRoleFailure
@@ -43,7 +42,6 @@ import Oracle.Validate.Types
     ( AValidationResult
     , runValidate
     )
-import Servant.Client (ClientM)
 import Submitting (Submission)
 import Text.JSON.Canonical (ToJSON (..), renderCanonicalJSON)
 import User.Types
@@ -53,7 +51,7 @@ import User.Types
     , TestRun (..)
     , TestRunState (..)
     )
-import Validation (mkValidation)
+import Validation (Validation)
 
 data RequesterCommand a where
     RegisterUser
@@ -81,24 +79,29 @@ deriving instance Show (RequesterCommand a)
 deriving instance Eq (RequesterCommand a)
 
 requesterCmd
-    :: Submission ClientM
+    :: Monad m
+    => MPFS m
+    -> Validation m
+    -> Submission m
     -> TestRunValidationConfig
     -> TokenId
     -> Sign
     -> RequesterCommand a
-    -> ClientM a
-requesterCmd submit testRunConfig tokenId sign command = do
+    -> m a
+requesterCmd mpfs alidation submit testRunConfig tokenId sign command = do
     case command of
         RegisterUser request ->
-            registerUser submit tokenId request
+            registerUser mpfs alidation submit tokenId request
         UnregisterUser request ->
-            unregisterUser submit tokenId request
+            unregisterUser mpfs alidation submit tokenId request
         RegisterRole request ->
-            registerRole submit tokenId request
+            registerRole mpfs alidation submit tokenId request
         UnregisterRole request ->
-            unregisterRole submit tokenId request
+            unregisterRole mpfs alidation submit tokenId request
         RequestTest testRun duration ->
             createCommand
+                mpfs
+                alidation
                 submit
                 testRunConfig
                 tokenId
@@ -107,42 +110,50 @@ requesterCmd submit testRunConfig tokenId sign command = do
                 duration
 
 createCommand
-    :: Submission ClientM
+    :: Monad m
+    => MPFS m
+    -> Validation m
+    -> Submission m
     -> TestRunValidationConfig
     -> TokenId
     -> Sign
     -> TestRun
     -> Duration
-    -> ClientM
+    -> m
         ( AValidationResult
             CreateTestRunFailure
             (WithTxHash (TestRunState PendingT))
         )
-createCommand submit testRunConfig tokenId sign testRun duration =
+createCommand mpfs validation submit testRunConfig tokenId sign testRun duration =
     runValidate $ do
         key <- toJSON testRun
         let signature = sign $ BL.toStrict $ renderCanonicalJSON key
         let newState = Pending duration signature
         void
-            $ validateCreateTestRun testRunConfig (mkValidation tokenId)
+            $ validateCreateTestRun testRunConfig validation
             $ Change (Key testRun) (Insert newState)
         value <- toJSON newState
         wtx <- lift $ submit $ \address -> do
-            requestInsert address tokenId
+            mpfsRequestInsert mpfs address tokenId
                 $ RequestInsertBody{key, value}
         pure $ wtx $> newState
 
 registerUser
-    :: Submission ClientM
+    :: Monad m
+    => MPFS m
+    -> Validation m
+    -> Submission m
     -> TokenId
     -> RegisterUserKey
-    -> ClientM (AValidationResult RegisterUserFailure TxHash)
+    -> m (AValidationResult RegisterUserFailure TxHash)
 registerUser
+    mpfs
+    validation
     submit
     tokenId
     request = runValidate $ do
         void
-            $ validateRegisterUser (mkValidation tokenId)
+            $ validateRegisterUser validation
             $ Change (Key request) (Insert ())
         fmap txHash
             $ lift
@@ -150,20 +161,25 @@ registerUser
             $ \address -> do
                 key <- toJSON request
                 value <- toJSON ()
-                requestInsert address tokenId
+                mpfsRequestInsert mpfs address tokenId
                     $ RequestInsertBody{key = key, value = value}
 
 unregisterUser
-    :: Submission ClientM
+    :: Monad m
+    => MPFS m
+    -> Validation m
+    -> Submission m
     -> TokenId
     -> RegisterUserKey
-    -> ClientM (AValidationResult UnregisterUserFailure TxHash)
+    -> m (AValidationResult UnregisterUserFailure TxHash)
 unregisterUser
+    mpfs
+    validation
     submit
     tokenId
     request = runValidate $ do
         void
-            $ validateUnregisterUser (mkValidation tokenId)
+            $ validateUnregisterUser validation
             $ Change (Key request) (Delete ())
         fmap txHash
             $ lift
@@ -171,20 +187,25 @@ unregisterUser
             $ \address -> do
                 key <- toJSON request
                 value <- toJSON ()
-                requestDelete address tokenId
+                mpfsRequestDelete mpfs address tokenId
                     $ RequestDeleteBody{key = key, value = value}
 
 registerRole
-    :: Submission ClientM
+    :: Monad m
+    => MPFS m
+    -> Validation m
+    -> Submission m
     -> TokenId
     -> RegisterRoleKey
-    -> ClientM (AValidationResult RegisterRoleFailure TxHash)
+    -> m (AValidationResult RegisterRoleFailure TxHash)
 registerRole
+    mpfs
+    validation
     submit
     tokenId
     request = runValidate $ do
         void
-            $ validateRegisterRole (mkValidation tokenId)
+            $ validateRegisterRole validation
             $ Change (Key request) (Insert ())
         fmap txHash
             $ lift
@@ -192,20 +213,25 @@ registerRole
             $ \address -> do
                 key <- toJSON request
                 value <- toJSON ()
-                requestInsert address tokenId
+                mpfsRequestInsert mpfs address tokenId
                     $ RequestInsertBody{key = key, value = value}
 
 unregisterRole
-    :: Submission ClientM
+    :: Monad m
+    => MPFS m
+    -> Validation m
+    -> Submission m
     -> TokenId
     -> RegisterRoleKey
-    -> ClientM (AValidationResult UnregisterRoleFailure TxHash)
+    -> m (AValidationResult UnregisterRoleFailure TxHash)
 unregisterRole
+    mpfs
+    validation
     submit
     tokenId
     request = runValidate $ do
         void
-            $ validateUnregisterRole (mkValidation tokenId)
+            $ validateUnregisterRole validation
             $ Change (Key request) (Delete ())
         fmap txHash
             $ lift
@@ -213,5 +239,5 @@ unregisterRole
             $ \address -> do
                 key <- toJSON request
                 value <- toJSON ()
-                requestDelete address tokenId
+                mpfsRequestDelete mpfs address tokenId
                     $ RequestDeleteBody{key = key, value = value}

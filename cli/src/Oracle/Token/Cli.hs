@@ -10,10 +10,8 @@ import Core.Types.Basic (Owner, RequestRefId, TokenId)
 import Core.Types.Tx (TxHash, WithTxHash (WithTxHash))
 import Lib.JSON (object, (.=))
 import MPFS.API
-    ( bootToken
-    , endToken
-    , getToken
-    , updateToken
+    ( MPFS (..)
+    , mpfsGetToken
     )
 import Oracle.Types
     ( RequestValidationFailure
@@ -35,14 +33,13 @@ import Oracle.Validate.Types
     , runValidate
     , sequenceValidate
     )
-import Servant.Client (ClientM)
 import Submitting (Submission)
 import Text.JSON.Canonical
     ( FromJSON (fromJSON)
     , JSValue (..)
     , ToJSON (..)
     )
-import Validation (mkValidation)
+import Validation (Validation)
 
 data TokenUpdateRequestValidation = TokenUpdateRequestValidation
     { validationRequestId :: RequestRefId
@@ -113,16 +110,19 @@ promoteFailure req =
         )
 
 tokenCmdCore
-    :: Submission ClientM
+    :: Monad m
+    => MPFS m
+    -> (TokenId -> Validation m)
+    -> Submission m
     -> Maybe TokenId
     -> TestRunValidationConfig
     -> Owner
     -> TokenCommand a
-    -> ClientM a
-tokenCmdCore submit (Just tk) testRunConfig pkh = \case
-    GetToken -> getToken tk
+    -> m a
+tokenCmdCore mpfs mkValidation submit (Just tk) testRunConfig pkh = \case
+    GetToken -> mpfsGetToken mpfs tk
     UpdateToken reqs -> runValidate $ do
-        mpendings <- lift $ fromJSON <$> getToken tk
+        mpendings <- lift $ fromJSON <$> mpfsGetToken mpfs tk
         case mpendings of
             Nothing -> notValidated $ TokenNotParsable tk
             Just (token :: Token) ->
@@ -134,17 +134,17 @@ tokenCmdCore submit (Just tk) testRunConfig pkh = \case
                         <$> tokenRequests token
         WithTxHash txHash _ <- lift
             $ submit
-            $ \address -> updateToken address tk reqs
+            $ \address -> mpfsUpdateToken mpfs address tk reqs
         pure txHash
     BootToken -> error "BootToken command requires no TokenId"
     EndToken -> do
         WithTxHash txHash _ <- submit
-            $ \address -> endToken address tk
+            $ \address -> mpfsEndToken mpfs address tk
         pure txHash
-tokenCmdCore signAndSubmit Nothing _ _ = \case
+tokenCmdCore mpfs _ submit Nothing _ _ = \case
     BootToken -> do
-        WithTxHash txHash jTokenId <- signAndSubmit
-            $ \address -> bootToken address
+        WithTxHash txHash jTokenId <- submit
+            $ \address -> mpfsBootToken mpfs address
         case jTokenId of
             Just tkId -> case fromJSON tkId of
                 Nothing -> error "BootToken failed, TokenId is not valid JSON"

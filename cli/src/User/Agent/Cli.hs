@@ -22,9 +22,8 @@ import Core.Types.Tx (WithTxHash (..))
 import Data.Functor (($>), (<&>))
 import Data.List (find)
 import MPFS.API
-    ( RequestUpdateBody (..)
-    , getTokenFacts
-    , requestUpdate
+    ( MPFS (..)
+    , RequestUpdateBody (..)
     )
 import Oracle.Validate.Requests.TestRun.Update
     ( UpdateTestRunFailure
@@ -37,7 +36,6 @@ import Oracle.Validate.Types
     , Validated
     , runValidate
     )
-import Servant.Client (ClientM)
 import Submitting (Submission)
 import Text.JSON.Canonical
     ( FromJSON (..)
@@ -52,29 +50,41 @@ import User.Types
     , TestRunState (..)
     , URL (..)
     )
-import Validation (Validation, mkValidation)
+import Validation (Validation)
 
 agentCmd
-    :: Submission ClientM
+    :: Monad m
+    => MPFS m
+    -> Validation m
+    -> Submission m
     -> Owner
     -> TokenId
     -> Owner
     -> AgentCommand NotReady a
-    -> ClientM a
-agentCmd submit walletOwner tokenId agentId cmdNotReady = do
-    mCmdReady <- resolveOldState tokenId cmdNotReady
+    -> m a
+agentCmd mpfs validation submit walletOwner tokenId agentId cmdNotReady = do
+    mCmdReady <- resolveOldState mpfs tokenId cmdNotReady
     case mCmdReady of
         Nothing -> error "No previous state found for the command"
-        Just cmdReady -> agentCmdCore submit walletOwner tokenId agentId cmdReady
+        Just cmdReady ->
+            agentCmdCore
+                mpfs
+                validation
+                submit
+                walletOwner
+                tokenId
+                agentId
+                cmdReady
 
 withExpectedState
-    :: FromJSON Maybe (TestRunState phase)
-    => TokenId
+    :: (FromJSON Maybe (TestRunState phase), Monad m)
+    => MPFS m
+    -> TokenId
     -> TestRun
-    -> (TestRunState phase -> ClientM result)
-    -> ClientM (Maybe result)
-withExpectedState tokenId testRun cont = do
-    facts <- getTokenFacts tokenId
+    -> (TestRunState phase -> m result)
+    -> m (Maybe result)
+withExpectedState mpfs tokenId testRun cont = do
+    facts <- mpfsGetTokenFacts mpfs tokenId
     jsonKeyValue <- toJSON testRun
     let
         hasKey (JSObject obj) =
@@ -94,12 +104,14 @@ withExpectedState tokenId testRun cont = do
         _ -> pure Nothing
 
 withResolvedTestRun
-    :: TokenId
+    :: Monad m
+    => MPFS m
+    -> TokenId
     -> TestRunId
-    -> (TestRun -> ClientM (Maybe a))
-    -> ClientM (Maybe a)
-withResolvedTestRun tk (TestRunId testRunId) cont = do
-    facts <- getTokenFacts tk
+    -> (TestRun -> m (Maybe a))
+    -> m (Maybe a)
+withResolvedTestRun mpfs tk (TestRunId testRunId) cont = do
+    facts <- mpfsGetTokenFacts mpfs tk
     let testRuns = parseFacts facts
         finder :: Fact TestRun JSValue -> Bool
         finder (Fact key _) = case keyHash key of
@@ -111,20 +123,22 @@ withResolvedTestRun tk (TestRunId testRunId) cont = do
         Just testRun -> cont testRun
 
 resolveOldState
-    :: TokenId
+    :: Monad m
+    => MPFS m
+    -> TokenId
     -> AgentCommand NotReady result
-    -> ClientM (Maybe (AgentCommand Ready result))
-resolveOldState tokenId cmd = case cmd of
+    -> m (Maybe (AgentCommand Ready result))
+resolveOldState mpfs tokenId cmd = case cmd of
     Accept key () ->
-        withResolvedTestRun tokenId key $ \testRun ->
-            withExpectedState tokenId testRun $ pure . Accept testRun
+        withResolvedTestRun mpfs tokenId key $ \testRun ->
+            withExpectedState mpfs tokenId testRun $ pure . Accept testRun
     Reject key () reason ->
-        withResolvedTestRun tokenId key $ \testRun ->
-            withExpectedState tokenId testRun
+        withResolvedTestRun mpfs tokenId key $ \testRun ->
+            withExpectedState mpfs tokenId testRun
                 $ \pending -> pure $ Reject testRun pending reason
     Report key () duration url ->
-        withResolvedTestRun tokenId key $ \testRun ->
-            withExpectedState tokenId testRun $ \runningState ->
+        withResolvedTestRun mpfs tokenId key $ \testRun ->
+            withExpectedState mpfs tokenId testRun $ \runningState ->
                 pure $ Report testRun runningState duration url
     Query -> pure $ Just Query
 
@@ -186,19 +200,41 @@ deriving instance Show (AgentCommand Ready result)
 deriving instance Eq (AgentCommand Ready result)
 
 agentCmdCore
-    :: Submission ClientM
+    :: Monad m
+    => MPFS m
+    -> Validation m
+    -> Submission m
     -> Owner
     -> TokenId
     -> Owner
     -> AgentCommand Ready result
-    -> ClientM result
-agentCmdCore submit walletOwner tokenId agentId cmd = case cmd of
+    -> m result
+agentCmdCore mpfs validation submit walletOwner tokenId agentId cmd = case cmd of
     Accept key pending ->
-        acceptCommand submit walletOwner tokenId agentId key pending
+        acceptCommand
+            mpfs
+            validation
+            submit
+            walletOwner
+            tokenId
+            agentId
+            key
+            pending
     Reject key pending reason ->
-        rejectCommand submit walletOwner tokenId agentId key pending reason
+        rejectCommand
+            mpfs
+            validation
+            submit
+            walletOwner
+            tokenId
+            agentId
+            key
+            pending
+            reason
     Report key running duration url ->
         reportCommand
+            mpfs
+            validation
             submit
             walletOwner
             tokenId
@@ -207,11 +243,11 @@ agentCmdCore submit walletOwner tokenId agentId cmd = case cmd of
             running
             duration
             url
-    Query -> queryCommand tokenId
+    Query -> queryCommand mpfs tokenId
 
-queryCommand :: TokenId -> ClientM TestRunMap
-queryCommand tokenId = do
-    facts <- getTokenFacts tokenId
+queryCommand :: Monad m => MPFS m -> TokenId -> m TestRunMap
+queryCommand mpfs tokenId = do
+    facts <- mpfsGetTokenFacts mpfs tokenId
     let testRunsPending = parseFacts facts
         testRunsRunning = parseFacts facts
         testRunsDone = parseFacts facts
@@ -223,22 +259,26 @@ queryCommand tokenId = do
             }
 
 signAndSubmitAnUpdate
-    :: (ToJSON ClientM key, ToJSON ClientM old, ToJSON ClientM new)
-    => Submission ClientM
+    :: (ToJSON m key, ToJSON m old, ToJSON m new, Monad m)
+    => MPFS m
+    -> Validation m
+    -> Submission m
     -> Owner
     -> ( Owner
-         -> Validation ClientM
+         -> Validation m
          -> Owner
          -> Change key (OpU old new)
-         -> Validate UpdateTestRunFailure ClientM Validated
+         -> Validate UpdateTestRunFailure m Validated
        )
     -> TokenId
     -> Owner
     -> key
     -> old
     -> new
-    -> ClientM (AValidationResult UpdateTestRunFailure (WithTxHash new))
+    -> m (AValidationResult UpdateTestRunFailure (WithTxHash new))
 signAndSubmitAnUpdate
+    mpfs
+    validation
     submit
     walletOwner
     validate
@@ -250,7 +290,7 @@ signAndSubmitAnUpdate
         void
             $ validate
                 agentId
-                (mkValidation tokenId)
+                validation
                 walletOwner
             $ Change (Key testRun)
             $ Update oldState newState
@@ -258,12 +298,15 @@ signAndSubmitAnUpdate
             key <- toJSON testRun
             oldValue <- toJSON oldState
             newValue <- toJSON newState
-            requestUpdate address tokenId
+            mpfsRequestUpdate mpfs address tokenId
                 $ RequestUpdateBody{key, oldValue, newValue}
         pure $ wtx $> newState
 
 reportCommand
-    :: Submission ClientM
+    :: Monad m
+    => MPFS m
+    -> Validation m
+    -> Submission m
     -> Owner
     -> TokenId
     -> Owner
@@ -271,13 +314,15 @@ reportCommand
     -> TestRunState RunningT
     -> Duration
     -> URL
-    -> ClientM
+    -> m
         ( AValidationResult
             UpdateTestRunFailure
             (WithTxHash (TestRunState DoneT))
         )
-reportCommand submit walletOwner tokenId agentId testRun oldState duration url =
+reportCommand mpfs validation submit walletOwner tokenId agentId testRun oldState duration url =
     signAndSubmitAnUpdate
+        mpfs
+        validation
         submit
         walletOwner
         validateToDoneUpdate
@@ -288,20 +333,25 @@ reportCommand submit walletOwner tokenId agentId testRun oldState duration url =
         $ Finished oldState duration url
 
 rejectCommand
-    :: Submission ClientM
+    :: Monad m
+    => MPFS m
+    -> Validation m
+    -> Submission m
     -> Owner
     -> TokenId
     -> Owner
     -> TestRun
     -> TestRunState PendingT
     -> [TestRunRejection]
-    -> ClientM
+    -> m
         ( AValidationResult
             UpdateTestRunFailure
             (WithTxHash (TestRunState DoneT))
         )
-rejectCommand submit walletOwner tokenId agentId testRun testRunState reason =
+rejectCommand mpfs validation submit walletOwner tokenId agentId testRun testRunState reason =
     signAndSubmitAnUpdate
+        mpfs
+        validation
         submit
         walletOwner
         validateToDoneUpdate
@@ -312,19 +362,24 @@ rejectCommand submit walletOwner tokenId agentId testRun testRunState reason =
         $ Rejected testRunState reason
 
 acceptCommand
-    :: Submission ClientM
+    :: Monad m
+    => MPFS m
+    -> Validation m
+    -> Submission m
     -> Owner
     -> TokenId
     -> Owner
     -> TestRun
     -> TestRunState PendingT
-    -> ClientM
+    -> m
         ( AValidationResult
             UpdateTestRunFailure
             (WithTxHash (TestRunState RunningT))
         )
-acceptCommand submit walletOwner tokenId agentId testRun testRunState =
+acceptCommand mpfs validation submit walletOwner tokenId agentId testRun testRunState =
     signAndSubmitAnUpdate
+        mpfs
+        validation
         submit
         walletOwner
         validateToRunningUpdate

@@ -4,15 +4,15 @@ module Oracle.Cli
     ) where
 
 import Core.Types.Basic (Owner, TokenId)
+import MPFS.API (MPFS)
 import Oracle.Token.Cli (TokenCommand, tokenCmdCore)
 import Oracle.Validate.Cli (ValidateCommand, validateCmd)
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig
     )
-import Servant.Client (ClientM)
 import Submitting (Submission)
 import Text.JSON.Canonical (JSValue)
-import Validation (mkValidation)
+import Validation (Validation)
 
 data OracleCommand a where
     OracleTokenCommand :: TokenCommand a -> OracleCommand a
@@ -22,15 +22,20 @@ deriving instance Show (OracleCommand a)
 deriving instance Eq (OracleCommand a)
 
 oracleCmd
-    :: Submission ClientM
+    :: Monad m
+    => MPFS m
+    -> (TokenId -> Validation m)
+    -> Submission m
     -> TestRunValidationConfig
     -> Owner
     -> Maybe TokenId
     -> OracleCommand a
-    -> ClientM a
-oracleCmd submit testRunConfig agentPkh mtk = \case
+    -> m a
+oracleCmd mpfs mkValidation submit testRunConfig agentPkh mtk = \case
     OracleTokenCommand tokenCommand ->
         tokenCmdCore
+            mpfs
+            mkValidation
             submit
             mtk
             testRunConfig
@@ -42,6 +47,7 @@ oracleCmd submit testRunConfig agentPkh mtk = \case
             Nothing -> error "TokenId is required for ValidateCommand"
         let validation = mkValidation tk
         validateCmd
+            mpfs
             testRunConfig
             agentPkh
             validation

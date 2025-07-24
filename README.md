@@ -102,3 +102,22 @@ Developers:
  - paweljakubas, [did:key:z6Mks4nj3eXrWhjEXknLooeH8ac9c8XcTSzmM7GaooaVyEMN](https://app.radicle.xyz/nodes/ash.radicle.garden/users/did:key:z6Mks4nj3eXrWhjEXknLooeH8ac9c8XcTSzmM7GaooaVyEMN)
  - anviking, [did:key:z6MkoqswZoM5EtGgsWyTYbrbAw2MXWd2JmSvsQ8Ns9jstmCX](https://app.radicle.xyz/nodes/ash.radicle.garden/users/did:key:z6MkoqswZoM5EtGgsWyTYbrbAw2MXWd2JmSvsQ8Ns9jstmCX)
  - abailly, [did:key:z6MkhgPg6WShnhJcmfwox4G5yL3EvJ2zW8L31SZLD95yUi11](https://app.radicle.xyz/nodes/ash.radicle.garden/users/did:key:z6MkhgPg6WShnhJcmfwox4G5yL3EvJ2zW8L31SZLD95yUi11)
+
+## See Also
+
+- [Project blog][Blog]
+- License: see LICENSE
+- Contributing: see CONTRIBUTING.md
+- Security: see SECURITY.md
+- Other projects by [HAL][HAL]
+- Other projects by the [Cardano Foundation][CF]
+- About [Cardano][Cardano]
+
+<!-- MARKDOWN LINKS & IMAGES -->
+
+[Blog]: https://cardano-foundation.github.io/antithesis/
+[HAL]: https://github.com/cardano-foundation/hal
+[CF]: https://github.com/cardano-foundation
+[Cardano]: https://cardano.org/
+
+

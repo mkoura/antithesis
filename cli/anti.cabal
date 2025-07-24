@@ -99,6 +99,7 @@ library
     Core.Types.Tx
     Core.Types.Wallet
     Lib.Box
+    Lib.CanonAeson
     Lib.GitHub
     Lib.JSON
     Lib.SSH.Private
@@ -166,6 +167,7 @@ library
     , optparse-applicative
     , plutus-tx
     , random
+    , scientific
     , servant
     , servant-client
     , string-qq
@@ -241,6 +243,7 @@ test-suite anti-test
   -- Modules included in this executable, other than Main.
   other-modules:
     E2ESpec
+    Lib.CanonAesonSpec
     Lib.Github.OracleValidationSpec
     Lib.JSONSpec
     Lib.SSH.KeySpec
@@ -288,6 +291,7 @@ test-suite anti-test
     , plutus-tx
     , process
     , QuickCheck
+    , scientific
     , servant-client
     , text
 

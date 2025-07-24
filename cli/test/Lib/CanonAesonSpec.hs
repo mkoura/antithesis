@@ -2,24 +2,31 @@
 
 module Lib.CanonAesonSpec (spec) where
 
-import           Lib.CanonAeson
-import           Control.Monad (liftM)
-import           Data.List (nub, sort)
-import           Data.Scientific (scientific)
-import           Test.Hspec
-import           Test.Hspec.QuickCheck
-import           Test.QuickCheck
-import qualified Text.JSON.Canonical as Canon
+import Data.List (nub, sort)
+import Data.Scientific (scientific)
+import Lib.CanonAeson (fromAeson, fromCanon, fromScientific)
+import Test.Hspec (Spec, describe, it, shouldBe)
+import Test.Hspec.QuickCheck (prop)
+import Test.QuickCheck
+    ( Arbitrary
+    , Gen
+    , applyArbitrary2
+    , arbitrary
+    , arbitraryASCIIChar
+    , arbitrarySizedIntegral
+    , listOf
+    , oneof
+    , scale
+    , sized
+    )
+import Text.JSON.Canonical qualified as Canon
 
 spec :: Spec
 spec = do
-
     describe "Canonical JSON <-> Aeson conversions" $ do
-
-        prop "Converts Canonical JSON to Aeson and back" $ prop_roundTrip
+        prop "Converts Canonical JSON to Aeson and back" prop_roundTrip
 
     describe "Convert from Data.Scientific to Canonical JSNum" $ do
-
         it "Converts number with 0 exponent" $ do
             fromScientific (scientific 1234 0)
                 `shouldBe` Just (Canon.JSNum 1234)
@@ -39,8 +46,8 @@ spec = do
 prop_roundTrip :: Canon.JSValue -> Bool
 prop_roundTrip x = fromAeson (fromCanon x) == Just x
 
-instance Arbitrary Canon.JSValue  where arbitrary = rCanon
-instance Arbitrary Canon.Int54    where arbitrary = rInt
+instance Arbitrary Canon.JSValue where arbitrary = rCanon
+instance Arbitrary Canon.Int54 where arbitrary = rInt
 instance Arbitrary Canon.JSString where arbitrary = rString
 
 rCanon :: Gen Canon.JSValue
@@ -48,16 +55,21 @@ rCanon = sized rCanon'
 
 rCanon' :: Int -> Gen Canon.JSValue
 rCanon' n
-  | n > 1     = oneof [ rCanon' 0
-                      , liftM Canon.JSArray (listOf subCanon)
-                      , sized rObject
-                      ]
-  | otherwise = oneof [ return Canon.JSNull
-                      , liftM Canon.JSBool arbitrary
-                      , liftM Canon.JSNum arbitrary
-                      , liftM Canon.JSString arbitrary
-                      ]
-  where subCanon = rCanon' (n `div` 3)
+    | n > 1 =
+        oneof
+            [ rCanon' 0
+            , Canon.JSArray <$> listOf subCanon
+            , sized rObject
+            ]
+    | otherwise =
+        oneof
+            [ return Canon.JSNull
+            , Canon.JSBool <$> arbitrary
+            , Canon.JSNum <$> arbitrary
+            , Canon.JSString <$> arbitrary
+            ]
+  where
+    subCanon = rCanon' (n `div` 3)
 
 rInt :: Gen Canon.Int54
 rInt = arbitrarySizedIntegral
@@ -67,7 +79,7 @@ rString = fmap Canon.toJSString (listOf arbitraryASCIIChar)
 
 rObject :: Int -> Gen Canon.JSValue
 rObject n
-    | n > 1     = scale (div 3) (applyArbitrary2 zipObj)
+    | n > 1 = scale (div 3) (applyArbitrary2 zipObj)
     | otherwise = return (Canon.JSObject [])
 
 zipObj :: [Canon.JSString] -> [Canon.JSValue] -> Canon.JSValue

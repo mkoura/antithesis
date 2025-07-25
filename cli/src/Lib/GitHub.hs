@@ -1,5 +1,7 @@
 module Lib.GitHub
-    ( githubCommitExists
+    ( GithubError (..)
+    , GetCodeOwnersFileFailure (..)
+    , githubCommitExists
     , githubDirectoryExists
     , githubUserPublicKeys
     , githubGetCodeOwnersFile
@@ -111,8 +113,17 @@ githubUserPublicKeys (Username name) = do
         Left e -> throwIO e
         Right r -> pure $ GH.basicPublicSSHKeyKey <$> toList r
 
+data GetCodeOwnersFileFailure =
+    GetCodeOwnersFileDirectoryNotFound
+    | GetCodeOwnersFileNotAFile
+    | GetCodeOwnersFileUnsupportedEncoding String
+    | GetCodeOwnersFileOtherFailure String
+    deriving (Eq, Show)
+
+instance Exception GetCodeOwnersFileFailure
+
 githubGetCodeOwnersFile
-    :: Repository -> IO T.Text
+    :: Repository -> IO (Either GetCodeOwnersFileFailure T.Text)
 githubGetCodeOwnersFile (Repository owner repo) = do
     response <-
         callGithub
@@ -124,22 +135,36 @@ githubGetCodeOwnersFile (Repository owner repo) = do
     case response of
         Left e -> onStatusCodeOfException e $ \c -> do
             case c of
-                404 -> throwIO DirectoryNotFound
-                _ -> throwIO e
+                404 ->
+                    pure
+                        . Just
+                        . Left
+                        $ GetCodeOwnersFileDirectoryNotFound
+                _ ->
+                    pure
+                        . Just
+                        . Left
+                        . GetCodeOwnersFileOtherFailure
+                        $ show e
         Right (GH.ContentFile contents) -> do
             let content = GH.contentFileContent contents
             case GH.contentFileEncoding contents of
                 "base64" ->
                     pure
+                        . Right
                         . T.decodeUtf8
                         . B64.decodeLenient
                         . T.encodeUtf8
                         $ content
                 enc ->
-                    error
-                        $ "Unsupported encoding for CODEOWNERS file: "
-                            ++ T.unpack enc
-        Right _ -> throwIO NotAfile
+                    pure
+                        . Left
+                        . GetCodeOwnersFileUnsupportedEncoding
+                        $ T.unpack enc
+        Right _ ->
+                  pure
+                  . Left
+                  $ GetCodeOwnersFileNotAFile
   where
     owner' = N $ T.pack owner
     repo' = N $ T.pack repo

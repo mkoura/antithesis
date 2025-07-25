@@ -9,13 +9,11 @@ import Core.Types.Basic
     , Username (..)
     )
 import Data.Text qualified as T
-import Lib.GitHub (githubGetCodeOwnersFile)
+import Lib.GitHub (GetCodeOwnersFileFailure (..), githubGetCodeOwnersFile)
 import Test.Hspec
     ( Spec
-    , anyException
     , it
     , shouldReturn
-    , shouldThrow
     )
 import Validation.RegisterRole
     ( RepositoryRoleFailure (..)
@@ -92,26 +90,27 @@ spec = do
     it "should download CODEOWNERS file from repo with main" $ do
         githubGetCodeOwnersFile
             (Repository "cardano-foundation" "hal-fixture-sin")
-            `shouldReturn` "antithesis: @notunrandom @cfhal\n"
+            `shouldReturn` Right "antithesis: @notunrandom @cfhal\n"
 
     it "should download CODEOWNERS file from repo with master" $ do
         githubGetCodeOwnersFile
             (Repository "cardano-foundation" "hal-fixture-cos")
-            `shouldReturn` "* @notunrandom\n"
+            `shouldReturn` Right "* @notunrandom\n"
 
     it "should download CODEOWNERS file from repo with trunk" $ do
         githubGetCodeOwnersFile
             (Repository "cardano-foundation" "hal-fixture-tan")
-            `shouldReturn` "* @notunrandom\n"
+            `shouldReturn` Right "* @notunrandom\n"
 
     it "should throw if missing CODEOWNERS file" $ do
         githubGetCodeOwnersFile
             (Repository "cardano-foundation" "hal-fixture-sec")
-            `shouldThrow` anyException
+            `shouldReturn` Left GetCodeOwnersFileDirectoryNotFound
 
     it "CODEOWNERS does not have role entry" $ do
         let noRoleEntry _ =
                 pure
+                    $ Right
                     $ T.unlines
                         [ "# Haskell components"
                         , "core        /     @user"
@@ -125,6 +124,7 @@ spec = do
     it "CODEOWNERS does not have users assigned" $ do
         let noRoleEntry _ =
                 pure
+                    $ Right
                     $ T.unlines
                         [ "# Haskell components"
                         , "core        /     @user"
@@ -140,6 +140,7 @@ spec = do
     it "CODEOWNERS does have other users assigned" $ do
         let noRoleEntry _ =
                 pure
+                    $ Right
                     $ T.unlines
                         [ "# Haskell components"
                         , "core        /     @user"
@@ -155,6 +156,7 @@ spec = do
     it "CODEOWNERS does have user assigned" $ do
         let noRoleEntry _ =
                 pure
+                    $ Right
                     $ T.unlines
                         [ "# Haskell components"
                         , "core        /     @user"

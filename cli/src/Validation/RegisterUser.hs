@@ -43,14 +43,19 @@ analyzePublicKeyResponse
 analyzePublicKeyResponse (PublicKeyHash pubkeyToValidate) = \case
     Left err -> Just $ GithubError $ show err
     Right resp ->
-        if null resp then
-            Just NoPublicKeyFound
-        else if not (any hasExpectedPrefix resp) then
-            Just NoEd25519KeyFound
-        else if hasNotTheKey resp then
-            Just NoEd25519KeyMatch
-        else
-            Nothing
+        if null resp
+            then
+                Just NoPublicKeyFound
+            else
+                if not (any hasExpectedPrefix resp)
+                    then
+                        Just NoEd25519KeyFound
+                    else
+                        if hasNotTheKey resp
+                            then
+                                Just NoEd25519KeyMatch
+                            else
+                                Nothing
   where
     hasExpectedPrefix = T.isPrefixOf expectedPrefix
     hasNotTheKey =

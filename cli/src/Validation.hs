@@ -49,7 +49,10 @@ data Validation m = Validation
          . (FromJSON Maybe k, FromJSON Maybe v)
         => m [Fact k v]
     , mpfsGetTestRuns :: m [TestRun]
-    , githubCommitExists :: Repository -> Commit -> m (Either GitHub.GithubResponseError Bool)
+    , githubCommitExists
+        :: Repository
+        -> Commit
+        -> m (Either GitHub.GithubResponseError Bool)
     , githubDirectoryExists :: Repository -> Commit -> Directory -> m Bool
     , githubUserPublicKeys
         :: Username

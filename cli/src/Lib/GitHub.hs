@@ -43,8 +43,8 @@ callGithub req = do
     auth <- getOAUth
     github auth req
 
-data GithubResponseError =
-      GithubResponseErrorRepositoryNotFound
+data GithubResponseError
+    = GithubResponseErrorRepositoryNotFound
     | GithubResponseErrorSSHPublicKeysCannotBeFetched String
     deriving (Show)
 
@@ -66,7 +66,8 @@ onStatusCodeOfException e f = case e of
     _ -> throwIO e
 
 -- | Check if a commit exists in a GitHub repository.
-githubCommitExists :: Repository -> Commit -> IO (Either GithubResponseError Bool)
+githubCommitExists
+    :: Repository -> Commit -> IO (Either GithubResponseError Bool)
 githubCommitExists (Repository owner repo) (Commit sha) = do
     commit <-
         callGithub
@@ -106,7 +107,8 @@ githubDirectoryExists (Repository owner repo) (Commit sha) (Directory dir) = do
     repo' = N $ T.pack repo
     sha' = T.pack sha
 
-githubUserPublicKeys :: Username -> IO (Either GithubResponseError [T.Text])
+githubUserPublicKeys
+    :: Username -> IO (Either GithubResponseError [T.Text])
 githubUserPublicKeys (Username name) = do
     auth <- getOAUth
     result <-
@@ -114,9 +116,9 @@ githubUserPublicKeys (Username name) = do
     case result of
         Left e ->
             pure
-            $ Left
-            $ GithubResponseErrorSSHPublicKeysCannotBeFetched
-            $ show e
+                $ Left
+                $ GithubResponseErrorSSHPublicKeysCannotBeFetched
+                $ show e
         Right r -> pure $ Right $ GH.basicPublicSSHKeyKey <$> toList r
 
 data GetCodeOwnersFileFailure

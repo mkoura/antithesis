@@ -35,23 +35,29 @@ renderRepositoryRoleFailure = \case
 -- the expectation there a line:
 -- role: user1 user2 .. userX .. userN
 analyzeResponseCodeownersFile
-    :: Username -> Either GetCodeOwnersFileFailure Text -> Maybe RepositoryRoleFailure
+    :: Username
+    -> Either GetCodeOwnersFileFailure Text
+    -> Maybe RepositoryRoleFailure
 analyzeResponseCodeownersFile (Username user) = \case
     Left failure ->
         Just $ GithubGetError failure
     Right file ->
-        if null (lineWithRole file) then
-            Just NoRoleEntryInCodeowners
-        else if users file == [Nothing] then
-            Just NoUsersAssignedToRoleInCodeowners
-        else if foundUser file == [[]] then
-            Just NoUserInCodeowners
-        else
-            Nothing
+        if null (lineWithRole file)
+            then
+                Just NoRoleEntryInCodeowners
+            else
+                if users file == [Nothing]
+                    then
+                        Just NoUsersAssignedToRoleInCodeowners
+                    else
+                        if foundUser file == [[]]
+                            then
+                                Just NoUserInCodeowners
+                            else
+                                Nothing
   where
-    fileLines file  = T.lines file
     strBS = "antithesis"
-    lineWithRole file = L.filter (T.isPrefixOf strBS) (fileLines file)
+    lineWithRole file = L.filter (T.isPrefixOf strBS) (T.lines file)
     colon = "antithesis" <> ": "
     getUsersWithRole = T.stripPrefix colon
     users file =

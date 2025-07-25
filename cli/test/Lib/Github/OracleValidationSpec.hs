@@ -9,7 +9,10 @@ import Core.Types.Basic
     , Username (..)
     )
 import Data.Text qualified as T
-import Lib.GitHub (GetCodeOwnersFileFailure (..), githubGetCodeOwnersFile)
+import Lib.GitHub
+    ( GetCodeOwnersFileFailure (..)
+    , githubGetCodeOwnersFile
+    )
 import Test.Hspec
     ( Spec
     , it

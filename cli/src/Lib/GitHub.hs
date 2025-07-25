@@ -113,8 +113,8 @@ githubUserPublicKeys (Username name) = do
         Left e -> throwIO e
         Right r -> pure $ GH.basicPublicSSHKeyKey <$> toList r
 
-data GetCodeOwnersFileFailure =
-    GetCodeOwnersFileDirectoryNotFound
+data GetCodeOwnersFileFailure
+    = GetCodeOwnersFileDirectoryNotFound
     | GetCodeOwnersFileNotAFile
     | GetCodeOwnersFileUnsupportedEncoding String
     | GetCodeOwnersFileOtherFailure String
@@ -162,9 +162,9 @@ githubGetCodeOwnersFile (Repository owner repo) = do
                         . GetCodeOwnersFileUnsupportedEncoding
                         $ T.unpack enc
         Right _ ->
-                  pure
-                  . Left
-                  $ GetCodeOwnersFileNotAFile
+            pure
+                . Left
+                $ GetCodeOwnersFileNotAFile
   where
     owner' = N $ T.pack owner
     repo' = N $ T.pack repo

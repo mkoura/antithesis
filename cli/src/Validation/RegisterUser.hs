@@ -12,12 +12,13 @@ import Data.List qualified as L
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Lib.GitHub (githubUserPublicKeys)
+import Lib.GitHub (GithubResponseError, githubUserPublicKeys)
 
 data PublicKeyFailure
     = NoPublicKeyFound
     | NoEd25519KeyFound
     | NoEd25519KeyMatch
+    | GithubError String
     deriving (Eq, Show)
 
 renderPublicKeyFailure :: PublicKeyFailure -> String
@@ -29,22 +30,28 @@ renderPublicKeyFailure = \case
             <> "' exposed. And none was found"
     NoEd25519KeyMatch ->
         "The user does not have the specified Ed25519 public key exposed in Github."
+    GithubError err ->
+        "The following github error was encountered: " <> err
 
 expectedPrefix :: Text
 expectedPrefix = "ssh-ed25519 "
 
 analyzePublicKeyResponse
     :: PublicKeyHash
-    -> [Text]
+    -> Either GithubResponseError [Text]
     -> Maybe PublicKeyFailure
-analyzePublicKeyResponse (PublicKeyHash pubkeyToValidate) = cond
+analyzePublicKeyResponse (PublicKeyHash pubkeyToValidate) = \case
+    Left err -> Just $ GithubError $ show err
+    Right resp ->
+        if null resp then
+            Just NoPublicKeyFound
+        else if not (any hasExpectedPrefix resp) then
+            Just NoEd25519KeyFound
+        else if hasNotTheKey resp then
+            Just NoEd25519KeyMatch
+        else
+            Nothing
   where
-    cond resp
-        | null resp = Just NoPublicKeyFound
-        | not (any hasExpectedPrefix resp) = Just NoEd25519KeyFound
-        | hasNotTheKey resp = Just NoEd25519KeyMatch
-        | otherwise = Nothing
-
     hasExpectedPrefix = T.isPrefixOf expectedPrefix
     hasNotTheKey =
         L.notElem (T.pack pubkeyToValidate)
@@ -53,7 +60,7 @@ analyzePublicKeyResponse (PublicKeyHash pubkeyToValidate) = cond
 inspectPublicKeyTemplate
     :: Username
     -> PublicKeyHash
-    -> (Username -> IO [Text])
+    -> (Username -> IO (Either GithubResponseError [Text]))
     -> IO (Maybe PublicKeyFailure)
 inspectPublicKeyTemplate username pubKeyExpected requestPublicKeysForUser = do
     resp <- requestPublicKeysForUser username

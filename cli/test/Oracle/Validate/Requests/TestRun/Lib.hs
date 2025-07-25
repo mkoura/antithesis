@@ -125,7 +125,7 @@ mkValidation fs rs ds upk rr =
         , mpfsGetTestRuns =
             pure $ mapMaybe (\(Fact k _ :: JSFact) -> fromJSON k) fs
         , githubCommitExists = \repository commit ->
-            return $ (repository, commit) `elem` rs
+            return $ Right $ (repository, commit) `elem` rs
         , githubDirectoryExists = \repository commit dir ->
             return $ (repository, commit, dir) `elem` ds
         , githubUserPublicKeys = \username publicKey ->

@@ -31,7 +31,7 @@ spec :: Spec
 spec = do
     it "user needs to have public key(s) exposed"
         $ do
-            let emptyPubKeyOfUser _ = pure []
+            let emptyPubKeyOfUser _ = pure $ Right []
                 user = Username "user1"
                 pubkey = PublicKeyHash ""
             inspectPublicKeyTemplate
@@ -43,7 +43,7 @@ spec = do
     it "user needs to have ssh-ed25519 public key exposed"
         $ do
             let respKey = "ssh-rsa AAAAAAAA"
-                nonEd25519PubKeyOfUser _ = pure [respKey]
+                nonEd25519PubKeyOfUser _ = pure $ Right [respKey]
                 user = Username "user1"
                 pubkey = PublicKeyHash ""
             inspectPublicKeyTemplate
@@ -55,7 +55,7 @@ spec = do
     it "user needs to the expected ssh-ed25519 public key exposed"
         $ do
             let respKey = "ssh-ed25519 AAAAAAAA"
-                noExpectedEd25519PubKeyOfUser _ = pure [respKey]
+                noExpectedEd25519PubKeyOfUser _ = pure $ Right [respKey]
                 user = Username "user1"
                 pubkey = PublicKeyHash "XAAAAAAY"
             inspectPublicKeyTemplate
@@ -67,7 +67,7 @@ spec = do
     it "user needs gets the expected ssh-ed25519 public key exposed 1"
         $ do
             let respKey = "ssh-ed25519 XAAAAAAY"
-                okExpectedEd25519PubKeyOfUser _ = pure [respKey]
+                okExpectedEd25519PubKeyOfUser _ = pure $ Right [respKey]
                 user = Username "user1"
                 pubkey = PublicKeyHash "XAAAAAAY"
             inspectPublicKeyTemplate
@@ -81,7 +81,7 @@ spec = do
             let respKey1 = "ssh-ed25519 XAAAAAAY"
                 respKey2 = "ssh-ed25519 AAAAAAAA"
                 respKey3 = "ssh-rsa XXXXXXXXXXXXXXXXXXXXXXx"
-                okExpectedEd25519PubKeyOfUser _ = pure [respKey1, respKey2, respKey3]
+                okExpectedEd25519PubKeyOfUser _ = pure $ Right [respKey1, respKey2, respKey3]
                 user = Username "user1"
                 pubkey = PublicKeyHash "XAAAAAAY"
             inspectPublicKeyTemplate

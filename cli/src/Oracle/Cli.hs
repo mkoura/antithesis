@@ -3,6 +3,7 @@ module Oracle.Cli
     , oracleCmd
     ) where
 
+import Control.Monad.IO.Class (MonadIO (..))
 import Core.Context (WithContext)
 import Core.Types.Basic (TokenId)
 import Oracle.Token.Cli (TokenCommand, tokenCmdCore)
@@ -16,7 +17,7 @@ deriving instance Show (OracleCommand a)
 deriving instance Eq (OracleCommand a)
 
 oracleCmd
-    :: Monad m
+    :: MonadIO m
     => Maybe TokenId
     -> OracleCommand a
     -> WithContext m a

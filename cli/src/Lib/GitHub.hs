@@ -1,5 +1,5 @@
 module Lib.GitHub
-    ( GithubError (..)
+    ( GithubResponseError (..)
     , GetCodeOwnersFileFailure (..)
     , githubCommitExists
     , githubDirectoryExists
@@ -43,10 +43,13 @@ callGithub req = do
     auth <- getOAUth
     github auth req
 
-data GithubError = RepositoryNotFound | DirectoryNotFound | NotAfile
+data GithubResponseError =
+      RepositoryNotFound
+    | DirectoryNotFound
+    | NotAfile
     deriving (Show)
 
-instance Exception GithubError
+instance Exception GithubResponseError
 
 -- | Handle http exceptions from GitHub API calls based on the status code.
 onStatusCodeOfException :: GH.Error -> (Int -> IO (Maybe a)) -> IO a
@@ -64,7 +67,7 @@ onStatusCodeOfException e f = case e of
     _ -> throwIO e
 
 -- | Check if a commit exists in a GitHub repository.
-githubCommitExists :: Repository -> Commit -> IO Bool
+githubCommitExists :: Repository -> Commit -> IO (Either GithubResponseError Bool)
 githubCommitExists (Repository owner repo) (Commit sha) = do
     commit <-
         callGithub
@@ -75,10 +78,10 @@ githubCommitExists (Repository owner repo) (Commit sha) = do
     case commit of
         Left e -> onStatusCodeOfException e $ \c -> do
             case c of
-                404 -> throwIO RepositoryNotFound
-                422 -> return $ Just False
+                404 -> return $ Just $ Left RepositoryNotFound
+                422 -> return $ Just $ Right False
                 _ -> return Nothing
-        Right _ -> return True
+        Right _ -> return $ Right True
   where
     owner' = N $ T.pack owner
     repo' = N $ T.pack repo

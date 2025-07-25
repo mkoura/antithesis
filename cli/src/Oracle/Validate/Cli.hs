@@ -9,6 +9,7 @@ module Oracle.Validate.Cli
     ) where
 
 import Control.Monad (forM)
+import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Trans.Class (lift)
 import Core.Context
     ( WithContext
@@ -69,7 +70,7 @@ renderOracleValidateFailure (OracleValidateFailToParseToken tk) =
     "Failed to parse token with ID: " ++ show tk
 
 validateCmd
-    :: Monad m
+    :: MonadIO m
     => TokenId
     -> ValidateCommand a
     -> WithContext m a

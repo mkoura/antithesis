@@ -2,6 +2,7 @@ module Oracle.Validate.Request
     ( validateRequest
     ) where
 
+import Control.Monad.IO.Class (MonadIO (..))
 import Core.Types.Basic
     ( Owner
     )
@@ -34,7 +35,7 @@ import Oracle.Validate.Types
 import Validation (Validation (..))
 
 validateRequest
-    :: Monad m
+    :: MonadIO m
     => TestRunValidationConfig
     -> Owner
     -> Validation m

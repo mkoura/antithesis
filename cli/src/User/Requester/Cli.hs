@@ -6,6 +6,7 @@ module User.Requester.Cli
     ) where
 
 import Control.Monad (void)
+import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Trans.Class (lift)
 import Core.Context
     ( WithContext
@@ -82,7 +83,7 @@ deriving instance Show (RequesterCommand a)
 deriving instance Eq (RequesterCommand a)
 
 requesterCmd
-    :: Monad m
+    :: MonadIO m
     => TokenId
     -> Sign
     -> RequesterCommand a
@@ -105,7 +106,7 @@ requesterCmd tokenId sign command = do
                 duration
 
 createCommand
-    :: Monad m
+    :: MonadIO m
     => TokenId
     -> Sign
     -> TestRun

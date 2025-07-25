@@ -8,7 +8,9 @@ module Oracle.Validate.Requests.TestRun.Create
     , renderCreateTestRunFailure
     ) where
 
+import Control.Exception (throwIO)
 import Control.Monad (unless)
+import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Trans.Class (lift)
 import Core.Types.Basic (Duration (..), Try (..))
 import Core.Types.Change (Change (..), Key (..))
@@ -71,7 +73,7 @@ renderCreateTestRunFailure (CreateTestRunKeyFailure keyFailure) =
         ++ renderKeyFailure keyFailure
 
 validateCreateTestRun
-    :: Monad m
+    :: MonadIO m
     => TestRunValidationConfig
     -> Validation m
     -> Change TestRun (OpI (TestRunState PendingT))
@@ -171,17 +173,20 @@ checkTryIndex
             else return $ Just UnacceptableTryIndex
 
 checkCommit
-    :: Monad m
+    :: MonadIO m
     => Validation m
     -> TestRun
     -> m (Maybe TestRunRejection)
 checkCommit
     Validation{githubCommitExists}
     testRun = do
-        exists <- githubCommitExists (repository testRun) (commitId testRun)
-        if exists
-            then return Nothing
-            else return $ Just UnacceptableCommit
+        existsE <- githubCommitExists (repository testRun) (commitId testRun)
+        case existsE of
+            Left err -> liftIO $ throwIO err
+            Right exists ->
+                if exists
+                    then return Nothing
+                    else return $ Just UnacceptableCommit
 
 checkDirectory
     :: Monad m
@@ -224,7 +229,7 @@ checkSignature
             else return $ Just UnacceptableSignature
 
 validateCreateTestRunCore
-    :: Monad m
+    :: MonadIO m
     => TestRunValidationConfig
     -> Validation m
     -> TestRun

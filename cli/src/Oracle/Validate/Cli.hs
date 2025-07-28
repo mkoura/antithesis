@@ -20,7 +20,7 @@ import Core.Context
     )
 import Core.Types.Basic (RequestRefId, TokenId)
 import Data.Functor ((<&>))
-import Lib.JSON
+import Lib.JSON.Canonical.Extra
     ( object
     , (.=)
     )

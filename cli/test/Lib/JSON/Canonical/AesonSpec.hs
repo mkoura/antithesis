@@ -1,8 +1,8 @@
-module Lib.CanonAesonSpec (spec) where
+module Lib.JSON.Canonical.AesonSpec (spec) where
 
 import Data.List (nub, sort)
 import Data.Scientific (scientific)
-import Lib.CanonAeson (fromAeson, fromCanon, fromScientific)
+import Lib.JSON.Canonical.Aeson (fromAeson, fromCanon, fromScientific)
 import Test.Hspec (Spec, describe, it, shouldBe)
 import Test.Hspec.QuickCheck (prop)
 import Test.QuickCheck

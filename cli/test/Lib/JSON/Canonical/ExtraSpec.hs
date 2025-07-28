@@ -1,11 +1,11 @@
-module Lib.JSONSpec
+module Lib.JSON.Canonical.ExtraSpec
     ( spec
     )
 where
 
 import Control.Monad ((>=>))
 import Data.Aeson.Types (parseMaybe)
-import Lib.JSON
+import Lib.JSON.Canonical.Extra
     ( CanonicalJSONError (CanonicalJSONError)
     , fromAesonString
     , runCanonicalJSON

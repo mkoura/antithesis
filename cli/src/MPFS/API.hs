@@ -35,12 +35,12 @@ import Data.Aeson.KeyMap qualified as Aeson
 import Data.Aeson.Types (parseMaybe)
 import Data.Data (Proxy (..))
 import Data.Maybe (fromMaybe, mapMaybe)
-import Lib.JSON
+import Lib.JSON.Canonical.Extra
     ( fromAesonString
     , fromAesonThrow
     , toAesonString
     )
-import Lib.JSON qualified as Canonical
+import Lib.JSON.Canonical.Extra qualified as Canonical
 import Servant.API
     ( Capture
     , Get

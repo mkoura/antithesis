@@ -7,7 +7,7 @@ module Core.Types.Operation
 
 import Data.ByteString.Char8 qualified as B
 import Data.ByteString.Lazy.Char8 qualified as BL
-import Lib.JSON
+import Lib.JSON.Canonical.Extra
     ( object
     , parseJSValue
     , withObject

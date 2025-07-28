@@ -27,7 +27,7 @@ import Data.ByteString.Char8 qualified as B
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
-import Lib.JSON ()
+import Lib.JSON.Canonical.Extra ()
 import PlutusTx (Data (..), builtinDataToData)
 import PlutusTx.IsData.Class (FromData (..))
 import Servant.API (FromHttpApiData (..), ToHttpApiData (..))

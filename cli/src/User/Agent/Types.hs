@@ -4,7 +4,7 @@ module User.Agent.Types
     ) where
 
 import Core.Types.Fact (Fact)
-import Lib.JSON (object, (.=))
+import Lib.JSON.Canonical.Extra (object, (.=))
 import Text.JSON.Canonical (ToJSON (..))
 import User.Types (Phase (..), TestRun, TestRunState)
 

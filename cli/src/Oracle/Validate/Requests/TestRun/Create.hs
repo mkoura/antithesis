@@ -19,7 +19,7 @@ import Core.Types.Operation (Op (..), Operation (..))
 import Crypto.PubKey.Ed25519 qualified as Ed25519
 import Data.ByteString.Lazy qualified as BL
 import Data.Maybe (catMaybes, mapMaybe)
-import Lib.JSON (object, stringJSON, (.=))
+import Lib.JSON.Canonical.Extra (object, stringJSON, (.=))
 import Lib.SSH.Public (decodePublicKey)
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig (..)

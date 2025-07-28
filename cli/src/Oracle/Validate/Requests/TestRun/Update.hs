@@ -15,7 +15,7 @@ import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Fact (Fact (..))
 import Core.Types.Operation (Op (..), Operation (..))
 import Data.Foldable (for_)
-import Lib.JSON
+import Lib.JSON.Canonical.Extra
 import Oracle.Validate.Types
     ( Validate
     , Validated (..)

@@ -1,4 +1,4 @@
-module Lib.CanonAeson (fromAeson, fromCanon, fromScientific) where
+module Lib.JSON.Canonical.Aeson (fromAeson, fromCanon, fromScientific) where
 
 import Data.Aeson qualified as A
 import Data.Aeson.Key qualified as K

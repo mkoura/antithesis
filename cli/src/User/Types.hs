@@ -41,7 +41,7 @@ import Crypto.Error (CryptoFailable (..))
 import Crypto.PubKey.Ed25519 qualified as Ed25519
 import Data.ByteArray qualified as BA
 import Data.Map.Strict qualified as Map
-import Lib.JSON
+import Lib.JSON.Canonical.Extra
     ( byteStringFromJSON
     , byteStringToJSON
     , getField

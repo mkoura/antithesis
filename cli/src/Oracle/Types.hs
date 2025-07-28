@@ -15,7 +15,7 @@ import Core.Types.Basic (Owner, RequestRefId)
 import Core.Types.Change (Change (..))
 import Core.Types.Operation (Op (..), Operation (..))
 import Core.Types.Tx (Root)
-import Lib.JSON (object, withObject, (.:), (.=))
+import Lib.JSON.Canonical.Extra (object, withObject, (.:), (.=))
 import Oracle.Validate.Requests.RegisterRole
     ( RegisterRoleFailure (..)
     , UnregisterRoleFailure (..)

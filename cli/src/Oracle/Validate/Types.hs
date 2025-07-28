@@ -21,7 +21,7 @@ import Control.Monad.Trans.Except
     , throwE
     , withExceptT
     )
-import Lib.JSON
+import Lib.JSON.Canonical.Extra
     ( object
     , (.=)
     )

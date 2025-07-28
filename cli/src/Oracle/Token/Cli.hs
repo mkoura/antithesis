@@ -17,7 +17,7 @@ import Core.Context
     )
 import Core.Types.Basic (RequestRefId, TokenId)
 import Core.Types.Tx (TxHash, WithTxHash (WithTxHash))
-import Lib.JSON (object, (.=))
+import Lib.JSON.Canonical.Extra (object, (.=))
 import MPFS.API
     ( MPFS (..)
     , mpfsGetToken

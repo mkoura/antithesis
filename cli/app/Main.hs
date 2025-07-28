@@ -3,7 +3,7 @@ module Main (main) where
 import App (Result (..))
 import App qualified as Anti
 import Data.ByteString.Lazy.Char8 qualified as BL
-import Lib.JSON (object, (.=))
+import Lib.JSON.Canonical.Extra (object, (.=))
 import Text.JSON.Canonical (renderCanonicalJSON)
 
 main :: IO ()

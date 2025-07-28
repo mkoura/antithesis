@@ -2,7 +2,7 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module Lib.JSON
+module Lib.JSON.Canonical.Extra
     ( getField
     , getStringField
     , getIntegralField
@@ -46,7 +46,7 @@ import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
-import Lib.CanonAeson qualified as CA
+import Lib.JSON.Canonical.Aeson qualified as CA
 import Text.JSON.Canonical
     ( FromJSON (fromJSON)
     , Int54

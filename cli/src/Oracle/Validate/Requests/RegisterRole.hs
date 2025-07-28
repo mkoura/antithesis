@@ -16,7 +16,7 @@ import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Operation
     ( Op (..)
     )
-import Lib.JSON (object, (.=))
+import Lib.JSON.Canonical.Extra (object, (.=))
 import Oracle.Validate.Types
     ( Validate
     , Validated (..)

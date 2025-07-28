@@ -16,7 +16,7 @@ import Data.ByteString.Base16 qualified as Base16
 import Data.ByteString.Char8 qualified as B
 import Data.ByteString.Lazy qualified as BL
 import Data.Maybe (fromMaybe, mapMaybe)
-import Lib.JSON
+import Lib.JSON.Canonical.Extra
     ( object
     , withObject
     , (.:)

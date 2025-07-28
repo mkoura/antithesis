@@ -99,9 +99,9 @@ library
     Core.Types.Tx
     Core.Types.Wallet
     Lib.Box
-    Lib.CanonAeson
     Lib.GitHub
-    Lib.JSON
+    Lib.JSON.Canonical.Aeson
+    Lib.JSON.Canonical.Extra
     Lib.SSH.Private
     Lib.SSH.Public
     MPFS.API
@@ -243,9 +243,9 @@ test-suite anti-test
   -- Modules included in this executable, other than Main.
   other-modules:
     E2ESpec
-    Lib.CanonAesonSpec
     Lib.Github.OracleValidationSpec
-    Lib.JSONSpec
+    Lib.JSON.Canonical.AesonSpec
+    Lib.JSON.Canonical.ExtraSpec
     Lib.SSH.KeySpec
     MPFS.APISpec
     Oracle.Validate.Requests.TestRun.AcceptSpec

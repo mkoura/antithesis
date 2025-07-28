@@ -17,7 +17,7 @@ import Data.ByteString.Base16 (encode)
 import Data.ByteString.Char8 qualified as B
 import Data.Text (Text)
 import Data.Text qualified as T
-import Lib.JSON
+import Lib.JSON.Canonical.Extra
     ( object
     , withObject
     , (.:)

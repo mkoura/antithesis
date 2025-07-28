@@ -1,5 +1,3 @@
-{-# OPTIONS_GHC -fno-warn-orphans #-}
-
 module Lib.CanonAesonSpec (spec) where
 
 import Data.List (nub, sort)
@@ -8,12 +6,11 @@ import Lib.CanonAeson (fromAeson, fromCanon, fromScientific)
 import Test.Hspec (Spec, describe, it, shouldBe)
 import Test.Hspec.QuickCheck (prop)
 import Test.QuickCheck
-    ( Arbitrary
+    ( Arbitrary (arbitrary)
     , Gen
-    , applyArbitrary2
-    , arbitrary
     , arbitraryASCIIChar
     , arbitrarySizedIntegral
+    , forAll
     , listOf
     , oneof
     , scale
@@ -24,7 +21,8 @@ import Text.JSON.Canonical qualified as Canon
 spec :: Spec
 spec = do
     describe "Canonical JSON <-> Aeson conversions" $ do
-        prop "Converts Canonical JSON to Aeson and back" prop_roundTrip
+        prop "Converts Canonical JSON to Aeson and back"
+            $ forAll rCanon prop_roundTrip
 
     describe "Convert from Data.Scientific to Canonical JSNum" $ do
         it "Converts number with 0 exponent" $ do
@@ -46,10 +44,6 @@ spec = do
 prop_roundTrip :: Canon.JSValue -> Bool
 prop_roundTrip x = fromAeson (fromCanon x) == Just x
 
-instance Arbitrary Canon.JSValue where arbitrary = rCanon
-instance Arbitrary Canon.Int54 where arbitrary = rInt
-instance Arbitrary Canon.JSString where arbitrary = rString
-
 rCanon :: Gen Canon.JSValue
 rCanon = sized rCanon'
 
@@ -65,8 +59,8 @@ rCanon' n
         oneof
             [ return Canon.JSNull
             , Canon.JSBool <$> arbitrary
-            , Canon.JSNum <$> arbitrary
-            , Canon.JSString <$> arbitrary
+            , Canon.JSNum <$> rInt
+            , Canon.JSString <$> rString
             ]
   where
     subCanon = rCanon' (n `div` 3)
@@ -79,7 +73,7 @@ rString = fmap Canon.toJSString (listOf arbitraryASCIIChar)
 
 rObject :: Int -> Gen Canon.JSValue
 rObject n
-    | n > 1 = scale (div 3) (applyArbitrary2 zipObj)
+    | n > 1 = scale (div 3) $ zipObj <$> listOf rString <*> listOf rCanon
     | otherwise = return (Canon.JSObject [])
 
 zipObj :: [Canon.JSString] -> [Canon.JSValue] -> Canon.JSValue

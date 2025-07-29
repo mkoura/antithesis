@@ -183,30 +183,34 @@ TBD
 
 ## Testing the code
 
-Set the needed environment variables
+### Preliminary steps
+
+1. Make sure the docker daemon is running (e.g. start Docker Desktop)
+1. Provision (as described above) a ./tmp/test.json wallet (this name is hard-coded)
+1. Set the needed environment variables (use exactly these values):
 
 ``` bash
-    export ANTI_TEST_REQUESTER_WALLET=tmp/my-wallet.json
-    export ANTI_TEST_ORACLE_WALLET=tmp/my-wallet.json
+    export ANTI_TOKEN_ID="865ebcf5e1d6bafcc121030a6e167474a426271d965b78e36d90485adf540575"
+    export ANTI_WALLET_FILE=tmp/test.json
+    export ANTI_TEST_REQUESTER_WALLET=$ANTI_WALLET_FILE
+    export ANTI_TEST_ORACLE_WALLET=$ANTI_WALLET_FILE
+    export ANTI_TEST_AGENT_WALLET=$ANTI_WALLET_FILE
     export ANTI_MPFS_HOST=https://mpfs.plutimus.com
     export ANTI_CONFIG_FILE=test/fixtures/anti-config.json
-    export ANTI_WALLET_FILE=tmp/my-wallet.json
     export ANTI_WAIT=180
 ```
 
-### Using cabal
+Also, set the ANTI\_SSH\_PASSWORD environment variable to the passphrase of the private key of the cfhal GitHub user.
+
+Finally, you must create or use a GitHub Personal Access Token (read-only access to public repositories), and set the GITHUB\_PERSONAL\_ACCESS\_TOKEN environment variable to the value of this token.
+
+### Run the tests
 
 ``` bash
     nix develop
-    cabal test
-```
-
-### Using justfile
-
-``` bash
-    nix shell .#anti
     just unit
     just E2E
 ```
 
-Refer to `justfile` for more ready run/build/polish code options.
+Refer to `justfile` for other run/build/polish code options.
+

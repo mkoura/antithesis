@@ -14,7 +14,8 @@ import Test.QuickCheck (Testable (property))
 
 readKey :: IO KeyAPI
 readKey = do
-    signingMap <- decodePrivateSSHFile "pw" "test/fixtures/test_ed25519"
+    signingMap <-
+        decodePrivateSSHFile "pw" "test-E2E/fixtures/test_ed25519"
     Just api <- pure $ signingMap "test_user"
     pure api
 

@@ -4,9 +4,9 @@ export ANTI_WALLET_FILE=tmp/test.json
 export ANTI_TEST_REQUESTER_WALLET=tmp/test.json
 export ANTI_TEST_ORACLE_WALLET=tmp/test.json
 export ANTI_MPFS_HOST=http://localhost:3000
-export ANTI_CONFIG_FILE=test/fixtures/anti-config.json
+export ANTI_CONFIG_FILE=test-E2E/fixtures/anti-config.json
 export ANTI_WAIT=180
-export ANTI_SSH_FILE=test/fixtures/test_ed25519
+export ANTI_SSH_FILE=test-E2E/fixtures/test_ed25519
 export ANTI_SSH_PASSWORD=pw
 address=$(anti wallet info | jq -r '.result.address')
 echo "Funding address: $address"

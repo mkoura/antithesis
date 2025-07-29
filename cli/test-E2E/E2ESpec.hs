@@ -8,7 +8,7 @@ import Test.Hspec (Spec, describe, it, xit)
 
 runScenario :: FilePath -> IO ()
 runScenario script = do
-    let scriptFile = "test/scenarios/" ++ script
+    let scriptFile = "test-E2E/scenarios/" ++ script
     (code, _stdout, sterr) <- readProcessWithExitCode scriptFile [] ""
     case code of
         ExitSuccess -> return ()

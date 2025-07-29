@@ -233,7 +233,7 @@ executable wallet
   -- Base language which the package is written in.
   default-language: Haskell2010
 
-test-suite anti-test
+test-suite anti-E2E-test
   -- Import common warning flags.
   import:             warnings
 
@@ -244,10 +244,57 @@ test-suite anti-test
   other-modules:
     E2ESpec
     Lib.Github.OracleValidationSpec
+    MPFS.APISpec
+
+  -- LANGUAGE extensions used by modules in this package.
+  -- other-extensions:
+
+  -- The interface type and version of the test suite.
+  type:               exitcode-stdio-1.0
+
+  -- Directories containing source files.
+  hs-source-dirs:     test-E2E
+
+  -- The entrypoint to the test suite.
+  main-is:            Main.hs
+
+  -- Test dependencies.
+  build-depends:
+    , anti
+    , base
+    , base16-bytestring
+    , bytestring
+    , canonical-json
+    , cardano-ledger-alonzo
+    , cardano-ledger-api
+    , cardano-ledger-babbage
+    , cardano-ledger-binary
+    , cardano-ledger-core
+    , cardano-strict-containers
+    , exceptions
+    , hspec
+    , http-client
+    , http-client-tls
+    , lens
+    , plutus-tx
+    , process
+    , servant-client
+    , text
+
+  build-tool-depends: hspec-discover:hspec-discover
+
+test-suite anti-unit-test
+  -- Import common warning flags.
+  import:             warnings
+
+  -- Base language which the package is written in.
+  default-language:   Haskell2010
+
+  -- Modules included in this executable, other than Main.
+  other-modules:
     Lib.JSON.Canonical.AesonSpec
     Lib.JSON.Canonical.ExtraSpec
     Lib.SSH.KeySpec
-    MPFS.APISpec
     Oracle.Validate.Requests.TestRun.AcceptSpec
     Oracle.Validate.Requests.TestRun.CreateSpec
     Oracle.Validate.Requests.TestRun.FinishSpec
@@ -273,27 +320,13 @@ test-suite anti-test
     , anti
     , anti:test-lib
     , base
-    , base16-bytestring
     , bytestring
     , canonical-json
-    , cardano-ledger-alonzo
-    , cardano-ledger-api
-    , cardano-ledger-babbage
-    , cardano-ledger-binary
-    , cardano-ledger-core
-    , cardano-strict-containers
     , crypton
-    , exceptions
     , hspec
-    , http-client
-    , http-client-tls
     , lens
-    , plutus-tx
-    , process
     , QuickCheck
     , scientific
-    , servant-client
-    , text
 
   build-tool-depends: hspec-discover:hspec-discover
 

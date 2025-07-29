@@ -17,23 +17,14 @@ unit match="":
   #!/usr/bin/env bash
   # shellcheck disable=SC2050
   if [[ '{{match}}' == "" ]]; then
-    cabal test \
-        --test-show-details=direct \
-        --test-option=--skip \
-        --test-option="MPFS.API" \
-        --test-option=--skip \
-        --test-option="E2E"
+    cabal test anti-unit-test \
+        --test-show-details=direct
   else
-    cabal test \
+    cabal test anti-unit-test\
         --test-show-details=direct \
-        --test-option=--skip \
-        --test-option="MPFS.API" \
-        --test-option=--skip \
-        --test-option="E2E" \
         --test-option=--match \
         --test-option="{{match}}"
   fi
-
 build:
     #!/usr/bin/env bash
     cabal build all
@@ -65,10 +56,10 @@ E2E match="":
 
     # shellcheck disable=SC2002
     randomName=$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 8 | head -n 1)
-    docker compose -p "$randomName" -f test/fixtures/docker-compose.yml up -d
+    docker compose -p "$randomName" -f test-E2E/fixtures/docker-compose.yml up -d
     down() {
       docker compose -p "$randomName" \
-        -f test/fixtures/docker-compose.yml down
+        -f test-E2E/fixtures/docker-compose.yml down
     }
     trap down EXIT INT
 
@@ -77,8 +68,8 @@ E2E match="":
     export ANTI_TEST_ORACLE_WALLET=tmp/test.json
     export ANTI_TEST_AGENT_WALLET=tmp/test.json
 
-    export ANTI_CONFIG_FILE=test/fixtures/anti-config.json
-    export ANTI_SSH_FILE=test/fixtures/cfhal_ed25519
+    export ANTI_CONFIG_FILE=test-E2E/fixtures/anti-config.json
+    export ANTI_SSH_FILE=test-E2E/fixtures/cfhal_ed25519
     export ANTI_SSH_KEY_SELECTOR=cfhal
     export ANTI_WAIT=2
     while [[ "$(curl -s "localhost:$MPFS_PORT/tokens" | jq -r '.indexerStatus.ready')" != "true" ]]; do
@@ -113,14 +104,10 @@ E2E-tests match="":
     #!/usr/bin/env bash
     # shellcheck disable=SC2050
     if [[ '{{match}}' == "" ]]; then
-    cabal test \
-        --test-show-details=direct \
-        --test-option=--match \
-        --test-option="MPFS.API" \
-        --test-option=--match \
-        --test-option="E2E"
+    cabal test anti-E2E-test \
+        --test-show-details=direct
     else
-    cabal test \
+    cabal test anti-E2E-test \
         --test-show-details=direct \
         --test-option=--match \
         --test-option="{{match}}"
@@ -138,8 +125,8 @@ CI:
 
 start-mpfs:
   #!/usr/bin/env bash
-  docker compose -p "anti-testing" -f test/fixtures/docker-compose.yml up -d
+  docker compose -p "anti-testing" -f test-E2E/fixtures/docker-compose.yml up -d
 
 stop-mpfs:
   #!/usr/bin/env bash
-  docker compose -p "anti-testing" -f test/fixtures/docker-compose.yml down
+  docker compose -p "anti-testing" -f test-E2E/fixtures/docker-compose.yml down

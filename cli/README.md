@@ -196,7 +196,7 @@ TBD
     export ANTI_TEST_ORACLE_WALLET=$ANTI_WALLET_FILE
     export ANTI_TEST_AGENT_WALLET=$ANTI_WALLET_FILE
     export ANTI_MPFS_HOST=https://mpfs.plutimus.com
-    export ANTI_CONFIG_FILE=test/fixtures/anti-config.json
+    export ANTI_CONFIG_FILE=test-E2E/fixtures/anti-config.json
     export ANTI_WAIT=180
 ```
 
@@ -213,4 +213,3 @@ Finally, you must create or use a GitHub Personal Access Token (read-only access
 ```
 
 Refer to `justfile` for other run/build/polish code options.
-

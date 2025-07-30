@@ -10,7 +10,6 @@ module Lib.GitHub
 
 import Control.Exception
     ( Exception
-    , throwIO
     )
 import Core.Types.Basic
     ( Commit (..)
@@ -42,12 +41,20 @@ getOAUth = do
 data GithubResponseError
     = GithubResponseErrorRepositoryNotFound
     | GithubResponseErrorSSHPublicKeysCannotBeFetched String
-    deriving (Show)
+    | GithubResponseCodeError GithubResponseStatusCodeError
+    deriving (Eq, Show)
 
 instance Exception GithubResponseError
 
+data GithubResponseStatusCodeError
+    = GithubResponseStatusCodeNotHandledInClient String
+    | GithubResponseStatusCodeNotHTTPError String
+    deriving (Eq, Show)
+
+instance Exception GithubResponseStatusCodeError
+
 -- | Handle http exceptions from GitHub API calls based on the status code.
-onStatusCodeOfException :: GH.Error -> (Int -> IO (Maybe a)) -> IO a
+onStatusCodeOfException :: GH.Error -> (Int -> IO (Maybe a)) -> IO (Either GithubResponseStatusCodeError a)
 onStatusCodeOfException e f = case e of
     GH.HTTPError
         ( HttpExceptionRequest
@@ -57,9 +64,13 @@ onStatusCodeOfException e f = case e of
             Status c _ -> do
                 r <- f c
                 case r of
-                    Just a -> return a
-                    Nothing -> throwIO e
-    _ -> throwIO e
+                    Just a -> return $ Right a
+                    Nothing ->
+                        return
+                        $ Left
+                        $ GithubResponseStatusCodeNotHandledInClient
+                        $ show c
+    _ -> return $ Left $ GithubResponseStatusCodeNotHTTPError $ show e
 
 -- | Check if a commit exists in a GitHub repository.
 githubCommitExists
@@ -72,11 +83,15 @@ githubCommitExists auth (Repository owner repo) (Commit sha) = do
                 repo'
                 sha'
     case commit of
-        Left e -> onStatusCodeOfException e $ \c -> do
-            case c of
-                404 -> return $ Just $ Left GithubResponseErrorRepositoryNotFound
-                422 -> return $ Just $ Right False
-                _ -> return Nothing
+        Left e -> do
+            res <- onStatusCodeOfException e $ \c -> do
+                case c of
+                    404 -> return $ Just $ Left GithubResponseErrorRepositoryNotFound
+                    422 -> return $ Just $ Right False
+                    _ -> return Nothing
+            case res of
+                Left err -> return $ Left $ GithubResponseCodeError err
+                Right a  ->  return a
         Right _ -> return $ Right True
   where
     owner' = N $ T.pack owner
@@ -95,8 +110,12 @@ githubDirectoryExists auth (Repository owner repo) (Commit sha) (Directory dir) 
                 path
                 (Just sha')
     case contents of
-        Left e -> onStatusCodeOfException e $ \_ -> do
-            return $ Just False
+        Left e -> do
+            res <- onStatusCodeOfException e $ \_ -> do
+                return $ Just False
+            case res of
+                Left err -> undefined -- return $ Left $ GithubResponseCodeError err
+                Right a  ->  return a
         Right _ -> return True
   where
     owner' = N $ T.pack owner
@@ -121,6 +140,7 @@ data GetCodeOwnersFileFailure
     | GetCodeOwnersFileNotAFile
     | GetCodeOwnersFileUnsupportedEncoding String
     | GetCodeOwnersFileOtherFailure String
+    | GetCodeOwnersFileCodeError GithubResponseStatusCodeError
     deriving (Eq, Show)
 
 instance Exception GetCodeOwnersFileFailure
@@ -136,19 +156,23 @@ githubGetCodeOwnersFile auth (Repository owner repo) = do
                 "CODEOWNERS"
                 Nothing
     case response of
-        Left e -> onStatusCodeOfException e $ \c -> do
-            case c of
-                404 ->
-                    pure
-                        . Just
-                        . Left
-                        $ GetCodeOwnersFileDirectoryNotFound
-                _ ->
-                    pure
-                        . Just
-                        . Left
-                        . GetCodeOwnersFileOtherFailure
-                        $ show e
+        Left e -> do
+            res <- onStatusCodeOfException e $ \c -> do
+                case c of
+                    404 ->
+                        pure
+                            . Just
+                            . Left
+                            $ GetCodeOwnersFileDirectoryNotFound
+                    _ ->
+                        pure
+                            . Just
+                            . Left
+                            . GetCodeOwnersFileOtherFailure
+                            $ show e
+            case res of
+                Left err -> return $ Left $ GetCodeOwnersFileCodeError err
+                Right a  ->  return a
         Right (GH.ContentFile contents) -> do
             let content = GH.contentFileContent contents
             case GH.contentFileEncoding contents of

@@ -55,7 +55,10 @@ data GithubResponseStatusCodeError
 instance Exception GithubResponseStatusCodeError
 
 -- | Handle http exceptions from GitHub API calls based on the status code.
-onStatusCodeOfException :: GH.Error -> (Int -> IO (Maybe a)) -> IO (Either GithubResponseStatusCodeError a)
+onStatusCodeOfException
+    :: GH.Error
+    -> (Int -> IO (Maybe a))
+    -> IO (Either GithubResponseStatusCodeError a)
 onStatusCodeOfException e f = case e of
     GH.HTTPError
         ( HttpExceptionRequest
@@ -68,9 +71,9 @@ onStatusCodeOfException e f = case e of
                     Just a -> return $ Right a
                     Nothing ->
                         return
-                        $ Left
-                        $ GithubResponseStatusCodeNotHandledInClient
-                        $ show c
+                            $ Left
+                            $ GithubResponseStatusCodeNotHandledInClient
+                            $ show c
     _ -> return $ Left $ GithubResponseStatusCodeNotHTTPError $ show e
 
 -- | Check if a commit exists in a GitHub repository.
@@ -92,7 +95,7 @@ githubCommitExists auth (Repository owner repo) (Commit sha) = do
                     _ -> return Nothing
             case res of
                 Left err -> return $ Left $ GithubResponseCodeError err
-                Right a  ->  return a
+                Right a -> return a
         Right _ -> return $ Right True
   where
     owner' = N $ T.pack owner
@@ -100,7 +103,11 @@ githubCommitExists auth (Repository owner repo) (Commit sha) = do
     sha' = N $ T.pack sha
 
 githubDirectoryExists
-    :: Auth -> Repository -> Commit -> Directory -> IO (Either GithubResponseStatusCodeError Bool)
+    :: Auth
+    -> Repository
+    -> Commit
+    -> Directory
+    -> IO (Either GithubResponseStatusCodeError Bool)
 githubDirectoryExists auth (Repository owner repo) (Commit sha) (Directory dir) = do
     let path = T.pack dir
     contents <-
@@ -170,7 +177,7 @@ githubGetCodeOwnersFile auth (Repository owner repo) = do
                             $ show e
             case res of
                 Left err -> return $ Left $ GetCodeOwnersFileCodeError err
-                Right a  ->  return a
+                Right a -> return a
         Right (GH.ContentFile contents) -> do
             let content = GH.contentFileContent contents
             case GH.contentFileEncoding contents of

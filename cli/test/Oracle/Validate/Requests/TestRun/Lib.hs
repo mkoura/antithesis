@@ -127,7 +127,7 @@ mkValidation fs rs ds upk rr =
         , githubCommitExists = \repository commit ->
             return $ Right $ (repository, commit) `elem` rs
         , githubDirectoryExists = \repository commit dir ->
-            return $ (repository, commit, dir) `elem` ds
+            return $ Right $ (repository, commit, dir) `elem` ds
         , githubUserPublicKeys = \username publicKey ->
             return
                 $ if (username, publicKey) `elem` upk

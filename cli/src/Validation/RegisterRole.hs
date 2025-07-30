@@ -13,6 +13,7 @@ import Data.List qualified as L
 import Data.Maybe (catMaybes)
 import Data.Text (Text)
 import Data.Text qualified as T
+import GitHub (Auth)
 import Lib.GitHub (GetCodeOwnersFileFailure, githubGetCodeOwnersFile)
 
 data RepositoryRoleFailure
@@ -77,11 +78,12 @@ inspectRepoRoleForUserTemplate username repo downloadCodeownersFile = do
     pure $ analyzeResponseCodeownersFile username resp
 
 inspectRepoRoleForUser
-    :: Username
+    :: Auth
+    -> Username
     -> Repository
     -> IO (Maybe RepositoryRoleFailure)
-inspectRepoRoleForUser username repo =
+inspectRepoRoleForUser auth username repo =
     inspectRepoRoleForUserTemplate
         username
         repo
-        githubGetCodeOwnersFile
+        $ githubGetCodeOwnersFile auth

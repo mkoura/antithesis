@@ -27,6 +27,7 @@ import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Fact (Fact (..), JSFact, parseFacts)
 import Core.Types.Operation (Op (..))
 import Data.Maybe (mapMaybe)
+import GitHub (Auth)
 import Lib.GitHub qualified as GitHub
 import MPFS.API (getTokenFacts)
 import Oracle.Validate.Types (Validate, Validated (..), notValidated)
@@ -91,21 +92,21 @@ hoistValidation
                 \username repository -> f $ githubRepositoryRole username repository
             }
 
-mkValidation :: TokenId -> Validation ClientM
-mkValidation tk =
+mkValidation :: Auth -> TokenId -> Validation ClientM
+mkValidation auth tk =
     Validation
         { mpfsGetFacts = parseFacts <$> getTokenFacts tk
         , mpfsGetTestRuns = do
             facts <- parseFacts <$> getTokenFacts tk
             pure $ mapMaybe (\(Fact k _ :: JSFact) -> fromJSON k) facts
         , githubCommitExists = \repository commit ->
-            liftIO $ GitHub.githubCommitExists repository commit
+            liftIO $ GitHub.githubCommitExists auth repository commit
         , githubDirectoryExists = \repository commit dir ->
-            liftIO $ GitHub.githubDirectoryExists repository commit dir
+            liftIO $ GitHub.githubDirectoryExists auth repository commit dir
         , githubUserPublicKeys = \username publicKey ->
-            liftIO $ inspectPublicKey username publicKey
+            liftIO $ inspectPublicKey auth username publicKey
         , githubRepositoryRole = \username repository ->
-            liftIO $ inspectRepoRoleForUser username repository
+            liftIO $ inspectRepoRoleForUser auth username repository
         }
 data KeyFailure
     = KeyAlreadyExists String

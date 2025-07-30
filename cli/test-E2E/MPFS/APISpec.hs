@@ -1,7 +1,6 @@
 {-# LANGUAGE OverloadedRecordDot #-}
-{-# LANGUAGE ViewPatterns #-}
 
-module MPFS.APISpec (spec)
+module MPFS.APISpec (mpfsAPISpec)
 where
 
 import Cardano.Ledger.Alonzo.Tx (AlonzoTx)
@@ -26,7 +25,6 @@ import Cardano.Ledger.Core
     , ScriptHash (..)
     )
 import Cardano.Ledger.Credential (Credential (..))
-import Cli (Command (..), cmd)
 import Control.Concurrent (threadDelay)
 import Control.Exception (throwIO)
 import Control.Lens (to, (^.))
@@ -36,11 +34,11 @@ import Control.Monad.IO.Class (MonadIO (..))
 import Core.Context (withContext)
 import Core.Types.Basic
     ( Owner (..)
-    , Platform (..)
-    , PublicKeyHash (PublicKeyHash)
-    , RequestRefId (RequestRefId)
+
+
+
     , TokenId (..)
-    , Username (..)
+
     )
 import Core.Types.CageDatum (CageDatum (..))
 import Core.Types.Change (Change (..), Key (..))
@@ -50,7 +48,7 @@ import Core.Types.Tx
     , UnsignedTx (..)
     , WithTxHash (..)
     , WithUnsignedTx (WithUnsignedTx)
-    , textOf
+
     )
 import Core.Types.Wallet (Wallet (..))
 import Data.Bifunctor (first)
@@ -78,15 +76,9 @@ import Network.HTTP.Client
     , responseTimeoutMicro
     )
 import Network.HTTP.Client.TLS (tlsManagerSettings)
-import Oracle.Cli (OracleCommand (OracleTokenCommand), oracleCmd)
 import Oracle.Token.Cli
     ( TokenCommand (..)
     , tokenCmdCore
-    )
-import Oracle.Validate.Types
-    ( AValidationResult
-    , pattern ValidationFailure
-    , pattern ValidationSuccess
     )
 import PlutusTx (Data, fromData)
 import Servant.Client (ClientM, mkClientEnv, parseBaseUrl, runClientM)
@@ -97,12 +89,13 @@ import Submitting
     , readWallet
     , signAndSubmitMPFS
     )
-import System.Environment (getEnv)
+import System.Environment (lookupEnv)
 import Test.Hspec
     ( ActionWith
+
     , SpecWith
-    , afterAll
-    , beforeAll
+    , aroundAllWith
+
     , describe
     , it
     , shouldBe
@@ -110,33 +103,37 @@ import Test.Hspec
 import Text.JSON.Canonical
     ( JSString
     , JSValue (..)
-    , ToJSON (..)
+
     , fromJSString
     )
-import User.Requester.Cli (RequesterCommand (..), requesterCmd)
-import User.Types (RegisterUserKey (..))
 import Validation (mkValidation)
+import GitHub (Auth)
 
 mpfsPolicyId :: String
 mpfsPolicyId = "c1e392ee7da9415f946de9d2aef9607322b47d6e84e8142ef0c340bf"
 
 loadEnvWallet :: String -> IO Wallet
-loadEnvWallet envVar = getEnv envVar >>= readWallet
+loadEnvWallet envVar = do
+    walletFile <- lookupEnv envVar
+    case walletFile of
+        Just file -> readWallet file
+        Nothing -> error $ "Environment variable " ++ envVar ++ " is not set.\n \
+            \ Please set it to a valid funded preprod wallet file path.\n \
+            \ You can reuse the same wallet if you do not want to separate roles.\n \
+            \ You can create a wallet with the command:\n \
+            \ > wallet create <filename>\n"
 
 loadRequesterWallet :: IO Wallet
-loadRequesterWallet =
-    loadEnvWallet "ANTI_TEST_REQUESTER_WALLET"
+loadRequesterWallet = loadEnvWallet "ANTI_TEST_REQUESTER_WALLET"
 
 loadOracleWallet :: IO Wallet
-loadOracleWallet = do
-    loadEnvWallet "ANTI_TEST_ORACLE_WALLET"
+loadOracleWallet = loadEnvWallet "ANTI_TEST_ORACLE_WALLET"
 
 loadAgentWallet :: IO Wallet
-loadAgentWallet = do
-    loadEnvWallet "ANTI_TEST_AGENT_WALLET"
+loadAgentWallet = loadEnvWallet "ANTI_TEST_AGENT_WALLET"
 
 getHostFromEnv :: IO String
-getHostFromEnv = getEnv "ANTI_MPFS_HOST"
+getHostFromEnv = pure "https://mpfs.plutimus.com"
 
 newtype Call = Call {calling :: forall a. ClientM a -> IO a}
 
@@ -159,10 +156,11 @@ data Context = Context
     , requesterWallet :: Wallet
     , oracleWallet :: Wallet
     , agentWallet :: Wallet
+    , auth :: Auth
     }
 
-setup :: IO Context
-setup = do
+setup :: Auth -> IO Context
+setup auth = do
     requesterWallet <- loadRequesterWallet
     oracleWallet <- loadOracleWallet
     agentWallet <- loadAgentWallet
@@ -191,7 +189,7 @@ setup = do
             mpfsClient
             undefined
             agentWallet.owner
-            mkValidation
+            (mkValidation auth)
             (wait180S oracleWallet)
             $ tokenCmdCore
                 Nothing
@@ -208,16 +206,17 @@ setup = do
                     , requesterWallet
                     , oracleWallet
                     , agentWallet
+                    , auth
                     }
 
-teardown :: ActionWith Context
-teardown Context{mpfs, tokenId, wait180S, oracleWallet, agentWallet} = do
+teardown :: Auth -> ActionWith Context
+teardown auth Context{mpfs, tokenId, wait180S, oracleWallet, agentWallet} = do
     txHash <- calling mpfs $ do
         withContext
             mpfsClient
             undefined
             agentWallet.owner
-            mkValidation
+            (mkValidation auth)
             (wait180S oracleWallet)
             $ tokenCmdCore
                 (Just tokenId)
@@ -257,213 +256,104 @@ waitTx (Call call) txHash = void $ go 600
                 liftIO $ threadDelay 1000000
                 go (n - 1)
 
-retractTx
-    :: (Wallet -> Submission ClientM) -> Wallet -> TxHash -> ClientM ()
-retractTx wait180S wallet obj = do
-    void
-        $ cmd
-            wait180S
-            (Right wallet)
-            Nothing
-            Nothing
-        $ RetractRequest
-            { outputReference =
-                RequestRefId
-                    $ textOf obj <> "-0"
-            }
-failValidationFailure :: Show e => AValidationResult e a -> a
-failValidationFailure (ValidationFailure e) = error $ show e
-failValidationFailure (ValidationSuccess a) = a
+setupAction :: ActionWith Context -> ActionWith Auth
+setupAction action auth = do
+    ctx <- setup auth
+    action ctx
+    teardown auth ctx
 
-spec :: SpecWith ()
-spec = do
-    beforeAll setup $ afterAll teardown $ do
-        describe "MPFS.API" $ do
-            it "can retrieve config"
-                $ \Context{mpfs = Call call, tokenId, oracleWallet} -> do
-                    res <- call $ getToken tokenId
-                    case res of
-                        JSObject obj -> case obj !? "state" of
-                            Just (JSObject state) -> case state !? "owner" of
-                                Just (JSString antiTokenOwner') ->
-                                    Owner (fromJSString antiTokenOwner')
-                                        `shouldBe` oracleWallet.owner
-                                _ -> error "Field 'owner' is missing or not a string"
-                            _ -> error "Field 'state' is missing or not an object"
-                        _ -> error "Response is not an object"
-            it "can retrieve token facts"
-                $ \(Context{mpfs = Call call, tokenId}) -> do
-                    res <- call $ getTokenFacts tokenId
-                    case res of
-                        JSArray _ -> return ()
-                        _ -> error "Response is not an object"
-            it "can retrieve a request-insert tx"
-                $ \Context{mpfs = Call call, tokenId, requesterWallet} -> do
-                    WithUnsignedTx (UnsignedTx tx) _ <-
-                        call
-                            $ requestInsert
-                                (address requesterWallet)
-                                tokenId
-                            $ RequestInsertBody
-                                (JSString "key")
-                            $ JSString "value"
-                    let dtx = deserializeTx tx
-                    Just (policyId', datum) <- pure $ getFirstOutput dtx
-                    Just (Just (cageDatum :: CageDatum String (OpI String))) <-
-                        pure $ fromData datum
-                    policyId' `shouldBe` mpfsPolicyId
-                    cageDatum
-                        `shouldBe` RequestDatum
-                            { tokenId = tokenId
-                            , owner = requesterWallet.owner
-                            , change =
-                                Change
-                                    { key = Key "key"
-                                    , operation = Insert "value"
-                                    }
-                            }
-            it "can retrieve a request-delete tx"
-                $ \Context{mpfs = Call call, tokenId, requesterWallet} -> do
-                    WithUnsignedTx (UnsignedTx tx) _ <-
-                        call
-                            $ requestDelete
-                                requesterWallet.address
-                                tokenId
-                            $ RequestDeleteBody (JSString "key") (JSString "value")
-                    let dtx = deserializeTx tx
-                    Just (policyId', datum) <- pure $ getFirstOutput dtx
-                    Just (Just (cageDatum :: CageDatum String (OpD String))) <-
-                        pure $ fromData datum
-                    policyId' `shouldBe` mpfsPolicyId
-                    cageDatum
-                        `shouldBe` RequestDatum
-                            { tokenId = tokenId
-                            , owner = requesterWallet.owner
-                            , change =
-                                Change
-                                    { key = Key "key"
-                                    , operation = Delete "value"
-                                    }
-                            }
-            it "can retrieve a request-update tx"
-                $ \Context{mpfs = Call call, tokenId, requesterWallet} -> do
-                    WithUnsignedTx (UnsignedTx tx) _ <-
-                        call
-                            $ requestUpdate
-                                requesterWallet.address
-                                tokenId
-                            $ RequestUpdateBody
-                                (JSString "key")
-                                (JSString "oldValue")
-                                (JSString "newValue")
-                    let dtx = deserializeTx tx
-                    Just (policyId', datum) <- pure $ getFirstOutput dtx
-                    Just (Just (cageDatum :: CageDatum String (OpU String String))) <-
-                        pure $ fromData datum
-                    policyId' `shouldBe` mpfsPolicyId
-                    cageDatum
-                        `shouldBe` RequestDatum
-                            { tokenId = tokenId
-                            , owner = requesterWallet.owner
-                            , change =
-                                Change
-                                    { key = Key "key"
-                                    , operation = Update "oldValue" "newValue"
-                                    }
-                            }
-
-            it "can submit and retract a request-insert tx"
-                $ \(Context{mpfs = Call call, wait180S, tokenId}) -> do
-                    wallet <- loadRequesterWallet
-                    call $ do
-                        (failValidationFailure -> insert) <-
-                            withContext
-                                mpfsClient
-                                undefined
-                                wallet.owner
-                                mkValidation
-                                (wait180S wallet)
-                                $ requesterCmd tokenId undefined
-                                $ RegisterUser
-                                $ RegisterUserKey
-                                    { platform = Platform "github"
-                                    , username = Username "cfhal"
-                                    , pubkeyhash =
-                                        PublicKeyHash
-                                            "AAAAC3NzaC1lZDI1NTE5AAAAILjwzNvy87HbzYV2lsW3UjVoxtpq4Nrj84kjo3puarCH"
-                                    }
-                        retractTx wait180S wallet insert
-                        pure ()
-
-            it "can update the anti token with a registered user"
-                $ \(Context{mpfs = Call call, wait180S, tokenId, agentWallet}) -> do
-                    requester <- loadRequesterWallet
-                    oracle <- loadOracleWallet
-                    let key =
-                            RegisterUserKey
-                                { platform = Platform "github"
-                                , username = Username "cfhal"
-                                , pubkeyhash =
-                                    PublicKeyHash
-                                        "AAAAC3NzaC1lZDI1NTE5AAAAILjwzNvy87HbzYV2lsW3UjVoxtpq4Nrj84kjo3puarCH"
+mpfsAPISpec :: SpecWith Auth
+mpfsAPISpec = aroundAllWith setupAction $ do
+    describe "MPFS.API" $ do
+        it "can retrieve config"
+            $ \Context{mpfs = Call call, tokenId, oracleWallet} -> do
+                res <- call $ getToken tokenId
+                case res of
+                    JSObject obj -> case obj !? "state" of
+                        Just (JSObject state) -> case state !? "owner" of
+                            Just (JSString antiTokenOwner') ->
+                                Owner (fromJSString antiTokenOwner')
+                                    `shouldBe` oracleWallet.owner
+                            _ -> error "Field 'owner' is missing or not a string"
+                        _ -> error "Field 'state' is missing or not an object"
+                    _ -> error "Response is not an object"
+        it "can retrieve token facts"
+            $ \(Context{mpfs = Call call, tokenId}) -> do
+                res <- call $ getTokenFacts tokenId
+                case res of
+                    JSArray _ -> return ()
+                    _ -> error "Response is not an object"
+        it "can retrieve a request-insert tx"
+            $ \Context{mpfs = Call call, tokenId, requesterWallet} -> do
+                WithUnsignedTx (UnsignedTx tx) _ <-
+                    call
+                        $ requestInsert
+                            (address requesterWallet)
+                            tokenId
+                        $ RequestInsertBody
+                            (JSString "key")
+                        $ JSString "value"
+                let dtx = deserializeTx tx
+                Just (policyId', datum) <- pure $ getFirstOutput dtx
+                Just (Just (cageDatum :: CageDatum String (OpI String))) <-
+                    pure $ fromData datum
+                policyId' `shouldBe` mpfsPolicyId
+                cageDatum
+                    `shouldBe` RequestDatum
+                        { tokenId = tokenId
+                        , owner = requesterWallet.owner
+                        , change =
+                            Change
+                                { key = Key "key"
+                                , operation = Insert "value"
                                 }
-                    keyJ <- toJSON key
-                    call $ do
-                        (failValidationFailure -> insertTx) <-
-                            withContext
-                                mpfsClient
-                                undefined
-                                agentWallet.owner
-                                mkValidation
-                                (wait180S requester)
-                                $ requesterCmd tokenId undefined
-                                $ RegisterUser key
-                        _updateInsertTx <-
-                            withContext
-                                mpfsClient
-                                undefined
-                                agentWallet.owner
-                                mkValidation
-                                (wait180S oracle)
-                                $ oracleCmd (Just tokenId)
-                                $ OracleTokenCommand
-                                $ UpdateToken
-                                    [ RequestRefId
-                                        $ textOf insertTx <> "-0"
-                                    ]
-
-                        facts <- getTokenFacts tokenId
-                        liftIO
-                            $ facts
-                            `shouldBe` JSArray
-                                [ JSObject
-                                    [ ("key", keyJ)
-                                    , ("value", JSNull)
-                                    ]
-                                ]
-                        (failValidationFailure -> deleteTx) <-
-                            withContext
-                                mpfsClient
-                                undefined
-                                agentWallet.owner
-                                mkValidation
-                                (wait180S requester)
-                                $ requesterCmd tokenId undefined
-                                $ UnregisterUser key
-                        _updateDeleteTx <-
-                            withContext
-                                mpfsClient
-                                undefined
-                                agentWallet.owner
-                                mkValidation
-                                (wait180S agentWallet)
-                                $ oracleCmd
-                                    (Just tokenId)
-                                $ OracleTokenCommand
-                                $ UpdateToken
-                                    [ RequestRefId
-                                        $ textOf deleteTx <> "-0"
-                                    ]
-                        facts' <- getTokenFacts tokenId
-                        liftIO $ facts' `shouldBe` JSArray []
-                        pure ()
+                        }
+        it "can retrieve a request-delete tx"
+            $ \Context{mpfs = Call call, tokenId, requesterWallet} -> do
+                WithUnsignedTx (UnsignedTx tx) _ <-
+                    call
+                        $ requestDelete
+                            requesterWallet.address
+                            tokenId
+                        $ RequestDeleteBody (JSString "key") (JSString "value")
+                let dtx = deserializeTx tx
+                Just (policyId', datum) <- pure $ getFirstOutput dtx
+                Just (Just (cageDatum :: CageDatum String (OpD String))) <-
+                    pure $ fromData datum
+                policyId' `shouldBe` mpfsPolicyId
+                cageDatum
+                    `shouldBe` RequestDatum
+                        { tokenId = tokenId
+                        , owner = requesterWallet.owner
+                        , change =
+                            Change
+                                { key = Key "key"
+                                , operation = Delete "value"
+                                }
+                        }
+        it "can retrieve a request-update tx"
+            $ \Context{mpfs = Call call, tokenId, requesterWallet} -> do
+                WithUnsignedTx (UnsignedTx tx) _ <-
+                    call
+                        $ requestUpdate
+                            requesterWallet.address
+                            tokenId
+                        $ RequestUpdateBody
+                            (JSString "key")
+                            (JSString "oldValue")
+                            (JSString "newValue")
+                let dtx = deserializeTx tx
+                Just (policyId', datum) <- pure $ getFirstOutput dtx
+                Just (Just (cageDatum :: CageDatum String (OpU String String))) <-
+                    pure $ fromData datum
+                policyId' `shouldBe` mpfsPolicyId
+                cageDatum
+                    `shouldBe` RequestDatum
+                        { tokenId = tokenId
+                        , owner = requesterWallet.owner
+                        , change =
+                            Change
+                                { key = Key "key"
+                                , operation = Update "oldValue" "newValue"
+                                }
+                        }

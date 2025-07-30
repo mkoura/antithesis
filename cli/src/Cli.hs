@@ -9,6 +9,7 @@ import Core.Types.Basic (Owner (Owner), RequestRefId, TokenId)
 import Core.Types.Tx (TxHash, WithTxHash (..))
 import Core.Types.Wallet (Wallet (owner))
 import Data.Aeson (eitherDecodeFileStrict')
+import Lib.GitHub (getOAUth)
 import Lib.SSH.Private
     ( KeyAPI (..)
     , SSHKeySelector (SSHKeySelector)
@@ -92,6 +93,7 @@ cmdCore
         RequesterCommand requesterCommand -> do
             signing <- failNothing "No SSH file" mSigning
             sshKeySelector <- liftIO $ getEnv "ANTI_SSH_KEY_SELECTOR"
+            auth <- liftIO getOAUth
             keyAPI <-
                 failNothing (sshKeySelector <> "not in the signing map")
                     $ signing
@@ -104,18 +106,19 @@ cmdCore
                 mpfsClient
                 testRunValidationConfig
                 antithesisPKH
-                mkValidation
+                (mkValidation auth)
                 (submit wallet)
                 $ requesterCmd tokenId (sign keyAPI) requesterCommand
         OracleCommand oracleCommand -> do
             wallet <- failLeft ("No wallet @ " <>) mWallet
             antithesisPKH <-
                 liftIO $ Owner <$> getEnv "ANTI_AGENT_PUBLIC_KEY_HASH"
+            auth <- liftIO getOAUth
             withContext
                 mpfsClient
                 testRunValidationConfig
                 antithesisPKH
-                mkValidation
+                (mkValidation auth)
                 (submit wallet)
                 $ oracleCmd
                     mTokenId
@@ -123,13 +126,14 @@ cmdCore
         AgentCommand agentCommand -> do
             antithesisPKH <-
                 liftIO $ Owner <$> getEnv "ANTI_AGENT_PUBLIC_KEY_HASH"
+            auth <- liftIO getOAUth
             tokenId <- failNothing "No TokenId" mTokenId
             wallet <- failLeft ("No wallet @ " <>) mWallet
             withContext
                 mpfsClient
                 testRunValidationConfig
                 antithesisPKH
-                mkValidation
+                (mkValidation auth)
                 (submit wallet)
                 $ agentCmd tokenId (owner wallet) agentCommand
         RetractRequest refId -> do

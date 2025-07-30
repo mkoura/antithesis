@@ -1,5 +1,6 @@
 module Lib.Github.OracleValidationSpec
-    ( spec
+    ( userSpec
+    , roleSpecs
     )
 where
 
@@ -9,12 +10,16 @@ import Core.Types.Basic
     , Username (..)
     )
 import Data.Text qualified as T
+import GitHub (Auth)
 import Lib.GitHub
     ( GetCodeOwnersFileFailure (..)
+    
     , githubGetCodeOwnersFile
     )
 import Test.Hspec
     ( Spec
+    , SpecWith
+
     , it
     , shouldReturn
     )
@@ -27,8 +32,34 @@ import Validation.RegisterUser
     , inspectPublicKeyTemplate
     )
 
-spec :: Spec
-spec = do
+roleSpecs :: SpecWith Auth
+roleSpecs = do
+    it "should download CODEOWNERS file from repo with main" $ \auth -> do
+        githubGetCodeOwnersFile
+            auth
+            (Repository "cardano-foundation" "hal-fixture-sin")
+            `shouldReturn` Right "antithesis: @notunrandom @cfhal\n"
+
+    it "should download CODEOWNERS file from repo with master" $ \auth -> do
+        githubGetCodeOwnersFile
+            auth
+            (Repository "cardano-foundation" "hal-fixture-cos")
+            `shouldReturn` Right "* @notunrandom\n"
+
+    it "should download CODEOWNERS file from repo with trunk" $ \auth -> do
+        githubGetCodeOwnersFile
+            auth
+            (Repository "cardano-foundation" "hal-fixture-tan")
+            `shouldReturn` Right "* @notunrandom\n"
+
+    it "should throw if missing CODEOWNERS file" $ \auth -> do
+        githubGetCodeOwnersFile
+            auth
+            (Repository "cardano-foundation" "hal-fixture-sec")
+            `shouldReturn` Left GetCodeOwnersFileDirectoryNotFound
+
+userSpec :: Spec
+userSpec = do
     it "user needs to have public key(s) exposed"
         $ do
             let emptyPubKeyOfUser _ = pure $ Right []
@@ -89,26 +120,6 @@ spec = do
                 pubkey
                 okExpectedEd25519PubKeyOfUser
         `shouldReturn` Nothing
-
-    it "should download CODEOWNERS file from repo with main" $ do
-        githubGetCodeOwnersFile
-            (Repository "cardano-foundation" "hal-fixture-sin")
-            `shouldReturn` Right "antithesis: @notunrandom @cfhal\n"
-
-    it "should download CODEOWNERS file from repo with master" $ do
-        githubGetCodeOwnersFile
-            (Repository "cardano-foundation" "hal-fixture-cos")
-            `shouldReturn` Right "* @notunrandom\n"
-
-    it "should download CODEOWNERS file from repo with trunk" $ do
-        githubGetCodeOwnersFile
-            (Repository "cardano-foundation" "hal-fixture-tan")
-            `shouldReturn` Right "* @notunrandom\n"
-
-    it "should throw if missing CODEOWNERS file" $ do
-        githubGetCodeOwnersFile
-            (Repository "cardano-foundation" "hal-fixture-sec")
-            `shouldReturn` Left GetCodeOwnersFileDirectoryNotFound
 
     it "CODEOWNERS does not have role entry" $ do
         let noRoleEntry _ =

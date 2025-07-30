@@ -272,6 +272,7 @@ test-suite anti-E2E-test
     , cardano-ledger-core
     , cardano-strict-containers
     , exceptions
+    , github
     , hspec
     , http-client
     , http-client-tls

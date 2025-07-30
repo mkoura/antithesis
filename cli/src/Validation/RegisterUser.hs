@@ -12,6 +12,7 @@ import Data.List qualified as L
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
+import GitHub (Auth)
 import Lib.GitHub (GithubResponseError, githubUserPublicKeys)
 
 data PublicKeyFailure
@@ -72,11 +73,12 @@ inspectPublicKeyTemplate username pubKeyExpected requestPublicKeysForUser = do
     pure $ analyzePublicKeyResponse pubKeyExpected resp
 
 inspectPublicKey
-    :: Username
+    :: Auth
+    -> Username
     -> PublicKeyHash
     -> IO (Maybe PublicKeyFailure)
-inspectPublicKey username pubKeyExpected =
+inspectPublicKey auth username pubKeyExpected =
     inspectPublicKeyTemplate
         username
         pubKeyExpected
-        githubUserPublicKeys
+        $ githubUserPublicKeys auth

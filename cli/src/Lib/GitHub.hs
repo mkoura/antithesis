@@ -5,6 +5,7 @@ module Lib.GitHub
     , githubDirectoryExists
     , githubUserPublicKeys
     , githubGetCodeOwnersFile
+    , getOAUth
     ) where
 
 import Control.Exception
@@ -18,11 +19,11 @@ import Core.Types.Basic
     , Username (..)
     )
 import Data.ByteString.Base64 qualified as B64
-import Data.ByteString.Char8 qualified as B
+import Data.ByteString.Char8 qualified as BC
 import Data.Foldable (Foldable (..))
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
-import GitHub (Auth (..), FetchCount (..), GitHubRW, github)
+import GitHub (Auth (..), FetchCount (..), github)
 import GitHub qualified as GH
 import GitHub.Data.Name (Name (..))
 import Network.HTTP.Client
@@ -35,13 +36,8 @@ import System.Environment (getEnv)
 
 getOAUth :: IO Auth
 getOAUth = do
-    tk <- B.pack <$> getEnv "GITHUB_PERSONAL_ACCESS_TOKEN"
+    tk <- BC.pack <$> getEnv "GITHUB_PERSONAL_ACCESS_TOKEN"
     return $ OAuth tk
-
-callGithub :: GitHubRW req (IO b) => req -> IO b
-callGithub req = do
-    auth <- getOAUth
-    github auth req
 
 data GithubResponseError
     = GithubResponseErrorRepositoryNotFound
@@ -67,10 +63,10 @@ onStatusCodeOfException e f = case e of
 
 -- | Check if a commit exists in a GitHub repository.
 githubCommitExists
-    :: Repository -> Commit -> IO (Either GithubResponseError Bool)
-githubCommitExists (Repository owner repo) (Commit sha) = do
+    :: Auth -> Repository -> Commit -> IO (Either GithubResponseError Bool)
+githubCommitExists auth (Repository owner repo) (Commit sha) = do
     commit <-
-        callGithub
+        github auth
             $ GH.commitR
                 owner'
                 repo'
@@ -88,11 +84,11 @@ githubCommitExists (Repository owner repo) (Commit sha) = do
     sha' = N $ T.pack sha
 
 githubDirectoryExists
-    :: Repository -> Commit -> Directory -> IO Bool
-githubDirectoryExists (Repository owner repo) (Commit sha) (Directory dir) = do
+    :: Auth -> Repository -> Commit -> Directory -> IO Bool
+githubDirectoryExists auth (Repository owner repo) (Commit sha) (Directory dir) = do
     let path = T.pack dir
     contents <-
-        callGithub
+        github auth
             $ GH.contentsForR
                 owner'
                 repo'
@@ -108,9 +104,8 @@ githubDirectoryExists (Repository owner repo) (Commit sha) (Directory dir) = do
     sha' = T.pack sha
 
 githubUserPublicKeys
-    :: Username -> IO (Either GithubResponseError [T.Text])
-githubUserPublicKeys (Username name) = do
-    auth <- getOAUth
+    :: Auth -> Username -> IO (Either GithubResponseError [T.Text])
+githubUserPublicKeys auth (Username name) = do
     result <-
         github auth $ GH.publicSSHKeysForR (N $ T.pack name) FetchAll
     case result of
@@ -131,10 +126,10 @@ data GetCodeOwnersFileFailure
 instance Exception GetCodeOwnersFileFailure
 
 githubGetCodeOwnersFile
-    :: Repository -> IO (Either GetCodeOwnersFileFailure T.Text)
-githubGetCodeOwnersFile (Repository owner repo) = do
+    :: Auth -> Repository -> IO (Either GetCodeOwnersFileFailure T.Text)
+githubGetCodeOwnersFile auth (Repository owner repo) = do
     response <-
-        callGithub
+        github auth
             $ GH.contentsForR
                 owner'
                 repo'

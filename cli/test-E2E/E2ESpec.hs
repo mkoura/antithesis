@@ -1,10 +1,18 @@
 module E2ESpec
-    ( spec
+    ( e2eSpec
     ) where
 
+import GitHub (Auth)
 import System.Exit (ExitCode (..))
 import System.Process (readProcessWithExitCode)
-import Test.Hspec (Spec, describe, it, xit)
+import Test.Hspec
+    ( ActionWith
+    , SpecWith
+    , aroundAllWith
+    , describe
+    , it
+    , xit
+    )
 
 runScenario :: FilePath -> IO ()
 runScenario script = do
@@ -15,13 +23,18 @@ runScenario script = do
         _ ->
             error $ "Scenario failed: " ++ scriptFile ++ "\n" ++ sterr
 
-spec :: Spec
-spec = do
-    describe "E2E tests" $ do
-        describe "should prove that the system" $ do
-            it "can run a real world scenario"
-                $ runScenario "realWorld.sh"
-            it "can retract a request"
-                $ runScenario "retractions.sh"
-            xit "can validate a user registration and his role"
-                $ runScenario "validateUserRegAddRole.sh"
+setup :: ActionWith () -> ActionWith Auth
+setup action _auth = do
+    action ()
+    return ()
+
+e2eSpec :: SpecWith Auth
+e2eSpec = do
+    aroundAllWith setup $ do
+        describe "End-to-End Tests" $ do
+            it "should run the real world scenario" $ do
+                runScenario "realWorld.sh"
+            it "should retract a request" $ do
+                runScenario "retractions.sh"
+            xit "should validate a user registration and his role" $ do
+                runScenario "validateUserRegAddRole.sh"

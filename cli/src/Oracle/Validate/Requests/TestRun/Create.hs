@@ -189,21 +189,24 @@ checkCommit
                     else return $ Just UnacceptableCommit
 
 checkDirectory
-    :: Monad m
+    :: MonadIO m
     => Validation m
     -> TestRun
     -> m (Maybe TestRunRejection)
 checkDirectory
     Validation{githubDirectoryExists}
     testRun = do
-        exists <-
+        existsE <-
             githubDirectoryExists
                 (repository testRun)
                 (commitId testRun)
                 (directory testRun)
-        if exists
-            then return Nothing
-            else return $ Just UnacceptableDirectory
+        case existsE of
+            Left err -> liftIO $ throwIO err
+            Right exists ->
+                if exists
+                    then return Nothing
+                    else return $ Just UnacceptableDirectory
 
 checkSignature
     :: Monad m

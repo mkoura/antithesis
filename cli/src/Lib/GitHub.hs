@@ -1,6 +1,7 @@
 module Lib.GitHub
     ( GithubResponseError (..)
     , GetCodeOwnersFileFailure (..)
+    , GithubResponseStatusCodeError (..)
     , githubCommitExists
     , githubDirectoryExists
     , githubUserPublicKeys
@@ -99,7 +100,7 @@ githubCommitExists auth (Repository owner repo) (Commit sha) = do
     sha' = N $ T.pack sha
 
 githubDirectoryExists
-    :: Auth -> Repository -> Commit -> Directory -> IO Bool
+    :: Auth -> Repository -> Commit -> Directory -> IO (Either GithubResponseStatusCodeError Bool)
 githubDirectoryExists auth (Repository owner repo) (Commit sha) (Directory dir) = do
     let path = T.pack dir
     contents <-
@@ -111,12 +112,9 @@ githubDirectoryExists auth (Repository owner repo) (Commit sha) (Directory dir) 
                 (Just sha')
     case contents of
         Left e -> do
-            res <- onStatusCodeOfException e $ \_ -> do
+            onStatusCodeOfException e $ \_ -> do
                 return $ Just False
-            case res of
-                Left err -> undefined -- return $ Left $ GithubResponseCodeError err
-                Right a  ->  return a
-        Right _ -> return True
+        Right _ -> return $ Right True
   where
     owner' = N $ T.pack owner
     repo' = N $ T.pack repo

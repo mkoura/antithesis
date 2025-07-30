@@ -54,7 +54,11 @@ data Validation m = Validation
         :: Repository
         -> Commit
         -> m (Either GitHub.GithubResponseError Bool)
-    , githubDirectoryExists :: Repository -> Commit -> Directory -> m Bool
+    , githubDirectoryExists
+        :: Repository
+        -> Commit
+        -> Directory
+        -> m (Either GitHub.GithubResponseStatusCodeError Bool)
     , githubUserPublicKeys
         :: Username
         -> PublicKeyHash

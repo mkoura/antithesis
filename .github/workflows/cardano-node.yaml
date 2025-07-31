@@ -1,6 +1,6 @@
 name: "Test cardano-node"
 env:
-  TESTNET: "cardano_node_10.4.1"
+  TESTNET: "cardano_node_master"
   REGISTRY: ghcr.io/cardano-foundation
   EMAILS: 'antithesis@cardanofoundation.org'
   DURATION: 5 # in hours
@@ -11,7 +11,7 @@ on:
        test:
         description: 'Test configuration to run (a directory in compose/testnets)'
         required: true
-        default: cardano_node_10.4.1
+        default: cardano_node_master
         type: string
        duration:
         description: 'Test duration (in hours)'

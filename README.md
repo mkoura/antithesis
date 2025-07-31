@@ -1,11 +1,23 @@
 ![](/assets/tartarus.jpeg)
 
-# Antithesis
+# Antithesis-Cardano
 
-This repository is meant to host all the code, documents, reports,
-configuration files, etc. relevant to working with
-[Antithesis](https://antithesis.com) platform to test various
-components and configurations of the Cardano network.
+The [Cardano blockchain's][Cardano] core node software implements complex
+algorithms and protocols who run in a networked, concurrent context. Many
+nodes, some of which could be adversarial, collaborate to achieve the overall
+system's behaviour of being a decentralized, immutable ledger. Such a system is
+subject to many unpredictable factors such as communication delays, network
+partitions, nodes appearing or disappearing.
+
+[Antithesis][Antithesis] is a testing tool which is capable of generating
+random events (such as communication delays, network partitions, nodes
+appearing or disappearing) in a simulated environment, such that if any
+specific random sequence of combination of events leads to a software error, it
+can be reproduced.
+
+This project aims to facilitate the use of Antithesis for testing various
+components of the Cardano ecosystem, while tracking these test efforts on the
+blockchain.
 
 > [!IMPORTANT]
 >
@@ -115,6 +127,7 @@ Developers:
 
 <!-- MARKDOWN LINKS & IMAGES -->
 
+[Antithesis]: https://antithesis.com
 [Blog]: https://cardano-foundation.github.io/antithesis/
 [HAL]: https://github.com/cardano-foundation/hal
 [CF]: https://github.com/cardano-foundation

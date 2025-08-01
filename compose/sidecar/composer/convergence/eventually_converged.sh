@@ -8,11 +8,11 @@ PATH="/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin"
 # Environment variables
 POOLS="${POOLS:-}"
 mapfile -t NODES < <(seq -f "p%g" 1 "$POOLS")
-set -f          
+set -f
 NODES+=( $EXTRA_NODES )
 set +f
 
-PORT="${PORT:-3001}"
+PORT="${PORT:-3000}"
 
 
 echo "Checking for convergence among the following nodes"

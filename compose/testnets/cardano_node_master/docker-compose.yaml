@@ -2,12 +2,11 @@
 
 x-cardano-node: &cardano-node
   image: ghcr.io/intersectmbo/cardano-node:latest
-  volumes:
-    - tracer:/tracer
-
   command: >
     run --topology /configs/configs/topology.json
       --config /configs/configs/config.json
+      --database-path /state
+      --socket-path /state/node.socket
       --tracer-socket-path-connect /tracer/tracer.socket
       --shelley-operational-certificate /configs/keys/opcert.cert
       --shelley-kes-key /configs/keys/kes.skey
@@ -31,15 +30,10 @@ x-tracer: &tracer
     args:
       CARDANO_NODE_VERSION: "main"
 
-x-env: &env
-  POOL_ID: "0" # Placeholder required for override
-  UTXO_HD_WITH: "mem"
-
 services:
   configurator:
     image: ubuntu
     container_name: configurator
-    command: ["sh", "-c", "exit 1"]
     volumes:
       - p1-configs:/configs/1
       - p2-configs:/configs/2
@@ -66,31 +60,24 @@ services:
     hostname: p1.example
     volumes:
       - p1-configs:/configs
-    environment:
-      <<: *env
-      POOL_ID: "1"
-      UTXO_HD_WITH: "hd"
-
+      - p1-state:/state
+      - tracer:/tracer
   p2:
     <<: *cardano-node
     container_name: p2
     hostname: p2.example
     volumes:
       - p2-configs:/configs
-      - tracer:/opt/cardano-tracer
-    environment:
-      <<: *env
-      POOL_ID: "2"
-
+      - p2-state:/state
+      - tracer:/tracer
   p3:
     <<: *cardano-node
     container_name: p3
     hostname: p3.example
     volumes:
       - p3-configs:/configs
-    environment:
-      <<: *env
-      POOL_ID: "3"
+      - p3-state:/state
+      - tracer:/tracer
 
   p4:
     <<: *cardano-node
@@ -98,10 +85,8 @@ services:
     hostname: p4.example
     volumes:
       - p4-configs:/configs
-    environment:
-      <<: *env
-      POOL_ID: "4"
-      UTXO_HD_WITH: "hd"
+      - p4-state:/state
+      - tracer:/tracer
 
   p5:
     <<: *cardano-node
@@ -109,17 +94,15 @@ services:
     hostname: p5.example
     volumes:
       - p5-configs:/configs
-    environment:
-      <<: *env
-      POOL_ID: "5"
-
+      - p5-state:/state
+      - tracer:/tracer
   s1:
     image: ${registry}${testnet}_sidecar:latest
     restart: on-failure
     container_name: s1
     hostname: s1.example
     environment:
-      POOLS: "5"
+      POOLS: "5" # FIXME: could remove
 
   tracer-sidecar:
     image: ${registry}${testnet}_tracer-sidecar:latest
@@ -133,6 +116,11 @@ services:
 
 volumes:
   tracer:
+  p1-state:
+  p2-state:
+  p3-state:
+  p4-state:
+  p5-state:
   p1-configs:
   p2-configs:
   p3-configs:

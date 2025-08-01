@@ -8,7 +8,7 @@ PATH="/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin"
 # Environment variables
 CONVERGENCE_COMPOSER="${CONVERGENCE_COMPOSER:-true}"
 POOLS="${POOLS:-}"
-PORT="${PORT:-3001}"
+PORT="${PORT:-3000}"
 
 # Antithesis
 ANTITHESIS_OUTPUT_DIR="${ANTITHESIS_OUTPUT_DIR:-/tmp}"

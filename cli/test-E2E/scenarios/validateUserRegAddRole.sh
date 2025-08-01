@@ -33,6 +33,7 @@ resultReg1=$(anti requester register-user \
     --pubkeyhash AAAAC3NzaC1lZDI1NTE5AAAAILjwzNvy87HbzYV2lsW3UjVoxtpq4Nrj84kjo3puarCH)
 
 outputRegRef1=$(getOutputRef "$resultReg1")
+
 log "Created registration request with valid public key with output reference: $outputRegRef1"
 
 if [ -z "$GITHUB_PERSONAL_ACCESS_TOKEN" ]; then
@@ -64,13 +65,29 @@ if [[ "$(echo "$resultVal1" | jq -S 'sort_by(.reference)')" != "$(echo "$expecte
     emitMismatch 1 "validation" "$resultVal1" "$expectedVal1"
 fi
 
+log "Created registration request with invalid public key"
+
 resultReg2=$(anti requester register-user \
     --platform github \
     --username cfhal \
     --pubkeyhash AAAAC3NzaC1lZDI1NTE5AAAAILjwzNvy87HbzYV2lsW3UjVoxtpq4Nrj84djo3puarCH)
 
-outputRegRef2=$(getOutputRef "$resultReg2")
-log "Created registration request with invalid public key with output reference: $outputRegRef2"
+outputRegRes2=$(echo $resultReg2 | jq -r '.result')
+log "resultReg2: $resultReg2"
+
+expectedRegRes2=$(
+    cat <<EOF
+{
+  "validationFailed": {
+    "publicKeyValidationFailure": "The user does not have the specified Ed25519 public key exposed in Github."
+  }
+}
+EOF
+)
+
+if [[ "$(echo "$outputRegRes2")" != "$(echo "$expectedRegRes2")" ]]; then
+    emitMismatch 1 "incorrect request" "$outputRegRes2" "$expectedRegRes2"
+fi
 
 resultVal2=$(anti oracle requests validate | jq -r '.result')
 
@@ -80,10 +97,6 @@ expectedVal2=$(
   {
     "reference": "$outputRegRef1",
     "validation": "validated"
-  },
-  {
-    "reference": "$outputRegRef2",
-    "validation": "not validated: The user does not have the specified Ed25519 public key exposed in Github."
   }
 ]
 EOF

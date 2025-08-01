@@ -11,15 +11,17 @@ import Test.Hspec
     , aroundAllWith
     , describe
     , it
-    , xit
     )
+
+import qualified Debug.Trace as TR
 
 runScenario :: FilePath -> IO ()
 runScenario script = do
     let scriptFile = "test-E2E/scenarios/" ++ script
-    (code, _stdout, sterr) <- readProcessWithExitCode scriptFile [] ""
-    case code of
-        ExitSuccess -> return ()
+    (code, stdout, sterr) <- readProcessWithExitCode scriptFile [] ""
+    TR.trace ("code:"<>show code <>"\nstdout:"<> show stdout<>"\nsterr:"<>show sterr) $ case code of
+        ExitSuccess ->
+            return ()
         _ ->
             error $ "Scenario failed: " ++ scriptFile ++ "\n" ++ sterr
 
@@ -36,5 +38,5 @@ e2eSpec = do
                 runScenario "realWorld.sh"
             it "should retract a request" $ do
                 runScenario "retractions.sh"
-            xit "should validate a user registration and his role" $ do
+            it "should validate a user registration and his role" $ do
                 runScenario "validateUserRegAddRole.sh"

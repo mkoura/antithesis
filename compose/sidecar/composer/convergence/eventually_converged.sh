@@ -12,7 +12,7 @@ set -f
 NODES+=( $EXTRA_NODES )
 set +f
 
-PORT="${PORT:-3000}"
+PORT="${PORT:-3001}"
 
 
 echo "Checking for convergence among the following nodes"

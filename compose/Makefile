@@ -96,7 +96,7 @@ down: TESTNET ## Stop local Docker Compose
 
 query: TESTNET ## Query tip of all pools
 	pools="$$(awk '/poolCount: /{ print $$2 }' testnets/${testnet}/testnet.yaml)" ; \
-	for i in $$(seq 1 $${pools}) ; do docker exec -ti p$${i} timeout 0.05 cardano-cli ping --magic 42 --host 127.0.0.1 --port 3000 --tip --quiet -c1; done ; true
+	for i in $$(seq 1 $${pools}) ; do docker exec -ti p$${i} timeout 0.05 cardano-cli ping --magic 42 --host 127.0.0.1 --port 3001 --tip --quiet -c1; done ; true
 
 validate: TESTNET ## Check for consensus among all pools
 	docker exec -ti s1 /opt/antithesis/test/v1/convergence/eventually_converged.sh

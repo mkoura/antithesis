@@ -1,15 +1,22 @@
 ---
 
-x-base: &base
-  image: ${registry}${testnet}:latest
-  restart: on-failure
-  build:
-    context: "../../"
-    dockerfile: "Dockerfile.compiled"
-    args:
-      CARDANO_NODE_VERSION: "main"
+x-cardano-node: &cardano-node
+  image: ghcr.io/intersectmbo/cardano-node:latest
+  volumes:
+    - tracer:/tracer
 
-x-tracer-base: &tracerbase
+  command: >
+    run --topology /configs/topology.json
+      --config /configs/config.json
+      --tracer-socket-path-connect /tracer/tracer.socket
+      --shelley-operational-certificate /configs/opcert.cert
+      --shelley-kes-key /configs/kes.skey
+      --shelley-vrf-key /configs/vrf.skey
+      --port 3000
+      --host-addr 0.0.0.0
+      +RTS -N -A16m -qg -qb -RTS
+
+x-tracer: &tracer
   image: ${registry}${testnet}_tracer:latest
   restart: on-failure
   build:
@@ -27,66 +34,53 @@ x-env: &env
 
 services:
   tracer:
-    <<: *tracerbase
+    <<: *tracer
     hostname: tracer.example
     container_name: tracer
     volumes:
       - tracer:/opt/cardano-tracer
-    ports:
-      - "4000:4000"
     command:
        - "--config"
        - "tracer-config.yaml"
 
   p1:
-    <<: *base
+    <<: *cardano-node
     container_name: p1
     hostname: p1.example
     volumes:
-      - p1:/opt/cardano-node/data
-      - tracer:/opt/cardano-tracer
-    ports:
-      - "3001:3001"
+      - p1-configs:/configs
     environment:
       <<: *env
       POOL_ID: "1"
       UTXO_HD_WITH: "hd"
 
   p2:
-    <<: *base
+    <<: *cardano-node
     container_name: p2
     hostname: p2.example
     volumes:
-      - p2:/opt/cardano-node/data
+      - p2-configs:/configs
       - tracer:/opt/cardano-tracer
-    ports:
-      - "3002:3001"
     environment:
       <<: *env
       POOL_ID: "2"
 
   p3:
-    <<: *base
+    <<: *cardano-node
     container_name: p3
     hostname: p3.example
     volumes:
-      - p3:/opt/cardano-node/data
-      - tracer:/opt/cardano-tracer
-    ports:
-      - "3003:3001"
+      - p3-configs:/configs
     environment:
       <<: *env
       POOL_ID: "3"
 
   p4:
-    <<: *base
+    <<: *cardano-node
     container_name: p4
     hostname: p4.example
     volumes:
-      - p4:/opt/cardano-node/data
-      - tracer:/opt/cardano-tracer
-    ports:
-      - "3004:3001"
+      - p4-configs:/configs
     environment:
       <<: *env
       POOL_ID: "4"
@@ -94,14 +88,11 @@ services:
 
 
   p5:
-    <<: *base
+    <<: *cardano-node
     container_name: p5
     hostname: p5.example
     volumes:
-      - p5:/opt/cardano-node/data
-      - tracer:/opt/cardano-tracer
-    ports:
-      - "3005:3001"
+      - p5-configs:/configs
     environment:
       <<: *env
       POOL_ID: "5"
@@ -126,8 +117,8 @@ services:
 
 volumes:
   tracer:
-  p1:
-  p2:
-  p3:
-  p4:
-  p5:
+  p1-configs:
+  p2-configs:
+  p3-configs:
+  p4-configs:
+  p5-configs:

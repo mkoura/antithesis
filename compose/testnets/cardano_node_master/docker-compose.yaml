@@ -11,7 +11,7 @@ x-cardano-node: &cardano-node
       --shelley-operational-certificate /configs/keys/opcert.cert
       --shelley-kes-key /configs/keys/kes.skey
       --shelley-vrf-key /configs/keys/vrf.skey
-      --port 3000
+      --port 3001
       --host-addr 0.0.0.0
       +RTS -N -A16m -qg -qb -RTS
   depends_on:

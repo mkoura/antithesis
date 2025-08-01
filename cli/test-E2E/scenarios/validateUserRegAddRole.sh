@@ -25,8 +25,6 @@ tokenEnd() {
 }
 trap 'tokenEnd' EXIT INT TERM
 
-log "Creating a registration user request..."
-
 resultReg1=$(anti requester register-user \
     --platform github \
     --username cfhal \
@@ -65,7 +63,7 @@ if [[ "$(echo "$resultVal1" | jq -S 'sort_by(.reference)')" != "$(echo "$expecte
     emitMismatch 1 "validation" "$resultVal1" "$expectedVal1"
 fi
 
-log "Created registration request with invalid public key"
+log "Trying to create registration request with invalid public key"
 
 resultReg2=$(anti requester register-user \
     --platform github \
@@ -106,7 +104,8 @@ if [[ "$(echo "$resultVal2" | jq -S 'sort_by(.reference)')" != "$(echo "$expecte
     emitMismatch 2 "validation" "$resultVal2" "$expectedVal2"
 fi
 
-log "Trying to register a role before token updating xxx"
+log "Registering a role before token updating with user registration fact is possible"
+
 resultRole1=$(anti requester register-role \
     --platform github \
     --repository cardano-foundation/hal-fixture-sin \
@@ -125,12 +124,8 @@ expectedVal3=$(
     "validation": "validated"
   },
   {
-    "reference": "$outputRegRef2",
-    "validation": "not validated: The user does not have the specified Ed25519 public key exposed in Github."
-  },
-  {
     "reference": "$outputRoleRef1",
-    "validation": "not validated: no registration for platform '\"github\"' and repository '\"hal-fixture-sin\"' of owner '\"cardano-foundation\"' and user '\"cfhal\"' found"
+    "validation": "validated"
   }
 ]
 EOF
@@ -141,7 +136,7 @@ if [[ "$(echo "$resultVal3" | jq -S 'sort_by(.reference)')" != "$(echo "$expecte
 fi
 
 
-log "Including the registration request that passed validation in the token ..."
+log "Including the registration user as the fact in the updaed token."
 anti oracle token update -o "$outputRegRef1" >/dev/null
 
 printFacts
@@ -157,16 +152,7 @@ expectedGet1=$(
       "type": "insert",
       "value": "null"
     },
-    "outputRefId": "$outputRegRef2",
-    "owner": $owner
-  },
-  {
-    "change": {
-      "key": "{\"platform\":\"github\",\"repository\":{\"organization\":\"cardano-foundation\",\"project\":\"hal-fixture-sin\"},\"type\":\"register-role\",\"user\":\"cfhal\"}",
-      "type": "insert",
-      "value": "null"
-    },
-    "outputRefId": "$outputRoleRef1",
+    "outputRefId": "$outputRegRef1",
     "owner": $owner
   }
 ]
@@ -174,6 +160,8 @@ EOF
 )
 
 resultGet1=$(anti oracle token get | jq '.result.requests')
+
+log "resultGet1: $resultGet1"
 
 if [[ "$(echo "$resultGet1" | jq -S 'sort_by(.outputRefId)')" != "$(echo "$expectedGet1" | jq -S 'sort_by(.outputRefId)')" ]]; then
     emitMismatch 4 "get token requests" "$resultGet1" "$expectedGet1"
@@ -184,10 +172,6 @@ resultVal4=$(anti oracle requests validate | jq -r '.result')
 expectedVal4=$(
     cat <<EOF
 [
-  {
-    "reference": "$outputRegRef2",
-    "validation": "not validated: The user does not have the specified Ed25519 public key exposed in Github."
-  },
   {
     "reference": "$outputRoleRef1",
     "validation": "validated"

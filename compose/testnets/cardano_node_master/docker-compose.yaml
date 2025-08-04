@@ -34,7 +34,7 @@ x-tracer: &tracer
 
 services:
   configurator:
-    image: ubuntu
+    image: ${registry}${testnet}_configurator:latest
     container_name: configurator
     volumes:
       - p1-configs:/configs/1
@@ -43,7 +43,7 @@ services:
       - p4-configs:/configs/4
       - p5-configs:/configs/5
     build:
-      context: "../../"
+      context: "."
       dockerfile: "Dockerfile.configurator"
 
   tracer:

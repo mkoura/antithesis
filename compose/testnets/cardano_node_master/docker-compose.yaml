@@ -2,6 +2,8 @@
 
 x-cardano-node: &cardano-node
   image: ghcr.io/intersectmbo/cardano-node:latest
+  environment:
+    CARDANO_BLOCK_PRODUCER: true
   command: >
     run --topology /configs/configs/topology.json
       --config /configs/configs/config.json

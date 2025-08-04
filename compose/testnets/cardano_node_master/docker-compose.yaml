@@ -107,7 +107,7 @@ services:
       POOLS: "5" # FIXME: could remove
 
   tracer-sidecar:
-    image: ${registry}${testnet}_tracer-sidecar:latest
+    image: paolino/antithesis-tracer-sidecar:latest
     restart: on-failure
     container_name: tracer-sidecar
     hostname: tracer-sidecar.example

@@ -2,6 +2,9 @@ module Lib.SSH.Public
     ( decodePublicKey
     , Verify
     , encodePublicKey
+    , encodeSSHPublicKey
+    , SSHPublicKey (..)
+    , extractPublicKeyHash
     ) where
 
 import Control.Monad (when)
@@ -55,3 +58,21 @@ encodePublicKey key =
         encoded = BL.toStrict $ runPut $ renderEd25519Key $ BA.convert key
     in
         PublicKeyHash $ BC.unpack $ Base64.encode encoded
+
+newtype SSHPublicKey = SSHPublicKey String
+    deriving (Show, Eq)
+
+encodeSSHPublicKey
+    :: Ed25519.PublicKey -> SSHPublicKey
+encodeSSHPublicKey key =
+    let
+        PublicKeyHash encoded = encodePublicKey key
+    in
+        SSHPublicKey $ "ssh-ed25519 " <> encoded
+
+extractPublicKeyHash :: SSHPublicKey -> PublicKeyHash
+extractPublicKeyHash (SSHPublicKey sshPk) =
+    let
+        expectedPrefix = "ssh-ed25519 " :: String
+    in
+        PublicKeyHash $ drop (length expectedPrefix) sshPk

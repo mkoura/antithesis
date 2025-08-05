@@ -71,7 +71,7 @@ registerUserChange platform username pubkeyhash =
 
 spec :: Spec
 spec = do
-    describe "validate agent requests" $ do
+    describe "validate requester requests" $ do
         it "validate a registered user" $ egenProperty $ do
             e@(user, pk) <- genValidDBElement
             let validation = mkValidation [] [] [] [e] []
@@ -81,7 +81,7 @@ spec = do
                         $ extractPublicKeyHash pk
             pure $ runValidate test `shouldReturn` ValidationSuccess Validated
 
-        it "fail to validate a user with unsupported platform" $ egenProperty $ do
+        it "fail to validate a user for an unsupported platform" $ egenProperty $ do
             e@(user, pk) <- gen genUserDBElement
             db <- gen $ withAPresenceInAList 0.5 e genUserDBElement
             platform <- gen $ withAPresence 0.5 "github" arbitrary

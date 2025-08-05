@@ -135,7 +135,6 @@ if [[ "$(echo "$resultVal3" | jq -S 'sort_by(.reference)')" != "$(echo "$expecte
     emitMismatch 3 "validation" "$resultVal3" "$expectedVal3"
 fi
 
-
 log "Including the registration user as the fact in the updaed token."
 anti oracle token update -o "$outputRegRef1" >/dev/null
 
@@ -264,4 +263,33 @@ EOF
 
 if [[ "$(echo "$resultVal6" | jq -S 'sort_by(.reference)')" != "$(echo "$expectedVal6" | jq -S 'sort_by(.reference)')" ]]; then
     emitMismatch 9 "validation" "$resultVal6" "$expectedVal6"
+fi
+
+resultUnReg1=$(anti requester unregister-user \
+    --platform github \
+    --username cfhal \
+    --pubkeyhash AAAAC3NzaC1lZDI1NTE5AAAAILjwzNvy87HbzYV2lsW3UjVoxtpq4Nrj84kjo3puarCH)
+
+outputUnRegRef1=$(getOutputRef "$resultUnReg1")
+
+log "Created unregistration request with valid public key with output reference: $outputUnRegRef1"
+resultVal7=$(anti oracle requests validate | jq -r '.result')
+
+expectedVal7=$(
+    cat <<EOF
+[
+  {
+    "reference": "$outputUnRoleRef1",
+    "validation": "validated"
+  },
+  {
+    "reference": "$outputUnRegRef1",
+    "validation": "validated"
+  }
+]
+EOF
+)
+
+if [[ "$(echo "$resultVal7" | jq -S 'sort_by(.reference)')" != "$(echo "$expectedVal7" | jq -S 'sort_by(.reference)')" ]]; then
+    emitMismatch 10 "validation" "$resultVal7" "$expectedVal7"
 fi

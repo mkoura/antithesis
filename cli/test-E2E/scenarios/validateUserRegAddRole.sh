@@ -223,3 +223,45 @@ EOF
 if [[ "$(echo "$resultVal5" | jq -S 'sort_by(.reference)')" != "$(echo "$expectedVal5" | jq -S 'sort_by(.reference)')" ]]; then
     emitMismatch 7 "validation" "$resultVal5" "$expectedVal5"
 fi
+
+resultUnRole2=$(anti requester unregister-role \
+    --platform github \
+    --repository cardano-foundation/hal-fixture-sinn \
+    --username cfhal \
+    )
+
+outputUnRoleRes2=$(echo $resultUnRole2 | jq -r '.result')
+log "resultUnRole2: $resultUnRole2"
+
+log "Created role unregistration request with incorrect repository"
+
+expectedUnRoleRes2=$(
+    cat <<EOF
+{
+  "validationFailed": {
+    "unregisterRoleKeyFailure": "Key does not exist: RegisterRoleKey {platform = Platform \"github\", repository = Repository {organization = \"cardano-foundation\", project = \"hal-fixture-sinn\"}, username = Username \"cfhal\"}"
+  }
+}
+EOF
+)
+
+if [[ "$(echo "$outputUnRoleRes2")" != "$(echo "$expectedUnRoleRes2")" ]]; then
+    emitMismatch 8 "incorrect request" "$outputUnRoleRes2" "$expectedUnRoleRes2"
+fi
+
+resultVal6=$(anti oracle requests validate | jq -r '.result')
+
+expectedVal6=$(
+    cat <<EOF
+[
+  {
+    "reference": "$outputUnRoleRef1",
+    "validation": "validated"
+  }
+]
+EOF
+)
+
+if [[ "$(echo "$resultVal6" | jq -S 'sort_by(.reference)')" != "$(echo "$expectedVal6" | jq -S 'sort_by(.reference)')" ]]; then
+    emitMismatch 9 "validation" "$resultVal6" "$expectedVal6"
+fi

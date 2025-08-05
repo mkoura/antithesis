@@ -48,7 +48,10 @@ help:
 	@echo "    make anti password='password1234' session_id=<some session_id> input_hash=<some hash> vtime=<decimal seconds>"
 	@echo
 
-build: TESTNET build-config build-configurator
+build: TESTNET build-config build-compose
+
+build-compose: TESTNET ## Build cardano-node container
+		cd testnets/${testnet} ; docker compose build
 
 build-config: TESTNET ## Build config container image
 	docker build --build-arg REGISTRY="${registry}" --build-arg "TESTNET=${testnet}" -f config/Dockerfile -t ${registry}${testnet}_config:latest testnets/${testnet}

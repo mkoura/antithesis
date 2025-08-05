@@ -130,6 +130,13 @@ set_start_time() {
     jq ".startTime = ${SYSTEM_START_UNIX}" "${BYRON_GENESIS_JSON}" | write_file "${BYRON_GENESIS_JSON}"
 }
 
+echo "==="
+cat /testnet.yaml
+ls .
+echo "==="
+
+exit 1
+
 tree /configs
 echo "removing /configs/keys"; rm -rf /configs/keys
 

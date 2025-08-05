@@ -42,6 +42,7 @@ services:
       - p3-configs:/configs/3
       - p4-configs:/configs/4
       - p5-configs:/configs/5
+      - ./testnet.yaml:/testnet.yaml
 
   tracer:
     <<: *tracer

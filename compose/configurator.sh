@@ -130,12 +130,20 @@ set_start_time() {
     jq ".startTime = ${SYSTEM_START_UNIX}" "${BYRON_GENESIS_JSON}" | write_file "${BYRON_GENESIS_JSON}"
 }
 
-echo "==="
-cat /testnet.yaml
-ls .
-echo "==="
 
-exit 1
+# # Copy testnet.yaml specification
+cp /testnet.yaml /usr/local/src/testnet-generation-tool/testnet.yaml
+
+# # Build testnet configuration files
+uv run python3 genesis-cli.py testnet.yaml -o /tmp/testnet -c generate
+
+# # Remove dynamic topology.json
+find /tmp/testnet -type f -name 'topology.json' -exec rm -f '{}' ';'
+
+mkdir -p /configs
+cp -r /tmp/testnet/pools/* /configs
+cp -r /tmp/testnet/utxos/* /configs
+
 
 tree /configs
 echo "removing /configs/keys"; rm -rf /configs/keys
@@ -145,8 +153,9 @@ number_of_pools=$(ls -d /configs/* | wc -l)
 echo "number_of_pools: $number_of_pools"
 for pool in $pools; do
   echo "pool: $pool"
-  config_config_json $pool
-  pool_ix=$(echo $pool | awk -F '/' '{print $3}')
-  config_topology_json $pool_ix $number_of_pools
-  set_start_time $pool
+  config_config_json "$pool"
+  pool_ix=$(echo "$pool" | awk -F '/' '{print $3}')
+  config_topology_json "$pool_ix" "$number_of_pools"
+  set_start_time "$pool"
+  echo "Configured pool: $pool_ix"
 done

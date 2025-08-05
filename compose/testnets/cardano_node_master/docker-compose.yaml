@@ -21,7 +21,7 @@ x-cardano-node: &cardano-node
         condition: service_completed_successfully
 
 x-tracer: &tracer
-  image: paolino/antithesis-tracer:latest
+  image: docker.io/paolino/antithesis-tracer:latest
   restart: on-failure
   build:
     context: "../../tracer/"
@@ -34,7 +34,7 @@ x-tracer: &tracer
 
 services:
   configurator:
-    image: ${registry}${testnet}_configurator:latest
+    image: docker.io/paolino/antithesis-configurator:latest
     container_name: configurator
     volumes:
       - p1-configs:/configs/1
@@ -42,9 +42,6 @@ services:
       - p3-configs:/configs/3
       - p4-configs:/configs/4
       - p5-configs:/configs/5
-    build:
-      context: "."
-      dockerfile: "Dockerfile.configurator"
 
   tracer:
     <<: *tracer
@@ -99,7 +96,7 @@ services:
       - p5-state:/state
       - tracer:/tracer
   s1:
-    image: paolino/antithesis-sidecar:latest
+    image: docker.io/paolino/antithesis-sidecar:latest
     restart: on-failure
     container_name: s1
     hostname: s1.example
@@ -107,7 +104,7 @@ services:
       POOLS: "5" # FIXME: could remove
 
   tracer-sidecar:
-    image: paolino/antithesis-tracer-sidecar:latest
+    image: docker.io/paolino/antithesis-tracer-sidecar:latest
     restart: on-failure
     container_name: tracer-sidecar
     hostname: tracer-sidecar.example

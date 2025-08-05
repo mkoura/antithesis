@@ -84,7 +84,7 @@ anti: TESTNET ## Run Antithesis job
 	--arg description   '${description}' \
 	--arg duration      '${duration}' \
 	--arg config_image  '${testnet}_config:latest' \
-	--arg images        '${testnet}_configurator:latest;ghcr.io/intersectmbo/cardano-node:latest;ghcr.io/intersectmbo/cardano-node:latest;paolino/antithesis-sidecar:latest;paolino/antithesis-tracer:latest;ghcr.io/intersectmbo/cardano-node:latest;paolino/antithesis-tracer-sidecar:latest;ghcr.io/intersectmbo/cardano-node:latest;ghcr.io/intersectmbo/cardano-node:latest' \
+	--arg images        'ghcr.io/intersectmbo/cardano-node:latest;docker.io/paolino/antithesis-sidecar:latest;docker.io/paolino/antithesis-tracer:latest;docker.io/paolino/antithesis-tracer-sidecar:latest;docker.io/paolino/antithesis-configurator:latest' \
 	--arg recipients    '${recipients}' \
 	'{params: {"antithesis.description": $$description,"custom.duration": $$duration,"antithesis.config_image": $$config_image,"antithesis.images": $$images,"antithesis.report.recipients": $$recipients}}')"
 

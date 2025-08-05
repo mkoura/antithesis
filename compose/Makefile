@@ -1,4 +1,4 @@
-SHELL:=/bin/bash
+SHELL:=/usr/bin/env bash
 
 .SILENT: build build-image build-config push push-image push-config up down query validate
 

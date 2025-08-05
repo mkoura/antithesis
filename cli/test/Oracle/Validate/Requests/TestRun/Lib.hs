@@ -56,6 +56,7 @@ import Crypto.PubKey.Ed25519 qualified as Ed25519
 import Data.ByteString (ByteString)
 import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.Maybe (mapMaybe)
+import Lib.SSH.Public (SSHPublicKey)
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig (..)
     )
@@ -87,7 +88,7 @@ import User.Types
     )
 import Validation (Validation (..))
 import Validation.RegisterRole (RepositoryRoleFailure (..))
-import Validation.RegisterUser (PublicKeyFailure (..))
+import Validation.RegisterUser (analyzeKeys)
 
 jsFactRole :: Monad m => TestRun -> m JSFact
 jsFactRole testRun =
@@ -114,7 +115,7 @@ mkValidation
     => [JSFact]
     -> [(Repository, Commit)]
     -> [(Repository, Commit, Directory)]
-    -> [(Username, PublicKeyHash)]
+    -> [(Username, SSHPublicKey)]
     -> [(Username, Repository)]
     -> Validation m
 mkValidation fs rs ds upk rr =
@@ -129,10 +130,12 @@ mkValidation fs rs ds upk rr =
         , githubDirectoryExists = \repository commit dir ->
             return $ Right $ (repository, commit, dir) `elem` ds
         , githubUserPublicKeys = \username publicKey ->
-            return
-                $ if (username, publicKey) `elem` upk
-                    then Nothing
-                    else Just NoEd25519KeyMatch
+            pure
+                $ analyzeKeys publicKey
+                $ map snd
+                $ filter
+                    ((== username) . fst)
+                    upk
         , githubRepositoryRole = \username repository ->
             return
                 $ if (username, repository) `elem` rr

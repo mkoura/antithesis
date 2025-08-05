@@ -6,11 +6,16 @@ where
 import Control.Monad (when)
 import Core.Types.Basic
     ( Platform (..)
-    , PublicKeyHash (PublicKeyHash)
+    , PublicKeyHash
     , Username (..)
     )
 import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Operation (Op (OpI), Operation (..))
+import Lib.SSH.Public
+    ( SSHPublicKey (..)
+    , encodeSSHPublicKey
+    , extractPublicKeyHash
+    )
 import Oracle.Validate.Requests.RegisterUser
     ( RegisterUserFailure (..)
     , validateRegisterUser
@@ -30,15 +35,22 @@ import Test.Hspec
     , shouldReturn
     )
 import Test.QuickCheck (Gen, arbitrary)
-import Test.QuickCheck.EGen (egenProperty, gen)
+import Test.QuickCheck.Crypton (sshGen)
+import Test.QuickCheck.EGen (EGen, egenProperty, gen, genA, genBlind)
 import Test.QuickCheck.Lib (withAPresence, withAPresenceInAList)
 import User.Types (RegisterUserKey (..))
 
-genUserDBElement :: Gen (Username, PublicKeyHash)
+genUserDBElement :: Gen (Username, SSHPublicKey)
 genUserDBElement = do
     user <- Username <$> arbitrary
-    pk <- PublicKeyHash <$> arbitrary
+    pk <- SSHPublicKey <$> arbitrary
     pure (user, pk)
+
+genValidDBElement :: EGen (Username, SSHPublicKey)
+genValidDBElement = do
+    user <- Username <$> genA
+    (_sign, pk) <- genBlind sshGen
+    pure (user, encodeSSHPublicKey pk)
 
 registerUserChange
     :: Platform
@@ -61,11 +73,12 @@ spec :: Spec
 spec = do
     describe "validate agent requests" $ do
         it "validate a registered user" $ egenProperty $ do
-            e@(user, pk) <- gen genUserDBElement
+            e@(user, pk) <- genValidDBElement
             let validation = mkValidation [] [] [] [e] []
                 test =
                     validateRegisterUser validation
-                        $ registerUserChange (Platform "github") user pk
+                        $ registerUserChange (Platform "github") user
+                        $ extractPublicKeyHash pk
             pure $ runValidate test `shouldReturn` ValidationSuccess Validated
 
         it "fail to validate a user with unsupported platform" $ egenProperty $ do
@@ -75,7 +88,8 @@ spec = do
             let validation = mkValidation [] [] [] db []
                 test =
                     validateRegisterUser validation
-                        $ registerUserChange (Platform platform) user pk
+                        $ registerUserChange (Platform platform) user
+                        $ extractPublicKeyHash pk
             pure
                 $ when (platform /= "github")
                 $ runValidate test

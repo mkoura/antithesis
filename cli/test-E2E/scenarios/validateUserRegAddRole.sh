@@ -293,3 +293,20 @@ EOF
 if [[ "$(echo "$resultVal7" | jq -S 'sort_by(.reference)')" != "$(echo "$expectedVal7" | jq -S 'sort_by(.reference)')" ]]; then
     emitMismatch 10 "validation" "$resultVal7" "$expectedVal7"
 fi
+
+log "Including the role and user unregistration requests that passed validation in the token ..."
+anti oracle token update -o "$outputUnRoleRef1" -o "$outputUnRegRef1"  >/dev/null
+
+printFacts
+
+expectedGet3=$(
+    cat <<EOF
+[]
+EOF
+)
+
+resultGet3=$(anti oracle token get | jq '.result.requests')
+
+if [[ "$(echo "$resultGet3" | jq -S 'sort_by(.outputRefId)')" != "$(echo "$expectedGet3" | jq -S 'sort_by(.outputRefId)')" ]]; then
+    emitMismatch 11 "get token requests" "$resultGet3" "$expectedGet3"
+fi

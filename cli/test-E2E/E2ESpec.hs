@@ -13,13 +13,11 @@ import Test.Hspec
     , it
     )
 
-import qualified Debug.Trace as TR
-
 runScenario :: FilePath -> IO ()
 runScenario script = do
     let scriptFile = "test-E2E/scenarios/" ++ script
-    (code, stdout, sterr) <- readProcessWithExitCode scriptFile [] ""
-    TR.trace ("code:"<>show code <>"\nstdout:"<> show stdout<>"\nsterr:"<>show sterr) $ case code of
+    (code, _stdout, sterr) <- readProcessWithExitCode scriptFile [] ""
+    case code of
         ExitSuccess ->
             return ()
         _ ->

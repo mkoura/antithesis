@@ -198,3 +198,28 @@ resultGet2=$(anti oracle token get | jq '.result.requests')
 if [[ "$(echo "$resultGet2" | jq -S 'sort_by(.outputRefId)')" != "$(echo "$expectedGet2" | jq -S 'sort_by(.outputRefId)')" ]]; then
     emitMismatch 6 "get token requests" "$resultGet2" "$expectedGet2"
 fi
+
+resultUnRole1=$(anti requester unregister-role \
+    --platform github \
+    --repository cardano-foundation/hal-fixture-sin \
+    --username cfhal \
+    )
+outputUnRoleRef1=$(getOutputRef "$resultUnRole1")
+
+log "Created role unregistration request with output reference: $outputUnRoleRef1"
+resultVal5=$(anti oracle requests validate | jq -r '.result')
+
+expectedVal5=$(
+    cat <<EOF
+[
+  {
+    "reference": "$outputUnRoleRef1",
+    "validation": "validated"
+  }
+]
+EOF
+)
+
+if [[ "$(echo "$resultVal5" | jq -S 'sort_by(.reference)')" != "$(echo "$expectedVal5" | jq -S 'sort_by(.reference)')" ]]; then
+    emitMismatch 7 "validation" "$resultVal5" "$expectedVal5"
+fi

@@ -148,11 +148,11 @@ expectedGet1=$(
 [
   {
     "change": {
-      "key": "{\"platform\":\"github\",\"publickeyhash\":\"AAAAC3NzaC1lZDI1NTE5AAAAILjwzNvy87HbzYV2lsW3UjVoxtpq4Nrj84kjo3puarCH\",\"type\":\"register-user\",\"user\":\"cfhal\"}",
+      "key": "{\"platform\":\"github\",\"repository\":{\"organization\":\"cardano-foundation\",\"project\":\"hal-fixture-sin\"},\"type\":\"register-role\",\"user\":\"cfhal\"}",
       "type": "insert",
       "value": "null"
     },
-    "outputRefId": "$outputRegRef1",
+    "outputRefId": "$outputRoleRef1",
     "owner": $owner
   }
 ]
@@ -160,8 +160,6 @@ EOF
 )
 
 resultGet1=$(anti oracle token get | jq '.result.requests')
-
-log "resultGet1: $resultGet1"
 
 if [[ "$(echo "$resultGet1" | jq -S 'sort_by(.outputRefId)')" != "$(echo "$expectedGet1" | jq -S 'sort_by(.outputRefId)')" ]]; then
     emitMismatch 4 "get token requests" "$resultGet1" "$expectedGet1"
@@ -191,17 +189,7 @@ printFacts
 
 expectedGet2=$(
     cat <<EOF
-[
-  {
-    "change": {
-      "key": "{\"platform\":\"github\",\"publickeyhash\":\"AAAAC3NzaC1lZDI1NTE5AAAAILjwzNvy87HbzYV2lsW3UjVoxtpq4Nrj84kjo3puarCH\",\"type\":\"register-user\",\"user\":\"cfhal\"}",
-      "type": "insert",
-      "value": "null"
-    },
-    "outputRefId": "$outputRegRef2",
-    "owner": $owner
-  }
-]
+[]
 EOF
 )
 

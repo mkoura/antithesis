@@ -234,3 +234,23 @@ spec = do
                 $ when (user /= userOther)
                 $ runValidate test `shouldReturn`
                 ValidationFailure (UnregisterUserKeyFailure (KeyDoesNotExist $ show registrationOther))
+
+        it "fail to validate an unregistration of user for an unsupported platform" $ egenProperty $ do
+           (user, pk) <- gen genUserDBElement
+           platform <- gen $ withAPresence 0.5 "github" arbitrary `suchThat` all isAscii
+           let registration = RegisterUserKey
+                   { platform = Platform platform
+                   , username = user
+                   , pubkeyhash = pubkey
+                   }
+               pubkey = extractPublicKeyHash pk
+           fact <- toJSFact registration ()
+           let validation = mkValidation [fact] [] [] [] []
+               test =
+                   validateUnregisterUser validation
+                       $ unregisterUserChange (Platform platform) user pubkey
+           pure
+               $ when (platform /= "github")
+               $ runValidate test
+               `shouldReturn` ValidationFailure
+                   (UnregisterUserPlatformNotSupported platform)

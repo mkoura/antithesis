@@ -11,7 +11,7 @@ import Core.Types.Basic
     )
 import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Fact (toJSFact)
-import Core.Types.Operation (Op (OpI, OpD), Operation (..))
+import Core.Types.Operation (Op (OpD, OpI), Operation (..))
 import Data.Char (isAscii)
 import Lib.SSH.Public
     ( SSHPublicKey (..)
@@ -113,30 +113,33 @@ spec = do
                         $ extractPublicKeyHash pk
             pure $ runValidate test `shouldReturn` ValidationSuccess Validated
 
-        it "fail to validate a registration of user for an unsupported platform" $ egenProperty $ do
-           e@(user, pk) <- gen genUserDBElement
-           db <- gen $ withAPresenceInAList 0.5 e genUserDBElement
-           platform <- gen $ withAPresence 0.5 "github" arbitrary
-           let validation = mkValidation [] [] [] db []
-               test =
-                   validateRegisterUser validation
-                       $ registerUserChange (Platform platform) user
-                       $ extractPublicKeyHash pk
-           pure
-               $ when (platform /= "github")
-               $ runValidate test
-               `shouldReturn` ValidationFailure
-                   (RegisterUserPlatformNotSupported platform)
+        it
+            "fail to validate a registration of user for an unsupported platform" $ egenProperty $ do
+            e@(user, pk) <- gen genUserDBElement
+            db <- gen $ withAPresenceInAList 0.5 e genUserDBElement
+            platform <- gen $ withAPresence 0.5 "github" arbitrary
+            let validation = mkValidation [] [] [] db []
+                test =
+                    validateRegisterUser validation
+                        $ registerUserChange (Platform platform) user
+                        $ extractPublicKeyHash pk
+            pure
+                $ when (platform /= "github")
+                $ runValidate test
+                `shouldReturn` ValidationFailure
+                    (RegisterUserPlatformNotSupported platform)
 
-        it "fail to validate a registration if a user already registered within a given valid platform" $ egenProperty $ do
+        it
+            "fail to validate a registration if a user already registered within a given valid platform" $ egenProperty $ do
             e@(user, pk) <- gen genUserDBElement
             let platform = "github"
                 pubkey = extractPublicKeyHash pk
-                registration = RegisterUserKey
-                    { platform = Platform platform
-                    , username = user
-                    , pubkeyhash = pubkey
-                    }
+                registration =
+                    RegisterUserKey
+                        { platform = Platform platform
+                        , username = user
+                        , pubkeyhash = pubkey
+                        }
             fact <- toJSFact registration ()
             let validation = mkValidation [fact] [] [] [e] []
                 test =
@@ -147,7 +150,8 @@ spec = do
                 `shouldReturn` ValidationFailure
                     (RegisterUserKeyFailure (KeyAlreadyExists $ show registration))
 
-        it "fail to validate a registration if there is no public key for a user" $ egenProperty $ do
+        it
+            "fail to validate a registration if there is no public key for a user" $ egenProperty $ do
             (user, pk) <- gen genUserDBElement
             let platform = "github"
                 pubkey = extractPublicKeyHash pk
@@ -158,9 +162,10 @@ spec = do
             pure
                 $ runValidate test
                 `shouldReturn` ValidationFailure
-                   (PublicKeyValidationFailure NoPublicKeyFound)
+                    (PublicKeyValidationFailure NoPublicKeyFound)
 
-        it "fail to validate a registration if there is no ssh-ed25519 public key for a user" $ egenProperty $ do
+        it
+            "fail to validate a registration if there is no ssh-ed25519 public key for a user" $ egenProperty $ do
             (user, OtherSSHPublicKey pk) <- gen genDBElementOther
             let platform = "github"
                 extractOtherPublicKeyHash sshPk =
@@ -177,9 +182,10 @@ spec = do
             pure
                 $ runValidate test
                 `shouldReturn` ValidationFailure
-                   (PublicKeyValidationFailure NoEd25519KeyFound)
+                    (PublicKeyValidationFailure NoEd25519KeyFound)
 
-        it "fail to validate a registration if there is different ssh-ed25519 public key for a user" $ egenProperty $ do
+        it
+            "fail to validate a registration if there is different ssh-ed25519 public key for a user" $ egenProperty $ do
             e@(user, pk1) <- genValidDBElement
             (_, pk2) <- genValidDBElement
             let platform = "github"
@@ -192,17 +198,19 @@ spec = do
                 $ when (pk1 /= pk2)
                 $ runValidate test
                 `shouldReturn` ValidationFailure
-                   (PublicKeyValidationFailure NoEd25519KeyMatch)
+                    (PublicKeyValidationFailure NoEd25519KeyMatch)
 
-        it "validate an unregistration if there is a given user already registered" $ egenProperty $ do
+        it
+            "validate an unregistration if there is a given user already registered" $ egenProperty $ do
             (user, pk) <- gen genUserDBElement
             let platform = "github"
                 pubkey = extractPublicKeyHash pk
-                registration = RegisterUserKey
-                    { platform = Platform platform
-                    , username = user
-                    , pubkeyhash = pubkey
-                    }
+                registration =
+                    RegisterUserKey
+                        { platform = Platform platform
+                        , username = user
+                        , pubkeyhash = pubkey
+                        }
             fact <- toJSFact registration ()
             let validation = mkValidation [fact] [] [] [] []
                 test =
@@ -210,47 +218,54 @@ spec = do
                         $ unregisterUserChange (Platform platform) user pubkey
             pure $ runValidate test `shouldReturn` ValidationSuccess Validated
 
-        it "fail to validate an unregistration if there is no a given user already registered" $ egenProperty $ do
+        it
+            "fail to validate an unregistration if there is no a given user already registered" $ egenProperty $ do
             (user, pk) <- gen genUserDBElement
-            (userOther,_) <- gen genUserDBElement
+            (userOther, _) <- gen genUserDBElement
             let platform = "github"
                 pubkey = extractPublicKeyHash pk
-                registration = RegisterUserKey
-                    { platform = Platform platform
-                    , username = user
-                    , pubkeyhash = pubkey
-                    }
+                registration =
+                    RegisterUserKey
+                        { platform = Platform platform
+                        , username = user
+                        , pubkeyhash = pubkey
+                        }
             fact <- toJSFact registration ()
             let validation = mkValidation [fact] [] [] [] []
                 test =
                     validateUnregisterUser validation
                         $ unregisterUserChange (Platform platform) userOther pubkey
-                registrationOther = RegisterUserKey
-                    { platform = Platform platform
-                    , username = userOther
-                    , pubkeyhash = pubkey
-                    }
+                registrationOther =
+                    RegisterUserKey
+                        { platform = Platform platform
+                        , username = userOther
+                        , pubkeyhash = pubkey
+                        }
             pure
                 $ when (user /= userOther)
-                $ runValidate test `shouldReturn`
-                ValidationFailure (UnregisterUserKeyFailure (KeyDoesNotExist $ show registrationOther))
+                $ runValidate test
+                `shouldReturn` ValidationFailure
+                    (UnregisterUserKeyFailure (KeyDoesNotExist $ show registrationOther))
 
-        it "fail to validate an unregistration of user for an unsupported platform" $ egenProperty $ do
-           (user, pk) <- gen genUserDBElement
-           platform <- gen $ withAPresence 0.5 "github" arbitrary `suchThat` all isAscii
-           let registration = RegisterUserKey
-                   { platform = Platform platform
-                   , username = user
-                   , pubkeyhash = pubkey
-                   }
-               pubkey = extractPublicKeyHash pk
-           fact <- toJSFact registration ()
-           let validation = mkValidation [fact] [] [] [] []
-               test =
-                   validateUnregisterUser validation
-                       $ unregisterUserChange (Platform platform) user pubkey
-           pure
-               $ when (platform /= "github")
-               $ runValidate test
-               `shouldReturn` ValidationFailure
-                   (UnregisterUserPlatformNotSupported platform)
+        it
+            "fail to validate an unregistration of user for an unsupported platform" $ egenProperty $ do
+            (user, pk) <- gen genUserDBElement
+            platform <-
+                gen $ withAPresence 0.5 "github" arbitrary `suchThat` all isAscii
+            let registration =
+                    RegisterUserKey
+                        { platform = Platform platform
+                        , username = user
+                        , pubkeyhash = pubkey
+                        }
+                pubkey = extractPublicKeyHash pk
+            fact <- toJSFact registration ()
+            let validation = mkValidation [fact] [] [] [] []
+                test =
+                    validateUnregisterUser validation
+                        $ unregisterUserChange (Platform platform) user pubkey
+            pure
+                $ when (platform /= "github")
+                $ runValidate test
+                `shouldReturn` ValidationFailure
+                    (UnregisterUserPlatformNotSupported platform)

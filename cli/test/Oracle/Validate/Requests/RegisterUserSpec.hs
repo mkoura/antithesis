@@ -10,7 +10,9 @@ import Core.Types.Basic
     , Username (..)
     )
 import Core.Types.Change (Change (..), Key (..))
+import Core.Types.Fact (toJSFact)
 import Core.Types.Operation (Op (OpI), Operation (..))
+import Data.Char (isAscii)
 import Lib.SSH.Public
     ( SSHPublicKey (..)
     , encodeSSHPublicKey
@@ -34,16 +36,17 @@ import Test.Hspec
     , it
     , shouldReturn
     )
-import Test.QuickCheck (Gen, arbitrary)
+import Test.QuickCheck (Gen, arbitrary, suchThat)
 import Test.QuickCheck.Crypton (sshGen)
 import Test.QuickCheck.EGen (EGen, egenProperty, gen, genA, genBlind)
 import Test.QuickCheck.Lib (withAPresence, withAPresenceInAList)
 import User.Types (RegisterUserKey (..))
+import Validation (KeyFailure (..))
 
 genUserDBElement :: Gen (Username, SSHPublicKey)
 genUserDBElement = do
-    user <- Username <$> arbitrary
-    pk <- SSHPublicKey <$> arbitrary
+    user <- Username <$> arbitrary `suchThat` all isAscii
+    pk <- SSHPublicKey <$> arbitrary `suchThat` all isAscii
     pure (user, pk)
 
 genValidDBElement :: EGen (Username, SSHPublicKey)
@@ -82,16 +85,35 @@ spec = do
             pure $ runValidate test `shouldReturn` ValidationSuccess Validated
 
         it "fail to validate a user for an unsupported platform" $ egenProperty $ do
+           e@(user, pk) <- gen genUserDBElement
+           db <- gen $ withAPresenceInAList 0.5 e genUserDBElement
+           platform <- gen $ withAPresence 0.5 "github" arbitrary
+           let validation = mkValidation [] [] [] db []
+               test =
+                   validateRegisterUser validation
+                       $ registerUserChange (Platform platform) user
+                       $ extractPublicKeyHash pk
+           pure
+               $ when (platform /= "github")
+               $ runValidate test
+               `shouldReturn` ValidationFailure
+                   (RegisterUserPlatformNotSupported platform)
+
+        it "fail to validate if a user already registered within a given valid platform" $ egenProperty $ do
             e@(user, pk) <- gen genUserDBElement
-            db <- gen $ withAPresenceInAList 0.5 e genUserDBElement
-            platform <- gen $ withAPresence 0.5 "github" arbitrary
-            let validation = mkValidation [] [] [] db []
+            let platform = "github"
+                pubkey = extractPublicKeyHash pk
+                registration = RegisterUserKey
+                    { platform = Platform platform
+                    , username = user
+                    , pubkeyhash = pubkey
+                    }
+            fact <- toJSFact registration ()
+            let validation = mkValidation [fact] [] [] [e] []
                 test =
                     validateRegisterUser validation
-                        $ registerUserChange (Platform platform) user
-                        $ extractPublicKeyHash pk
+                        $ registerUserChange (Platform platform) user pubkey
             pure
-                $ when (platform /= "github")
                 $ runValidate test
                 `shouldReturn` ValidationFailure
-                    (RegisterUserPlatformNotSupported platform)
+                    (RegisterUserKeyFailure (KeyAlreadyExists $ show registration))

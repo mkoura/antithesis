@@ -46,7 +46,6 @@ services:
     hostname: p1.example
     volumes:
       - p1-configs:/configs
-      - p1-state:/state
       - tracer:/tracer
       - ./paolo.json:/configs/keys/paolo.json
   p2:
@@ -55,7 +54,6 @@ services:
     hostname: p2.example
     volumes:
       - p2-configs:/configs
-      - p2-state:/state
       - tracer:/tracer
   p3:
     <<: *cardano-node
@@ -63,7 +61,6 @@ services:
     hostname: p3.example
     volumes:
       - p3-configs:/configs
-      - p3-state:/state
       - tracer:/tracer
 
   p4:
@@ -72,7 +69,6 @@ services:
     hostname: p4.example
     volumes:
       - p4-configs:/configs
-      - p4-state:/state
       - tracer:/tracer
 
   p5:
@@ -81,7 +77,6 @@ services:
     hostname: p5.example
     volumes:
       - p5-configs:/configs
-      - p5-state:/state
       - tracer:/tracer
   s1:
     image: ghcr.io/cardano-foundation/antithesis-sidecar:latest
@@ -101,11 +96,6 @@ services:
 
 volumes:
   tracer:
-  p1-state:
-  p2-state:
-  p3-state:
-  p4-state:
-  p5-state:
   p1-configs:
   p2-configs:
   p3-configs:

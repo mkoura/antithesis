@@ -159,3 +159,18 @@ spec = do
                 $ runValidate test
                 `shouldReturn` ValidationFailure
                    (PublicKeyValidationFailure NoEd25519KeyFound)
+
+        it "fail to validate if there is different ssh-ed25519 public key for a user" $ egenProperty $ do
+            e@(user, pk1) <- genValidDBElement
+            (_, pk2) <- genValidDBElement
+            let platform = "github"
+                pubkey = extractPublicKeyHash pk2
+            let validation = mkValidation [] [] [] [e] []
+                test =
+                    validateRegisterUser validation
+                        $ registerUserChange (Platform platform) user pubkey
+            pure
+                $ when (pk1 /= pk2)
+                $ runValidate test
+                `shouldReturn` ValidationFailure
+                   (PublicKeyValidationFailure NoEd25519KeyMatch)

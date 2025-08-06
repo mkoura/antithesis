@@ -20,6 +20,7 @@ import Lib.SSH.Public
     )
 import Oracle.Validate.Requests.RegisterUser
     ( RegisterUserFailure (..)
+    , UnregisterUserFailure (..)
     , validateRegisterUser
     , validateUnregisterUser
     )
@@ -194,7 +195,7 @@ spec = do
                    (PublicKeyValidationFailure NoEd25519KeyMatch)
 
         it "validate an unregistration if there is a given user already registered" $ egenProperty $ do
-            e@(user, pk) <- gen genUserDBElement
+            (user, pk) <- gen genUserDBElement
             let platform = "github"
                 pubkey = extractPublicKeyHash pk
                 registration = RegisterUserKey
@@ -203,8 +204,33 @@ spec = do
                     , pubkeyhash = pubkey
                     }
             fact <- toJSFact registration ()
-            let validation = mkValidation [fact] [] [] [e] []
+            let validation = mkValidation [fact] [] [] [] []
                 test =
                     validateUnregisterUser validation
                         $ unregisterUserChange (Platform platform) user pubkey
             pure $ runValidate test `shouldReturn` ValidationSuccess Validated
+
+        it "fail to validate an unregistration if there is no a given user already registered" $ egenProperty $ do
+            (user, pk) <- gen genUserDBElement
+            (userOther,_) <- gen genUserDBElement
+            let platform = "github"
+                pubkey = extractPublicKeyHash pk
+                registration = RegisterUserKey
+                    { platform = Platform platform
+                    , username = user
+                    , pubkeyhash = pubkey
+                    }
+            fact <- toJSFact registration ()
+            let validation = mkValidation [fact] [] [] [] []
+                test =
+                    validateUnregisterUser validation
+                        $ unregisterUserChange (Platform platform) userOther pubkey
+                registrationOther = RegisterUserKey
+                    { platform = Platform platform
+                    , username = userOther
+                    , pubkeyhash = pubkey
+                    }
+            pure
+                $ when (user /= userOther)
+                $ runValidate test `shouldReturn`
+                ValidationFailure (UnregisterUserKeyFailure (KeyDoesNotExist $ show registrationOther))

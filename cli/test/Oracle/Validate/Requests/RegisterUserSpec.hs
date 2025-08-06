@@ -42,6 +42,7 @@ import Test.QuickCheck.EGen (EGen, egenProperty, gen, genA, genBlind)
 import Test.QuickCheck.Lib (withAPresence, withAPresenceInAList)
 import User.Types (RegisterUserKey (..))
 import Validation (KeyFailure (..))
+import Validation.RegisterUser (PublicKeyFailure (..))
 
 genUserDBElement :: Gen (Username, SSHPublicKey)
 genUserDBElement = do
@@ -117,3 +118,16 @@ spec = do
                 $ runValidate test
                 `shouldReturn` ValidationFailure
                     (RegisterUserKeyFailure (KeyAlreadyExists $ show registration))
+
+        it "fail to validate if there is no public key for a user" $ egenProperty $ do
+            (user, pk) <- gen genUserDBElement
+            let platform = "github"
+                pubkey = extractPublicKeyHash pk
+            let validation = mkValidation [] [] [] [] []
+                test =
+                    validateRegisterUser validation
+                        $ registerUserChange (Platform platform) user pubkey
+            pure
+                $ runValidate test
+                `shouldReturn` ValidationFailure
+                   (PublicKeyValidationFailure NoPublicKeyFound)

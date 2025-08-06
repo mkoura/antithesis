@@ -6,7 +6,7 @@ where
 import Control.Monad (when)
 import Core.Types.Basic
     ( Platform (..)
-    , PublicKeyHash
+    , PublicKeyHash (..)
     , Username (..)
     )
 import Core.Types.Change (Change (..), Key (..))
@@ -73,6 +73,15 @@ registerUserChange platform username pubkeyhash =
         , operation = Insert ()
         }
 
+newtype OtherSSHPublicKey = OtherSSHPublicKey String
+    deriving (Show, Eq)
+
+genDBElementOther :: Gen (Username, OtherSSHPublicKey)
+genDBElementOther = do
+    user <- Username <$> arbitrary `suchThat` all isAscii
+    pk <- arbitrary `suchThat` all isAscii
+    pure (user, OtherSSHPublicKey $ "ssh-rsa " <> pk)
+
 spec :: Spec
 spec = do
     describe "validate requester requests" $ do
@@ -131,3 +140,22 @@ spec = do
                 $ runValidate test
                 `shouldReturn` ValidationFailure
                    (PublicKeyValidationFailure NoPublicKeyFound)
+
+        it "fail to validate if there is no ssh-ed25519 public key for a user" $ egenProperty $ do
+            (user, OtherSSHPublicKey pk) <- gen genDBElementOther
+            let platform = "github"
+                extractOtherPublicKeyHash sshPk =
+                    let
+                        expectedPrefix = "ssh-rsa " :: String
+                    in
+                        PublicKeyHash $ drop (length expectedPrefix) sshPk
+                pubkey = extractOtherPublicKeyHash pk
+                e = (user, SSHPublicKey pk)
+            let validation = mkValidation [] [] [] [e] []
+                test =
+                    validateRegisterUser validation
+                        $ registerUserChange (Platform platform) user pubkey
+            pure
+                $ runValidate test
+                `shouldReturn` ValidationFailure
+                   (PublicKeyValidationFailure NoEd25519KeyFound)

@@ -1,7 +1,7 @@
 name: "Test cardano-node"
 env:
   TESTNET: "cardano_node_master"
-  REGISTRY: ghcr.io/cardano-foundation
+  REGISTRY: ghcr.io/cardano-foundation/antithesis
   EMAILS: 'antithesis@cardanofoundation.org'
   DURATION: 5 # in hours
 on:
@@ -49,15 +49,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: 🏗  Build images
+    - name: 🏗  Publish config image
       working-directory: compose
       run: |
-        make build testnet=${{ inputs.test || env.TESTNET }} registry=${{ env.REGISTRY }}/
-
-    - name: 🚢 Push images
-      working-directory: compose
-      run: |
-        make push testnet=${{ inputs.test || env.TESTNET }} registry=${{ env.REGISTRY }}/
+        make publish-test-config-image testnet=${{ inputs.test || env.TESTNET }} registry=${{ env.REGISTRY }}
 
     # this is where we should send a request on-chain
     # for now we use the GHA provided by AT
@@ -69,8 +64,8 @@ jobs:
         username: ${{ secrets.ANTITHESIS_USERNAME }}
         password: ${{ secrets.ANTITHESIS_PASSWORD }}
         github_token: ${{ secrets.GH_PAT }}
-        images: ${{ env.REGISTRY }}/${{ inputs.test || env.TESTNET }}:latest;${{ env.REGISTRY }}/${{ inputs.test || env.TESTNET }}_sidecar:latest;${{ env.REGISTRY }}/${{ inputs.test || env.TESTNET }}_tracer:latest;${{ env.REGISTRY }}/${{ inputs.test || env.TESTNET }}_tracer-sidecar:latest
-        config_image: ${{ env.REGISTRY }}/${{ inputs.test || env.TESTNET }}_config:latest
+        images: ghcr.io/intersectmbo/cardano-node:latest;${{ env.REGISTRY }}/sidecar:latest;${{ env.REGISTRY }}/tracer:latest;${{ env.REGISTRY }}/tracer-sidecar:latest;${{ env.REGISTRY }}/configurator:latest
+        config_image: ${{ env.REGISTRY }}/config:latest
         description: "Run ${{ inputs.test || env.TESTNET }}"
         email_recipients: ${{ env.EMAILS }}
         test_name: "${{ inputs.test || env.TESTNET }}"

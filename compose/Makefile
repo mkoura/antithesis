@@ -5,7 +5,7 @@ SHELL:=/usr/bin/env bash
 description:="${testnet} run"
 duration:=1
 recipients:=antithesis@cardanofoundation.org
-registry:=
+registry:=ghcr.io/cardano-foundation/antithesis
 testnet:=
 url:=https://cardano.antithesis.com/api/v1/launch/cardano
 username:=cardano
@@ -39,8 +39,8 @@ help:
 	@echo "    make down testnet=example_10.2.1"
 	@echo
 	@printf "  \033[34mAntithesis run (execute in this order)\033[0m\n"
-	@echo "    make build testnet=example_10.2.1 registry=us-central1-docker.pkg.dev/molten-verve-216720/cardano-repository/"
-	@echo "    make push testnet=example_10.2.1 registry=us-central1-docker.pkg.dev/molten-verve-216720/cardano-repository/"
+	@echo "    make build testnet=example_10.2.1 "
+	@echo "    make push testnet=example_10.2.1 "
 	@echo "    make anti testnet=example_10.2.1 password='password1234'"
 	@echo
 	@printf "  \033[34mAntithesis debugging session\033[0m\n"
@@ -48,26 +48,47 @@ help:
 	@echo "    make anti password='password1234' session_id=<some session_id> input_hash=<some hash> vtime=<decimal seconds>"
 	@echo
 
+build-shared:
+	docker build \
+	    --label "org.opencontainers.image.source=https://github.com/cardano-foundation/antithesis" \
+		-f sidecar/Dockerfile \
+		-t ${registry}/sidecar:latest sidecar
+	docker build \
+	    --label "org.opencontainers.image.source=https://github.com/cardano-foundation/antithesis" \
+		-f tracer/Dockerfile.compiled \
+		-t ${registry}/tracer:latest tracer
+	docker build \
+	    --label "org.opencontainers.image.source=https://github.com/cardano-foundation/antithesis" \
+		-f tracer-sidecar/Dockerfile \
+		-t ${registry}/tracer-sidecar:latest tracer-sidecar
+	docker build \
+	    --label "org.opencontainers.image.source=https://github.com/cardano-foundation/antithesis" \
+		-f configurator/Dockerfile \
+		-t ${registry}/configurator:latest configurator
+
+push-shared:
+	docker push ${registry}/sidecar:latest
+	docker push ${registry}/tracer:latest
+	docker push ${registry}/tracer-sidecar:latest
+	docker push ${registry}/configurator:latest
+
 build: TESTNET build-config build-compose
 
 build-compose: TESTNET ## Build cardano-node container
 		cd testnets/${testnet} ; docker compose build
 
 build-config: TESTNET ## Build config container image
-	docker build --build-arg REGISTRY="${registry}" --build-arg "TESTNET=${testnet}" -f config/Dockerfile -t ${registry}${testnet}_config:latest testnets/${testnet}
+	docker build \
+		--label "org.opencontainers.image.source=https://github.com/cardano-foundation/antithesis" \
+		-f config/Dockerfile \
+		-t ${registry}/config:latest testnets/${testnet}
 
+publish-test-config-image: TESTNET build-config push-config ## Publish config container image
 
-# TODO: point Dockerfile.configurator to build image gh url in docker-compose.yaml
-build-configurator: TESTNET
-	docker build -f Dockerfile.configurator -t ${registry}${testnet}_configurator:latest .
-
-push: TESTNET push-configurator push-config
+push: TESTNET push-config
 
 push-config: TESTNET ## Push config container image
-	docker push ${registry}${testnet}_config:latest
-
-push-configurator: TESTNET
-	docker push ${registry}${testnet}_configurator:latest
+	docker push ${registry}/config:latest
 
 up: TESTNET ## Start Run local Docker Compose
 	cd testnets/${testnet} ; docker compose up --detach
@@ -86,8 +107,8 @@ anti: TESTNET ## Run Antithesis job
 	curl --fail -u "${username}:${password}" -X POST ${url} -H "Content-Type: application/json" -d "$$(jq -n \
 	--arg description   '${description}' \
 	--arg duration      '${duration}' \
-	--arg config_image  '${testnet}_config:latest' \
-	--arg images        'ghcr.io/intersectmbo/cardano-node:latest;docker.io/paolino/antithesis-sidecar:latest;docker.io/paolino/antithesis-tracer:latest;docker.io/paolino/antithesis-tracer-sidecar:latest;docker.io/paolino/antithesis-configurator:latest' \
+	--arg config_image  '${registry}/config:latest' \
+	--arg images        'ghcr.io/intersectmbo/cardano-node:latest;${registry}/sidecar:latest;${registry}/tracer:latest;${registry}/tracer-sidecar:latest;${registry}/configurator:latest' \
 	--arg recipients    '${recipients}' \
 	'{params: {"antithesis.description": $$description,"custom.duration": $$duration,"antithesis.config_image": $$config_image,"antithesis.images": $$images,"antithesis.report.recipients": $$recipients}}')"
 

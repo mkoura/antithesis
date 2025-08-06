@@ -1,8 +1,5 @@
 FROM docker.io/debian:stable-slim AS build
 
-ARG TESTNET="${TESTNET:-}"
-ARG REGISTRY="${REGISTRY:-}"
-
 # Set time zone
 ENV TZ="UTC"
 RUN ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime && \
@@ -10,6 +7,3 @@ RUN ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime && \
 
 ADD docker-compose.yaml /docker-compose.yaml
 ADD testnet.yaml /testnet.yaml
-
-RUN sed -i "s@\${registry}@${REGISTRY}@g" /docker-compose.yaml
-RUN sed -i "s@\${testnet}@${TESTNET}@g" /docker-compose.yaml

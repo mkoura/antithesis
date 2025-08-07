@@ -9,12 +9,38 @@ category:        Testing
 build-type:      Simple
 extra-doc-files: CHANGELOG.md
 
-common warnings
+common settings
     ghc-options: -Wall
+    default-language:   Haskell2010
+
+library
+    import: settings
+    hs-source-dirs:   src
+    build-depends:    base
+                    , aeson
+                    , text
+    exposed-modules:  Adversary
 
 executable adversarial
-    import:           warnings
+    import:           settings
     main-is:          Main.hs
-    build-depends:    base ^>=4.18.3.0
+    build-depends:    base ^>=4.18.3.0, adversarial
     hs-source-dirs:   app
-    default-language: Haskell2010
+
+test-suite adversarial-test
+    import:           settings
+    other-modules:    AdversarialSpec
+    type:             exitcode-stdio-1.0
+
+    hs-source-dirs:   test
+
+    main-is:          Main.hs
+
+    build-depends:
+      , base
+      , aeson
+      , hspec
+      , QuickCheck
+      , adversarial
+
+    build-tool-depends: hspec-discover:hspec-discover

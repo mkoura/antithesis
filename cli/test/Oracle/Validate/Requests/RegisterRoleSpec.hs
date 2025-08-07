@@ -9,13 +9,12 @@ import Core.Types.Basic
     , Repository (..)
     , Username (..)
     )
-import Core.Types.Fact (toJSFact)
 import Core.Types.Change (Change (..), Key (..))
-import Core.Types.Operation (Op (OpI, OpD), Operation (..))
+import Core.Types.Fact (toJSFact)
+import Core.Types.Operation (Op (OpD, OpI), Operation (..))
 import Data.Char (isAscii)
 import Oracle.Validate.Requests.RegisterRole
     ( RegisterRoleFailure (..)
-    , RegisterRoleFailure (..)
     , UnregisterRoleFailure (..)
     , validateRegisterRole
     , validateUnregisterRole
@@ -40,12 +39,16 @@ import Test.QuickCheck.Lib (withAPresence, withAPresenceInAList)
 import User.Types (RegisterRoleKey (..))
 import Validation (KeyFailure (..))
 import Validation.RegisterRole
-    ( RepositoryRoleFailure (..))
+    ( RepositoryRoleFailure (..)
+    )
 
 genRoleDBElement :: Gen (Username, Repository)
 genRoleDBElement = do
     user <- Username <$> arbitrary `suchThat` all isAscii
-    repo <- Repository <$> arbitrary `suchThat` all isAscii <*> arbitrary `suchThat` all isAscii
+    repo <-
+        Repository
+            <$> arbitrary `suchThat` all isAscii
+            <*> arbitrary `suchThat` all isAscii
     pure (user, repo)
 
 registerRoleChange
@@ -108,109 +111,121 @@ spec = do
                     (RegisterRolePlatformNotSupported platform)
 
         it
-            "fail to validate a role registration if a user is already registered within a given valid platform" $ egenProperty $ do
-            e@(user, repo) <- gen genRoleDBElement
-            let platform = "github"
-                registration =
-                    RegisterRoleKey
-                        { platform = Platform platform
-                        , username = user
-                        , repository = repo
-                        }
-            fact <- toJSFact registration ()
-            let validation = mkValidation [fact] [] [] [] [e]
-                test =
-                    validateRegisterRole validation
-                        $ registerRoleChange (Platform platform) user repo
-            pure
-                $ runValidate test
-                `shouldReturn` ValidationFailure
-                    (RegisterRoleKeyFailure (KeyAlreadyExists $ show registration))
+            "fail to validate a role registration if a user is already registered within a given valid platform"
+            $ egenProperty
+            $ do
+                e@(user, repo) <- gen genRoleDBElement
+                let platform = "github"
+                    registration =
+                        RegisterRoleKey
+                            { platform = Platform platform
+                            , username = user
+                            , repository = repo
+                            }
+                fact <- toJSFact registration ()
+                let validation = mkValidation [fact] [] [] [] [e]
+                    test =
+                        validateRegisterRole validation
+                            $ registerRoleChange (Platform platform) user repo
+                pure
+                    $ runValidate test
+                    `shouldReturn` ValidationFailure
+                        (RegisterRoleKeyFailure (KeyAlreadyExists $ show registration))
 
         it
-            "fail to validate a role registration if there is no repo for a user present" $ egenProperty $ do
-            (user, repo) <- gen genRoleDBElement
-            let platform = "github"
-                validation = mkValidation [] [] [] [] []
-                test =
-                    validateRegisterRole validation
-                        $ registerRoleChange (Platform platform) user repo
-            pure
-                $ runValidate test
-                `shouldReturn` ValidationFailure
-                    (RoleNotPresentOnPlatform NoRoleEntryInCodeowners)
+            "fail to validate a role registration if there is no repo for a user present"
+            $ egenProperty
+            $ do
+                (user, repo) <- gen genRoleDBElement
+                let platform = "github"
+                    validation = mkValidation [] [] [] [] []
+                    test =
+                        validateRegisterRole validation
+                            $ registerRoleChange (Platform platform) user repo
+                pure
+                    $ runValidate test
+                    `shouldReturn` ValidationFailure
+                        (RoleNotPresentOnPlatform NoRoleEntryInCodeowners)
 
         it
-            "fail to validate a role registration if there is different repo-user pair 1" $ egenProperty $ do
-            e@(user, repo) <- gen genRoleDBElement
-            (_, repo1) <- gen genRoleDBElement
-            let platform = "github"
-                validation = mkValidation [] [] [] [] [e]
-                test =
-                    validateRegisterRole validation
-                        $ registerRoleChange (Platform platform) user repo1
-            pure
-                $ when (repo /= repo1)
-                $ runValidate test
-                `shouldReturn` ValidationFailure
-                    (RoleNotPresentOnPlatform NoRoleEntryInCodeowners)
+            "fail to validate a role registration if there is different repo-user pair 1"
+            $ egenProperty
+            $ do
+                e@(user, repo) <- gen genRoleDBElement
+                (_, repo1) <- gen genRoleDBElement
+                let platform = "github"
+                    validation = mkValidation [] [] [] [] [e]
+                    test =
+                        validateRegisterRole validation
+                            $ registerRoleChange (Platform platform) user repo1
+                pure
+                    $ when (repo /= repo1)
+                    $ runValidate test
+                    `shouldReturn` ValidationFailure
+                        (RoleNotPresentOnPlatform NoRoleEntryInCodeowners)
 
         it
-            "fail to validate a role registration if there is different repo-user pair 1" $ egenProperty $ do
-            e@(user, repo) <- gen genRoleDBElement
-            (user1, repo1) <- gen genRoleDBElement
-            let platform = "github"
-                validation = mkValidation [] [] [] [] [e]
-                test =
-                    validateRegisterRole validation
-                        $ registerRoleChange (Platform platform) user1 repo1
-            pure
-                $ when (repo /= repo1 && user /= user1)
-                $ runValidate test
-                `shouldReturn` ValidationFailure
-                    (RoleNotPresentOnPlatform NoRoleEntryInCodeowners)
+            "fail to validate a role registration if there is different repo-user pair 1"
+            $ egenProperty
+            $ do
+                e@(user, repo) <- gen genRoleDBElement
+                (user1, repo1) <- gen genRoleDBElement
+                let platform = "github"
+                    validation = mkValidation [] [] [] [] [e]
+                    test =
+                        validateRegisterRole validation
+                            $ registerRoleChange (Platform platform) user1 repo1
+                pure
+                    $ when (repo /= repo1 && user /= user1)
+                    $ runValidate test
+                    `shouldReturn` ValidationFailure
+                        (RoleNotPresentOnPlatform NoRoleEntryInCodeowners)
 
         it
-            "validate a role unregistration if there is a given user already registered" $ egenProperty $ do
-            e@(user, repo) <- gen genRoleDBElement
-            let platform = "github"
-                registration =
-                    RegisterRoleKey
-                        { platform = Platform platform
-                        , username = user
-                        , repository = repo
-                        }
-            fact <- toJSFact registration ()
-            let validation = mkValidation [fact] [] [] [] [e]
-                test =
-                    validateUnregisterRole validation
-                        $ unregisterRoleChange (Platform platform) user repo
-            pure $ runValidate test `shouldReturn` ValidationSuccess Validated
+            "validate a role unregistration if there is a given user already registered"
+            $ egenProperty
+            $ do
+                e@(user, repo) <- gen genRoleDBElement
+                let platform = "github"
+                    registration =
+                        RegisterRoleKey
+                            { platform = Platform platform
+                            , username = user
+                            , repository = repo
+                            }
+                fact <- toJSFact registration ()
+                let validation = mkValidation [fact] [] [] [] [e]
+                    test =
+                        validateUnregisterRole validation
+                            $ unregisterRoleChange (Platform platform) user repo
+                pure $ runValidate test `shouldReturn` ValidationSuccess Validated
 
         it
-            "fail to validate a role unregistration if there is no a given user' role already registered" $ egenProperty $ do
-            (user, repo) <- gen genRoleDBElement
-            (userOther, _) <- gen genRoleDBElement
-            let platform = "github"
-                registration =
-                    RegisterRoleKey
-                        { platform = Platform platform
-                        , username = user
-                        , repository = repo
-                        }
-            fact <- toJSFact registration ()
-            let validation = mkValidation [fact] [] [] [] []
-                test =
-                    validateUnregisterRole validation
-                        $ unregisterRoleChange (Platform platform) userOther repo
-                registrationOther =
-                    RegisterRoleKey
-                        { platform = Platform platform
-                        , username = userOther
-                        , repository = repo
-                        }
-            pure
-                $ when (user /= userOther)
-                $ runValidate test
-                `shouldReturn` ValidationFailure
-                    (UnregisterRoleKeyFailure (KeyDoesNotExist $ show registrationOther))
+            "fail to validate a role unregistration if there is no a given user' role already registered"
+            $ egenProperty
+            $ do
+                (user, repo) <- gen genRoleDBElement
+                (userOther, _) <- gen genRoleDBElement
+                let platform = "github"
+                    registration =
+                        RegisterRoleKey
+                            { platform = Platform platform
+                            , username = user
+                            , repository = repo
+                            }
+                fact <- toJSFact registration ()
+                let validation = mkValidation [fact] [] [] [] []
+                    test =
+                        validateUnregisterRole validation
+                            $ unregisterRoleChange (Platform platform) userOther repo
+                    registrationOther =
+                        RegisterRoleKey
+                            { platform = Platform platform
+                            , username = userOther
+                            , repository = repo
+                            }
+                pure
+                    $ when (user /= userOther)
+                    $ runValidate test
+                    `shouldReturn` ValidationFailure
+                        (UnregisterRoleKeyFailure (KeyDoesNotExist $ show registrationOther))

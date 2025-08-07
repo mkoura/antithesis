@@ -83,15 +83,12 @@ validateRegisterRole
             Nothing -> pure Validated
 
 data UnregisterRoleFailure
-    = UnregisterRolePlatformNotSupported String
-    | UnregisterRoleKeyFailure KeyFailure
+    = UnregisterRoleKeyFailure KeyFailure
     | RoleIsPresentOnPlatform -- issue 1b6d49bb5fc6b7e4fcd8ab22436294a118451cb3
     deriving (Show, Eq)
 
 instance Monad m => ToJSON m UnregisterRoleFailure where
     toJSON = \case
-        UnregisterRolePlatformNotSupported platform ->
-            object ["unregisterRolePlatformNotSupported" .= platform]
         UnregisterRoleKeyFailure keyFailure ->
             object ["unregisterRoleKeyFailure" .= renderKeyFailure keyFailure]
         RoleIsPresentOnPlatform ->
@@ -99,8 +96,6 @@ instance Monad m => ToJSON m UnregisterRoleFailure where
 
 renderUnregisterRoleFailure :: UnregisterRoleFailure -> String
 renderUnregisterRoleFailure = \case
-    UnregisterRolePlatformNotSupported platform ->
-        "UnregisterRole platform not supported: " ++ platform
     UnregisterRoleKeyFailure keyFailure ->
         "UnregisterRole key failure: " ++ renderKeyFailure keyFailure
     RoleIsPresentOnPlatform ->

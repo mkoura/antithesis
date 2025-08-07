@@ -16,6 +16,7 @@ import Data.Char (isAscii)
 import Oracle.Validate.Requests.RegisterRole
     ( RegisterRoleFailure (..)
     , RegisterRoleFailure (..)
+    , UnregisterRoleFailure (..)
     , validateRegisterRole
     , validateUnregisterRole
     )
@@ -185,3 +186,31 @@ spec = do
                     validateUnregisterRole validation
                         $ unregisterRoleChange (Platform platform) user repo
             pure $ runValidate test `shouldReturn` ValidationSuccess Validated
+
+        it
+            "fail to validate a role unregistration if there is no a given user' role already registered" $ egenProperty $ do
+            (user, repo) <- gen genRoleDBElement
+            (userOther, _) <- gen genRoleDBElement
+            let platform = "github"
+                registration =
+                    RegisterRoleKey
+                        { platform = Platform platform
+                        , username = user
+                        , repository = repo
+                        }
+            fact <- toJSFact registration ()
+            let validation = mkValidation [fact] [] [] [] []
+                test =
+                    validateUnregisterRole validation
+                        $ unregisterRoleChange (Platform platform) userOther repo
+                registrationOther =
+                    RegisterRoleKey
+                        { platform = Platform platform
+                        , username = userOther
+                        , repository = repo
+                        }
+            pure
+                $ when (user /= userOther)
+                $ runValidate test
+                `shouldReturn` ValidationFailure
+                    (UnregisterRoleKeyFailure (KeyDoesNotExist $ show registrationOther))

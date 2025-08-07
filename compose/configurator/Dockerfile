@@ -34,6 +34,7 @@ WORKDIR /usr/local/src/testnet-generation-tool
 # Copy binary from image
 COPY --from=cardano-node --chown=root:root /usr/local/bin/ ./cardano-node/bin/
 # Copy libsecp256k1 (also debian:bookwork-slim AKA stable-slim)
+COPY --from=cardano-node --chown=root:root /usr/local/lib/ /usr/lib/
 COPY --from=cardano-node --chown=root:root /usr/lib/ /usr/lib/
 RUN uv sync
 

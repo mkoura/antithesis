@@ -77,6 +77,7 @@ services:
     volumes:
       - p5-configs:/configs
       - tracer:/tracer
+
   s1:
     image: ghcr.io/cardano-foundation/antithesis/sidecar:latest
     container_name: s1

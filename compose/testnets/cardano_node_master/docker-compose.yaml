@@ -106,4 +106,4 @@ networks:
   default:
     name: cardano-node-testnet
     driver: bridge
-    internal: true
+    internal: ${INTERNAL_NETWORK}

@@ -75,6 +75,7 @@ push-shared:
 build: TESTNET build-config build-compose
 
 build-compose: TESTNET ## Build cardano-node container
+	export INTERNAL_NETWORK=false ; \
 		cd testnets/${testnet} ; docker compose build
 
 build-config: TESTNET ## Build config container image
@@ -91,9 +92,12 @@ push-config: TESTNET ## Push config container image
 	docker push ${registry}/config:latest
 
 up: TESTNET ## Start Run local Docker Compose
+
+	export INTERNAL_NETWORK=true ; \
 	cd testnets/${testnet} ; docker compose up --detach
 
 down: TESTNET ## Stop local Docker Compose
+	export INTERNAL_NETWORK=true ; \
 	cd testnets/${testnet} ; docker compose down --volumes
 
 query: TESTNET ## Query tip of all pools

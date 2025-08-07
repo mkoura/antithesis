@@ -9,8 +9,10 @@ import Core.Types.Basic
     , Repository (..)
     , Username (..)
     )
+import Core.Types.Fact (toJSFact)
 import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Operation (Op (OpI), Operation (..))
+import Data.Char (isAscii)
 import Oracle.Validate.Requests.RegisterRole
     ( RegisterRoleFailure (..)
     , validateRegisterRole
@@ -29,15 +31,16 @@ import Test.Hspec
     , it
     , shouldReturn
     )
-import Test.QuickCheck (Gen, arbitrary)
+import Test.QuickCheck (Gen, arbitrary, suchThat)
 import Test.QuickCheck.EGen (egenProperty, gen)
 import Test.QuickCheck.Lib (withAPresence, withAPresenceInAList)
 import User.Types (RegisterRoleKey (..))
+import Validation (KeyFailure (..))
 
 genRoleDBElement :: Gen (Username, Repository)
 genRoleDBElement = do
-    user <- Username <$> arbitrary
-    repo <- Repository <$> arbitrary <*> arbitrary
+    user <- Username <$> arbitrary `suchThat` all isAscii
+    repo <- Repository <$> arbitrary `suchThat` all isAscii <*> arbitrary `suchThat` all isAscii
     pure (user, repo)
 
 registerRoleChange
@@ -81,3 +84,23 @@ spec = do
                 $ runValidate test
                 `shouldReturn` ValidationFailure
                     (RegisterRolePlatformNotSupported platform)
+
+        it
+            "fail to validate a role registration if a user is already registered within a given valid platform" $ egenProperty $ do
+            e@(user, repo) <- gen genRoleDBElement
+            let platform = "github"
+                registration =
+                    RegisterRoleKey
+                        { platform = Platform platform
+                        , username = user
+                        , repository = repo
+                        }
+            fact <- toJSFact registration ()
+            let validation = mkValidation [fact] [] [] [] [e]
+                test =
+                    validateRegisterRole validation
+                        $ registerRoleChange (Platform platform) user repo
+            pure
+                $ runValidate test
+                `shouldReturn` ValidationFailure
+                    (RegisterRoleKeyFailure (KeyAlreadyExists $ show registration))

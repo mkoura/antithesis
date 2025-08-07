@@ -15,6 +15,7 @@ import Core.Types.Operation (Op (OpI), Operation (..))
 import Data.Char (isAscii)
 import Oracle.Validate.Requests.RegisterRole
     ( RegisterRoleFailure (..)
+    , RegisterRoleFailure (..)
     , validateRegisterRole
     )
 import Oracle.Validate.Requests.TestRun.Lib
@@ -36,6 +37,8 @@ import Test.QuickCheck.EGen (egenProperty, gen)
 import Test.QuickCheck.Lib (withAPresence, withAPresenceInAList)
 import User.Types (RegisterRoleKey (..))
 import Validation (KeyFailure (..))
+import Validation.RegisterRole
+    ( RepositoryRoleFailure (..))
 
 genRoleDBElement :: Gen (Username, Repository)
 genRoleDBElement = do
@@ -104,3 +107,16 @@ spec = do
                 $ runValidate test
                 `shouldReturn` ValidationFailure
                     (RegisterRoleKeyFailure (KeyAlreadyExists $ show registration))
+
+        it
+            "fail to validate a role registration if there is no repo for a user present" $ egenProperty $ do
+            (user, repo) <- gen genRoleDBElement
+            let platform = "github"
+                validation = mkValidation [] [] [] [] []
+                test =
+                    validateRegisterRole validation
+                        $ registerRoleChange (Platform platform) user repo
+            pure
+                $ runValidate test
+                `shouldReturn` ValidationFailure
+                    (RoleNotPresentOnPlatform NoRoleEntryInCodeowners)

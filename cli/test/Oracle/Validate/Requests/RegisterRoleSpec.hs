@@ -11,12 +11,13 @@ import Core.Types.Basic
     )
 import Core.Types.Fact (toJSFact)
 import Core.Types.Change (Change (..), Key (..))
-import Core.Types.Operation (Op (OpI), Operation (..))
+import Core.Types.Operation (Op (OpI, OpD), Operation (..))
 import Data.Char (isAscii)
 import Oracle.Validate.Requests.RegisterRole
     ( RegisterRoleFailure (..)
     , RegisterRoleFailure (..)
     , validateRegisterRole
+    , validateUnregisterRole
     )
 import Oracle.Validate.Requests.TestRun.Lib
     ( mkValidation
@@ -61,6 +62,23 @@ registerRoleChange platform user repo =
                     , repository = repo
                     }
         , operation = Insert ()
+        }
+
+unregisterRoleChange
+    :: Platform
+    -> Username
+    -> Repository
+    -> Change RegisterRoleKey (OpD ())
+unregisterRoleChange platform user repo =
+    Change
+        { key =
+            Key
+                $ RegisterRoleKey
+                    { platform = platform
+                    , username = user
+                    , repository = repo
+                    }
+        , operation = Delete ()
         }
 
 spec :: Spec
@@ -150,3 +168,20 @@ spec = do
                 $ runValidate test
                 `shouldReturn` ValidationFailure
                     (RoleNotPresentOnPlatform NoRoleEntryInCodeowners)
+
+        it
+            "validate a role unregistration if there is a given user already registered" $ egenProperty $ do
+            e@(user, repo) <- gen genRoleDBElement
+            let platform = "github"
+                registration =
+                    RegisterRoleKey
+                        { platform = Platform platform
+                        , username = user
+                        , repository = repo
+                        }
+            fact <- toJSFact registration ()
+            let validation = mkValidation [fact] [] [] [] [e]
+                test =
+                    validateUnregisterRole validation
+                        $ unregisterRoleChange (Platform platform) user repo
+            pure $ runValidate test `shouldReturn` ValidationSuccess Validated

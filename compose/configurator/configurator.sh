@@ -132,7 +132,7 @@ set_start_time() {
 
 
 # # Copy testnet.yaml specification
-cp /testnet.yaml /usr/local/src/testnet-generation-tool/testnet.yaml
+cp /testnet.yaml ./testnet.yaml
 
 # # Build testnet configuration files
 uv run python3 genesis-cli.py testnet.yaml -o /tmp/testnet -c generate
@@ -144,8 +144,6 @@ mkdir -p /configs
 cp -r /tmp/testnet/pools/* /configs
 cp -r /tmp/testnet/utxos/* /configs
 
-
-tree /configs
 echo "removing /configs/keys"; rm -rf /configs/keys
 
 pools=$(ls -d /configs/*)
@@ -157,5 +155,4 @@ for pool in $pools; do
   pool_ix=$(echo "$pool" | awk -F '/' '{print $3}')
   config_topology_json "$pool_ix" "$number_of_pools"
   set_start_time "$pool"
-  echo "Configured pool: $pool_ix"
 done

@@ -20,7 +20,7 @@ x-cardano-node: &cardano-node
 
 services:
   configurator:
-    image: ghcr.io/cardano-foundation/antithesis-configurator:latest
+    image: ghcr.io/cardano-foundation/antithesis/configurator:latest
     container_name: configurator
     volumes:
       - ./testnet.yaml:/testnet.yaml #  source of configurations
@@ -31,7 +31,7 @@ services:
       - p5-configs:/configs/5 # configs for p5
 
   tracer:
-    image: ghcr.io/cardano-foundation/antithesis-tracer:latest
+    image: ghcr.io/cardano-foundation/antithesis/tracer:latest
     hostname: tracer.example
     container_name: tracer
     volumes:
@@ -47,7 +47,6 @@ services:
     volumes:
       - p1-configs:/configs
       - tracer:/tracer
-      - ./paolo.json:/configs/keys/paolo.json
   p2:
     <<: *cardano-node
     container_name: p2
@@ -79,14 +78,14 @@ services:
       - p5-configs:/configs
       - tracer:/tracer
   s1:
-    image: ghcr.io/cardano-foundation/antithesis-sidecar:latest
+    image: ghcr.io/cardano-foundation/antithesis/sidecar:latest
     container_name: s1
     hostname: s1.example
     environment:
       POOLS: "5" # FIXME: could remove
 
   tracer-sidecar:
-    image: ghcr.io/cardano-foundation/antithesis-tracer-sidecar:latest
+    image: ghcr.io/cardano-foundation/antithesis/tracer-sidecar:latest
     container_name: tracer-sidecar
     hostname: tracer-sidecar.example
     environment:
@@ -101,3 +100,9 @@ volumes:
   p3-configs:
   p4-configs:
   p5-configs:
+
+networks:
+  default:
+    name: cardano-node-testnet
+    driver: bridge
+    internal: true

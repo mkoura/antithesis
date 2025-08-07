@@ -8,10 +8,16 @@ The idea is to create an executable which:
 
 Cardano protocol details:
 
-- Node to client protocol (we act like a wallet)
-- Specifically chain sync mini-protocol (p.21 of [Network-spec][Netspec])
-- Unsual behaviours:
-  * ask to sync to random intersection points (for example, blocks that might have been rolled back)
+- Node to node protocol (we act like a node)
+- Specifically chain sync mini-protocol (p.21 of [Network-spec][Netspec]), peer
+  propagation protocol.
+
+- As a downstream peer:
+  - Unsual behaviours:
+    * ask to sync to random intersection points (for example, blocks that might have been rolled back)
+    * multiple random connect/follow/disconnect (maybe use Antithesis for randomness?)
+- As an upstream peer:
+  - serve incorrect headers/blocks/chains.
 
 Overall approach:
 

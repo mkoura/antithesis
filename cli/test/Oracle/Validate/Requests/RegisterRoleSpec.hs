@@ -120,3 +120,33 @@ spec = do
                 $ runValidate test
                 `shouldReturn` ValidationFailure
                     (RoleNotPresentOnPlatform NoRoleEntryInCodeowners)
+
+        it
+            "fail to validate a role registration if there is different repo-user pair 1" $ egenProperty $ do
+            e@(user, repo) <- gen genRoleDBElement
+            (_, repo1) <- gen genRoleDBElement
+            let platform = "github"
+                validation = mkValidation [] [] [] [] [e]
+                test =
+                    validateRegisterRole validation
+                        $ registerRoleChange (Platform platform) user repo1
+            pure
+                $ when (repo /= repo1)
+                $ runValidate test
+                `shouldReturn` ValidationFailure
+                    (RoleNotPresentOnPlatform NoRoleEntryInCodeowners)
+
+        it
+            "fail to validate a role registration if there is different repo-user pair 1" $ egenProperty $ do
+            e@(user, repo) <- gen genRoleDBElement
+            (user1, repo1) <- gen genRoleDBElement
+            let platform = "github"
+                validation = mkValidation [] [] [] [] [e]
+                test =
+                    validateRegisterRole validation
+                        $ registerRoleChange (Platform platform) user1 repo1
+            pure
+                $ when (repo /= repo1 && user /= user1)
+                $ runValidate test
+                `shouldReturn` ValidationFailure
+                    (RoleNotPresentOnPlatform NoRoleEntryInCodeowners)

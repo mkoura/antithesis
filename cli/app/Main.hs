@@ -24,3 +24,4 @@ main = do
         Failure ex -> do
             output <- object ["error" .= show ex]
             BL.putStrLn $ renderCanonicalJSON output
+        Help -> pure ()

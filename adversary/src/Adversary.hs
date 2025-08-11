@@ -11,7 +11,7 @@ data Message = Startup {arguments :: [String]}
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 adversary :: [String] -> IO Message
-adversary _ = pure Startup {arguments = []}
+adversary args = pure Startup {arguments = args}
 
 toString :: Message -> String
 toString = Text.unpack . Text.decodeUtf8 . Aeson.encode

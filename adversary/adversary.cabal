@@ -1,5 +1,5 @@
 cabal-version:   3.0
-name:            adversarial
+name:            adversary
 version:         0.1.0.0
 license:         Apache-2.0
 license-file:    LICENSE
@@ -21,15 +21,15 @@ library
                     , text
     exposed-modules:  Adversary
 
-executable adversarial
+executable adversary
     import:           settings
     main-is:          Main.hs
-    build-depends:    base ^>=4.18.3.0, adversarial
+    build-depends:    base ^>=4.18.3.0, adversary
     hs-source-dirs:   app
 
-test-suite adversarial-test
+test-suite adversary-test
     import:           settings
-    other-modules:    AdversarialSpec
+    other-modules:    AdversarySpec
     type:             exitcode-stdio-1.0
 
     hs-source-dirs:   test
@@ -41,6 +41,6 @@ test-suite adversarial-test
       , aeson
       , hspec
       , QuickCheck
-      , adversarial
+      , adversary
 
     build-tool-depends: hspec-discover:hspec-discover

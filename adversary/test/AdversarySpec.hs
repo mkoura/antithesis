@@ -1,4 +1,4 @@
-module AdversarialSpec where
+module AdversarySpec where
 
 import Adversary
 import Data.Aeson (encode, decode)
@@ -8,7 +8,7 @@ import Test.QuickCheck (Property, Gen, forAll, Arbitrary (arbitrary))
 
 spec :: Spec
 spec = do
-    
+
     it "Returns startup message" $ do
         adversary [] `shouldReturn` Startup {arguments = []}
 
@@ -18,7 +18,7 @@ spec = do
     prop "Roundtrip messages to/from JSON" prop_roundTrip
 
 prop_roundTrip :: Property
-prop_roundTrip = forAll genMessage $ \msg -> 
+prop_roundTrip = forAll genMessage $ \msg ->
     let encoded = encode msg
         decoded = decode encoded
     in

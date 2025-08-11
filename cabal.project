@@ -5,7 +5,7 @@ index-state:
   , cardano-haskell-packages 2025-08-07T00:00:00Z
 
 packages:
-    adversarial
+    adversary
     cli
     cli/CI/rewrite-libs
 

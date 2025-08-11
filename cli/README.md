@@ -1,16 +1,37 @@
 # Antithesis CLI
 
-## Building the code
+## Context
 
-### Nix
+This is a command line interface (CLI) to track accesses to expensive resources. In particular we are focusing on the Cardano Foundation controlled Antithesis instance. The only command relative to the specific instance  is the `anti agent run-test` command, which is used to run tests on the Antithesis platform. The rest of the commands are independent of the resource. This CLI uses MPFS as a backend meaning all data is stored on the Cardano blockchain. ATM MPFS is only supporting preprod.
+The CLI should be used to book tests on the Antithesis platform. ATM it supports only projects on GitHub.
 
-To build the code, you can use [Nix](https://nixos.org/download.html) installed.
+## Prerequisites
+
+Building the CLI requires access to specific libraries from the cardano stack. Using [Nix](https://nixos.org/download.html) is the easiest way to build the code, as it will bring in all the dependencies needed to build the CLI.
+
+Running the CLI requires an MPFS backend. You can either run your own MPFS service or use a public one. A public one is hosted at `https://mpfs.plutimus.com`.
+
+The CLI can run on Linux and MacOS.
+
+## Installation via tarballs
+
+You can download the latest tarball for your platform from the [releases page](https://github.com/cardano-foundation/antithesis/releases).
+
+## Installation via Nix
+
+### Nix cache
+
+Be careful to be a trusted nix user so the caches indicated in the flake will kick in. Without them expect hours of compilation time.
+
+### Install as nix shell
+
+To get the last version of the code, you can use the following command:
 
 ```bash
-nix shell .#anti
+nix shell github:cardano-foundation/antithesis?dir=cli#anti
 ```
 
-Will bring in an executable named `anti` in your path on Linux and MacOS.
+### Building the tarballs
 
 To build standalone packages with
 - anti
@@ -21,7 +42,7 @@ To build standalone packages with
 On linux, you can build a nix derivation with
 
 ```bash
-nix build .#linux64.tarball
+nix build github:cardano-foundation/antithesis?dir=cli#linux64.tarball
 ```
 
 On macOS, you can build a nix derivation with
@@ -30,8 +51,25 @@ On macOS, you can build a nix derivation with
 nix build .#macos64.tarball
 ```
 
-## Targeting the MPFS service
+## Running the CLI
 
+### Environemnt variables
+
+####  Something to remove in the future
+
+Rad issue 800db55
+
+```bash
+cat << EOF > config.json
+{
+    "minDuration": 1,
+    "maxDuration": 12
+}
+EOF
+export ANTI_CONFIG_FILE=config.json
+```
+
+#### MPFS host
 If you do not want to host your own MPFS service, you can use a public one at `https://mpfs.plutimus.com`.
 
 In any case set the `ANTI_MPFS_HOST` environment variable to point to the MPFS service you want to use.
@@ -40,14 +78,14 @@ In any case set the `ANTI_MPFS_HOST` environment variable to point to the MPFS s
 export ANTI_MPFS_HOST=https://mpfs.plutimus.com
 ```
 
-## Providing your wallet to the `anti` command
+#### Your wallet
 
 ATM the anti CLI works only by reading a wallet file containing a mnemonic phrase.
 
 The anti command will read the wallet file from the `ANTI_WALLET_FILE` environment variable.
 
 ```bash
-export ANTI_WALLET_FILE=tmp/my-wallet.json
+export ANTI_WALLET_FILE=wallet.json
 ```
 
 You can create a wallet file with the `anti wallet create` command:
@@ -62,30 +100,8 @@ It will fail to re-create the file if it already exists. You can review this wal
 anti wallet info
 ```
 
-Get the wallet address with:
-
-```bash
-anti wallet info | jq -r .result.address
-```
-
-Remember the owner of the wallet with
-
-```bash
-export OWNER=$(anti wallet info | jq -r .result.owner)
-```
-
-Fund your wallet with some tAda tokens on preprod, for example using the [Cardano Testnet Faucet](https://docs.cardano.org/cardano-testnets/tools/faucet/).
-
-## Set the timeout for the `anti` command
-
-When submitting txs to the chain, it's quite convenient to wait for the transaction to be included in the chain, so that you can immediately use the result of the transaction.
-
-To do that, you can set the `ANTI_WAIT` environment variable to the number of seconds you want to wait for the transaction to be included in the chain.
-
-## Requester role
-
-This is the role of the user that wants to run tests using the Antithesis platform.
-
+> Fund your wallet with some tAda tokens on preprod, for example using the [Cardano Testnet Faucet](https://docs.cardano.org/cardano-testnets/tools/faucet/).
+>
 ### Antithesis token
 
 This is the unique token that identifies the Antithesis access interface. You need to refer to it setting the `ANTI_TOKEN_ID` environment variable.
@@ -94,122 +110,33 @@ This is the unique token that identifies the Antithesis access interface. You ne
 export ANTI_TOKEN_ID=865ebcf5e1d6bafcc121030a6e167474a426271d965b78e36d90485adf540575
 ```
 
-Before you can request a test run, you need to register yourself as github user with an ed25519 public key.
 
-### Registering a user
+### Set the timeout for the `anti` command
 
-To register yourself as a user, you can use the `anti requester register-user` command.
+When submitting txs to the chain, it's quite convenient to wait for the transaction to be included in the chain, so that you can immediately use the result of the transaction.
 
-```bash
-anti requester register-user --platform github --username alice --pubkeyhash AAAAC3NzaC1lZDI1NTE5AAAAIO773JHqlyLm5XzOjSe+Q5yFJyLFuMLL6+n63t4t7HR8
-```
-
-As with all other requests, once submitted regularly you have to wait for the oracle to merge your request into the Antithesis token.
-You can use the `anti oracle token get` command to inspect your pending requests in the Antithesis token.
+To do that, you can set the `ANTI_WAIT` environment variable to the number of seconds you want to wait for the transaction to be included in the chain.
 
 ```bash
-anti oracle token get | jq '.result.requests' | jq ".[] | select(.owner == \"${OWNER}\")"
+export ANTI_WAIT=120
 ```
 
-Until your requests is there, you cannot proceed with the next steps.
+## Querying facts of the Antithesis token
 
-As with all requests to an mpfs you can retract your request using the `anti retract` command, anytime before the oracle merges it into the Antithesis token.
-
-Get the `outputRefId` of your request from pending requests command output and use it to retract your request
+You can always query the Antithesis token and its facts
 
 ```bash
-anti retract -o 9ec36572e01bca9f7d32d791a5a6c529ef91c10d536f662735af26311b2c8766-0
+anti facts | jq '.result'
 ```
 
-### Unregistering a user
+## Design
 
-To unregister yourself as a user, you can use the `anti requester unregister-user` command.
+[Design document](docs/antithesis-interface.md)
 
-```bash
-anti requester unregister-user --platform github --username alice --pubkeyhash AAAAC3NzaC1lZDI1NTE5AAAAIO773JHqlyLm5XzOjSe+Q5yFJyLFuMLL6+n63t4t7HR8
-```
+## Manuals
 
-## Oracle role
+Depending on your role you can access the different manuals.
 
-This is the role of the user that wants to run an oracle service for the Antithesis platform. There will be only one token and so there will be only one oracle service running at a time, but we document it here for completeness.
-
-### Creating the anti token (only for testing)
-
-To create the Antithesis token, you can use the `anti oracle token create` command.
-
-```bash
-anti oracle token boot
-```
-
-It will create the Antithesis token. This token is a unique identifier for the Antithesis platform and will be used by all users to interact with the platform. You have to distribute it so that users can set the `ANTI_TOKEN_ID` environment variable to point to it.
-
-To test the role change the ANTI_TOKEN_ID environment variable to the new create token id
-
-You can review the token info anytime with
-
-
-```bash
-anti oracle token get | jq '.result'
-```
-### Validating requests
-
-You can use the validate command to automate the process of oracling the requests
-
-```bash
-anti oracle requests validate
-```
-
-### Updating the anti token
-
-Once you decided what to include in the Antithesis token, you can commit the requests to the token.
-
-Updating the token with new requests is done with the `anti oracle token update` command. As with retract you have to provide the `outputRefId` of the request you want to update. Multiple requests can be updated at once, so you can provide multiple `-o` options.
-
-```bash
-anti oracle token update -o b6fc7cca5bcae74e6a5983f7922d0e0985285f1f19e62ccc9cb9fd4d3766a81b-0
-```
-
-### Deleting the anti token (only for testing)
-
-To delete the Antithesis token, you can use the `anti oracle token delete` command.
-
-```bash
-anti oracle token delete
-```
-
-## Antithesis Agent Role
-
-TBD
-
-## Testing the code
-
-### Preliminary steps
-
-1. Make sure the docker daemon is running (e.g. start Docker Desktop)
-1. Provision (as described above) a ./tmp/test.json wallet (this name is hard-coded)
-1. Set the needed environment variables (use exactly these values):
-
-``` bash
-    export ANTI_TOKEN_ID="865ebcf5e1d6bafcc121030a6e167474a426271d965b78e36d90485adf540575"
-    export ANTI_WALLET_FILE=tmp/test.json
-    export ANTI_TEST_REQUESTER_WALLET=$ANTI_WALLET_FILE
-    export ANTI_TEST_ORACLE_WALLET=$ANTI_WALLET_FILE
-    export ANTI_TEST_AGENT_WALLET=$ANTI_WALLET_FILE
-    export ANTI_MPFS_HOST=https://mpfs.plutimus.com
-    export ANTI_CONFIG_FILE=test-E2E/fixtures/anti-config.json
-    export ANTI_WAIT=180
-```
-
-Also, set the ANTI\_SSH\_PASSWORD environment variable to the passphrase of the private key of the cfhal GitHub user.
-
-Finally, you must create or use a GitHub Personal Access Token (read-only access to public repositories), and set the GITHUB\_PERSONAL\_ACCESS\_TOKEN environment variable to the value of this token.
-
-### Run the tests
-
-``` bash
-    nix develop
-    just unit
-    just E2E
-```
-
-Refer to `justfile` for other run/build/polish code options.
+- [Test-runs Requester manual](docs/requester-role)
+- [Oracle manual](docs/oracle-role)
+- [Antithesis Agent manual](docs/antithesis-agent-role)

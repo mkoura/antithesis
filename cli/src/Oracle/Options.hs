@@ -3,38 +3,39 @@ module Oracle.Options
     , oracleCommandParser
     ) where
 
+import Core.Options (tokenIdOption)
+import Core.Types.Basic (TokenId)
 import Lib.Box (Box (..), fmapBox)
 import Options.Applicative
     ( Parser
     , command
-    , helper
     , hsubparser
     , info
     , progDesc
-    , (<**>)
     )
 import Oracle.Cli (OracleCommand (..))
 import Oracle.Token.Options (tokenCommandParser)
 import Oracle.Validate.Options (validateCommandParser)
 
-oracleCommandParser :: Parser (Box OracleCommand)
-oracleCommandParser =
+oracleCommandParser
+    :: Maybe TokenId
+    -> Parser (Box OracleCommand)
+oracleCommandParser ptk =
     hsubparser
         ( command
             "token"
             ( info
                 ( fmapBox OracleTokenCommand
-                    <$> tokenCommandParser
-                    <**> helper
+                    <$> tokenCommandParser ptk
                 )
                 (progDesc "Manage tokens")
             )
             <> command
                 "requests"
                 ( info
-                    ( Box . OracleValidateCommand
-                        <$> validateCommandParser
-                        <**> helper
+                    ( fmap Box . OracleValidateCommand
+                        <$> tokenIdOption ptk
+                        <*> validateCommandParser
                     )
                     (progDesc "Manage requests")
                 )

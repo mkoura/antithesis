@@ -6,50 +6,51 @@ module Oracle.Token.Options
     )
 where
 
-import Core.Options (outputReferenceParser)
+import Core.Options (outputReferenceParser, tokenIdOption)
+import Core.Types.Basic (TokenId)
 import Lib.Box (Box (..))
 import Options.Applicative
     ( Alternative (many)
     , Parser
     , command
-    , helper
     , hsubparser
     , info
     , progDesc
-    , (<**>)
     )
 import Oracle.Token.Cli
     ( TokenCommand (..)
     )
 
-tokenCommandParser :: Parser (Box TokenCommand)
-tokenCommandParser =
+tokenCommandParser
+    :: Maybe TokenId
+    -> Parser (Box TokenCommand)
+tokenCommandParser ptk =
     hsubparser
         ( command
             "get"
             ( info
-                (pure (Box GetToken) <**> helper)
+                (Box . GetToken <$> tokenIdOption ptk)
                 (progDesc "Get a token")
             )
             <> command
                 "update"
                 ( info
-                    ( Box . UpdateToken
-                        <$> many outputReferenceParser
-                        <**> helper
+                    ( fmap Box . UpdateToken
+                        <$> tokenIdOption ptk
+                        <*> many outputReferenceParser
                     )
                     (progDesc "Update a token")
                 )
             <> command
                 "boot"
                 ( info
-                    (pure (Box BootToken) <**> helper)
+                    (pure (Box BootToken))
                     (progDesc "Boot a token")
                 )
             <> command
                 "end"
                 ( info
-                    (pure (Box EndToken) <**> helper)
+                    (Box . EndToken <$> tokenIdOption ptk)
                     (progDesc "End a token")
                 )
         )

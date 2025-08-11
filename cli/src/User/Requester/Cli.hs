@@ -59,19 +59,24 @@ import User.Types
 
 data RequesterCommand a where
     RegisterUser
-        :: RegisterUserKey
+        :: TokenId
+        -> RegisterUserKey
         -> RequesterCommand (AValidationResult RegisterUserFailure TxHash)
     UnregisterUser
-        :: RegisterUserKey
+        :: TokenId
+        -> RegisterUserKey
         -> RequesterCommand (AValidationResult UnregisterUserFailure TxHash)
     RegisterRole
-        :: RegisterRoleKey
+        :: TokenId
+        -> RegisterRoleKey
         -> RequesterCommand (AValidationResult RegisterRoleFailure TxHash)
     UnregisterRole
-        :: RegisterRoleKey
+        :: TokenId
+        -> RegisterRoleKey
         -> RequesterCommand (AValidationResult UnregisterRoleFailure TxHash)
     RequestTest
-        :: TestRun
+        :: TokenId
+        -> TestRun
         -> Duration
         -> RequesterCommand
             ( AValidationResult
@@ -84,21 +89,20 @@ deriving instance Eq (RequesterCommand a)
 
 requesterCmd
     :: MonadIO m
-    => TokenId
-    -> Sign
+    => Sign
     -> RequesterCommand a
     -> WithContext m a
-requesterCmd tokenId sign command = do
+requesterCmd sign command = do
     case command of
-        RegisterUser request ->
+        RegisterUser tokenId request ->
             registerUser tokenId request
-        UnregisterUser request ->
+        UnregisterUser tokenId request ->
             unregisterUser tokenId request
-        RegisterRole request ->
+        RegisterRole tokenId request ->
             registerRole tokenId request
-        UnregisterRole request ->
+        UnregisterRole tokenId request ->
             unregisterRole tokenId request
-        RequestTest testRun duration ->
+        RequestTest tokenId testRun duration ->
             createCommand
                 tokenId
                 sign

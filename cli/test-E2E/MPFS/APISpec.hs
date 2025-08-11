@@ -188,7 +188,6 @@ setup auth = do
             (mkValidation auth)
             (wait180S oracleWallet)
             $ tokenCmdCore
-                Nothing
                 BootToken
     liftIO $ waitTx call txHash
     case mTokenId of
@@ -215,8 +214,7 @@ teardown auth Context{mpfs, tokenId, wait180S, oracleWallet, agentWallet} = do
             (mkValidation auth)
             (wait180S oracleWallet)
             $ tokenCmdCore
-                (Just tokenId)
-                EndToken
+            $ EndToken tokenId
     liftIO $ waitTx mpfs txHash
 
 getFirstOutput :: AlonzoTx ConwayEra -> Maybe (String, Data)

@@ -11,22 +11,19 @@ import Oracle.Validate.Cli (ValidateCommand, validateCmd)
 
 data OracleCommand a where
     OracleTokenCommand :: TokenCommand a -> OracleCommand a
-    OracleValidateCommand :: ValidateCommand a -> OracleCommand a
+    OracleValidateCommand
+        :: TokenId -> ValidateCommand a -> OracleCommand a
 
 deriving instance Show (OracleCommand a)
 deriving instance Eq (OracleCommand a)
 
 oracleCmd
     :: MonadIO m
-    => Maybe TokenId
-    -> OracleCommand a
+    => OracleCommand a
     -> WithContext m a
-oracleCmd mtk = \case
-    OracleTokenCommand tokenCommand -> tokenCmdCore mtk tokenCommand
-    OracleValidateCommand validateCommand -> do
-        tk <- case mtk of
-            Just tokenId -> pure tokenId
-            Nothing -> error "TokenId is required for ValidateCommand"
+oracleCmd = \case
+    OracleTokenCommand tokenCommand -> tokenCmdCore tokenCommand
+    OracleValidateCommand tokenId validateCommand -> do
         validateCmd
-            tk
+            tokenId
             validateCommand

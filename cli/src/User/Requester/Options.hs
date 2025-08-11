@@ -13,9 +13,11 @@ import Core.Options
     , platformOption
     , pubkeyhashOption
     , repositoryOption
+    , tokenIdOption
     , tryOption
     , usernameOption
     )
+import Core.Types.Basic (TokenId)
 import Core.Types.Tx (TxHash, WithTxHash)
 import Lib.Box (Box (..))
 import Options.Applicative
@@ -45,95 +47,107 @@ import User.Types
     )
 
 addPublicKeyOptions
-    :: Parser
+    :: Maybe TokenId
+    -> Parser
         (RequesterCommand (AValidationResult RegisterUserFailure TxHash))
-addPublicKeyOptions =
+addPublicKeyOptions ptk =
     RegisterUser
-        <$> ( RegisterUserKey
+        <$> tokenIdOption ptk
+        <*> ( RegisterUserKey
                 <$> platformOption
                 <*> usernameOption
                 <*> pubkeyhashOption
             )
 
 removePublicKeyOptions
-    :: Parser
+    :: Maybe TokenId
+    -> Parser
         (RequesterCommand (AValidationResult UnregisterUserFailure TxHash))
-removePublicKeyOptions =
+removePublicKeyOptions ptk =
     UnregisterUser
-        <$> ( RegisterUserKey
+        <$> tokenIdOption ptk
+        <*> ( RegisterUserKey
                 <$> platformOption
                 <*> usernameOption
                 <*> pubkeyhashOption
             )
 
 addRoleOptions
-    :: Parser
+    :: Maybe TokenId
+    -> Parser
         (RequesterCommand (AValidationResult RegisterRoleFailure TxHash))
-addRoleOptions =
+addRoleOptions ptk =
     RegisterRole
-        <$> ( RegisterRoleKey
+        <$> tokenIdOption ptk
+        <*> ( RegisterRoleKey
                 <$> platformOption
                 <*> repositoryOption
                 <*> usernameOption
             )
 
 removeRoleOptions
-    :: Parser
+    :: Maybe TokenId
+    -> Parser
         (RequesterCommand (AValidationResult UnregisterRoleFailure TxHash))
-removeRoleOptions =
+removeRoleOptions ptk =
     UnregisterRole
-        <$> ( RegisterRoleKey
+        <$> tokenIdOption ptk
+        <*> ( RegisterRoleKey
                 <$> platformOption
                 <*> repositoryOption
                 <*> usernameOption
             )
 
-requesterCommandParser :: Parser (Box RequesterCommand)
-requesterCommandParser =
+requesterCommandParser
+    :: Maybe TokenId
+    -> Parser (Box RequesterCommand)
+requesterCommandParser ptk =
     hsubparser
         ( command
             "create-test"
             ( info
-                (Box <$> requestTestOptions)
+                (Box <$> requestTestOptions ptk)
                 (progDesc "Request an antithesis test run")
             )
             <> command
                 "register-user"
                 ( info
-                    (Box <$> addPublicKeyOptions)
+                    (Box <$> addPublicKeyOptions ptk)
                     (progDesc "Register a user public key")
                 )
             <> command
                 "unregister-user"
                 ( info
-                    (Box <$> removePublicKeyOptions)
+                    (Box <$> removePublicKeyOptions ptk)
                     (progDesc "Unregister a user public key")
                 )
             <> command
                 "register-role"
                 ( info
-                    (Box <$> addRoleOptions)
+                    (Box <$> addRoleOptions ptk)
                     (progDesc "Add a user to a repository")
                 )
             <> command
                 "unregister-role"
                 ( info
-                    (Box <$> removeRoleOptions)
+                    (Box <$> removeRoleOptions ptk)
                     (progDesc "Remove a user from a repository")
                 )
         )
 
 requestTestOptions
-    :: Parser
+    :: Maybe TokenId
+    -> Parser
         ( RequesterCommand
             ( AValidationResult
                 CreateTestRunFailure
                 (WithTxHash (TestRunState PendingT))
             )
         )
-requestTestOptions =
+requestTestOptions ptk =
     RequestTest
-        <$> ( TestRun
+        <$> tokenIdOption ptk
+        <*> ( TestRun
                 <$> platformOption
                 <*> repositoryOption
                 <*> directoryOption

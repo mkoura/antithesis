@@ -7,7 +7,8 @@ module Options
     ) where
 
 import Cli (Command (..))
-import Core.Options (outputReferenceParser)
+import Core.Options (outputReferenceParser, tokenIdOption)
+import Core.Types.Basic (TokenId)
 import Lib.Box (Box (..), fmapBox)
 import Options.Applicative
     ( Parser
@@ -33,19 +34,19 @@ newtype Options a = Options
     }
     deriving (Eq, Show)
 
-commandParser :: Parser (Box Command)
-commandParser =
+commandParser :: Maybe TokenId -> Parser (Box Command)
+commandParser ptk =
     hsubparser
         ( command
             "oracle"
             ( info
-                (fmapBox OracleCommand <$> oracleCommandParser)
+                (fmapBox OracleCommand <$> oracleCommandParser ptk)
                 (progDesc "Manage token updates")
             )
             <> command
                 "requester"
                 ( info
-                    (fmapBox RequesterCommand <$> requesterCommandParser)
+                    (fmapBox RequesterCommand <$> requesterCommandParser ptk)
                     (progDesc "Manage requester changes")
                 )
             <> command
@@ -57,13 +58,13 @@ commandParser =
             <> command
                 "facts"
                 ( info
-                    (pure . Box $ GetFacts)
+                    (Box . GetFacts <$> tokenIdOption ptk)
                     (progDesc "Get token facts")
                 )
             <> command
                 "agent"
                 ( info
-                    (fmapBox AgentCommand <$> agentCommandParser)
+                    (fmapBox AgentCommand <$> agentCommandParser ptk)
                     (progDesc "Manage agent changes")
                 )
             <> command
@@ -74,15 +75,15 @@ commandParser =
                 )
         )
 
-optionsParser :: Parser (Box Options)
-optionsParser = fmapBox Options <$> commandParser
+optionsParser :: Maybe TokenId -> Parser (Box Options)
+optionsParser ptk = fmapBox Options <$> commandParser ptk
 
-parseArgs :: [String] -> IO (Box Options)
-parseArgs args = handleParseResult $ execParserPure defaultPrefs opts args
+parseArgs :: [String] -> Maybe TokenId -> IO (Box Options)
+parseArgs args ptk = handleParseResult $ execParserPure defaultPrefs opts args
   where
     opts =
         info
-            (optionsParser <**> helper)
+            (optionsParser ptk <**> helper)
             ( fullDesc
                 <> progDesc "Antithesis CLI"
                 <> header "anti - A tool for managing Antithesis test runs"

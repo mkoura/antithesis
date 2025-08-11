@@ -44,7 +44,7 @@ data Command a where
         :: { outputReference :: RequestRefId
            }
         -> Command TxHash
-    GetFacts :: Command JSValue
+    GetFacts :: TokenId -> Command JSValue
     Wallet :: WalletCommand a -> Command a
 
 deriving instance Show (Command a)
@@ -54,10 +54,9 @@ cmd
     :: (Wallet -> Submission ClientM)
     -> Either FilePath Wallet
     -> Maybe SigningMap
-    -> Maybe TokenId
     -> Command a
     -> ClientM a
-cmd submit mwf msign tokenId command = do
+cmd submit mwf msign command = do
     cfg <- liftIO $ do
         configFile <- getEnv "ANTI_CONFIG_FILE"
         config <-
@@ -66,7 +65,7 @@ cmd submit mwf msign tokenId command = do
         case config of
             Left err -> error $ "Failed to parse config file: " ++ err
             Right cfg -> pure cfg
-    cmdCore submit cfg mwf msign tokenId command
+    cmdCore submit cfg mwf msign command
 
 failNothing :: Applicative m => [Char] -> Maybe a -> m a
 failNothing w Nothing = error w
@@ -76,75 +75,72 @@ failLeft :: Applicative m => (a -> String) -> Either a b -> m b
 failLeft f (Left err) = error $ f err
 failLeft _ (Right x) = pure x
 
+data SetupError = TokenNotSpecified
+    deriving (Show, Eq)
+
 cmdCore
     :: (Wallet -> Submission ClientM)
     -> TestRunValidationConfig
     -> Either FilePath Wallet
     -> Maybe SigningMap
-    -> Maybe TokenId
     -> Command a
     -> ClientM a
 cmdCore
     submit
     testRunValidationConfig
     mWallet
-    mSigning
-    mTokenId = \case
-        RequesterCommand requesterCommand -> do
-            signing <- failNothing "No SSH file" mSigning
-            sshKeySelector <- liftIO $ getEnv "ANTI_SSH_KEY_SELECTOR"
-            auth <- liftIO getOAUth
-            keyAPI <-
-                failNothing (sshKeySelector <> "not in the signing map")
-                    $ signing
-                    $ SSHKeySelector sshKeySelector
-            antithesisPKH <-
-                liftIO $ Owner <$> getEnv "ANTI_AGENT_PUBLIC_KEY_HASH"
-            tokenId <- failNothing "No TokenId" mTokenId
-            wallet <- failLeft ("No wallet @ " <>) mWallet
-            withContext
-                mpfsClient
-                testRunValidationConfig
-                antithesisPKH
-                (mkValidation auth)
-                (submit wallet)
-                $ requesterCmd tokenId (sign keyAPI) requesterCommand
-        OracleCommand oracleCommand -> do
-            wallet <- failLeft ("No wallet @ " <>) mWallet
-            antithesisPKH <-
-                liftIO $ Owner <$> getEnv "ANTI_AGENT_PUBLIC_KEY_HASH"
-            auth <- liftIO getOAUth
-            withContext
-                mpfsClient
-                testRunValidationConfig
-                antithesisPKH
-                (mkValidation auth)
-                (submit wallet)
-                $ oracleCmd
-                    mTokenId
-                    oracleCommand
-        AgentCommand agentCommand -> do
-            antithesisPKH <-
-                liftIO $ Owner <$> getEnv "ANTI_AGENT_PUBLIC_KEY_HASH"
-            auth <- liftIO getOAUth
-            tokenId <- failNothing "No TokenId" mTokenId
-            wallet <- failLeft ("No wallet @ " <>) mWallet
-            withContext
-                mpfsClient
-                testRunValidationConfig
-                antithesisPKH
-                (mkValidation auth)
-                (submit wallet)
-                $ agentCmd tokenId (owner wallet) agentCommand
-        RetractRequest refId -> do
-            wallet <- failLeft ("No wallet @ " <>) mWallet
-            let Submission submit' = submit wallet
-            fmap txHash $ submit' $ \address ->
-                retractChange address refId
-        GetFacts -> do
-            tokenId <- failNothing "No TokenId" mTokenId
-            getTokenFacts tokenId
-        Wallet walletCommand -> do
-            liftIO $ case mWallet of
-                Right wallet -> walletCmd (Right wallet) walletCommand
-                Left walletFile -> walletCmd (Left walletFile) walletCommand
+    mSigning =
+        \case
+            RequesterCommand requesterCommand -> do
+                signing <- failNothing "No SSH file" mSigning
+                sshKeySelector <- liftIO $ getEnv "ANTI_SSH_KEY_SELECTOR"
+                auth <- liftIO getOAUth
+                keyAPI <-
+                    failNothing (sshKeySelector <> "not in the signing map")
+                        $ signing
+                        $ SSHKeySelector sshKeySelector
+                antithesisPKH <-
+                    liftIO $ Owner <$> getEnv "ANTI_AGENT_PUBLIC_KEY_HASH"
+                wallet <- failLeft ("No wallet @ " <>) mWallet
+                withContext
+                    mpfsClient
+                    testRunValidationConfig
+                    antithesisPKH
+                    (mkValidation auth)
+                    (submit wallet)
+                    $ requesterCmd (sign keyAPI) requesterCommand
+            OracleCommand oracleCommand -> do
+                wallet <- failLeft ("No wallet @ " <>) mWallet
+                antithesisPKH <-
+                    liftIO $ Owner <$> getEnv "ANTI_AGENT_PUBLIC_KEY_HASH"
+                auth <- liftIO getOAUth
+                withContext
+                    mpfsClient
+                    testRunValidationConfig
+                    antithesisPKH
+                    (mkValidation auth)
+                    (submit wallet)
+                    $ oracleCmd
+                        oracleCommand
+            AgentCommand agentCommand -> do
+                antithesisPKH <-
+                    liftIO $ Owner <$> getEnv "ANTI_AGENT_PUBLIC_KEY_HASH"
+                auth <- liftIO getOAUth
+                wallet <- failLeft ("No wallet @ " <>) mWallet
+                withContext
+                    mpfsClient
+                    testRunValidationConfig
+                    antithesisPKH
+                    (mkValidation auth)
+                    (submit wallet)
+                    $ agentCmd (owner wallet) agentCommand
+            RetractRequest refId -> do
+                wallet <- failLeft ("No wallet @ " <>) mWallet
+                let Submission submit' = submit wallet
+                fmap txHash $ submit' $ \address ->
+                    retractChange address refId
+            GetFacts tokenId -> getTokenFacts tokenId
+            Wallet walletCommand -> do
+                liftIO $ case mWallet of
+                    Right wallet -> walletCmd (Right wallet) walletCommand
+                    Left walletFile -> walletCmd (Left walletFile) walletCommand

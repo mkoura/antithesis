@@ -18,6 +18,7 @@ import Network.HTTP.Client
     )
 import Network.HTTP.Client.TLS (tlsManagerSettings)
 import Options (Options (..), parseArgs)
+import Options.Applicative (Alternative (..))
 import Servant.Client
     ( BaseUrl (..)
     , ClientError
@@ -47,17 +48,24 @@ data Result
     | Help
     deriving (Show)
 
+parseTokenId :: IO (Maybe TokenId)
+parseTokenId = do
+    tokenIdStr <- lookupEnv "ANTI_TOKEN_ID"
+    pure $ case tokenIdStr of
+        Nothing -> empty
+        Just tid -> pure $ TokenId tid
+
 client
     :: IO Result
 client = do
+    ptk <- parseTokenId
     args <- getArgs
-    fc <- try $ parseArgs args
+    fc <- try $ parseArgs args ptk
     case fc of
         Left (SomeException _) -> return Help
         Right o@(Box (Options command)) -> do
             let action = do
                     mpfs_host <- getEnv "ANTI_MPFS_HOST"
-                    mtk <- fmap TokenId <$> lookupEnv "ANTI_TOKEN_ID"
                     baseUrl <- parseBaseUrl mpfs_host
                     walletFile <- getEnv "ANTI_WALLET_FILE"
                     mWallet <-
@@ -91,7 +99,7 @@ client = do
                         submit = signAndSubmitMPFS sbmt
                     Success o walletFile mpfs_host
                         <$> runClientM
-                            (cmd submit mWallet mSigning mtk command >>= toJSON)
+                            (cmd submit mWallet mSigning command >>= toJSON)
                             clientEnv
             action `catch` (return . Failure)
 

@@ -10,6 +10,7 @@ module Core.Options
     , outputReferenceParser
     , durationOption
     , tryOption
+    , tokenIdOption
     )
 where
 
@@ -21,6 +22,7 @@ import Core.Types.Basic
     , PublicKeyHash (..)
     , Repository (..)
     , RequestRefId (..)
+    , TokenId (..)
     , Try (..)
     , Username (..)
     )
@@ -150,3 +152,18 @@ tryOption =
                 <> metavar "TRY"
                 <> help "The current attempt number for this commit"
             )
+
+-- If the token is not passed as the function argument, try to get it from the options
+tokenIdOption :: Maybe TokenId -> Parser TokenId
+tokenIdOption mTokenId =
+    case mTokenId of
+        Just tokenId -> pure tokenId
+        Nothing ->
+            TokenId
+                <$> strOption
+                    ( long "token-id"
+                        <> short 'i'
+                        <> metavar "TOKEN_ID"
+                        <> help
+                            "The token ID for the request, Use the ANTI_TOKEN_ID environment variable to set it"
+                    )

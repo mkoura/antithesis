@@ -8,7 +8,6 @@ module Oracle.Validate.Requests.TestRun.Create
     , renderCreateTestRunFailure
     ) where
 
-import Control.Exception (throwIO)
 import Control.Monad (unless)
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Trans.Class (lift)
@@ -19,6 +18,7 @@ import Core.Types.Operation (Op (..), Operation (..))
 import Crypto.PubKey.Ed25519 qualified as Ed25519
 import Data.ByteString.Lazy qualified as BL
 import Data.Maybe (catMaybes, mapMaybe)
+import Lib.GitHub (GithubResponseError, GithubResponseStatusCodeError)
 import Lib.JSON.Canonical.Extra (object, stringJSON, (.=))
 import Lib.SSH.Public (decodePublicKey)
 import Oracle.Validate.Requests.TestRun.Config
@@ -31,12 +31,7 @@ import Oracle.Validate.Types
     , notValidated
     )
 import Text.JSON.Canonical
-    ( FromJSON (..)
-    , JSValue (..)
-    , ReportSchemaErrors
-    , ToJSON (..)
-    , expectedButGotValue
-    , fromJSString
+    ( ToJSON (..)
     , renderCanonicalJSON
     )
 import User.Types
@@ -97,7 +92,8 @@ data TestRunRejection
     | UnacceptableRole
     | UnacceptableDirectory
     | UnacceptableSignature
-    | AnyReason String
+    | GithubResponseError GithubResponseError
+    | GithubResponseStatusCodeError GithubResponseStatusCodeError
     deriving (Eq, Show)
 
 instance Monad m => ToJSON m TestRunRejection where
@@ -113,22 +109,11 @@ instance Monad m => ToJSON m TestRunRejection where
         stringJSON "unacceptable directory"
     toJSON UnacceptableSignature =
         stringJSON "unacceptable signature"
-    toJSON (AnyReason reason) =
-        stringJSON reason
+    toJSON (GithubResponseError err) =
+        object ["githubResponseError" .= err]
+    toJSON (GithubResponseStatusCodeError err) =
+        object ["githubResponseStatusCodeError" .= err]
 
-instance ReportSchemaErrors m => FromJSON m TestRunRejection where
-    fromJSON (JSString jsString) = do
-        let reason = fromJSString jsString
-        case reason of
-            "unacceptable duration" -> pure UnacceptableDuration
-            "unacceptable commit" -> pure UnacceptableCommit
-            "unacceptable try index" -> pure UnacceptableTryIndex
-            "unacceptable role" -> pure UnacceptableRole
-            "unacceptable directory" -> pure UnacceptableDirectory
-            "unacceptable signature" -> pure UnacceptableSignature
-            _ -> pure $ AnyReason reason
-    fromJSON other =
-        expectedButGotValue "a string representing a reason" other
 checkDuration
     :: TestRunValidationConfig -> Duration -> Maybe TestRunRejection
 checkDuration TestRunValidationConfig{maxDuration, minDuration} (Duration n)
@@ -181,12 +166,12 @@ checkCommit
     Validation{githubCommitExists}
     testRun = do
         existsE <- githubCommitExists (repository testRun) (commitId testRun)
-        case existsE of
-            Left err -> liftIO $ throwIO err
+        pure $ case existsE of
+            Left err -> Just $ GithubResponseError err
             Right exists ->
                 if exists
-                    then return Nothing
-                    else return $ Just UnacceptableCommit
+                    then Nothing
+                    else Just UnacceptableCommit
 
 checkDirectory
     :: MonadIO m
@@ -201,12 +186,12 @@ checkDirectory
                 (repository testRun)
                 (commitId testRun)
                 (directory testRun)
-        case existsE of
-            Left err -> liftIO $ throwIO err
+        pure $ case existsE of
+            Left err -> Just $ GithubResponseStatusCodeError err
             Right exists ->
                 if exists
-                    then return Nothing
-                    else return $ Just UnacceptableDirectory
+                    then Nothing
+                    else Just UnacceptableDirectory
 
 checkSignature
     :: Monad m

@@ -1,6 +1,6 @@
 services:
   yaci-cli:
-    image: bloxbean/yaci-cli:0.10.6-beta
+    image: bloxbean/yaci-cli:0.10.6
     platform: linux/x86_64
     environment:
       - yaci_store_enabled=true

@@ -5,7 +5,8 @@ module User.Agent.Options
     ( agentCommandParser
     ) where
 
-import Core.Types.Basic (Duration (..))
+import Core.Options (tokenIdOption)
+import Core.Types.Basic (Duration (..), TokenId)
 import Core.Types.Tx (WithTxHash)
 import Lib.Box (Box (..))
 import Options.Applicative
@@ -39,39 +40,40 @@ import User.Types
     )
 
 agentCommandParser
-    :: Parser (Box (AgentCommand NotReady))
-agentCommandParser =
+    :: Maybe TokenId
+    -> Parser (Box (AgentCommand NotReady))
+agentCommandParser ptk =
     hsubparser
         ( command
             "accept-test"
             ( info
-                (Box <$> acceptTestOptions)
+                (Box <$> acceptTestOptions ptk)
                 (progDesc "Request a test on a specific platform")
             )
             <> command
                 "reject-test"
                 ( info
-                    (Box <$> rejectTestOptions)
+                    (Box <$> rejectTestOptions ptk)
                     (progDesc "Reject a test with a reason")
                 )
             <> command
                 "report-test"
                 ( info
-                    (Box <$> reportTestOptions)
+                    (Box <$> reportTestOptions ptk)
                     (progDesc "Report the result of a test run")
                 )
             <> command
                 "query"
                 ( info
-                    (Box <$> queryOptions)
+                    (Box <$> queryOptions ptk)
                     (progDesc "Query the status of test runs")
                 )
         )
 
 queryOptions
-    :: Parser (AgentCommand NotReady TestRunMap)
-queryOptions =
-    pure Query
+    :: Maybe TokenId
+    -> Parser (AgentCommand NotReady TestRunMap)
+queryOptions ptk = Query <$> tokenIdOption ptk
 
 testRunIdOption
     :: Parser TestRunId
@@ -85,7 +87,8 @@ testRunIdOption =
             )
 
 acceptTestOptions
-    :: Parser
+    :: Maybe TokenId
+    -> Parser
         ( AgentCommand
             NotReady
             ( AValidationResult
@@ -93,8 +96,8 @@ acceptTestOptions
                 (WithTxHash (TestRunState RunningT))
             )
         )
-acceptTestOptions =
-    Accept <$> testRunIdOption <*> pure ()
+acceptTestOptions ptk =
+    Accept <$> tokenIdOption ptk <*> testRunIdOption <*> pure ()
 
 testRejectionParser :: Parser TestRunRejection
 testRejectionParser =
@@ -108,7 +111,8 @@ testRejectionParser =
     readReason _ = Left "Unknown reason for rejection"
 
 rejectTestOptions
-    :: Parser
+    :: Maybe TokenId
+    -> Parser
         ( AgentCommand
             NotReady
             ( AValidationResult
@@ -116,13 +120,15 @@ rejectTestOptions
                 (WithTxHash (TestRunState DoneT))
             )
         )
-rejectTestOptions = do
+rejectTestOptions ptk = do
     testRunId <- testRunIdOption
     reason <- many testRejectionParser
-    pure $ Reject testRunId () reason
+    tokenId <- tokenIdOption ptk
+    pure $ Reject tokenId testRunId () reason
 
 reportTestOptions
-    :: Parser
+    :: Maybe TokenId
+    -> Parser
         ( AgentCommand
             NotReady
             ( AValidationResult
@@ -130,7 +136,8 @@ reportTestOptions
                 (WithTxHash (TestRunState DoneT))
             )
         )
-reportTestOptions = do
+reportTestOptions ptk = do
+    tokenId <- tokenIdOption ptk
     testRunId <- testRunIdOption
     duration <-
         Duration
@@ -139,4 +146,4 @@ reportTestOptions = do
                 (long "duration" <> help "Duration of the test run in hours")
     url <-
         URL <$> option str (long "url" <> help "URL of the test report")
-    pure $ Report testRunId () duration url
+    pure $ Report tokenId testRunId () duration url

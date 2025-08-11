@@ -27,6 +27,7 @@ import Data.Text.Encoding qualified as T
 import GitHub (Auth (..), FetchCount (..), github)
 import GitHub qualified as GH
 import GitHub.Data.Name (Name (..))
+import Lib.JSON.Canonical.Extra (object, (.=))
 import Network.HTTP.Client
     ( HttpException (..)
     , HttpExceptionContent (StatusCodeException)
@@ -34,6 +35,7 @@ import Network.HTTP.Client
     )
 import Network.HTTP.Types (Status (..))
 import System.Environment (getEnv)
+import Text.JSON.Canonical
 
 getOAUth :: IO Auth
 getOAUth = do
@@ -48,12 +50,30 @@ data GithubResponseError
 
 instance Exception GithubResponseError
 
+instance Monad m => ToJSON m GithubResponseError where
+    toJSON GithubResponseErrorRepositoryNotFound =
+        object ["error" .= ("repository not found" :: String)]
+    toJSON (GithubResponseErrorSSHPublicKeysCannotBeFetched err) =
+        object ["error" .= ("SSH public keys cannot be fetched: " ++ err)]
+    toJSON (GithubResponseCodeError err) =
+        object ["error" .= ("GitHub response code error: " ++ show err)]
+
 data GithubResponseStatusCodeError
     = GithubResponseStatusCodeNotHandledInClient String
     | GithubResponseStatusCodeNotHTTPError String
     deriving (Eq, Show)
 
 instance Exception GithubResponseStatusCodeError
+
+instance Monad m => ToJSON m GithubResponseStatusCodeError where
+    toJSON (GithubResponseStatusCodeNotHandledInClient msg) =
+        object
+            [ "error"
+                .= ("GitHub response status code not handled in client: " ++ msg)
+            ]
+    toJSON (GithubResponseStatusCodeNotHTTPError msg) =
+        object
+            ["error" .= ("GitHub response status code not HTTP error: " ++ msg)]
 
 -- | Handle http exceptions from GitHub API calls based on the status code.
 onStatusCodeOfException

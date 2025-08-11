@@ -62,15 +62,14 @@ import Validation (Validation)
 
 agentCmd
     :: Monad m
-    => TokenId
-    -> Owner
+    => Owner
     -> AgentCommand NotReady a
     -> WithContext m a
-agentCmd tokenId agentId cmdNotReady = do
-    mCmdReady <- resolveOldState tokenId cmdNotReady
+agentCmd agentId cmdNotReady = do
+    mCmdReady <- resolveOldState cmdNotReady
     case mCmdReady of
         Nothing -> error "No previous state found for the command"
-        Just cmdReady -> agentCmdCore tokenId agentId cmdReady
+        Just cmdReady -> agentCmdCore agentId cmdReady
 
 withExpectedState
     :: (FromJSON Maybe (TestRunState phase), Monad m)
@@ -116,22 +115,21 @@ withResolvedTestRun tk (TestRunId testRunId) cont = do
 
 resolveOldState
     :: Monad m
-    => TokenId
-    -> AgentCommand NotReady result
+    => AgentCommand NotReady result
     -> WithContext m (Maybe (AgentCommand Ready result))
-resolveOldState tokenId cmd = case cmd of
-    Accept key () ->
+resolveOldState cmd = case cmd of
+    Accept tokenId key () ->
         withResolvedTestRun tokenId key $ \testRun ->
-            withExpectedState tokenId testRun $ pure . Accept testRun
-    Reject key () reason ->
+            withExpectedState tokenId testRun $ pure . Accept tokenId testRun
+    Reject tokenId key () reason ->
         withResolvedTestRun tokenId key $ \testRun ->
             withExpectedState tokenId testRun
-                $ \pending -> pure $ Reject testRun pending reason
-    Report key () duration url ->
+                $ \pending -> pure $ Reject tokenId testRun pending reason
+    Report tokenId key () duration url ->
         withResolvedTestRun tokenId key $ \testRun ->
             withExpectedState tokenId testRun $ \runningState ->
-                pure $ Report testRun runningState duration url
-    Query -> pure $ Just Query
+                pure $ Report tokenId testRun runningState duration url
+    Query tokenId -> pure $ Just $ Query tokenId
 
 data IsReady = NotReady | Ready
     deriving (Show, Eq)
@@ -154,7 +152,8 @@ type family ResolveId phase where
 
 data AgentCommand (phase :: IsReady) result where
     Accept
-        :: ResolveId phase
+        :: TokenId
+        -> ResolveId phase
         -> IfReady phase (TestRunState PendingT)
         -> AgentCommand
             phase
@@ -163,7 +162,8 @@ data AgentCommand (phase :: IsReady) result where
                 (WithTxHash (TestRunState RunningT))
             )
     Reject
-        :: ResolveId phase
+        :: TokenId
+        -> ResolveId phase
         -> IfReady phase (TestRunState PendingT)
         -> [TestRunRejection]
         -> AgentCommand
@@ -173,7 +173,8 @@ data AgentCommand (phase :: IsReady) result where
                 (WithTxHash (TestRunState DoneT))
             )
     Report
-        :: ResolveId phase
+        :: TokenId
+        -> ResolveId phase
         -> IfReady phase (TestRunState RunningT)
         -> Duration
         -> URL
@@ -183,7 +184,7 @@ data AgentCommand (phase :: IsReady) result where
                 UpdateTestRunFailure
                 (WithTxHash (TestRunState DoneT))
             )
-    Query :: AgentCommand phase TestRunMap
+    Query :: TokenId -> AgentCommand phase TestRunMap
 
 deriving instance Show (AgentCommand NotReady result)
 deriving instance Eq (AgentCommand NotReady result)
@@ -192,18 +193,17 @@ deriving instance Eq (AgentCommand Ready result)
 
 agentCmdCore
     :: Monad m
-    => TokenId
-    -> Owner
+    => Owner
     -> AgentCommand Ready result
     -> WithContext m result
-agentCmdCore tokenId agentId cmd = case cmd of
-    Accept key pending ->
+agentCmdCore agentId cmd = case cmd of
+    Accept tokenId key pending ->
         acceptCommand tokenId agentId key pending
-    Reject key pending reason ->
+    Reject tokenId key pending reason ->
         rejectCommand tokenId agentId key pending reason
-    Report key running duration url ->
+    Report tokenId key running duration url ->
         reportCommand tokenId agentId key running duration url
-    Query -> queryCommand tokenId
+    Query tokenId -> queryCommand tokenId
 
 queryCommand :: Monad m => TokenId -> WithContext m TestRunMap
 queryCommand tokenId = do

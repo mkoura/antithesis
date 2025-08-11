@@ -88,16 +88,17 @@ instance Monad m => ToJSON m TokenUpdateFailure where
             object ["tokenUpdateRequestValidations" .= validations]
 
 data TokenCommand a where
-    GetToken :: TokenCommand JSValue
+    GetToken :: TokenId -> TokenCommand JSValue
     BootToken :: TokenCommand (WithTxHash TokenId)
     UpdateToken
-        :: {requests :: [RequestRefId]}
+        :: TokenId
+        -> [RequestRefId]
         -> TokenCommand
             ( AValidationResult
                 TokenUpdateFailure
                 TxHash
             )
-    EndToken :: TokenCommand TxHash
+    EndToken :: TokenId -> TokenCommand TxHash
 
 deriving instance Show (TokenCommand a)
 deriving instance Eq (TokenCommand a)
@@ -116,19 +117,18 @@ promoteFailure req =
 
 tokenCmdCore
     :: MonadIO m
-    => Maybe TokenId
-    -> TokenCommand a
+    => TokenCommand a
     -> WithContext m a
-tokenCmdCore (Just tk) command = do
+tokenCmdCore command = do
     mpfs <- askMpfs
     testRunConfig <- askTestRunConfig
     pkh <- askWalletOwner
-    validation <- askValidation tk
     Submission submit <- askSubmit
-    lift $ case command of
-        GetToken -> mpfsGetToken mpfs tk
-        UpdateToken reqs -> do
-            runValidate $ do
+    case command of
+        GetToken tk -> lift $ mpfsGetToken mpfs tk
+        UpdateToken tk reqs -> do
+            validation <- askValidation tk
+            lift $ runValidate $ do
                 mpendings <- lift $ fromJSON <$> mpfsGetToken mpfs tk
                 case mpendings of
                     Nothing -> notValidated $ TokenNotParsable tk
@@ -143,16 +143,7 @@ tokenCmdCore (Just tk) command = do
                     $ submit
                     $ \address -> mpfsUpdateToken mpfs address tk reqs
                 pure txHash
-        BootToken -> error "BootToken command requires no TokenId"
-        EndToken -> do
-            WithTxHash txHash _ <- submit
-                $ \address -> mpfsEndToken mpfs address tk
-            pure txHash
-tokenCmdCore Nothing command = do
-    mpfs <- askMpfs
-    Submission submit <- askSubmit
-    lift $ case command of
-        BootToken -> do
+        BootToken -> lift $ do
             WithTxHash txHash jTokenId <- submit
                 $ \address -> mpfsBootToken mpfs address
             case jTokenId of
@@ -160,4 +151,7 @@ tokenCmdCore Nothing command = do
                     Nothing -> error "BootToken failed, TokenId is not valid JSON"
                     Just tokenId -> pure $ WithTxHash txHash (Just tokenId)
                 _ -> error "BootToken failed, no TokenId returned"
-        _ -> error "TokenId is required for this command"
+        EndToken tk -> lift $ do
+            WithTxHash txHash _ <- submit
+                $ \address -> mpfsEndToken mpfs address tk
+            pure txHash

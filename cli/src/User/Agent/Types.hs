@@ -1,12 +1,23 @@
 module User.Agent.Types
     ( TestRunStatus (..)
     , TestRunMap (..)
+    , WhiteListKey (..)
     ) where
 
+import Core.Types.Basic (Platform, Repository)
 import Core.Types.Fact (Fact)
 import Lib.JSON.Canonical.Extra (object, (.=))
 import Text.JSON.Canonical (ToJSON (..))
 import User.Types (Phase (..), TestRun, TestRunState)
+
+data WhiteListKey = WhiteListKey
+    { repository :: Repository
+    , platform :: Platform
+    }
+    deriving (Show, Eq)
+
+instance Monad m => ToJSON m WhiteListKey where
+    toJSON (WhiteListKey r p) = object ["repository" .= r, "platform" .= p]
 
 data TestRunStatus phase where
     StatusPending

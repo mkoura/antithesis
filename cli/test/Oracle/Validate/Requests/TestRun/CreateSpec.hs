@@ -128,6 +128,7 @@ spec = do
                         [gitDirectory testRun]
                         []
                         []
+                        []
             testRunState <-
                 Pending (Duration duration)
                     <$> signTestRun sign testRun
@@ -174,7 +175,7 @@ spec = do
                         , pure testRunRequest
                         ]
             role <- jsFactRole testRunFact
-            let validation = mkValidation [role] [] [] [] []
+            let validation = mkValidation [role] [] [] [] [] []
                 testRunState = Pending (Duration duration) signature
             pure $ do
                 mresult <-
@@ -236,6 +237,7 @@ spec = do
                         []
                         []
                         []
+                        []
             let testRunState = Pending (Duration duration) signature
             pure
                 $ counterexample (show testRunDB)
@@ -272,6 +274,7 @@ spec = do
                         [testRunFact]
                         []
                         [gitDirectory testRun']
+                        []
                         []
                         []
             pure $ do

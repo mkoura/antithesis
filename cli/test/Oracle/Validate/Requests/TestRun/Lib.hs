@@ -117,8 +117,9 @@ mkValidation
     -> [(Repository, Commit, Directory)]
     -> [(Username, SSHPublicKey)]
     -> [(Username, Repository)]
+    -> [Repository]
     -> Validation m
-mkValidation fs rs ds upk rr =
+mkValidation fs rs ds upk rr reposExists =
     Validation
         { mpfsGetFacts = do
             db <- toJSON fs
@@ -136,6 +137,10 @@ mkValidation fs rs ds upk rr =
                 $ filter
                     ((== username) . fst)
                     upk
+        , githubRepositoryExists = \repo ->
+            if repo `elem` reposExists
+                then pure $ Right True
+                else pure $ Right False
         , githubRepositoryRole = \username repository ->
             return
                 $ if (username, repository) `elem` rr
@@ -209,7 +214,7 @@ changeTestRun l qc testRun = do
     pure $ testRun & l .~ (new ^. qc)
 
 noValidation :: Monad m => Validation m
-noValidation = mkValidation [] [] [] [] []
+noValidation = mkValidation [] [] [] [] [] []
 
 gitCommit :: TestRun -> (Repository, Commit)
 gitCommit testRun =

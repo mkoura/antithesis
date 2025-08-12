@@ -6,6 +6,7 @@ module Lib.GitHub
     , githubDirectoryExists
     , githubUserPublicKeys
     , githubGetCodeOwnersFile
+    , githubRepositoryExists
     , getOAUth
     ) where
 
@@ -101,6 +102,19 @@ githubCommitExists auth (Repository owner repo) (Commit sha) = do
     owner' = N $ T.pack owner
     repo' = N $ T.pack repo
     sha' = N $ T.pack sha
+
+githubRepositoryExists
+    :: Auth -> Repository -> IO (Either GithubResponseStatusCodeError Bool)
+githubRepositoryExists auth (Repository owner repo) = do
+    response <- github auth $ GH.repositoryR owner' repo'
+    case response of
+        Left e -> do
+            onStatusCodeOfException e $ \_ -> do
+                return $ Just False
+        Right _ -> return $ Right True
+  where
+    owner' = N $ T.pack owner
+    repo' = N $ T.pack repo
 
 githubDirectoryExists
     :: Auth

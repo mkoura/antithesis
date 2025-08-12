@@ -27,7 +27,7 @@ import Data.ByteString.Base16 (encode)
 import Data.ByteString.Char8 qualified as B
 import Data.Text (Text)
 import Data.Text qualified as T
-import GHC.Generics (Generic (Rep))
+import GHC.Generics (Generic)
 import Lib.JSON.Canonical.Extra (object, stringJSON)
 import PlutusTx (Data (..), builtinDataToData)
 import PlutusTx.IsData.Class (FromData (..))

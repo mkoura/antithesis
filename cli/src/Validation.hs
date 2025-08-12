@@ -63,6 +63,9 @@ data Validation m = Validation
         :: Username
         -> PublicKeyHash
         -> m (Maybe PublicKeyFailure)
+    , githubRepositoryExists
+        :: Repository
+        -> m (Either GitHub.GithubResponseStatusCodeError Bool)
     , githubRepositoryRole
         :: Username
         -> Repository
@@ -81,6 +84,7 @@ hoistValidation
         , githubCommitExists
         , githubDirectoryExists
         , githubUserPublicKeys
+        , githubRepositoryExists
         , githubRepositoryRole
         } =
         Validation
@@ -92,6 +96,8 @@ hoistValidation
                 \repo commit dir -> f $ githubDirectoryExists repo commit dir
             , githubUserPublicKeys =
                 \username publicKey -> f $ githubUserPublicKeys username publicKey
+            , githubRepositoryExists =
+                f . githubRepositoryExists
             , githubRepositoryRole =
                 \username repository -> f $ githubRepositoryRole username repository
             }
@@ -109,6 +115,7 @@ mkValidation auth tk =
             liftIO $ GitHub.githubDirectoryExists auth repository commit dir
         , githubUserPublicKeys = \username publicKey ->
             liftIO $ inspectPublicKey auth username publicKey
+        , githubRepositoryExists = liftIO . GitHub.githubRepositoryExists auth
         , githubRepositoryRole = \username repository ->
             liftIO $ inspectRepoRoleForUser auth username repository
         }

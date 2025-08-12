@@ -106,7 +106,7 @@ spec = do
     describe "validate requester requests" $ do
         it "validate a registered user" $ egenProperty $ do
             e@(user, pk) <- genValidDBElement
-            let validation = mkValidation [] [] [] [e] []
+            let validation = mkValidation [] [] [] [e] [] []
                 test =
                     validateRegisterUser validation
                         $ registerUserChange (Platform "github") user
@@ -120,7 +120,7 @@ spec = do
                 e@(user, pk) <- gen genUserDBElement
                 db <- gen $ withAPresenceInAList 0.5 e genUserDBElement
                 platform <- gen $ withAPresence 0.5 "github" arbitrary
-                let validation = mkValidation [] [] [] db []
+                let validation = mkValidation [] [] [] db [] []
                     test =
                         validateRegisterUser validation
                             $ registerUserChange (Platform platform) user
@@ -145,7 +145,7 @@ spec = do
                             , pubkeyhash = pubkey
                             }
                 fact <- toJSFact registration ()
-                let validation = mkValidation [fact] [] [] [e] []
+                let validation = mkValidation [fact] [] [] [e] [] []
                     test =
                         validateRegisterUser validation
                             $ registerUserChange (Platform platform) user pubkey
@@ -161,7 +161,7 @@ spec = do
                 (user, pk) <- gen genUserDBElement
                 let platform = "github"
                     pubkey = extractPublicKeyHash pk
-                let validation = mkValidation [] [] [] [] []
+                let validation = mkValidation [] [] [] [] [] []
                     test =
                         validateRegisterUser validation
                             $ registerUserChange (Platform platform) user pubkey
@@ -183,7 +183,7 @@ spec = do
                             PublicKeyHash $ drop (length expectedPrefix) sshPk
                     pubkey = extractOtherPublicKeyHash pk
                     e = (user, SSHPublicKey pk)
-                let validation = mkValidation [] [] [] [e] []
+                let validation = mkValidation [] [] [] [e] [] []
                     test =
                         validateRegisterUser validation
                             $ registerUserChange (Platform platform) user pubkey
@@ -200,7 +200,7 @@ spec = do
                 (_, pk2) <- genValidDBElement
                 let platform = "github"
                     pubkey = extractPublicKeyHash pk2
-                let validation = mkValidation [] [] [] [e] []
+                let validation = mkValidation [] [] [] [e] [] []
                     test =
                         validateRegisterUser validation
                             $ registerUserChange (Platform platform) user pubkey
@@ -224,7 +224,7 @@ spec = do
                             , pubkeyhash = pubkey
                             }
                 fact <- toJSFact registration ()
-                let validation = mkValidation [fact] [] [] [] []
+                let validation = mkValidation [fact] [] [] [] [] []
                     test =
                         validateUnregisterUser validation
                             $ unregisterUserChange (Platform platform) user pubkey
@@ -245,7 +245,7 @@ spec = do
                             , pubkeyhash = pubkey
                             }
                 fact <- toJSFact registration ()
-                let validation = mkValidation [fact] [] [] [] []
+                let validation = mkValidation [fact] [] [] [] [] []
                     test =
                         validateUnregisterUser validation
                             $ unregisterUserChange (Platform platform) userOther pubkey
@@ -276,7 +276,7 @@ spec = do
                             }
                     pubkey = extractPublicKeyHash pk
                 fact <- toJSFact registration ()
-                let validation = mkValidation [fact] [] [] [] []
+                let validation = mkValidation [fact] [] [] [] [] []
                     test =
                         validateUnregisterUser validation
                             $ unregisterUserChange (Platform platform) user pubkey

@@ -1,6 +1,7 @@
 module Lib.Github.OracleValidationSpec
     ( userSpec
     , roleSpecs
+    , existenceSpec
     )
 where
 
@@ -14,10 +15,12 @@ import GitHub (Auth)
 import Lib.GitHub
     ( GetCodeOwnersFileFailure (..)
     , githubGetCodeOwnersFile
+    , githubRepositoryExists
     )
 import Test.Hspec
     ( Spec
     , SpecWith
+    , describe
     , it
     , shouldReturn
     )
@@ -29,6 +32,20 @@ import Validation.RegisterUser
     ( PublicKeyFailure (..)
     , inspectPublicKeyTemplate
     )
+
+existenceSpec :: SpecWith Auth
+existenceSpec = do
+    describe "existence spec" $ do
+        it "should return true for hal-fixture-sin" $ \auth -> do
+            githubRepositoryExists
+                auth
+                (Repository "cardano-foundation" "hal-fixture-sin")
+                `shouldReturn` Right True
+        it "should return false for hal-fixture-son" $ \auth -> do
+            githubRepositoryExists
+                auth
+                (Repository "cardano-foundation" "hal-fixture-son")
+                `shouldReturn` Right False
 
 roleSpecs :: SpecWith Auth
 roleSpecs = do

@@ -2,16 +2,22 @@ import Data.ByteString.Char8 qualified as BC
 import E2ESpec (e2eSpec)
 import GitHub (Auth (..))
 import Lib.Github.OracleValidationSpec
-import MPFS.APISpec
+    ( existenceSpec
+    , roleSpecs
+    , userSpec
+    )
+import MPFS.APISpec (mpfsAPISpec)
 import System.Environment (lookupEnv)
-import Test.Hspec
+import Test.Hspec (beforeAll, hspec)
 
 main :: IO ()
 main = hspec $ do
     beforeAll getPAT $ do
+        existenceSpec
+        roleSpecs
+    beforeAll getPAT $ do
         e2eSpec
         mpfsAPISpec
-        roleSpecs
     userSpec
 
 tryGetPAT :: IO (Maybe Auth)

@@ -12,6 +12,8 @@ module Oracle.Validate.Types
     , withValidationResult
     , throwValidationResult
     , sequenceValidate
+    , throwFalse
+    , throwLeft
     ) where
 
 import Control.Monad.Trans.Class (MonadTrans, lift)
@@ -91,3 +93,11 @@ sequenceValidate = go [] []
         case result of
             ValidationSuccess x -> go (x : xs) es vs
             ValidationFailure e -> go xs (e : es) vs
+
+throwFalse :: Monad m => Bool -> e -> Validate e m Validated
+throwFalse True _ = pure Validated
+throwFalse False e = notValidated e
+
+throwLeft :: Monad m => (e -> e') -> Either e a -> Validate e' m a
+throwLeft f (Left e) = notValidated (f e)
+throwLeft _ (Right a) = pure a

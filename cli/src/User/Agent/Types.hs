@@ -4,20 +4,45 @@ module User.Agent.Types
     , WhiteListKey (..)
     ) where
 
+import Control.Monad (unless)
 import Core.Types.Basic (Platform, Repository)
 import Core.Types.Fact (Fact)
-import Lib.JSON.Canonical.Extra (object, (.=))
-import Text.JSON.Canonical (ToJSON (..))
+import Lib.JSON.Canonical.Extra (object, withObject, (.:), (.=))
+import Text.JSON.Canonical
+    ( FromJSON (..)
+    , JSValue (..)
+    , ReportSchemaErrors
+    , ToJSON (..)
+    , expectedButGotValue
+    , toJSString
+    )
 import User.Types (Phase (..), TestRun, TestRunState)
 
 data WhiteListKey = WhiteListKey
-    { repository :: Repository
-    , platform :: Platform
+    { platform :: Platform
+    , repository :: Repository
     }
     deriving (Show, Eq)
 
 instance Monad m => ToJSON m WhiteListKey where
-    toJSON (WhiteListKey r p) = object ["repository" .= r, "platform" .= p]
+    toJSON (WhiteListKey p r) =
+        object
+            [ "repository" .= r
+            , "platform" .= p
+            , "type" .= ("white-list-repo" :: String)
+            ]
+
+instance (ReportSchemaErrors m) => FromJSON m WhiteListKey where
+    fromJSON = withObject "WhiteListKey" $ \v -> do
+        t <- v .: "type"
+        unless (t == ("white-list-repo" :: String))
+            $ expectedButGotValue
+                "white-list-repo"
+            $ JSString
+            $ toJSString t
+        repository <- v .: "repository"
+        platform <- v .: "platform"
+        pure $ WhiteListKey platform repository
 
 data TestRunStatus phase where
     StatusPending

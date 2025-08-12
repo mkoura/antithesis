@@ -1,12 +1,14 @@
 module Test.QuickCheck.Lib
     ( withAPresence
     , withNothing
-    , withAPresenceInAList) where
+    , withAPresenceInAList
+    ) where
 
 import Test.QuickCheck
     ( Gen
     , frequency
-    , suchThat, listOf
+    , listOf
+    , suchThat
     )
 
 oneOrTheOther :: Float -> Gen a -> Gen a -> Gen a
@@ -20,7 +22,8 @@ oneOrTheOther presence genA genB = do
 withAPresence :: Eq a => Float -> a -> Gen a -> Gen a
 withAPresence presence a generate = do
     b <- generate `suchThat` (/= a)
-    oneOrTheOther presence
+    oneOrTheOther
+        presence
         (pure a)
         (pure b)
 
@@ -34,6 +37,7 @@ withNothing presence gen = do
 withAPresenceInAList :: Eq a => Float -> a -> Gen a -> Gen [a]
 withAPresenceInAList presence a generate = do
     bs <- listOf $ generate `suchThat` (/= a)
-    oneOrTheOther presence
+    oneOrTheOther
+        presence
         (pure $ a : bs)
         (pure bs)

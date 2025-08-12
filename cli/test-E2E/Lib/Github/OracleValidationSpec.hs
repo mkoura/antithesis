@@ -13,13 +13,11 @@ import Data.Text qualified as T
 import GitHub (Auth)
 import Lib.GitHub
     ( GetCodeOwnersFileFailure (..)
-    
     , githubGetCodeOwnersFile
     )
 import Test.Hspec
     ( Spec
     , SpecWith
-
     , it
     , shouldReturn
     )

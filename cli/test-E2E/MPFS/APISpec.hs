@@ -34,11 +34,7 @@ import Control.Monad.IO.Class (MonadIO (..))
 import Core.Context (withContext)
 import Core.Types.Basic
     ( Owner (..)
-
-
-
     , TokenId (..)
-
     )
 import Core.Types.CageDatum (CageDatum (..))
 import Core.Types.Change (Change (..), Key (..))
@@ -48,7 +44,6 @@ import Core.Types.Tx
     , UnsignedTx (..)
     , WithTxHash (..)
     , WithUnsignedTx (WithUnsignedTx)
-
     )
 import Core.Types.Wallet (Wallet (..))
 import Data.Bifunctor (first)
@@ -58,6 +53,7 @@ import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.Sequence.Strict qualified as Seq
 import Data.Text (Text)
 import Data.Text.Encoding qualified as T
+import GitHub (Auth)
 import MPFS.API
     ( RequestDeleteBody (RequestDeleteBody)
     , RequestInsertBody (RequestInsertBody)
@@ -92,10 +88,8 @@ import Submitting
 import System.Environment (lookupEnv)
 import Test.Hspec
     ( ActionWith
-
     , SpecWith
     , aroundAllWith
-
     , describe
     , it
     , shouldBe
@@ -103,11 +97,9 @@ import Test.Hspec
 import Text.JSON.Canonical
     ( JSString
     , JSValue (..)
-
     , fromJSString
     )
 import Validation (mkValidation)
-import GitHub (Auth)
 
 mpfsPolicyId :: String
 mpfsPolicyId = "c1e392ee7da9415f946de9d2aef9607322b47d6e84e8142ef0c340bf"
@@ -117,11 +109,15 @@ loadEnvWallet envVar = do
     walletFile <- lookupEnv envVar
     case walletFile of
         Just file -> readWallet file
-        Nothing -> error $ "Environment variable " ++ envVar ++ " is not set.\n \
-            \ Please set it to a valid funded preprod wallet file path.\n \
-            \ You can reuse the same wallet if you do not want to separate roles.\n \
-            \ You can create a wallet with the command:\n \
-            \ > wallet create <filename>\n"
+        Nothing ->
+            error
+                $ "Environment variable "
+                    ++ envVar
+                    ++ " is not set.\n \
+                       \ Please set it to a valid funded preprod wallet file path.\n \
+                       \ You can reuse the same wallet if you do not want to separate roles.\n \
+                       \ You can create a wallet with the command:\n \
+                       \ > wallet create <filename>\n"
 
 loadRequesterWallet :: IO Wallet
 loadRequesterWallet = loadEnvWallet "ANTI_TEST_REQUESTER_WALLET"

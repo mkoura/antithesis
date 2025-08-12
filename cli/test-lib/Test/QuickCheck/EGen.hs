@@ -15,7 +15,7 @@ module Test.QuickCheck.EGen
     )
 where
 
-import Control.Monad.Trans.Cont (Cont, runCont, cont)
+import Control.Monad.Trans.Cont (Cont, cont, runCont)
 import Test.QuickCheck
     ( Arbitrary (..)
     , Gen

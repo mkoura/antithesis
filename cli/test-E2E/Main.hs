@@ -1,10 +1,10 @@
+import Data.ByteString.Char8 qualified as BC
 import E2ESpec (e2eSpec)
-import MPFS.APISpec
-import Lib.Github.OracleValidationSpec
-import Test.Hspec
 import GitHub (Auth (..))
-import qualified Data.ByteString.Char8 as BC
+import Lib.Github.OracleValidationSpec
+import MPFS.APISpec
 import System.Environment (lookupEnv)
+import Test.Hspec
 
 main :: IO ()
 main = hspec $ do
@@ -14,7 +14,6 @@ main = hspec $ do
         roleSpecs
     userSpec
 
-
 tryGetPAT :: IO (Maybe Auth)
 tryGetPAT = fmap (OAuth . BC.pack) <$> lookupEnv "GITHUB_PERSONAL_ACCESS_TOKEN"
 
@@ -23,6 +22,8 @@ getPAT = do
     mpat <- tryGetPAT
     case mpat of
         Just pat -> return pat
-        Nothing -> error "Environment variable ANTI_GITHUB_PAT is not set. \
-            \ Please set it to some valid GitHub Personal Access Token with \
-            \ read access to public repositories."
+        Nothing ->
+            error
+                "Environment variable ANTI_GITHUB_PAT is not set. \
+                \ Please set it to some valid GitHub Personal Access Token with \
+                \ read access to public repositories."

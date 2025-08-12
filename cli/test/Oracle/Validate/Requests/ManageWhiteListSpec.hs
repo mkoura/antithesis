@@ -5,10 +5,7 @@ module Oracle.Validate.Requests.ManageWhiteListSpec (spec)
 where
 
 import Control.Monad (unless, when)
-import Core.Types.Basic
-    ( Platform (..)
-    , Repository (..)
-    )
+import Core.Types.Basic (Owner (..), Platform (..), Repository (..))
 import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Fact (toJSFact)
 import Core.Types.Operation (Op (OpD, OpI), Operation (..))
@@ -32,12 +29,10 @@ import Test.Hspec
     , shouldReturn
     )
 import Test.QuickCheck
-    ( Testable (..)
-    , oneof
+    ( oneof
     )
-import Test.QuickCheck.EGen (egenProperty, gen)
+import Test.QuickCheck.EGen (egenProperty, gen, genBlind)
 import Test.QuickCheck.Lib (withAPresence, withAPresenceInAList)
-import Test.QuickCheck.Property (forAll)
 import User.Agent.Types (WhiteListKey (..))
 import User.Agent.TypesSpec (genAscii, genRepository)
 import Validation (KeyFailure (..))
@@ -65,19 +60,15 @@ removeWhiteListKey platform repo =
 spec :: Spec
 spec = do
     describe "validation of whitelist management" $ do
-        it "validates a repository insertion" $ property $ do
-            forAll genRepository $ \repo -> do
-                let validation = mkValidation [] [] [] [] [] [repo]
-                    test =
-                        validateAddWhiteListed validation
-                            $ addWhiteListKey (Platform "github") repo
-                runValidate test `shouldReturn` ValidationSuccess Validated
-
         it "validates a repository insertion" $ egenProperty $ do
             repo <- gen genRepository
+            agent <- gen genAscii
             let validation = mkValidation [] [] [] [] [] [repo]
                 test =
-                    validateAddWhiteListed validation
+                    validateAddWhiteListed
+                        validation
+                        (Owner agent)
+                        (Owner agent)
                         $ addWhiteListKey (Platform "github") repo
             pure $ runValidate test `shouldReturn` ValidationSuccess Validated
 
@@ -86,10 +77,14 @@ spec = do
             $ egenProperty
             $ do
                 repo <- gen genRepository
+                agent <- gen genAscii
                 platform <- gen $ withAPresence 0.5 "github" genAscii
                 let validation = mkValidation [] [] [] [] [] [repo]
                     test =
-                        validateAddWhiteListed validation
+                        validateAddWhiteListed
+                            validation
+                            (Owner agent)
+                            (Owner agent)
                             $ addWhiteListKey (Platform platform) repo
                 pure
                     $ when (platform /= "github")
@@ -102,10 +97,14 @@ spec = do
             $ egenProperty
             $ do
                 repo <- gen genRepository
+                agent <- gen genAscii
                 presence <- gen $ withAPresenceInAList 0.5 repo genRepository
                 let validation = mkValidation [] [] [] [] [] presence
                     test =
-                        validateAddWhiteListed validation
+                        validateAddWhiteListed
+                            validation
+                            (Owner agent)
+                            (Owner agent)
                             $ addWhiteListKey (Platform "github") repo
                 pure
                     $ unless (repo `elem` presence)
@@ -117,15 +116,33 @@ spec = do
             $ egenProperty
             $ do
                 repo <- gen genRepository
-                presenceInGithub <- gen $ withAPresenceInAList 0.5 repo genRepository
+                agent <- gen genAscii
+                presenceInGithub <-
+                    gen
+                        $ withAPresenceInAList
+                            0.5
+                            repo
+                            genRepository
                 let platform = Platform "github"
                     insertion = addWhiteListKey platform repo
                     key = WhiteListKey platform repo
                 fact <- toJSFact key ()
                 presenceInFacts <-
                     gen $ oneof [pure [], pure [fact]]
-                let validation = mkValidation presenceInFacts [] [] [] [] presenceInGithub
-                    test = validateAddWhiteListed validation insertion
+                let validation =
+                        mkValidation
+                            presenceInFacts
+                            []
+                            []
+                            []
+                            []
+                            presenceInGithub
+                    test =
+                        validateAddWhiteListed
+                            validation
+                            (Owner agent)
+                            (Owner agent)
+                            insertion
                 pure
                     $ when (fact `elem` presenceInFacts)
                     $ runValidate test
@@ -136,13 +153,20 @@ spec = do
 
         it "validates a repository removal" $ egenProperty $ do
             repo <- gen genRepository
+            agent <- gen genAscii
             let platform = Platform "github"
                 removal = removeWhiteListKey platform repo
                 key = WhiteListKey platform repo
             fact <- toJSFact key ()
-            presenceInGithub <- gen $ withAPresenceInAList 0.5 repo genRepository
+            presenceInGithub <-
+                gen $ withAPresenceInAList 0.5 repo genRepository
             let validation = mkValidation [fact] [] [] [] [] presenceInGithub
-                test = validateRemoveWhiteListed validation removal
+                test =
+                    validateRemoveWhiteListed
+                        validation
+                        (Owner agent)
+                        (Owner agent)
+                        removal
             pure $ runValidate test `shouldReturn` ValidationSuccess Validated
 
         it
@@ -150,15 +174,23 @@ spec = do
             $ egenProperty
             $ do
                 repo <- gen genRepository
-                presenceInGithub <- gen $ withAPresenceInAList 0.5 repo genRepository
+                agent <- gen genAscii
+                presenceInGithub <-
+                    gen $ withAPresenceInAList 0.5 repo genRepository
                 let platform = Platform "github"
                     removal = removeWhiteListKey platform repo
                     key = WhiteListKey platform repo
                 fact <- toJSFact key ()
                 presenceInFacts <-
                     gen $ oneof [pure [], pure [fact]]
-                let validation = mkValidation presenceInFacts [] [] [] [] presenceInGithub
-                    test = validateRemoveWhiteListed validation removal
+                let validation =
+                        mkValidation presenceInFacts [] [] [] [] presenceInGithub
+                    test =
+                        validateRemoveWhiteListed
+                            validation
+                            (Owner agent)
+                            (Owner agent)
+                            removal
                 pure
                     $ unless (fact `elem` presenceInFacts)
                     $ runValidate test
@@ -171,15 +203,62 @@ spec = do
             $ egenProperty
             $ do
                 repo <- gen genRepository
+                agent <- gen genAscii
                 platform <- gen $ withAPresence 0.5 "github" genAscii
                 let removal = removeWhiteListKey (Platform platform) repo
                     key = WhiteListKey (Platform platform) repo
                 fact <- toJSFact key ()
                 presenceInGithub <- gen $ withAPresenceInAList 0.5 repo genRepository
                 let validation = mkValidation [fact] [] [] [] [] presenceInGithub
-                    test = validateRemoveWhiteListed validation removal
+                    test =
+                        validateRemoveWhiteListed
+                            validation
+                            (Owner agent)
+                            (Owner agent)
+                            removal
                 pure
                     $ when (platform /= "github")
                     $ runValidate test
                     `shouldReturn` ValidationFailure
                         (WhiteListPlatformUnsupported $ Platform platform)
+        it
+            "fail to validate a whitelist operation if the agent is not the submitter"
+            $ egenProperty
+            $ do
+                repo <- gen genRepository
+                let genOwner = Owner <$> genAscii
+                agent <- gen genOwner
+                otherAgent <- gen $ withAPresence 0.5 agent genOwner
+                platform <- fmap Platform $ gen $ withAPresence 0.5 "github" genAscii
+                let
+                    insertion = addWhiteListKey platform repo
+                    removal = removeWhiteListKey platform repo
+                    key = WhiteListKey platform repo
+                fact <- toJSFact key ()
+                presenceInGithub <-
+                    gen $ withAPresenceInAList 0.5 repo genRepository
+                presenceInFacts <-
+                    gen $ oneof [pure [], pure [fact]]
+                let validation =
+                        mkValidation presenceInFacts [] [] [] [] presenceInGithub
+                operation <-
+                    genBlind
+                        $ oneof
+                            [ pure
+                                $ validateAddWhiteListed
+                                    validation
+                                    agent
+                                    otherAgent
+                                    insertion
+                            , pure
+                                $ validateRemoveWhiteListed
+                                    validation
+                                    agent
+                                    otherAgent
+                                    removal
+                            ]
+                pure
+                    $ when (agent /= otherAgent)
+                    $ runValidate operation
+                    `shouldReturn` ValidationFailure
+                        (WhiteListAgentNotRecognized otherAgent)

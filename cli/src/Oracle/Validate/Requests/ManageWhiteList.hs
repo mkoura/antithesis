@@ -7,7 +7,7 @@ where
 
 import Control.Monad (void)
 import Control.Monad.Trans.Class (MonadTrans (..))
-import Core.Types.Basic (Platform (..), Repository)
+import Core.Types.Basic (Owner, Platform (..), Repository)
 import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Operation (Op (..))
 import Lib.GitHub qualified as Github
@@ -33,6 +33,7 @@ data UpdateWhiteListFailure
     | WhiteListRepositoryNotInThePlatform Repository
     | WhiteListRepositoryKeyValidation KeyFailure
     | WhiteListGithubFailed Github.GithubResponseStatusCodeError
+    | WhiteListAgentNotRecognized Owner
     deriving (Show, Eq)
 
 instance Monad m => ToJSON m UpdateWhiteListFailure where
@@ -46,15 +47,31 @@ instance Monad m => ToJSON m UpdateWhiteListFailure where
             ["error" .= ("Repository key validation failed: " ++ show keyFailure)]
     toJSON (WhiteListGithubFailed err) =
         object ["error" .= ("GitHub error: " ++ show err)]
+    toJSON (WhiteListAgentNotRecognized agent) =
+        object ["error" .= ("Agent not recognized: " ++ show agent)]
+
+validateAgent
+    :: Monad m
+    => Owner
+    -> Owner
+    -> Validate UpdateWhiteListFailure m Validated
+validateAgent agent submitter = do
+    throwFalse (agent == submitter)
+        $ WhiteListAgentNotRecognized submitter
 
 validateAddWhiteListed
     :: Monad m
     => Validation m
+    -> Owner
+    -> Owner
     -> Change WhiteListKey (OpI ())
     -> Validate UpdateWhiteListFailure m Validated
 validateAddWhiteListed
     v@Validation{githubRepositoryExists}
+    agent
+    submitter
     c@(Change (Key (WhiteListKey platform repo)) _) = do
+        void $ validateAgent agent submitter
         mapFailure WhiteListRepositoryKeyValidation $ insertValidation v c
         void
             $ throwFalse (platform == Platform "github")
@@ -67,9 +84,16 @@ validateAddWhiteListed
 validateRemoveWhiteListed
     :: Monad m
     => Validation m
+    -> Owner
+    -> Owner
     -> Change WhiteListKey (OpD ())
     -> Validate UpdateWhiteListFailure m Validated
-validateRemoveWhiteListed v c@(Change (Key (WhiteListKey platform _repo)) _) = do
-    mapFailure WhiteListRepositoryKeyValidation $ deleteValidation v c
-    throwFalse (platform == Platform "github")
-        $ WhiteListPlatformUnsupported platform
+validateRemoveWhiteListed
+    v
+    agent
+    submitter
+    c@(Change (Key (WhiteListKey platform _repo)) _) = do
+        void $ validateAgent agent submitter
+        mapFailure WhiteListRepositoryKeyValidation $ deleteValidation v c
+        throwFalse (platform == Platform "github")
+            $ WhiteListPlatformUnsupported platform

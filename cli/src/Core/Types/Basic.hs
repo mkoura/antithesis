@@ -18,7 +18,8 @@ module Core.Types.Basic
     , Username (..)
     , organizationL
     , projectL
-    ) where
+    )
+where
 
 import Control.Lens (Lens', Wrapped)
 import Data.Aeson qualified as Aeson
@@ -26,8 +27,8 @@ import Data.ByteString.Base16 (encode)
 import Data.ByteString.Char8 qualified as B
 import Data.Text (Text)
 import Data.Text qualified as T
-import GHC.Generics (Generic)
-import Lib.JSON.Canonical.Extra ()
+import GHC.Generics (Generic (Rep))
+import Lib.JSON.Canonical.Extra (object, stringJSON)
 import PlutusTx (Data (..), builtinDataToData)
 import PlutusTx.IsData.Class (FromData (..))
 import Servant.API (FromHttpApiData (..), ToHttpApiData (..))
@@ -52,10 +53,10 @@ instance FromHttpApiData RequestRefId where
             "" -> Left "RequestRefId cannot be empty"
             _ -> Right (RequestRefId rid)
 
-instance Monad m => ToJSON m RequestRefId where
+instance (Monad m) => ToJSON m RequestRefId where
     toJSON (RequestRefId ref) = toJSON ref
 
-instance ReportSchemaErrors m => FromJSON m RequestRefId where
+instance (ReportSchemaErrors m) => FromJSON m RequestRefId where
     fromJSON v = RequestRefId <$> fromJSON v
 
 instance Aeson.ToJSON RequestRefId where
@@ -68,10 +69,10 @@ instance Aeson.FromJSON RequestRefId where
 newtype TokenId = TokenId String
     deriving (Eq, Show)
 
-instance Monad m => ToJSON m TokenId where
+instance (Monad m) => ToJSON m TokenId where
     toJSON (TokenId tokenId) = toJSON tokenId
 
-instance ReportSchemaErrors m => FromJSON m TokenId where
+instance (ReportSchemaErrors m) => FromJSON m TokenId where
     fromJSON v = TokenId <$> fromJSON v
 
 instance FromData TokenId where
@@ -93,10 +94,10 @@ instance FromHttpApiData TokenId where
 newtype Owner = Owner String
     deriving (Eq, Show)
 
-instance Monad m => ToJSON m Owner where
+instance (Monad m) => ToJSON m Owner where
     toJSON (Owner owner) = toJSON owner
 
-instance ReportSchemaErrors m => FromJSON m Owner where
+instance (ReportSchemaErrors m) => FromJSON m Owner where
     fromJSON v = Owner <$> fromJSON v
 
 instance FromData Owner where
@@ -108,6 +109,9 @@ instance FromData Owner where
 
 newtype Platform = Platform String
     deriving (Eq, Show, Generic)
+
+instance (Monad m) => ToJSON m Platform where
+    toJSON (Platform platform) = stringJSON platform
 
 instance Wrapped Platform
 
@@ -135,6 +139,14 @@ data Repository = Repository
     }
     deriving (Eq, Show)
 
+instance (Monad m) => ToJSON m Repository where
+    toJSON
+        (Repository owner repo) =
+            object
+                [ ("organization", stringJSON owner)
+                , ("repo", stringJSON repo)
+                ]
+
 organizationL :: Lens' Repository String
 organizationL f (Repository org proj) = (`Repository` proj) <$> f org
 
@@ -150,10 +162,10 @@ newtype Host = Host String
 newtype Address = Address Text
     deriving (Eq, Show)
 
-instance Monad m => ToJSON m Address where
+instance (Monad m) => ToJSON m Address where
     toJSON (Address addr) = toJSON addr
 
-instance ReportSchemaErrors m => FromJSON m Address where
+instance (ReportSchemaErrors m) => FromJSON m Address where
     fromJSON v = Address <$> fromJSON v
 
 instance FromHttpApiData Address where

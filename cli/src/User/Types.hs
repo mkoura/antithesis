@@ -53,6 +53,7 @@ import Lib.JSON.Canonical.Extra
     , object
     , stringJSON
     , (.:)
+    , (.=)
     )
 import Text.JSON.Canonical
     ( FromJSON (..)
@@ -97,11 +98,11 @@ roleOfATestRun
             , username
             }
 
-instance Monad m => ToJSON m TestRun where
+instance (Monad m) => ToJSON m TestRun where
     toJSON
         ( TestRun
-                (Platform platform)
-                (Repository owner repo)
+                platform
+                repository
                 (Directory directory)
                 (Commit commitId)
                 (Try tryIndex)
@@ -109,14 +110,8 @@ instance Monad m => ToJSON m TestRun where
             ) =
             object
                 [ ("type", stringJSON "test-run")
-                , ("platform", stringJSON platform)
-                ,
-                    ( "repository"
-                    , object
-                        [ ("organization", stringJSON owner)
-                        , ("repo", stringJSON repo)
-                        ]
-                    )
+                , "platform" .= platform
+                , "repository" .= repository
                 , ("directory", stringJSON directory)
                 , ("commitId", stringJSON commitId)
                 , ("try", intJSON tryIndex)
@@ -164,13 +159,13 @@ data TestRunRejection
     | UnclearIntent
     deriving (Eq, Show)
 
-instance Monad m => ToJSON m TestRunRejection where
+instance (Monad m) => ToJSON m TestRunRejection where
     toJSON BrokenInstructions =
         stringJSON "broken instructions"
     toJSON UnclearIntent =
         stringJSON "unclear intent"
 
-instance ReportSchemaErrors m => FromJSON m TestRunRejection where
+instance (ReportSchemaErrors m) => FromJSON m TestRunRejection where
     fromJSON (JSString jsString) = do
         let reason = fromJSString jsString
         case reason of
@@ -184,6 +179,7 @@ instance ReportSchemaErrors m => FromJSON m TestRunRejection where
         expectedButGotValue
             "a string representing a test run rejection reason"
             other
+
 newtype URL = URL String
     deriving (Show, Eq)
 
@@ -196,8 +192,10 @@ data TestRunState a where
         :: TestRunState RunningT -> Duration -> URL -> TestRunState DoneT
 
 deriving instance Eq (TestRunState a)
+
 deriving instance Show (TestRunState a)
-instance Monad m => ToJSON m (TestRunState a) where
+
+instance (Monad m) => ToJSON m (TestRunState a) where
     toJSON (Pending (Duration d) signature) =
         object
             [ ("phase", stringJSON "pending")
@@ -223,7 +221,7 @@ instance Monad m => ToJSON m (TestRunState a) where
             , ("url", stringJSON $ case url of URL u -> u)
             ]
 
-instance ReportSchemaErrors m => FromJSON m (TestRunState PendingT) where
+instance (ReportSchemaErrors m) => FromJSON m (TestRunState PendingT) where
     fromJSON obj@(JSObject _) = do
         mapping <- fromJSON obj
         phase <- getStringField "phase" mapping
@@ -248,7 +246,7 @@ instance ReportSchemaErrors m => FromJSON m (TestRunState PendingT) where
             "an object representing a pending phase"
             other
 
-instance ReportSchemaErrors m => FromJSON m (TestRunState DoneT) where
+instance (ReportSchemaErrors m) => FromJSON m (TestRunState DoneT) where
     fromJSON obj@(JSObject _) = do
         mapping <- fromJSON obj
         phase <- getStringField "phase" mapping
@@ -272,7 +270,7 @@ instance ReportSchemaErrors m => FromJSON m (TestRunState DoneT) where
             "an object representing a rejected phase"
             other
 
-instance ReportSchemaErrors m => FromJSON m (TestRunState RunningT) where
+instance (ReportSchemaErrors m) => FromJSON m (TestRunState RunningT) where
     fromJSON obj@(JSObject _) = do
         mapping <- fromJSON obj
         phase <- getStringField "phase" mapping
@@ -296,7 +294,7 @@ data RegisterUserKey = RegisterUserKey
     }
     deriving (Eq, Show)
 
-instance Monad m => ToJSON m RegisterUserKey where
+instance (Monad m) => ToJSON m RegisterUserKey where
     toJSON
         ( RegisterUserKey
                 (Platform platform)
@@ -363,7 +361,7 @@ instance (ReportSchemaErrors m, Alternative m) => FromJSON m RegisterRoleKey whe
             "an object representing a register role"
             r
 
-instance Monad m => ToJSON m RegisterRoleKey where
+instance (Monad m) => ToJSON m RegisterRoleKey where
     toJSON
         ( RegisterRoleKey
                 (Platform platform)
@@ -388,7 +386,7 @@ data AgentValidation = AgentValidation
     , validation :: Maybe [TestRunRejection]
     }
 
-instance Monad m => ToJSON m AgentValidation where
+instance (Monad m) => ToJSON m AgentValidation where
     toJSON AgentValidation{testRun, validation} =
         object
             [ ("testRun", toJSON testRun)
@@ -397,7 +395,8 @@ instance Monad m => ToJSON m AgentValidation where
                 , maybe (pure JSNull) toJSON validation
                 )
             ]
-instance ReportSchemaErrors m => FromJSON m AgentValidation where
+
+instance (ReportSchemaErrors m) => FromJSON m AgentValidation where
     fromJSON obj@(JSObject _) = do
         mapping <- fromJSON obj
         testRun <- mapping .: "testRun"

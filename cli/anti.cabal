@@ -297,6 +297,7 @@ test-suite anti-unit-test
     Lib.JSON.Canonical.AesonSpec
     Lib.JSON.Canonical.ExtraSpec
     Lib.SSH.KeySpec
+    Oracle.Validate.Requests.ManageWhiteListSpec
     Oracle.Validate.Requests.RegisterRoleSpec
     Oracle.Validate.Requests.RegisterUserSpec
     Oracle.Validate.Requests.TestRun.AcceptSpec
@@ -304,6 +305,7 @@ test-suite anti-unit-test
     Oracle.Validate.Requests.TestRun.FinishSpec
     Oracle.Validate.Requests.TestRun.Lib
     Oracle.Validate.Requests.TestRun.RejectSpec
+    User.Agent.TypesSpec
     User.TypesSpec
 
   -- LANGUAGE extensions used by modules in this package.

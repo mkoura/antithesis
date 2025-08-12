@@ -35,7 +35,7 @@ import Validation.RegisterUser
 
 existenceSpec :: SpecWith Auth
 existenceSpec = do
-    describe "existence spec" $ do
+    describe "githubRepositoryExists" $ do
         it "should return true for hal-fixture-sin" $ \auth -> do
             githubRepositoryExists
                 auth

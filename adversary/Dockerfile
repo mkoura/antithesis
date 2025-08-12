@@ -109,7 +109,7 @@ COPY adversary.cabal .
 RUN cabal update && cabal build --only-dependencies
 COPY . .
 RUN cabal build all
-RUN ln -s /usr/local/src/dist-newstyle/build/x86_64-linux/ghc-${BOOTSTRAP_HASKELL_GHC_VERSION}/adversary-*/x/adversary/build/adversary/adversary /usr/local/bin/adversary
+RUN ln -s "$(cabal list-bin adversary)" /usr/local/bin/adversary
 
 #---------------------------------------------------------------------
 
@@ -139,4 +139,11 @@ COPY --from=build --chown=root:root /usr/local/bin/adversary /usr/local/bin/adve
 RUN groupadd --gid 10000 cardano && \
     useradd --comment 'cardano' --create-home --gid 10000 --password '!' --shell '/bin/bash' --uid 10000 cardano
 
-ENTRYPOINT ["/usr/local/bin/adversary"]
+# Copy Antithesis scripts
+COPY composer /opt/antithesis/test/v1/
+RUN chmod 0755 /opt/antithesis/test/v1/*/*
+
+COPY sleep.sh .
+RUN chmod 0755 ./sleep.sh
+
+ENTRYPOINT ["./sleep.sh"]

@@ -111,5 +111,6 @@ validateUnregisterRole
     change@(Change (Key _k) _) = do
         mapFailure UnregisterRoleKeyFailure
             $ deleteValidation validation change
+        pure Validated
 
 -- issue 1b6d49bb5fc6b7e4fcd8ab22436294a118451cb3

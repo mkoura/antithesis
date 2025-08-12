@@ -28,14 +28,16 @@ import Data.ByteString.Char8 qualified as B
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
-import Lib.JSON.Canonical.Extra (object, stringJSON)
+import Lib.JSON.Canonical.Extra (object, stringJSON, withObject, (.:))
 import PlutusTx (Data (..), builtinDataToData)
 import PlutusTx.IsData.Class (FromData (..))
 import Servant.API (FromHttpApiData (..), ToHttpApiData (..))
 import Text.JSON.Canonical
     ( FromJSON (..)
+    , JSValue (..)
     , ReportSchemaErrors (..)
     , ToJSON (..)
+    , fromJSString
     )
 
 -- TxHash-OutputIndex
@@ -113,6 +115,11 @@ newtype Platform = Platform String
 instance (Monad m) => ToJSON m Platform where
     toJSON (Platform platform) = stringJSON platform
 
+instance (ReportSchemaErrors m) => FromJSON m Platform where
+    fromJSON (JSString platform) =
+        pure $ Platform (fromJSString platform)
+    fromJSON v = expected "Platform" (Just $ show v)
+
 instance Wrapped Platform
 
 newtype PublicKeyHash = PublicKeyHash String
@@ -146,6 +153,12 @@ instance (Monad m) => ToJSON m Repository where
                 [ ("organization", stringJSON owner)
                 , ("repo", stringJSON repo)
                 ]
+
+instance (ReportSchemaErrors m) => FromJSON m Repository where
+    fromJSON = withObject "Repository" $ \v -> do
+        organization <- v .: "organization"
+        project <- v .: "repo"
+        pure $ Repository organization project
 
 organizationL :: Lens' Repository String
 organizationL f (Repository org proj) = (`Repository` proj) <$> f org

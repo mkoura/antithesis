@@ -30,7 +30,11 @@ sequenceDiagram
     Oracle->>+GitHub: Validate alice role in CODEOWNERS
     Oracle->>+Token: anti oracle update-token
 
-    %% Step 3: Alice requests test runs
+    %% Step 3: Agent white-list alice repository
+    Antithesis->>+Token: anti agent white-list
+    Oracle->>+Token: Validate antithesis identity
+
+    %% Step 4: Alice requests test runs
     loop alice test runs request
     Alice->>+Token: anti requester create-test
     Oracle->>+Token: Check alice is maintainer
@@ -38,7 +42,7 @@ sequenceDiagram
     Oracle->>+Token: Validate alice SSH signature of the request
     Oracle->>+Token: anti oracle update-token
 
-    %% Step 4: Antithesis processes test run request
+    %% Step 5: Antithesis processes test run request
     alt Antithesis rejects request
         Antithesis->>+Token: anti agent reject-test
         Oracle->>+Token: Validate antithesis identity and test state
@@ -50,7 +54,7 @@ sequenceDiagram
         Oracle->>+Token: anti oracle update-token
     end
 
-    %% Step 5: Antithesis updates test run results
+    %% Step 6: Antithesis updates test run results
     Antithesis->>+AntithesisPlatform: Poll platform for test results
     Antithesis->>+Token: anti agent finish-test
     Oracle->>+Token: Validate antithesis identity and test state

@@ -10,6 +10,7 @@ import Core.Types.Basic
     , organization
     , project
     )
+import Core.Types.Change (insertKey)
 import Core.Types.Fact (JSFact, toJSFact)
 import Lib.SSH.Public (encodePublicKey)
 import Oracle.Validate.Requests.TestRun.Config
@@ -70,6 +71,8 @@ import Test.QuickCheck.EGen
     , genBlind
     , genShrinkA
     )
+import Text.JSON.Canonical (ToJSON (..))
+import User.Agent.Types (WhiteListKey (..))
 import User.Types
     ( TestRun (..)
     , TestRunRejection (..)
@@ -111,6 +114,13 @@ spec = do
             (sign, pk) <- genBlind sshGen
             user <- jsFactUser testRun $ encodePublicKey pk
             role <- jsFactRole testRun
+            whiteListRepo <-
+                toJSFact
+                    WhiteListKey
+                        { platform = testRun.platform
+                        , repository = testRun.repository
+                        }
+                    ()
             let previous = case tryIndex testRun of
                     1 -> []
                     n -> do
@@ -123,7 +133,7 @@ spec = do
                         toJSFact previousTestRun previousState
                 validation =
                     mkValidation
-                        ([user, role] <> previous)
+                        ([user, role, whiteListRepo] <> previous)
                         [gitCommit testRun]
                         [gitDirectory testRun]
                         []
@@ -287,3 +297,37 @@ spec = do
                             testRunState
                 onConditionHaveReason mresult UnacceptableDirectory
                     $ testRun /= testRun'
+        it "reports not whitelisted repository" $ egenProperty $ do
+            testConfig <- testConfigEGen
+            duration <- genA
+            signature <- gen signatureGen
+            testRun <- testRunEGen
+            let testRunState = Pending (Duration duration) signature
+                key =
+                    WhiteListKey
+                        { platform = testRun.platform
+                        , repository = testRun.repository
+                        }
+            whiteListFact <- toJSFact key ()
+            whiteListed <-
+                gen
+                    $ oneof
+                        [pure [], pure [whiteListFact]]
+            let validation =
+                    mkValidation
+                        whiteListed
+                        []
+                        []
+                        []
+                        []
+                        []
+            pure $ do
+                mresult <-
+                    runValidate
+                        $ validateCreateTestRunCore
+                            testConfig
+                            validation
+                            testRun
+                            testRunState
+                onConditionHaveReason mresult RepositoryNotWhitelisted
+                    $ notElem whiteListFact (whiteListed :: [JSFact])

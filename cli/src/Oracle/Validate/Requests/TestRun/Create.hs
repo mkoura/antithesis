@@ -34,6 +34,7 @@ import Text.JSON.Canonical
     ( ToJSON (..)
     , renderCanonicalJSON
     )
+import User.Agent.Types (WhiteListKey (..))
 import User.Types
     ( Phase (PendingT)
     , RegisterUserKey (..)
@@ -94,6 +95,7 @@ data TestRunRejection
     | UnacceptableSignature
     | GithubResponseError GithubResponseError
     | GithubResponseStatusCodeError GithubResponseStatusCodeError
+    | RepositoryNotWhitelisted
     deriving (Eq, Show)
 
 instance Monad m => ToJSON m TestRunRejection where
@@ -113,6 +115,8 @@ instance Monad m => ToJSON m TestRunRejection where
         object ["githubResponseError" .= err]
     toJSON (GithubResponseStatusCodeError err) =
         object ["githubResponseStatusCodeError" .= err]
+    toJSON RepositoryNotWhitelisted =
+        stringJSON "repository not whitelisted"
 
 checkDuration
     :: TestRunValidationConfig -> Duration -> Maybe TestRunRejection
@@ -131,6 +135,20 @@ checkRole
             then return Nothing
             else return $ Just UnacceptableRole
 
+checkWhiteList
+    :: Monad m
+    => Validation m
+    -> TestRun
+    -> m (Maybe TestRunRejection)
+checkWhiteList
+    Validation{mpfsGetFacts}
+    testRun = do
+        let proposed = WhiteListKey testRun.platform testRun.repository
+        facts :: [Fact WhiteListKey ()] <- mpfsGetFacts
+        if any (\(Fact k _) -> k == proposed) facts
+            then return Nothing
+            else return $ Just RepositoryNotWhitelisted
+
 checkTryIndex
     :: Monad m
     => Validation m
@@ -143,7 +161,7 @@ checkTryIndex
         let sameCommitTestRuns =
                 filter
                     ( \tr ->
-                        repository tr == repository testRun
+                        tr.repository == testRun.repository
                             && commitId tr == commitId testRun
                             && tr.platform == testRun.platform
                             && directory tr == directory testRun
@@ -165,7 +183,7 @@ checkCommit
 checkCommit
     Validation{githubCommitExists}
     testRun = do
-        existsE <- githubCommitExists (repository testRun) (commitId testRun)
+        existsE <- githubCommitExists testRun.repository (commitId testRun)
         pure $ case existsE of
             Left err -> Just $ GithubResponseError err
             Right exists ->
@@ -183,7 +201,7 @@ checkDirectory
     testRun = do
         existsE <-
             githubDirectoryExists
-                (repository testRun)
+                testRun.repository
                 (commitId testRun)
                 (directory testRun)
         pure $ case existsE of
@@ -238,6 +256,7 @@ validateCreateTestRunCore
                         , checkCommit validation testRun
                         , checkDirectory validation testRun
                         , checkSignature validation testRun signature
+                        , checkWhiteList validation testRun
                         ]
         unless (null result)
             $ notValidated result

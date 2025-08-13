@@ -50,6 +50,16 @@ anti requester register-role \
 log "Include the role registration"
 include_requests
 
+log "Whitelist the cardano-foundation/hal-fixture-sin repository"
+being_agent
+anti agent white-list \
+    --platform github \
+    --repository cardano-foundation/hal-fixture-sin \
+    > /dev/null
+
+log "Include the repository whitelisting"
+include_requests
+
 log "Register a test run from cfhal to run an antithesis test on the cardano-foundation/hal-fixture-sin repository, first try"
 being_requester
 anti requester create-test \

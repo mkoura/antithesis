@@ -11,6 +11,10 @@ import Oracle.Types
     , RequestValidationFailure (..)
     , RequestZoo (..)
     )
+import Oracle.Validate.Requests.ManageWhiteList
+    ( validateAddWhiteListed
+    , validateRemoveWhiteListed
+    )
 import Oracle.Validate.Requests.RegisterRole
     ( validateRegisterRole
     , validateUnregisterRole
@@ -67,6 +71,12 @@ validateRequest _ agentPKH validation (AcceptRequest (Request _ requester change
 validateRequest _ agentPKH validation (FinishedRequest (Request _ requester change)) =
     mapFailure UpdateTestRunFailure
         $ validateToDoneUpdate validation agentPKH requester change
+validateRequest _ agentPKH validation (WhiteListRequest (Request _ requester change)) =
+    mapFailure WhiteListFailure
+        $ validateAddWhiteListed validation agentPKH requester change
+validateRequest _ agentPKH validation (BlackListRequest (Request _ requester change)) =
+    mapFailure WhiteListFailure
+        $ validateRemoveWhiteListed validation agentPKH requester change
 validateRequest _ _ _ (UnknownInsertRequest request) =
     notValidated
         $ UnknownInsertValidationFailure request

@@ -18,6 +18,10 @@ import Core.Types.Tx (Root)
 import Data.ByteString.Lazy.Char8 qualified as BLC
 import Data.Functor.Identity (runIdentity)
 import Lib.JSON.Canonical.Extra (object, withObject, (.:), (.=))
+import Oracle.Validate.Requests.ManageWhiteList
+    ( UpdateWhiteListFailure
+    , renderUpdateWhiteListFailure
+    )
 import Oracle.Validate.Requests.RegisterRole
     ( RegisterRoleFailure (..)
     , UnregisterRoleFailure (..)
@@ -45,6 +49,7 @@ import Text.JSON.Canonical
     , ToJSON (..)
     , renderCanonicalJSON
     )
+import User.Agent.Types (WhiteListKey)
 import User.Types
     ( Phase (..)
     , RegisterRoleKey
@@ -126,6 +131,10 @@ data RequestZoo where
     FinishedRequest
         :: Request TestRun (OpU (TestRunState RunningT) (TestRunState DoneT))
         -> RequestZoo
+    WhiteListRequest
+        :: Request WhiteListKey (OpI ()) -> RequestZoo
+    BlackListRequest
+        :: Request WhiteListKey (OpD ()) -> RequestZoo
     UnknownInsertRequest
         :: Request JSValue (OpI JSValue) -> RequestZoo
     UnknownDeleteRequest
@@ -142,6 +151,8 @@ requestZooRefId (CreateTestRequest req) = outputRefId req
 requestZooRefId (RejectRequest req) = outputRefId req
 requestZooRefId (AcceptRequest req) = outputRefId req
 requestZooRefId (FinishedRequest req) = outputRefId req
+requestZooRefId (WhiteListRequest req) = outputRefId req
+requestZooRefId (BlackListRequest req) = outputRefId req
 requestZooRefId (UnknownInsertRequest req) = outputRefId req
 requestZooRefId (UnknownDeleteRequest req) = outputRefId req
 requestZooRefId (UnknownUpdateRequest req) = outputRefId req
@@ -156,6 +167,8 @@ instance (Alternative m, ReportSchemaErrors m) => FromJSON m RequestZoo where
             <|> (RejectRequest <$> fromJSON v)
             <|> (AcceptRequest <$> fromJSON v)
             <|> (FinishedRequest <$> fromJSON v)
+            <|> (WhiteListRequest <$> fromJSON v)
+            <|> (BlackListRequest <$> fromJSON v)
             <|> (UnknownInsertRequest <$> fromJSON v)
 
 instance Monad m => ToJSON m RequestZoo where
@@ -167,6 +180,8 @@ instance Monad m => ToJSON m RequestZoo where
     toJSON (RejectRequest req) = toJSON req
     toJSON (AcceptRequest req) = toJSON req
     toJSON (FinishedRequest req) = toJSON req
+    toJSON (WhiteListRequest req) = toJSON req
+    toJSON (BlackListRequest req) = toJSON req
     toJSON (UnknownInsertRequest req) = toJSON req
     toJSON (UnknownDeleteRequest req) = toJSON req
     toJSON (UnknownUpdateRequest req) = toJSON req
@@ -207,6 +222,7 @@ data RequestValidationFailure
     | UnregisterRoleFailure UnregisterRoleFailure
     | CreateTestRunFailure CreateTestRunFailure
     | UpdateTestRunFailure UpdateTestRunFailure
+    | WhiteListFailure UpdateWhiteListFailure
     | UnknownInsertValidationFailure (Request JSValue (OpI JSValue))
     | UnknownDeleteValidationFailure (Request JSValue (OpD JSValue))
     | UnknownUpdateValidationFailure (Request JSValue (OpU JSValue JSValue))
@@ -226,6 +242,8 @@ instance Monad m => ToJSON m RequestValidationFailure where
             object ["CreateTestRunFailure" .= failure]
         UpdateTestRunFailure failure ->
             object ["UpdateTestRunFailure" .= failure]
+        WhiteListFailure failure ->
+            object ["WhiteListFailure" .= failure]
         UnknownInsertValidationFailure value ->
             object ["UnknownInsertValidationFailure" .= value]
         UnknownDeleteValidationFailure value ->
@@ -251,6 +269,9 @@ renderRequestValidationFailure = \case
     CreateTestRunFailure failure ->
         "Create Test Run Failure: "
             ++ renderCreateTestRunFailure failure
+    WhiteListFailure failure ->
+        "White List Failure: "
+            ++ renderUpdateWhiteListFailure failure
     UpdateTestRunFailure failure ->
         "Update Test Run Failure: "
             ++ renderUpdateTestRunFailure failure

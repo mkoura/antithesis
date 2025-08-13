@@ -10,7 +10,6 @@ import Core.Types.Basic
     , organization
     , project
     )
-import Core.Types.Change (insertKey)
 import Core.Types.Fact (JSFact, toJSFact)
 import Lib.SSH.Public (encodePublicKey)
 import Oracle.Validate.Requests.TestRun.Config
@@ -71,7 +70,6 @@ import Test.QuickCheck.EGen
     , genBlind
     , genShrinkA
     )
-import Text.JSON.Canonical (ToJSON (..))
 import User.Agent.Types (WhiteListKey (..))
 import User.Types
     ( TestRun (..)

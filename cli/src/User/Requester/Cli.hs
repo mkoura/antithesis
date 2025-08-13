@@ -16,7 +16,7 @@ import Core.Context
     , askValidation
     )
 import Core.Types.Basic (Duration, TokenId)
-import Core.Types.Change (Change (..), Key (..))
+import Core.Types.Change (Change (..), Key (..), deleteKey, insertKey)
 import Core.Types.Operation (Operation (..))
 import Core.Types.Tx (TxHash, WithTxHash (..))
 import Data.ByteString.Lazy qualified as BL
@@ -157,7 +157,7 @@ registerUser
         lift $ runValidate $ do
             void
                 $ validateRegisterUser validation
-                $ Change (Key request) (Insert ())
+                $ insertKey request
             fmap txHash
                 $ lift
                 $ submit
@@ -181,7 +181,7 @@ unregisterUser
         lift $ runValidate $ do
             void
                 $ validateUnregisterUser validation
-                $ Change (Key request) (Delete ())
+                $ deleteKey request
             fmap txHash
                 $ lift
                 $ submit
@@ -205,7 +205,7 @@ registerRole
         lift $ runValidate $ do
             void
                 $ validateRegisterRole validation
-                $ Change (Key request) (Insert ())
+                $ insertKey request
             fmap txHash
                 $ lift
                 $ submit
@@ -229,7 +229,7 @@ unregisterRole
         lift $ runValidate $ do
             void
                 $ validateUnregisterRole validation
-                $ Change (Key request) (Delete ())
+                $ deleteKey request
             fmap txHash
                 $ lift
                 $ submit

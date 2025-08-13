@@ -4,9 +4,11 @@
 module Core.Types.Change
     ( Change (..)
     , Key (..)
+    , insertKey
+    , deleteKey
     ) where
 
-import Core.Types.Operation (Operation (..))
+import Core.Types.Operation (Op (..), Operation (..))
 import Data.ByteString.Char8 qualified as B
 import Data.ByteString.Lazy.Char8 qualified as BL
 import Lib.JSON.Canonical.Extra
@@ -74,3 +76,9 @@ instance
             [ "key" .= key
             , "operation" .= operation
             ]
+
+insertKey :: a -> Change a (OpI ())
+insertKey key = Change{key = Key key, operation = Insert ()}
+
+deleteKey :: a -> Change a (OpD ())
+deleteKey key = Change{key = Key key, operation = Delete ()}

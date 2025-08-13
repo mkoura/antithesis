@@ -22,7 +22,13 @@ import Core.Context
     , askValidation
     , withMPFS
     )
-import Core.Types.Basic (Duration, Owner, TokenId)
+import Core.Types.Basic
+    ( Duration
+    , Owner
+    , Platform
+    , Repository
+    , TokenId
+    )
 import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Fact (Fact (..), keyHash, parseFacts)
 import Core.Types.Operation (Op (..), Operation (..))
@@ -31,7 +37,13 @@ import Data.Functor (($>), (<&>))
 import Data.List (find)
 import MPFS.API
     ( MPFS (..)
+    , RequestInsertBody (..)
     , RequestUpdateBody (..)
+    )
+import Oracle.Validate.Requests.ManageWhiteList
+    ( UpdateWhiteListFailure
+    , validateAddWhiteListed
+    , validateRemoveWhiteListed
     )
 import Oracle.Validate.Requests.TestRun.Update
     ( UpdateTestRunFailure
@@ -50,7 +62,11 @@ import Text.JSON.Canonical
     , JSValue (..)
     , ToJSON (..)
     )
-import User.Agent.Types (TestRunMap (..), TestRunStatus (..))
+import User.Agent.Types
+    ( TestRunMap (..)
+    , TestRunStatus (..)
+    , WhiteListKey (..)
+    )
 import User.Types
     ( Phase (..)
     , TestRun (..)
@@ -130,6 +146,10 @@ resolveOldState cmd = case cmd of
             withExpectedState tokenId testRun $ \runningState ->
                 pure $ Report tokenId testRun runningState duration url
     Query tokenId -> pure $ Just $ Query tokenId
+    WhiteList tokenId platform repo ->
+        pure $ Just $ WhiteList tokenId platform repo
+    BlackList tokenId platform repo ->
+        pure $ Just $ BlackList tokenId platform repo
 
 data IsReady = NotReady | Ready
     deriving (Show, Eq)
@@ -185,6 +205,20 @@ data AgentCommand (phase :: IsReady) result where
                 (WithTxHash (TestRunState DoneT))
             )
     Query :: TokenId -> AgentCommand phase TestRunMap
+    WhiteList
+        :: TokenId
+        -> Platform
+        -> Repository
+        -> AgentCommand
+            phase
+            (AValidationResult UpdateWhiteListFailure (WithTxHash ()))
+    BlackList
+        :: TokenId
+        -> Platform
+        -> Repository
+        -> AgentCommand
+            phase
+            (AValidationResult UpdateWhiteListFailure (WithTxHash ()))
 
 deriving instance Show (AgentCommand NotReady result)
 deriving instance Eq (AgentCommand NotReady result)
@@ -193,7 +227,8 @@ deriving instance Eq (AgentCommand Ready result)
 
 agentCmdCore
     :: Monad m
-    => Owner -- ^ requester public key hash
+    => Owner
+    -- ^ requester public key hash
     -> AgentCommand Ready result
     -> WithContext m result
 agentCmdCore requester cmd = case cmd of
@@ -204,6 +239,66 @@ agentCmdCore requester cmd = case cmd of
     Report tokenId key running duration url ->
         reportCommand tokenId requester key running duration url
     Query tokenId -> queryCommand tokenId
+    WhiteList tokenId platform repo -> whiteList tokenId requester platform repo
+    BlackList tokenId platform repo -> blackList tokenId requester platform repo
+
+whiteList
+    :: Monad m
+    => TokenId
+    -> Owner
+    -> Platform
+    -> Repository
+    -> WithContext
+        m
+        ( AValidationResult
+            UpdateWhiteListFailure
+            (WithTxHash ())
+        )
+whiteList tokenId requester platform repo = do
+    let key = WhiteListKey platform repo
+        change =
+            Change
+                { key = Key key
+                , operation = Insert ()
+                }
+    validation <- askValidation tokenId
+    agentPKH <- askAgentPKH
+    Submission submit <- askSubmit
+    mpfs <- askMpfs
+    lift $ runValidate $ do
+        void $ validateAddWhiteListed validation requester agentPKH change
+        wtx <- lift $ submit $ \address -> do
+            jkey <- toJSON key
+            mpfsRequestInsert mpfs address tokenId
+                $ RequestInsertBody{key = jkey, value = JSNull}
+        pure $ wtx $> ()
+
+blackList
+    :: Monad m
+    => TokenId
+    -> Owner
+    -> Platform
+    -> Repository
+    -> WithContext
+        m
+        ( AValidationResult
+            UpdateWhiteListFailure
+            (WithTxHash ())
+        )
+blackList tokenId requester platform repo = do
+    let key = WhiteListKey platform repo
+        change = Change (Key key) (Delete ())
+    validation <- askValidation tokenId
+    agentPKH <- askAgentPKH
+    Submission submit <- askSubmit
+    mpfs <- askMpfs
+    lift $ runValidate $ do
+        void $ validateRemoveWhiteListed validation requester agentPKH change
+        wtx <- lift $ submit $ \address -> do
+            jkey <- toJSON key
+            mpfsRequestInsert mpfs address tokenId
+                $ RequestInsertBody{key = jkey, value = JSNull}
+        pure $ wtx $> ()
 
 queryCommand :: Monad m => TokenId -> WithContext m TestRunMap
 queryCommand tokenId = do

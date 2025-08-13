@@ -31,6 +31,7 @@ import Oracle.Validate.Types
     ( Validate
     , Validated
     , mapFailure
+    , notValidated
     )
 import Validation (Validation (..))
 
@@ -66,3 +67,12 @@ validateRequest _ agentPKH validation (AcceptRequest (Request _ requester change
 validateRequest _ agentPKH validation (FinishedRequest (Request _ requester change)) =
     mapFailure UpdateTestRunFailure
         $ validateToDoneUpdate validation agentPKH requester change
+validateRequest _ _ _ (UnknownInsertRequest request) =
+    notValidated
+        $ UnknownInsertValidationFailure request
+validateRequest _ _ _ (UnknownDeleteRequest request) =
+    notValidated
+        $ UnknownDeleteValidationFailure request
+validateRequest _ _ _ (UnknownUpdateRequest request) =
+    notValidated
+        $ UnknownUpdateValidationFailure request

@@ -15,6 +15,8 @@ import Core.Types.Basic (Owner, RequestRefId)
 import Core.Types.Change (Change (..))
 import Core.Types.Operation (Op (..), Operation (..))
 import Core.Types.Tx (Root)
+import Data.ByteString.Lazy.Char8 qualified as BLC
+import Data.Functor.Identity (runIdentity)
 import Lib.JSON.Canonical.Extra (object, withObject, (.:), (.=))
 import Oracle.Validate.Requests.RegisterRole
     ( RegisterRoleFailure (..)
@@ -38,8 +40,10 @@ import Oracle.Validate.Requests.TestRun.Update
     )
 import Text.JSON.Canonical
     ( FromJSON (..)
+    , JSValue
     , ReportSchemaErrors
     , ToJSON (..)
+    , renderCanonicalJSON
     )
 import User.Types
     ( Phase (..)
@@ -122,6 +126,12 @@ data RequestZoo where
     FinishedRequest
         :: Request TestRun (OpU (TestRunState RunningT) (TestRunState DoneT))
         -> RequestZoo
+    UnknownInsertRequest
+        :: Request JSValue (OpI JSValue) -> RequestZoo
+    UnknownDeleteRequest
+        :: Request JSValue (OpD JSValue) -> RequestZoo
+    UnknownUpdateRequest
+        :: Request JSValue (OpU JSValue JSValue) -> RequestZoo
 
 requestZooRefId :: RequestZoo -> RequestRefId
 requestZooRefId (RegisterUserRequest req) = outputRefId req
@@ -132,6 +142,9 @@ requestZooRefId (CreateTestRequest req) = outputRefId req
 requestZooRefId (RejectRequest req) = outputRefId req
 requestZooRefId (AcceptRequest req) = outputRefId req
 requestZooRefId (FinishedRequest req) = outputRefId req
+requestZooRefId (UnknownInsertRequest req) = outputRefId req
+requestZooRefId (UnknownDeleteRequest req) = outputRefId req
+requestZooRefId (UnknownUpdateRequest req) = outputRefId req
 
 instance (Alternative m, ReportSchemaErrors m) => FromJSON m RequestZoo where
     fromJSON v = do
@@ -143,6 +156,7 @@ instance (Alternative m, ReportSchemaErrors m) => FromJSON m RequestZoo where
             <|> (RejectRequest <$> fromJSON v)
             <|> (AcceptRequest <$> fromJSON v)
             <|> (FinishedRequest <$> fromJSON v)
+            <|> (UnknownInsertRequest <$> fromJSON v)
 
 instance Monad m => ToJSON m RequestZoo where
     toJSON (RegisterUserRequest req) = toJSON req
@@ -153,6 +167,9 @@ instance Monad m => ToJSON m RequestZoo where
     toJSON (RejectRequest req) = toJSON req
     toJSON (AcceptRequest req) = toJSON req
     toJSON (FinishedRequest req) = toJSON req
+    toJSON (UnknownInsertRequest req) = toJSON req
+    toJSON (UnknownDeleteRequest req) = toJSON req
+    toJSON (UnknownUpdateRequest req) = toJSON req
 
 data Token = Token
     { tokenRefId :: RequestRefId
@@ -190,6 +207,9 @@ data RequestValidationFailure
     | UnregisterRoleFailure UnregisterRoleFailure
     | CreateTestRunFailure CreateTestRunFailure
     | UpdateTestRunFailure UpdateTestRunFailure
+    | UnknownInsertValidationFailure (Request JSValue (OpI JSValue))
+    | UnknownDeleteValidationFailure (Request JSValue (OpD JSValue))
+    | UnknownUpdateValidationFailure (Request JSValue (OpU JSValue JSValue))
     deriving (Eq, Show)
 
 instance Monad m => ToJSON m RequestValidationFailure where
@@ -206,6 +226,12 @@ instance Monad m => ToJSON m RequestValidationFailure where
             object ["CreateTestRunFailure" .= failure]
         UpdateTestRunFailure failure ->
             object ["UpdateTestRunFailure" .= failure]
+        UnknownInsertValidationFailure value ->
+            object ["UnknownInsertValidationFailure" .= value]
+        UnknownDeleteValidationFailure value ->
+            object ["UnknownDeleteValidationFailure" .= value]
+        UnknownUpdateValidationFailure value ->
+            object ["UnknownUpdateValidationFailure" .= value]
 
 renderRequestValidationFailure
     :: RequestValidationFailure -> String
@@ -228,3 +254,12 @@ renderRequestValidationFailure = \case
     UpdateTestRunFailure failure ->
         "Update Test Run Failure: "
             ++ renderUpdateTestRunFailure failure
+    UnknownInsertValidationFailure value ->
+        "Unknown Insert Validation Failure: "
+            ++ BLC.unpack (renderCanonicalJSON $ runIdentity $ toJSON value)
+    UnknownDeleteValidationFailure value ->
+        "Unknown Delete Validation Failure: "
+            ++ BLC.unpack (renderCanonicalJSON $ runIdentity $ toJSON value)
+    UnknownUpdateValidationFailure value ->
+        "Unknown Update Validation Failure: "
+            ++ BLC.unpack (renderCanonicalJSON $ runIdentity $ toJSON value)

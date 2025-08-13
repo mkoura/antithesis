@@ -85,19 +85,19 @@ checkingUpdates operation f = case operation of
 
 validateToDoneUpdate
     :: (Monad m, FromJSON Maybe x)
-    => Owner
-    -> Validation m
+    => Validation m
+    -> Owner
     -> Owner
     -> Change TestRun (OpU x (TestRunState DoneT))
     -> Validate UpdateTestRunFailure m Validated
 validateToDoneUpdate
-    antiOwner
     validation
-    owner
+    agentPKH
+    requester
     change@(Change (Key testRun) operation) = do
         mapFailure UpdateTestRunKeyFailure
             $ updateValidation validation change
-        checkingOwner owner antiOwner
+        checkingOwner requester agentPKH
         checkingUpdates operation
             $ validateToDoneCore validation testRun
 
@@ -127,19 +127,19 @@ checkPastState Validation{mpfsGetFacts} testRun accepted = do
 
 validateToRunningUpdate
     :: Monad m
-    => Owner
-    -> Validation m
+    => Validation m
+    -> Owner
     -> Owner
     -> Change TestRun (OpU (TestRunState PendingT) (TestRunState RunningT))
     -> Validate UpdateTestRunFailure m Validated
 validateToRunningUpdate
-    antiOwner
     validation
-    owner
+    agentPKH
+    requester
     change@(Change (Key testRun) operation) = do
         mapFailure UpdateTestRunKeyFailure
             $ updateValidation validation change
-        checkingOwner owner antiOwner
+        checkingOwner requester agentPKH
         checkingUpdates operation $ validateToRunningCore validation testRun
 
 validateToRunningCore

@@ -6,7 +6,7 @@ module Core.Context
     , withContext
     , askMpfs
     , askTestRunConfig
-    , askWalletOwner
+    , askAgentPKH
     , askValidation
     , askSubmit
     , withMPFS
@@ -27,7 +27,7 @@ import Validation (Validation)
 data Context m = Context
     { ctxMPFS :: MPFS m
     , ctxTestRunConfig :: TestRunValidationConfig
-    , ctxWalletOwner :: Owner
+    , ctxAgentPKH :: Owner
     , ctxMkValidation :: TokenId -> Validation m
     , ctxSubmit :: Submission m
     }
@@ -51,8 +51,8 @@ withMPFS f = do
 askTestRunConfig :: Monad m => WithContext m TestRunValidationConfig
 askTestRunConfig = ctxTestRunConfig <$> WithContext ask
 
-askWalletOwner :: Monad m => WithContext m Owner
-askWalletOwner = ctxWalletOwner <$> WithContext ask
+askAgentPKH :: Monad m => WithContext m Owner
+askAgentPKH = ctxAgentPKH <$> WithContext ask
 
 askValidation :: Monad m => TokenId -> WithContext m (Validation m)
 askValidation tokenId = do
@@ -70,7 +70,7 @@ withContext
     -> Submission m
     -> WithContext m a
     -> m a
-withContext mpfs testRunConfig walletOwner mkValidation submit (WithContext action) =
+withContext mpfs testRunConfig agentPKH mkValidation submit (WithContext action) =
     runReaderT
         action
-        (Context mpfs testRunConfig walletOwner mkValidation submit)
+        (Context mpfs testRunConfig agentPKH mkValidation submit)

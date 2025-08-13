@@ -38,6 +38,7 @@ validateRequest
     :: MonadIO m
     => TestRunValidationConfig
     -> Owner
+    -- ^ agent pkh
     -> Validation m
     -> RequestZoo
     -> Validate RequestValidationFailure m Validated
@@ -56,12 +57,12 @@ validateRequest _ _ validation (UnregisterRoleRequest (Request _ _ change)) =
 validateRequest testRunConfig _ validation (CreateTestRequest (Request _ _ change)) =
     mapFailure CreateTestRunFailure
         $ validateCreateTestRun testRunConfig validation change
-validateRequest _ antiOwner validation (RejectRequest (Request _ owner change)) =
+validateRequest _ agentPKH validation (RejectRequest (Request _ requester change)) =
     mapFailure UpdateTestRunFailure
-        $ validateToDoneUpdate antiOwner validation owner change
-validateRequest _ antiOwner validation (AcceptRequest (Request _ owner change)) =
+        $ validateToDoneUpdate validation agentPKH requester change
+validateRequest _ agentPKH validation (AcceptRequest (Request _ requester change)) =
     mapFailure UpdateTestRunFailure
-        $ validateToRunningUpdate antiOwner validation owner change
-validateRequest _ antiOwner validation (FinishedRequest (Request _ owner change)) =
+        $ validateToRunningUpdate validation agentPKH requester change
+validateRequest _ agentPKH validation (FinishedRequest (Request _ requester change)) =
     mapFailure UpdateTestRunFailure
-        $ validateToDoneUpdate antiOwner validation owner change
+        $ validateToDoneUpdate validation agentPKH requester change

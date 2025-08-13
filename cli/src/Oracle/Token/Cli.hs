@@ -9,11 +9,11 @@ import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Trans.Class (lift)
 import Core.Context
     ( WithContext
+    , askAgentPKH
     , askMpfs
     , askSubmit
     , askTestRunConfig
     , askValidation
-    , askWalletOwner
     )
 import Core.Types.Basic (RequestRefId, TokenId)
 import Core.Types.Tx (TxHash, WithTxHash (WithTxHash))
@@ -122,7 +122,7 @@ tokenCmdCore
 tokenCmdCore command = do
     mpfs <- askMpfs
     testRunConfig <- askTestRunConfig
-    pkh <- askWalletOwner
+    pkh <- askAgentPKH
     Submission submit <- askSubmit
     case command of
         GetToken tk -> lift $ mpfsGetToken mpfs tk

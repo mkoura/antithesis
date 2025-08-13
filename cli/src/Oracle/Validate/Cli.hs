@@ -13,10 +13,10 @@ import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Trans.Class (lift)
 import Core.Context
     ( WithContext
+    , askAgentPKH
     , askMpfs
     , askTestRunConfig
     , askValidation
-    , askWalletOwner
     )
 import Core.Types.Basic (RequestRefId, TokenId)
 import Data.Functor ((<&>))
@@ -78,7 +78,7 @@ validateCmd tk command = case command of
     ValidateRequests -> do
         mpfs <- askMpfs
         testRunConfig <- askTestRunConfig
-        pkh <- askWalletOwner
+        pkh <- askAgentPKH
         validation <- askValidation tk
         lift $ runValidate $ case command of
             ValidateRequests -> do

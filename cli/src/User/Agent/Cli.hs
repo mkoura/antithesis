@@ -16,10 +16,10 @@ import Control.Monad (void)
 import Control.Monad.Trans.Class (lift)
 import Core.Context
     ( WithContext
+    , askAgentPKH
     , askMpfs
     , askSubmit
     , askValidation
-    , askWalletOwner
     , withMPFS
     )
 import Core.Types.Basic (Duration, Owner, TokenId)
@@ -193,16 +193,16 @@ deriving instance Eq (AgentCommand Ready result)
 
 agentCmdCore
     :: Monad m
-    => Owner
+    => Owner -- ^ requester public key hash
     -> AgentCommand Ready result
     -> WithContext m result
-agentCmdCore agentId cmd = case cmd of
+agentCmdCore requester cmd = case cmd of
     Accept tokenId key pending ->
-        acceptCommand tokenId agentId key pending
+        acceptCommand tokenId requester key pending
     Reject tokenId key pending reason ->
-        rejectCommand tokenId agentId key pending reason
+        rejectCommand tokenId requester key pending reason
     Report tokenId key running duration url ->
-        reportCommand tokenId agentId key running duration url
+        reportCommand tokenId requester key running duration url
     Query tokenId -> queryCommand tokenId
 
 queryCommand :: Monad m => TokenId -> WithContext m TestRunMap
@@ -220,8 +220,8 @@ queryCommand tokenId = do
 
 signAndSubmitAnUpdate
     :: (ToJSON m key, ToJSON m old, ToJSON m new, Monad m)
-    => ( Owner
-         -> Validation m
+    => ( Validation m
+         -> Owner
          -> Owner
          -> Change key (OpU old new)
          -> Validate UpdateTestRunFailure m Validated
@@ -234,14 +234,14 @@ signAndSubmitAnUpdate
     -> WithContext
         m
         (AValidationResult UpdateTestRunFailure (WithTxHash new))
-signAndSubmitAnUpdate validate tokenId agentId testRun oldState newState = do
+signAndSubmitAnUpdate validate tokenId requester testRun oldState newState = do
     validation <- askValidation tokenId
-    walletOwner <- askWalletOwner
+    agentPKH <- askAgentPKH
     Submission submit <- askSubmit
     mpfs <- askMpfs
     lift $ runValidate $ do
         void
-            $ validate agentId validation walletOwner
+            $ validate validation agentPKH requester
             $ Change (Key testRun)
             $ Update oldState newState
         wtx <- lift $ submit $ \address -> do
@@ -266,11 +266,11 @@ reportCommand
             UpdateTestRunFailure
             (WithTxHash (TestRunState DoneT))
         )
-reportCommand tokenId agentId testRun oldState duration url =
+reportCommand tokenId requester testRun oldState duration url =
     signAndSubmitAnUpdate
         validateToDoneUpdate
         tokenId
-        agentId
+        requester
         testRun
         oldState
         $ Finished oldState duration url
@@ -288,11 +288,11 @@ rejectCommand
             UpdateTestRunFailure
             (WithTxHash (TestRunState DoneT))
         )
-rejectCommand tokenId agentId testRun testRunState reason =
+rejectCommand tokenId requester testRun testRunState reason =
     signAndSubmitAnUpdate
         validateToDoneUpdate
         tokenId
-        agentId
+        requester
         testRun
         testRunState
         $ Rejected testRunState reason
@@ -309,11 +309,11 @@ acceptCommand
             UpdateTestRunFailure
             (WithTxHash (TestRunState RunningT))
         )
-acceptCommand tokenId agentId testRun testRunState =
+acceptCommand tokenId requester testRun testRunState =
     signAndSubmitAnUpdate
         validateToRunningUpdate
         tokenId
-        agentId
+        requester
         testRun
         testRunState
         $ Accepted testRunState

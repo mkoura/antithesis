@@ -37,6 +37,7 @@ import Data.Functor (($>), (<&>))
 import Data.List (find)
 import MPFS.API
     ( MPFS (..)
+    , RequestDeleteBody (..)
     , RequestInsertBody (..)
     , RequestUpdateBody (..)
     )
@@ -296,8 +297,8 @@ blackList tokenId requester platform repo = do
         void $ validateRemoveWhiteListed validation requester agentPKH change
         wtx <- lift $ submit $ \address -> do
             jkey <- toJSON key
-            mpfsRequestInsert mpfs address tokenId
-                $ RequestInsertBody{key = jkey, value = JSNull}
+            mpfsRequestDelete mpfs address tokenId
+                $ RequestDeleteBody{key = jkey, value = JSNull}
         pure $ wtx $> ()
 
 queryCommand :: Monad m => TokenId -> WithContext m TestRunMap

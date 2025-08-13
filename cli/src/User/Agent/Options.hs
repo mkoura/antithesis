@@ -5,7 +5,7 @@ module User.Agent.Options
     ( agentCommandParser
     ) where
 
-import Core.Options (tokenIdOption)
+import Core.Options (platformOption, repositoryOption, tokenIdOption)
 import Core.Types.Basic (Duration (..), TokenId)
 import Core.Types.Tx (WithTxHash)
 import Lib.Box (Box (..))
@@ -23,6 +23,9 @@ import Options.Applicative
     , progDesc
     , short
     , str
+    )
+import Oracle.Validate.Requests.ManageWhiteList
+    ( UpdateWhiteListFailure
     )
 import Oracle.Validate.Requests.TestRun.Update (UpdateTestRunFailure)
 import Oracle.Validate.Types (AValidationResult)
@@ -68,7 +71,51 @@ agentCommandParser ptk =
                     (Box <$> queryOptions ptk)
                     (progDesc "Query the status of test runs")
                 )
+            <> command
+                "white-list"
+                ( info
+                    (Box <$> whitelistRepositoryOptions ptk)
+                    (progDesc "Whitelist a repository for test-runs")
+                )
+            <> command
+                "black-list"
+                ( info
+                    (Box <$> blacklistRepositoryOptions ptk)
+                    (progDesc "Blacklist a repository for test-runs")
+                )
         )
+
+whitelistRepositoryOptions
+    :: Maybe TokenId
+    -> Parser
+        ( AgentCommand
+            phase
+            ( AValidationResult
+                UpdateWhiteListFailure
+                (WithTxHash ())
+            )
+        )
+whitelistRepositoryOptions ptk =
+    WhiteList
+        <$> tokenIdOption ptk
+        <*> platformOption
+        <*> repositoryOption
+
+blacklistRepositoryOptions
+    :: Maybe TokenId
+    -> Parser
+        ( AgentCommand
+            phase
+            ( AValidationResult
+                UpdateWhiteListFailure
+                (WithTxHash ())
+            )
+        )
+blacklistRepositoryOptions ptk =
+    BlackList
+        <$> tokenIdOption ptk
+        <*> platformOption
+        <*> repositoryOption
 
 queryOptions
     :: Maybe TokenId

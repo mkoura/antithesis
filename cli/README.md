@@ -53,27 +53,16 @@ nix build .#macos64.tarball
 
 ## Running the CLI
 
-### Completion
+### Improving CLI
 
 ```bash
 source <(anti --bash-completion-script `which anti`)
+antij(){ anti "$@" | jq .result; }
+complete -o filenames -F _anti antij
 ```
 
 ### Environemnt variables
 
-####  Something to remove in the future
-
-Rad issue 800db55
-
-```bash
-cat << EOF > config.json
-{
-    "minDuration": 1,
-    "maxDuration": 12
-}
-EOF
-export ANTI_CONFIG_FILE=config.json
-```
 
 #### MPFS host
 If you do not want to host your own MPFS service, you can use a public one at `https://mpfs.plutimus.com`.

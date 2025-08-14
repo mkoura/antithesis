@@ -27,6 +27,7 @@ import Oracle.Types
     ( RequestValidationFailure
     , RequestZoo
     , Token (..)
+    , TokenState (..)
     , requestZooRefId
     )
 import Oracle.Validate.Request
@@ -136,11 +137,11 @@ tokenCmdCore command = do
             validation <- askValidation tk
             mconfig <- askConfig tk
             lift $ runValidate $ do
-                config <- liftMaybe TokenUpdateConfigNotFound mconfig
                 when (null wanted) $ notValidated TokenUpdateOfNoRequests
                 mpendings <- lift $ fromJSON <$> mpfsGetToken mpfs tk
                 token <- liftMaybe (TokenNotParsable tk) mpendings
                 let requests = tokenRequests token
+                    oracle = tokenOwner $ tokenState token
                 when (null requests) $ notValidated TokenUpdateOfNoRequests
                 void
                     $ mapFailure TokenUpdateRequestValidations
@@ -152,7 +153,7 @@ tokenCmdCore command = do
                                 (TokenUpdateRequestValidation req TokenUpdateRequestNotFound)
                                 $ find ((== req) . requestZooRefId) requests
                         promoteFailure tokenRequest
-                            $ validateRequest config validation tokenRequest
+                            $ validateRequest oracle mconfig validation tokenRequest
                 WithTxHash txHash _ <- lift
                     $ submit
                     $ \address -> mpfsUpdateToken mpfs address tk wanted

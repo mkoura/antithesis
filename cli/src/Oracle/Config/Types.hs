@@ -23,6 +23,7 @@ data Config = Config
     deriving (Show, Eq)
 
 data ConfigKey = ConfigKey
+    deriving (Show, Eq)
 
 instance Monad m => ToJSON m ConfigKey where
     toJSON _ = object ["type" .= ("config" :: String)]

@@ -17,7 +17,6 @@ import Core.Context
     , askValidation
     )
 import Core.Types.Basic (RequestRefId, TokenId)
-import Data.Functor ((<&>))
 import Lib.JSON.Canonical.Extra
     ( object
     , (.=)
@@ -28,6 +27,7 @@ import MPFS.API
 import Oracle.Types
     ( RequestValidationFailure
     , Token (..)
+    , TokenState (..)
     , requestZooRefId
     )
 import Oracle.Validate.Request
@@ -36,7 +36,6 @@ import Oracle.Validate.Request
 import Oracle.Validate.Types
     ( AValidationResult
     , ValidationResult
-    , liftMaybe
     , notValidated
     , runValidate
     )
@@ -79,19 +78,22 @@ validateCmd tk command = case command of
         validation <- askValidation tk
         lift $ runValidate $ case command of
             ValidateRequests -> do
-                config <- liftMaybe OracleValidateConfigNotAvailable mconfig
                 canonicalJSON <- lift $ mpfsGetToken mpfs tk
-                requests <- do
-                    let mv = fromJSON canonicalJSON <&> tokenRequests
-                    case mv of
+                (oracle, requests) <- do
+                    let mtoken = fromJSON canonicalJSON
+                    case mtoken of
                         Nothing ->
                             notValidated
                                 $ OracleValidateFailToParseToken tk
-                        Just jsValue -> pure jsValue
+                        Just jsValue ->
+                            pure
+                                ( tokenOwner $ tokenState jsValue
+                                , tokenRequests jsValue
+                                )
                 forM requests $ \request -> lift $ do
                     RequestValidation (requestZooRefId request)
                         <$> runValidate
-                            (validateRequest config validation request)
+                            (validateRequest oracle mconfig validation request)
 
 data RequestValidation = RequestValidation
     { requestRefId :: RequestRefId

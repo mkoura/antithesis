@@ -115,7 +115,6 @@ instance FromJSON RequestUpdateBody where
             <$> (o .: "key" >>= fromAesonString)
             <*> (o .: "oldValue" >>= fromAesonString)
             <*> (o .: "newValue" >>= fromAesonString)
-
 type BootToken =
     "transaction"
         :> Capture "address" Address

@@ -15,6 +15,8 @@ import Core.Types.Change (Change (..))
 import Core.Types.Operation (Op (..), Operation (..))
 import Core.Types.Tx (Root)
 import Lib.JSON.Canonical.Extra (object, withObject, (.:), (.=))
+import Oracle.Config.Types (Config, ConfigKey)
+import Oracle.Validate.Requests.Config (ConfigFailure)
 import Oracle.Validate.Requests.ManageWhiteList
     ( UpdateWhiteListFailure
     )
@@ -124,6 +126,8 @@ data RequestZoo where
         :: Request WhiteListKey (OpI ()) -> RequestZoo
     BlackListRequest
         :: Request WhiteListKey (OpD ()) -> RequestZoo
+    InsertConfigRequest
+        :: Request ConfigKey (OpI Config) -> RequestZoo
     UnknownInsertRequest
         :: Request JSValue (OpI JSValue) -> RequestZoo
     UnknownDeleteRequest
@@ -142,6 +146,7 @@ requestZooRefId (AcceptRequest req) = outputRefId req
 requestZooRefId (FinishedRequest req) = outputRefId req
 requestZooRefId (WhiteListRequest req) = outputRefId req
 requestZooRefId (BlackListRequest req) = outputRefId req
+requestZooRefId (InsertConfigRequest req) = outputRefId req
 requestZooRefId (UnknownInsertRequest req) = outputRefId req
 requestZooRefId (UnknownDeleteRequest req) = outputRefId req
 requestZooRefId (UnknownUpdateRequest req) = outputRefId req
@@ -158,7 +163,10 @@ instance (Alternative m, ReportSchemaErrors m) => FromJSON m RequestZoo where
             <|> (FinishedRequest <$> fromJSON v)
             <|> (WhiteListRequest <$> fromJSON v)
             <|> (BlackListRequest <$> fromJSON v)
+            <|> (InsertConfigRequest <$> fromJSON v)
             <|> (UnknownInsertRequest <$> fromJSON v)
+            <|> (UnknownDeleteRequest <$> fromJSON v)
+            <|> (UnknownUpdateRequest <$> fromJSON v)
 
 instance Monad m => ToJSON m RequestZoo where
     toJSON (RegisterUserRequest req) = toJSON req
@@ -171,6 +179,7 @@ instance Monad m => ToJSON m RequestZoo where
     toJSON (FinishedRequest req) = toJSON req
     toJSON (WhiteListRequest req) = toJSON req
     toJSON (BlackListRequest req) = toJSON req
+    toJSON (InsertConfigRequest req) = toJSON req
     toJSON (UnknownInsertRequest req) = toJSON req
     toJSON (UnknownDeleteRequest req) = toJSON req
     toJSON (UnknownUpdateRequest req) = toJSON req
@@ -212,6 +221,8 @@ data RequestValidationFailure
     | CreateTestRunFailure CreateTestRunFailure
     | UpdateTestRunFailure UpdateTestRunFailure
     | WhiteListFailure UpdateWhiteListFailure
+    | ConfigFailure ConfigFailure
+    | RequestValidationConfigNotAvailable
     | UnknownInsertValidationFailure (Request JSValue (OpI JSValue))
     | UnknownDeleteValidationFailure (Request JSValue (OpD JSValue))
     | UnknownUpdateValidationFailure (Request JSValue (OpU JSValue JSValue))
@@ -233,6 +244,10 @@ instance Monad m => ToJSON m RequestValidationFailure where
             object ["UpdateTestRunFailure" .= failure]
         WhiteListFailure failure ->
             object ["WhiteListFailure" .= failure]
+        ConfigFailure failure ->
+            object ["ConfigFailure" .= failure]
+        RequestValidationConfigNotAvailable ->
+            toJSON ("Token configuration is not available yet" :: String)
         UnknownInsertValidationFailure value ->
             object ["UnknownInsertValidationFailure" .= value]
         UnknownDeleteValidationFailure value ->

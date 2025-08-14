@@ -53,6 +53,12 @@ nix build .#macos64.tarball
 
 ## Running the CLI
 
+### Completion
+
+```bash
+source <(anti --bash-completion-script `which anti`)
+```
+
 ### Environemnt variables
 
 ####  Something to remove in the future

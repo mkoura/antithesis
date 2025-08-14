@@ -14,6 +14,7 @@ module Oracle.Validate.Types
     , sequenceValidate
     , throwFalse
     , throwLeft
+    , liftMaybe
     ) where
 
 import Control.Monad.Trans.Class (MonadTrans, lift)
@@ -82,17 +83,19 @@ instance (Monad m, ToJSON m a, ToJSON m e) => ToJSON m (AValidationResult e a) w
             object ["validationFailed" .= e]
 
 sequenceValidate :: Monad m => [Validate e m a] -> Validate [e] m [a]
-sequenceValidate = go [] []
+sequenceValidate ys = do
+    (xs, es) <- go ys
+    if null es
+        then pure xs
+        else notValidated es
   where
-    go xs es [] =
-        if null es
-            then pure xs
-            else notValidated es
-    go xs es (v : vs) = do
+    go (v : vs) = do
         result <- lift $ runValidate v
+        (xs, es) <- go vs
         case result of
-            ValidationSuccess x -> go (x : xs) es vs
-            ValidationFailure e -> go xs (e : es) vs
+            ValidationSuccess x -> pure (x : xs, es)
+            ValidationFailure e -> pure (xs, e : es)
+    go [] = pure ([], [])
 
 throwFalse :: Monad m => Bool -> e -> Validate e m Validated
 throwFalse True _ = pure Validated
@@ -101,3 +104,7 @@ throwFalse False e = notValidated e
 throwLeft :: Monad m => (e -> e') -> Either e a -> Validate e' m a
 throwLeft f (Left e) = notValidated (f e)
 throwLeft _ (Right a) = pure a
+
+liftMaybe :: Monad m => e -> Maybe a -> Validate e m a
+liftMaybe e Nothing = notValidated e
+liftMaybe _ (Just a) = pure a

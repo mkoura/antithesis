@@ -4,7 +4,7 @@ module Oracle.Token.Cli
     ) where
 
 import Control.Exception (Exception)
-import Control.Monad (void)
+import Control.Monad (void, when)
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Trans.Class (lift)
 import Core.Context
@@ -17,6 +17,8 @@ import Core.Context
     )
 import Core.Types.Basic (RequestRefId, TokenId)
 import Core.Types.Tx (TxHash, WithTxHash (WithTxHash))
+import Data.Functor ((<&>))
+import Data.List (find)
 import Lib.JSON.Canonical.Extra (object, (.=))
 import MPFS.API
     ( MPFS (..)
@@ -34,6 +36,7 @@ import Oracle.Validate.Request
 import Oracle.Validate.Types
     ( AValidationResult (..)
     , Validate
+    , liftMaybe
     , mapFailure
     , notValidated
     , runValidate
@@ -68,12 +71,13 @@ data TokenUpdateRequestValidationProblem
 instance Monad m => ToJSON m TokenUpdateRequestValidationProblem where
     toJSON = \case
         TokenUpdateRequestNotFound ->
-            toJSON ("requestNotFound" :: String)
+            toJSON ("Request not found" :: String)
         TokenUpdateRequestValidationFailure e ->
             object ["validationFailure" .= e]
 
 data TokenUpdateFailure
     = TokenNotParsable TokenId
+    | TokenUpdateOfNoRequests
     | TokenUpdateRequestValidations
         [TokenUpdateRequestValidation]
     deriving (Show, Eq)
@@ -84,6 +88,8 @@ instance Monad m => ToJSON m TokenUpdateFailure where
     toJSON = \case
         TokenNotParsable tk ->
             object ["tokenNotParsable" .= tk]
+        TokenUpdateOfNoRequests ->
+            toJSON ("No requests to include" :: String)
         TokenUpdateRequestValidations validations ->
             object ["tokenUpdateRequestValidations" .= validations]
 
@@ -116,7 +122,7 @@ promoteFailure req =
         )
 
 tokenCmdCore
-    :: MonadIO m
+    :: (MonadIO m)
     => TokenCommand a
     -> WithContext m a
 tokenCmdCore command = do
@@ -126,22 +132,28 @@ tokenCmdCore command = do
     Submission submit <- askSubmit
     case command of
         GetToken tk -> lift $ mpfsGetToken mpfs tk
-        UpdateToken tk reqs -> do
+        UpdateToken tk wanted -> do
             validation <- askValidation tk
             lift $ runValidate $ do
+                when (null wanted) $ notValidated TokenUpdateOfNoRequests
                 mpendings <- lift $ fromJSON <$> mpfsGetToken mpfs tk
-                case mpendings of
-                    Nothing -> notValidated $ TokenNotParsable tk
-                    Just (token :: Token) ->
-                        void
-                            $ mapFailure TokenUpdateRequestValidations
-                            $ sequenceValidate
-                            $ promoteFailure
-                                <*> validateRequest testRunConfig pkh validation
-                                <$> tokenRequests token
+                token <- liftMaybe (TokenNotParsable tk) mpendings
+                let requests = tokenRequests token
+                when (null requests) $ notValidated TokenUpdateOfNoRequests
+                void
+                    $ mapFailure TokenUpdateRequestValidations
+                    $ sequenceValidate
+                    $ wanted
+                    <&> \req -> do
+                        tokenRequest <-
+                            liftMaybe
+                                (TokenUpdateRequestValidation req TokenUpdateRequestNotFound)
+                                $ find ((== req) . requestZooRefId) requests
+                        promoteFailure tokenRequest
+                            $ validateRequest testRunConfig pkh validation tokenRequest
                 WithTxHash txHash _ <- lift
                     $ submit
-                    $ \address -> mpfsUpdateToken mpfs address tk reqs
+                    $ \address -> mpfsUpdateToken mpfs address tk wanted
                 pure txHash
         BootToken -> lift $ do
             WithTxHash txHash jTokenId <- submit

@@ -68,7 +68,6 @@ E2E match="":
     export ANTI_TEST_ORACLE_WALLET=tmp/test.json
     export ANTI_TEST_AGENT_WALLET=tmp/test.json
 
-    export ANTI_CONFIG_FILE=test-E2E/fixtures/anti-config.json
     export ANTI_SSH_FILE=test-E2E/fixtures/cfhal_ed25519
     export ANTI_SSH_KEY_SELECTOR=cfhal
     export ANTI_WAIT=2

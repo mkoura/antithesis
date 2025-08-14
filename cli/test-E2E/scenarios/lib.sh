@@ -114,7 +114,7 @@ include_requests() {
     anti oracle token update $(echo "$references" | xargs -I {} echo -o {}) > /dev/null
 }
 
-set_agent_public_key_hash() {
+export_agent_public_key_hash() {
     being_agent
     agent=$(anti wallet info | jq -r '.result.owner')
     export ANTI_AGENT_PUBLIC_KEY_HASH=$agent

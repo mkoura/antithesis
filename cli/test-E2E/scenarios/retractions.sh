@@ -10,8 +10,6 @@ unset ANTI_TOKEN_ID
 
 check
 
-set_agent_public_key_hash
-
 fund_wallets
 
 log "Create an anti token"

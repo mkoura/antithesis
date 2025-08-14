@@ -10,7 +10,7 @@ export ANTI_WAIT=240
 
 check
 
-set_agent_public_key_hash
+export_agent_public_key_hash
 
 fund_wallets
 
@@ -27,6 +27,14 @@ tokenEnd() {
     anti oracle token end >/dev/null || echo "Failed to end the token"
 }
 trap 'tokenEnd' EXIT INT TERM
+
+log "Push the oracle config on-chain"
+being_oracle
+anti oracle config set \
+    --min-test-duration 1 \
+    --max-test-duration 4 \
+    --agent-pkh "$ANTI_AGENT_PUBLIC_KEY_HASH" \
+    > /dev/null
 
 log "Register 'cfhal' as a GitHub user"
 being_requester

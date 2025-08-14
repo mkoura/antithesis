@@ -2,7 +2,6 @@ module Oracle.Validate.Requests.ManageWhiteList
     ( validateAddWhiteListed
     , validateRemoveWhiteListed
     , UpdateWhiteListFailure (..)
-    , renderUpdateWhiteListFailure
     )
 where
 
@@ -27,7 +26,6 @@ import Validation
     , Validation (..)
     , deleteValidation
     , insertValidation
-    , renderKeyFailure
     )
 
 data UpdateWhiteListFailure
@@ -37,18 +35,6 @@ data UpdateWhiteListFailure
     | WhiteListGithubFailed Github.GithubResponseStatusCodeError
     | WhiteListAgentNotRecognized Owner
     deriving (Show, Eq)
-
-renderUpdateWhiteListFailure :: UpdateWhiteListFailure -> String
-renderUpdateWhiteListFailure (WhiteListPlatformUnsupported platform) =
-    "Platform is missing: " ++ show platform
-renderUpdateWhiteListFailure (WhiteListRepositoryNotInThePlatform repo) =
-    "Repository is not in the platform: " ++ show repo
-renderUpdateWhiteListFailure (WhiteListRepositoryKeyValidation keyFailure) =
-    "Repository key validation failed: " ++ renderKeyFailure keyFailure
-renderUpdateWhiteListFailure (WhiteListGithubFailed err) =
-    "GitHub error: " ++ show err
-renderUpdateWhiteListFailure (WhiteListAgentNotRecognized agent) =
-    "Agent not recognized: " ++ show agent
 
 instance Monad m => ToJSON m UpdateWhiteListFailure where
     toJSON (WhiteListPlatformUnsupported platform) =

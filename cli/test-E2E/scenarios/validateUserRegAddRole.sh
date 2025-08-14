@@ -236,15 +236,21 @@ log "Created role unregistration request with incorrect repository"
 
 expectedUnRoleRes2=$(
     cat <<EOF
+
 {
-  "validationFailed": {
-    "unregisterRoleKeyFailure": "Key does not exist: RegisterRoleKey {platform = Platform \"github\", repository = Repository {organization = \"cardano-foundation\", project = \"hal-fixture-sinn\"}, username = Username \"cfhal\"}"
-  }
+"validationFailed": {
+    "unregisterRoleKeyFailure": {
+        "keyDoesNotExist":
+        "RegisterRoleKey {platform = Platform \"github\", repository = Repository {organization = \"cardano-foundation\", project = \"hal-fixture-sinn\"}, username = Username \"cfhal\"}"
+        }
+    }
 }
+
 EOF
 )
 
-if [[ "$(echo "$outputUnRoleRes2")" != "$(echo "$expectedUnRoleRes2")" ]]; then
+
+if [[ "$(echo "$outputUnRoleRes2" | jq)" != "$(echo "$expectedUnRoleRes2" | jq)" ]]; then
     emitMismatch 8 "incorrect request" "$outputUnRoleRes2" "$expectedUnRoleRes2"
 fi
 

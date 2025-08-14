@@ -5,7 +5,6 @@ module Oracle.Validate.Requests.TestRun.Create
     , validateCreateTestRunCore
     , TestRunRejection (..)
     , CreateTestRunFailure (..)
-    , renderCreateTestRunFailure
     ) where
 
 import Control.Monad (unless)
@@ -46,7 +45,6 @@ import Validation
     ( KeyFailure
     , Validation (..)
     , insertValidation
-    , renderKeyFailure
     )
 
 data CreateTestRunFailure
@@ -58,15 +56,7 @@ instance Monad m => ToJSON m CreateTestRunFailure where
     toJSON (CreateTestRunRejections rejections) =
         object ["createTestRunRejections" .= rejections]
     toJSON (CreateTestRunKeyFailure keyFailure) =
-        object ["createTestRunKeyFailure" .= renderKeyFailure keyFailure]
-
-renderCreateTestRunFailure :: CreateTestRunFailure -> String
-renderCreateTestRunFailure (CreateTestRunRejections rejections) =
-    "CreateTestRun failed with rejections: "
-        ++ unwords (map show rejections)
-renderCreateTestRunFailure (CreateTestRunKeyFailure keyFailure) =
-    "CreateTestRun failed with key failure: "
-        ++ renderKeyFailure keyFailure
+        object ["createTestRunKeyFailure" .= keyFailure]
 
 validateCreateTestRun
     :: MonadIO m

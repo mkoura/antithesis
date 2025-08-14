@@ -21,7 +21,7 @@ runScenario script = do
         ExitSuccess ->
             return ()
         _ ->
-            error $ "Scenario failed: " ++ scriptFile ++ "\n" ++ sterr
+            error $ "Scenario failed: " ++ scriptFile ++ "\n" ++ sterr ++ "\n" ++ _stdout
 
 setup :: ActionWith () -> ActionWith Auth
 setup action _auth = do

@@ -4,7 +4,6 @@ module Validation.RegisterUser
     ( PublicKeyFailure (..)
     , inspectPublicKeyTemplate
     , inspectPublicKey
-    , renderPublicKeyFailure
     , analyzeKeys
     ) where
 
@@ -18,6 +17,7 @@ import Data.Text qualified as T
 import GitHub (Auth)
 import Lib.GitHub (GithubResponseError, githubUserPublicKeys)
 import Lib.SSH.Public (SSHPublicKey (..))
+import Text.JSON.Canonical (ToJSON (..))
 
 data PublicKeyFailure
     = NoPublicKeyFound
@@ -26,17 +26,17 @@ data PublicKeyFailure
     | GithubError String
     deriving (Eq, Show)
 
-renderPublicKeyFailure :: PublicKeyFailure -> String
-renderPublicKeyFailure = \case
-    NoPublicKeyFound -> "The user does not have any public key exposed in Github."
-    NoEd25519KeyFound ->
-        "The user is expected to have public key with '"
-            <> expectedPrefix
-            <> "' exposed. And none was found"
-    NoEd25519KeyMatch ->
-        "The user does not have the specified Ed25519 public key exposed in Github."
-    GithubError err ->
-        "The following github error was encountered: " <> err
+instance Monad m => ToJSON m PublicKeyFailure where
+    toJSON = \case
+        NoPublicKeyFound -> toJSON ("The user does not have any public key exposed in Github." :: String)
+        NoEd25519KeyFound -> toJSON
+            ("The user is expected to have public key with '"
+                <> expectedPrefix
+                <> "' exposed. And none was found" :: String)
+        NoEd25519KeyMatch -> toJSON
+            ("The user does not have the specified Ed25519 public key exposed in Github." :: String)
+        GithubError err -> toJSON
+            ("The following github error was encountered: " <> err :: String)
 
 expectedPrefix :: String
 expectedPrefix = "ssh-ed25519 "

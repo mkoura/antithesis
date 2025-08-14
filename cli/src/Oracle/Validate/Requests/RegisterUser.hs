@@ -3,8 +3,6 @@ module Oracle.Validate.Requests.RegisterUser
     , validateUnregisterUser
     , RegisterUserFailure (..)
     , UnregisterUserFailure (..)
-    , renderRegisterUserFailure
-    , renderUnregisterUserFailure
     ) where
 
 import Control.Monad (void)
@@ -31,11 +29,9 @@ import Validation
     , Validation (..)
     , deleteValidation
     , insertValidation
-    , renderKeyFailure
     )
 import Validation.RegisterUser
     ( PublicKeyFailure
-    , renderPublicKeyFailure
     )
 
 data RegisterUserFailure
@@ -47,20 +43,11 @@ data RegisterUserFailure
 instance Monad m => ToJSON m RegisterUserFailure where
     toJSON = \case
         PublicKeyValidationFailure reason ->
-            object ["publicKeyValidationFailure" .= renderPublicKeyFailure reason]
+            object ["publicKeyValidationFailure" .= reason]
         RegisterUserPlatformNotSupported platform ->
             object ["registerUserPlatformNotSupported" .= platform]
         RegisterUserKeyFailure keyFailure ->
-            object ["registerUserKeyFailure" .= renderKeyFailure keyFailure]
-
-renderRegisterUserFailure :: RegisterUserFailure -> String
-renderRegisterUserFailure = \case
-    PublicKeyValidationFailure reason ->
-        "Public key validation failure: " ++ renderPublicKeyFailure reason
-    RegisterUserPlatformNotSupported platform ->
-        "RegisterUser platform not supported: " ++ platform
-    RegisterUserKeyFailure keyFailure ->
-        "RegisterUser key failure: " ++ renderKeyFailure keyFailure
+            object ["registerUserKeyFailure" .= keyFailure]
 
 validateRegisterUser
     :: Monad m
@@ -88,18 +75,9 @@ instance Monad m => ToJSON m UnregisterUserFailure where
         UnregisterUserPlatformNotSupported platform ->
             object ["unregisterUserPlatformNotSupported" .= platform]
         UnregisterUserKeyFailure keyFailure ->
-            object ["unregisterUserKeyFailure" .= renderKeyFailure keyFailure]
+            object ["unregisterUserKeyFailure" .= keyFailure]
         PublicKeyIsPresentOnPlatform ->
             object ["publicKeyIsPresentOnPlatform" .= ()]
-
-renderUnregisterUserFailure :: UnregisterUserFailure -> String
-renderUnregisterUserFailure = \case
-    UnregisterUserPlatformNotSupported platform ->
-        "UnregisterUser platform not supported: " ++ platform
-    UnregisterUserKeyFailure keyFailure ->
-        "UnregisterUser key failure: " ++ renderKeyFailure keyFailure
-    PublicKeyIsPresentOnPlatform ->
-        "Public key is present on platform, cannot unregister user."
 
 validateUnregisterUser
     :: Monad m

@@ -5,7 +5,6 @@ module Validation.RegisterRole
     ( RepositoryRoleFailure (..)
     , inspectRepoRoleForUserTemplate
     , inspectRepoRoleForUser
-    , renderRepositoryRoleFailure
     ) where
 
 import Core.Types.Basic (Repository, Username (..))
@@ -15,6 +14,8 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import GitHub (Auth)
 import Lib.GitHub (GetCodeOwnersFileFailure, githubGetCodeOwnersFile)
+import Lib.JSON.Canonical.Extra (object, (.=))
+import Text.JSON.Canonical (ToJSON (..))
 
 data RepositoryRoleFailure
     = NoRoleEntryInCodeowners
@@ -23,14 +24,16 @@ data RepositoryRoleFailure
     | GithubGetError GetCodeOwnersFileFailure
     deriving (Eq, Show)
 
-renderRepositoryRoleFailure :: RepositoryRoleFailure -> String
-renderRepositoryRoleFailure = \case
-    NoRoleEntryInCodeowners -> "CODEOWNERS in the repository does not contain the role entry."
-    NoUsersAssignedToRoleInCodeowners ->
-        "CODEOWNERS in the repository does not contain any users assigned to the role."
-    NoUserInCodeowners -> "CODEOWNERS in the repository does not contain the user."
-    GithubGetError failure ->
-        "Error when interacting with github. Details: " <> show failure
+instance Monad m => ToJSON m RepositoryRoleFailure where
+    toJSON = \case
+        NoRoleEntryInCodeowners ->
+            toJSON ("No role entry in CODEOWNERS file." :: Text)
+        NoUsersAssignedToRoleInCodeowners ->
+            toJSON ("No users assigned to role in CODEOWNERS file." :: Text)
+        NoUserInCodeowners ->
+            toJSON ("No user in CODEOWNERS file." :: Text)
+        GithubGetError failure ->
+            object ["githubGetError" .= show failure]
 
 -- In order to verify the role of the userX CODEOWNERS file is downloaded with
 -- the expectation there a line:

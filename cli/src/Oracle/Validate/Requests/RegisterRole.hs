@@ -3,8 +3,6 @@ module Oracle.Validate.Requests.RegisterRole
     , validateUnregisterRole
     , RegisterRoleFailure (..)
     , UnregisterRoleFailure (..)
-    , renderRegisterRoleFailure
-    , renderUnregisterRoleFailure
     ) where
 
 import Control.Monad (when)
@@ -32,11 +30,9 @@ import Validation
     , Validation (..)
     , deleteValidation
     , insertValidation
-    , renderKeyFailure
     )
 import Validation.RegisterRole
     ( RepositoryRoleFailure
-    , renderRepositoryRoleFailure
     )
 
 data RegisterRoleFailure
@@ -49,20 +45,11 @@ instance Monad m => ToJSON m RegisterRoleFailure where
     toJSON = \case
         RoleNotPresentOnPlatform reason ->
             object
-                ["roleNotPresentOnPlatform" .= renderRepositoryRoleFailure reason]
+                ["roleNotPresentOnPlatform" .= reason]
         RegisterRolePlatformNotSupported platform ->
             object ["registerRolePlatformNotSupported" .= platform]
         RegisterRoleKeyFailure keyFailure ->
-            object ["registerRoleKeyFailure" .= renderKeyFailure keyFailure]
-
-renderRegisterRoleFailure :: RegisterRoleFailure -> String
-renderRegisterRoleFailure = \case
-    RoleNotPresentOnPlatform reason ->
-        "Role not present on platform: " ++ renderRepositoryRoleFailure reason
-    RegisterRolePlatformNotSupported platform ->
-        "RegisterRole platform not supported: " ++ platform
-    RegisterRoleKeyFailure keyFailure ->
-        "RegisterRole key failure: " ++ renderKeyFailure keyFailure
+            object ["registerRoleKeyFailure" .= keyFailure]
 
 validateRegisterRole
     :: Monad m
@@ -90,16 +77,9 @@ data UnregisterRoleFailure
 instance Monad m => ToJSON m UnregisterRoleFailure where
     toJSON = \case
         UnregisterRoleKeyFailure keyFailure ->
-            object ["unregisterRoleKeyFailure" .= renderKeyFailure keyFailure]
+            object ["unregisterRoleKeyFailure" .= keyFailure]
         RoleIsPresentOnPlatform ->
             object ["roleIsPresentOnPlatform" .= ()]
-
-renderUnregisterRoleFailure :: UnregisterRoleFailure -> String
-renderUnregisterRoleFailure = \case
-    UnregisterRoleKeyFailure keyFailure ->
-        "UnregisterRole key failure: " ++ renderKeyFailure keyFailure
-    RoleIsPresentOnPlatform ->
-        "Role is present on platform, cannot unregister role."
 
 validateUnregisterRole
     :: Monad m

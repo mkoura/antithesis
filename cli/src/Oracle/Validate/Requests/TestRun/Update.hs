@@ -5,7 +5,6 @@ module Oracle.Validate.Requests.TestRun.Update
     , validateToRunningUpdate
     , AgentRejection (..)
     , UpdateTestRunFailure (..)
-    , renderUpdateTestRunFailure
     ) where
 
 import Control.Monad (when)
@@ -31,7 +30,6 @@ import User.Types
 import Validation
     ( KeyFailure
     , Validation (..)
-    , renderKeyFailure
     , updateValidation
     )
 
@@ -47,20 +45,11 @@ data UpdateTestRunFailure
 instance Monad m => ToJSON m UpdateTestRunFailure where
     toJSON = \case
         UpdateTestRunKeyFailure keyFailure ->
-            object ["updateTestRunKeyFailure" .= renderKeyFailure keyFailure]
+            object ["updateTestRunKeyFailure" .= keyFailure]
         UpdateTestRunAgentRejection rejection ->
             object ["updateTestRunAgentRejection" .= show rejection]
         UpdateTestRunRequestNotFromAgent owner ->
             object ["updateTestRunRequestNotFromAgent" .= show owner]
-
-renderUpdateTestRunFailure :: UpdateTestRunFailure -> String
-renderUpdateTestRunFailure = \case
-    UpdateTestRunKeyFailure keyFailure ->
-        "Update Test Run Key Failure: " ++ renderKeyFailure keyFailure
-    UpdateTestRunAgentRejection rejection ->
-        "Update Test Run Agent Rejection: " ++ show rejection
-    UpdateTestRunRequestNotFromAgent owner ->
-        "Update Test Run Request Not From Agent: " ++ show owner
 
 checkingOwner
     :: Monad m

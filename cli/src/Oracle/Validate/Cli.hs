@@ -5,7 +5,6 @@ module Oracle.Validate.Cli
     , ValidateCommand (..)
     , RequestValidation (..)
     , OracleValidateFailure (..)
-    , renderOracleValidateFailure
     ) where
 
 import Control.Monad (forM)
@@ -64,10 +63,6 @@ newtype OracleValidateFailure
 instance Monad m => ToJSON m OracleValidateFailure where
     toJSON (OracleValidateFailToParseToken tk) =
         object ["error" .= ("Failed to parse token with ID: " ++ show tk)]
-
-renderOracleValidateFailure :: OracleValidateFailure -> String
-renderOracleValidateFailure (OracleValidateFailToParseToken tk) =
-    "Failed to parse token with ID: " ++ show tk
 
 validateCmd
     :: MonadIO m

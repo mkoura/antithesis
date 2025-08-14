@@ -7,7 +7,6 @@ module Oracle.Types
     , RequestZoo (..)
     , requestZooRefId
     , RequestValidationFailure (..)
-    , renderRequestValidationFailure
     ) where
 
 import Control.Applicative (Alternative, (<|>))
@@ -15,39 +14,29 @@ import Core.Types.Basic (Owner, RequestRefId)
 import Core.Types.Change (Change (..))
 import Core.Types.Operation (Op (..), Operation (..))
 import Core.Types.Tx (Root)
-import Data.ByteString.Lazy.Char8 qualified as BLC
-import Data.Functor.Identity (runIdentity)
 import Lib.JSON.Canonical.Extra (object, withObject, (.:), (.=))
 import Oracle.Validate.Requests.ManageWhiteList
     ( UpdateWhiteListFailure
-    , renderUpdateWhiteListFailure
     )
 import Oracle.Validate.Requests.RegisterRole
     ( RegisterRoleFailure (..)
     , UnregisterRoleFailure (..)
-    , renderRegisterRoleFailure
-    , renderUnregisterRoleFailure
     )
 import Oracle.Validate.Requests.RegisterUser
     ( RegisterUserFailure (..)
     , UnregisterUserFailure (..)
-    , renderRegisterUserFailure
-    , renderUnregisterUserFailure
     )
 import Oracle.Validate.Requests.TestRun.Create
     ( CreateTestRunFailure (..)
-    , renderCreateTestRunFailure
     )
 import Oracle.Validate.Requests.TestRun.Update
     ( UpdateTestRunFailure (..)
-    , renderUpdateTestRunFailure
     )
 import Text.JSON.Canonical
     ( FromJSON (..)
     , JSValue
     , ReportSchemaErrors
     , ToJSON (..)
-    , renderCanonicalJSON
     )
 import User.Agent.Types (WhiteListKey)
 import User.Types
@@ -250,37 +239,3 @@ instance Monad m => ToJSON m RequestValidationFailure where
             object ["UnknownDeleteValidationFailure" .= value]
         UnknownUpdateValidationFailure value ->
             object ["UnknownUpdateValidationFailure" .= value]
-
-renderRequestValidationFailure
-    :: RequestValidationFailure -> String
-renderRequestValidationFailure = \case
-    RegisterUserFailure failure ->
-        "Register User Failure: "
-            ++ renderRegisterUserFailure failure
-    UnregisterUserFailure failure ->
-        "Unregister User Failure: "
-            ++ renderUnregisterUserFailure failure
-    RegisterRoleFailure failure ->
-        "Register Role Failure: "
-            ++ renderRegisterRoleFailure failure
-    UnregisterRoleFailure failure ->
-        "Unregister Role Failure: "
-            ++ renderUnregisterRoleFailure failure
-    CreateTestRunFailure failure ->
-        "Create Test Run Failure: "
-            ++ renderCreateTestRunFailure failure
-    WhiteListFailure failure ->
-        "White List Failure: "
-            ++ renderUpdateWhiteListFailure failure
-    UpdateTestRunFailure failure ->
-        "Update Test Run Failure: "
-            ++ renderUpdateTestRunFailure failure
-    UnknownInsertValidationFailure value ->
-        "Unknown Insert Validation Failure: "
-            ++ BLC.unpack (renderCanonicalJSON $ runIdentity $ toJSON value)
-    UnknownDeleteValidationFailure value ->
-        "Unknown Delete Validation Failure: "
-            ++ BLC.unpack (renderCanonicalJSON $ runIdentity $ toJSON value)
-    UnknownUpdateValidationFailure value ->
-        "Unknown Update Validation Failure: "
-            ++ BLC.unpack (renderCanonicalJSON $ runIdentity $ toJSON value)

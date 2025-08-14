@@ -8,7 +8,6 @@ module Validation
     , insertValidation
     , deleteValidation
     , updateValidation
-    , renderKeyFailure
     , hoistValidation
     ) where
 
@@ -29,10 +28,12 @@ import Core.Types.Operation (Op (..))
 import Data.Maybe (mapMaybe)
 import GitHub (Auth)
 import Lib.GitHub qualified as GitHub
+import Lib.JSON.Canonical.Extra (object, (.=))
 import MPFS.API (getTokenFacts)
 import Oracle.Validate.Types (Validate, notValidated)
 import Servant.Client (ClientM)
-import Text.JSON.Canonical (FromJSON (..))
+import Text.JSON.Canonical (FromJSON (..), ToJSON)
+import Text.JSON.Canonical.Class (ToJSON (..))
 import User.Types (TestRun)
 import Validation.RegisterRole
     ( RepositoryRoleFailure
@@ -124,10 +125,10 @@ data KeyFailure
     | KeyDoesNotExist String
     deriving (Show, Eq)
 
-renderKeyFailure :: KeyFailure -> String
-renderKeyFailure = \case
-    KeyAlreadyExists key -> "Key already exists: " <> key
-    KeyDoesNotExist key -> "Key does not exist: " <> key
+instance Monad m => ToJSON m KeyFailure where
+    toJSON = \case
+        KeyAlreadyExists key -> object ["keyAlreadyExists" .= key]
+        KeyDoesNotExist key -> object ["keyDoesNotExist" .= key]
 
 -- | Validate a change just as an mpf change.
 -- * Insert should have a fresh key

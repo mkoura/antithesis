@@ -1,8 +1,8 @@
 module Oracle.Config.Types
     ( Config (..)
     , ConfigKey (..)
-    , SetConfig
-    , UpdateConfig
+    , SetConfigChange
+    , UpdateConfigChange
     )
 where
 
@@ -51,5 +51,5 @@ instance ReportSchemaErrors m => FromJSON m Config where
             <$> o .: "agent"
             <*> o .: "testRun"
 
-type SetConfig = Change ConfigKey (OpI Config)
-type UpdateConfig = Change ConfigKey (OpU Config Config)
+type SetConfigChange = Change ConfigKey (OpI Config)
+type UpdateConfigChange = Change ConfigKey (OpU Config Config)

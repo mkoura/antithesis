@@ -107,6 +107,7 @@ library
     MPFS.API
     Options
     Oracle.Cli
+    Oracle.Config.Cli
     Oracle.Config.Types
     Oracle.Options
     Oracle.Token.Cli

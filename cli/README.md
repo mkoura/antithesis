@@ -137,6 +137,6 @@ anti facts | jq '.result'
 
 Depending on your role you can access the different manuals.
 
-- [Test-runs Requester manual](docs/requester-role)
-- [Oracle manual](docs/oracle-role)
-- [Antithesis Agent manual](docs/antithesis-agent-role)
+- [Test-runs Requester manual](docs/requester-role.md)
+- [Oracle manual](docs/oracle-role.md)
+- [Antithesis Agent manual](docs/antithesis-agent-role.md)

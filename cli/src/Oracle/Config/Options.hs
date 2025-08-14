@@ -76,4 +76,10 @@ configCommandParser ptk =
                 )
                 (progDesc "Update the oracle configuration")
             )
+            <> command
+                "get"
+                ( info
+                    (fmap Box GetConfig <$> tokenIdOption ptk)
+                    (progDesc "Get the oracle configuration")
+                )
         )

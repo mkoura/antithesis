@@ -32,9 +32,10 @@ import Test.QuickCheck
     ( oneof
     )
 import Test.QuickCheck.EGen (egenProperty, gen, genBlind)
+import Test.QuickCheck.JSString (genAscii)
 import Test.QuickCheck.Lib (withAPresence, withAPresenceInAList)
 import User.Agent.Types (WhiteListKey (..))
-import User.Agent.TypesSpec (genAscii, genRepository)
+import User.Agent.TypesSpec (genRepository)
 import Validation (KeyFailure (..))
 
 addWhiteListKey

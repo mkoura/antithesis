@@ -2,7 +2,6 @@ module User.Agent.TypesSpec
     ( spec
     , genWhiteListKey
     , genRepository
-    , genAscii
     )
 where
 
@@ -11,34 +10,22 @@ import Core.Types.Basic
     , Repository (..)
     )
 import Data.Char (isAscii)
-import Test.Hspec (Spec, describe, it, shouldBe)
+import Test.Hspec (Spec, describe, it)
+import Test.Hspec.Canonical (roundTrip)
 import Test.QuickCheck
     ( Arbitrary (..)
     , Gen
     , Testable (..)
     , forAll
-    , listOf
     , suchThat
     )
-import Text.JSON.Canonical
-    ( FromJSON (..)
-    , ToJSON (..)
-    )
+import Test.QuickCheck.JSString (genAscii)
 import User.Agent.Types (WhiteListKey (..))
-
-genAscii :: Gen [Char]
-genAscii = listOf $ arbitrary `suchThat` isAscii
 
 genRepository :: Gen Repository
 genRepository = do
     owner <- genAscii
     Repository owner <$> genAscii
-
-roundTrip
-    :: (ToJSON Maybe a, FromJSON Maybe a, Show a, Eq a) => a -> IO ()
-roundTrip value = do
-    let decoded = toJSON value >>= fromJSON
-    decoded `shouldBe` Just value
 
 genWhiteListKey :: Gen WhiteListKey
 genWhiteListKey = do

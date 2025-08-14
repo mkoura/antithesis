@@ -1,22 +1,10 @@
 module Test.QuickCheck.JSString
-    ( JSStringValueChar (..)
-    , JSStringValue (..)
+    ( genAscii
     )
 where
 
-import Test.QuickCheck (Arbitrary (..), elements, listOf)
+import Data.Char (isAscii)
+import Test.QuickCheck (Arbitrary (..), Gen, listOf, suchThat)
 
-chars :: String
-chars = ['a' .. 'z'] <> ['A' .. 'Z'] <> ['0' .. '9'] <> [' ', '-', '_']
-
-newtype JSStringValueChar = JSStringValueChar {getJSStringValueChar :: Char}
-    deriving (Show, Eq)
-
-instance Arbitrary JSStringValueChar where
-    arbitrary = JSStringValueChar <$> elements chars
-
-newtype JSStringValue = JSStringValue {getJSStringValue :: String}
-    deriving (Show, Eq)
-
-instance Arbitrary JSStringValue where
-    arbitrary = JSStringValue . fmap getJSStringValueChar <$> listOf arbitrary
+genAscii :: Gen [Char]
+genAscii = listOf $ arbitrary `suchThat` isAscii

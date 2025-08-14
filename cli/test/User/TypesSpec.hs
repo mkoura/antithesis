@@ -16,7 +16,8 @@ import Core.Types.Basic
     , Try (..)
     , Username (Username)
     )
-import Test.Hspec (Spec, describe, it, shouldBe)
+import Test.Hspec (Spec, describe, it)
+import Test.Hspec.Canonical (roundTrip)
 import Test.QuickCheck
     ( ASCIIString (..)
     , Gen
@@ -27,11 +28,6 @@ import Test.QuickCheck
     , listOf
     )
 import Test.QuickCheck.Crypton (sshGen)
-import Text.JSON.Canonical
-    ( FromJSON (..)
-    , ReportSchemaErrors (..)
-    , ToJSON (..)
-    )
 import User.Types
     ( RegisterUserKey (..)
     , TestRun (..)
@@ -39,21 +35,6 @@ import User.Types
     , TestRunState (..)
     , URL (..)
     )
-
-instance ReportSchemaErrors IO where
-    expected expct (Just got) =
-        fail
-            $ "Expected: "
-                ++ expct
-                ++ ", but got: "
-                ++ got
-    expected expct Nothing = fail $ "Expected: " ++ expct
-
-roundTrip :: (ToJSON IO a, FromJSON IO a, Show a, Eq a) => a -> IO ()
-roundTrip value = do
-    encoded <- toJSON value
-    decoded <- fromJSON encoded
-    decoded `shouldBe` value
 
 testRunRejectionGen :: Gen TestRunRejection
 testRunRejectionGen = do

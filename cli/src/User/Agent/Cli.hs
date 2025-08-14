@@ -23,7 +23,8 @@ import Core.Context
     , withMPFS
     )
 import Core.Types.Basic
-    ( Duration
+    ( Directory
+    , Duration
     , Owner
     , Platform
     , Repository
@@ -156,8 +157,8 @@ resolveOldState cmd = case cmd of
         pure $ Just $ WhiteList tokenId platform repo
     BlackList tokenId platform repo ->
         pure $ Just $ BlackList tokenId platform repo
-    DownloadAssets tokenId key ->
-        pure $ Just $ DownloadAssets tokenId key
+    DownloadAssets tokenId key dir ->
+        pure $ Just $ DownloadAssets tokenId key dir
 
 data IsReady = NotReady | Ready
     deriving (Show, Eq)
@@ -225,6 +226,7 @@ data AgentCommand (phase :: IsReady) result where
     DownloadAssets
         :: TokenId
         -> TestRunId
+        -> Directory
         -> AgentCommand
             phase
             (AValidationResult DownloadAssetsFailure (WithTxHash ()))
@@ -250,7 +252,7 @@ agentCmdCore requester cmd = case cmd of
     Query tokenId -> queryCommand tokenId
     WhiteList tokenId platform repo -> whiteList tokenId requester platform repo
     BlackList tokenId platform repo -> blackList tokenId requester platform repo
-    DownloadAssets _tokentId _key -> undefined
+    DownloadAssets tokenId key dir -> downloadAssets tokenId key dir
 
 whiteList
     :: Monad m
@@ -325,6 +327,16 @@ queryCommand tokenId = do
             , running = testRunsRunning <&> StatusRunning
             , done = testRunsDone <&> StatusDone
             }
+
+downloadAssets
+    :: Monad m
+    => TokenId
+    -> TestRunId
+    -> Directory
+    -> WithContext m (AValidationResult DownloadAssetsFailure (WithTxHash ()))
+downloadAssets tokenId _testRunId _dir = do
+    _testmap <- queryCommand tokenId
+    undefined
 
 signAndSubmitAnUpdate
     :: (ToJSON m key, ToJSON m old, ToJSON m new, Monad m)

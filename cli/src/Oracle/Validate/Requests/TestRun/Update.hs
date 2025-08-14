@@ -40,6 +40,7 @@ data UpdateTestRunFailure
     = UpdateTestRunKeyFailure KeyFailure
     | UpdateTestRunAgentRejection AgentRejection
     | UpdateTestRunRequestNotFromAgent Owner
+    | UpdateTestRunConfigNotAvailable
     deriving (Show, Eq)
 
 instance Monad m => ToJSON m UpdateTestRunFailure where
@@ -50,6 +51,8 @@ instance Monad m => ToJSON m UpdateTestRunFailure where
             object ["updateTestRunAgentRejection" .= show rejection]
         UpdateTestRunRequestNotFromAgent owner ->
             object ["updateTestRunRequestNotFromAgent" .= show owner]
+        UpdateTestRunConfigNotAvailable ->
+            toJSON ("Token configuration is not available yet" :: String)
 
 checkingOwner
     :: Monad m

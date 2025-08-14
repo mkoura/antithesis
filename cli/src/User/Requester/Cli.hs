@@ -10,9 +10,9 @@ import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Trans.Class (lift)
 import Core.Context
     ( WithContext
+    , askConfig
     , askMpfs
     , askSubmit
-    , askTestRunConfig
     , askValidation
     )
 import Core.Types.Basic (Duration, TokenId)
@@ -27,6 +27,7 @@ import MPFS.API
     , RequestDeleteBody (..)
     , RequestInsertBody (..)
     )
+import Oracle.Config.Types (Config (..))
 import Oracle.Validate.Requests.RegisterRole
     ( RegisterRoleFailure
     , UnregisterRoleFailure
@@ -40,11 +41,12 @@ import Oracle.Validate.Requests.RegisterUser
     , validateUnregisterUser
     )
 import Oracle.Validate.Requests.TestRun.Create
-    ( CreateTestRunFailure
+    ( CreateTestRunFailure (..)
     , validateCreateTestRun
     )
 import Oracle.Validate.Types
     ( AValidationResult
+    , liftMaybe
     , runValidate
     )
 import Submitting (Submission (..))
@@ -126,16 +128,18 @@ createCommand
     sign
     testRun
     duration = do
-        testRunConfig <- askTestRunConfig
+        mconfig <- askConfig tokenId
         validation <- askValidation tokenId
         Submission submit <- askSubmit
         mpfs <- askMpfs
         lift $ runValidate $ do
+            Config{configTestRun} <-
+                liftMaybe CreateTestConfigNotAvailable mconfig
             key <- toJSON testRun
             let signature = sign $ BL.toStrict $ renderCanonicalJSON key
             let newState = Pending duration signature
             void
-                $ validateCreateTestRun testRunConfig validation
+                $ validateCreateTestRun configTestRun validation
                 $ Change (Key testRun) (Insert newState)
             value <- toJSON newState
             wtx <- lift $ submit $ \address -> do

@@ -10,12 +10,18 @@ module Core.Context
     , askValidation
     , askSubmit
     , withMPFS
+    , askConfig
     ) where
 
 import Control.Monad.Trans.Class (MonadTrans, lift)
 import Control.Monad.Trans.Reader (ReaderT (..), ask)
 import Core.Types.Basic (Owner, TokenId)
-import MPFS.API (MPFS)
+import Core.Types.Fact (Fact (..), parseFacts)
+import MPFS.API (MPFS (..))
+import Oracle.Config.Types
+    ( Config (configAgent, configTestRun)
+    , ConfigKey
+    )
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig
     )
@@ -26,8 +32,6 @@ import Validation (Validation)
 -- have a type for each command
 data Context m = Context
     { ctxMPFS :: MPFS m
-    , ctxTestRunConfig :: TestRunValidationConfig
-    , ctxAgentPKH :: Owner
     , ctxMkValidation :: TokenId -> Validation m
     , ctxSubmit :: Submission m
     }
@@ -48,11 +52,27 @@ withMPFS f = do
     mpfs <- askMpfs
     lift $ f mpfs
 
-askTestRunConfig :: Monad m => WithContext m TestRunValidationConfig
-askTestRunConfig = ctxTestRunConfig <$> WithContext ask
+withConfig
+    :: Monad m => TokenId -> (Config -> a) -> WithContext m (Maybe a)
+withConfig tokenId f = do
+    mpfs <- askMpfs
+    facts :: [Fact ConfigKey Config] <-
+        fmap parseFacts
+            $ lift
+            $ mpfsGetTokenFacts mpfs tokenId
+    pure $ case facts of
+        [Fact _ c] -> Just $ f c
+        _ -> Nothing
 
-askAgentPKH :: Monad m => WithContext m Owner
-askAgentPKH = ctxAgentPKH <$> WithContext ask
+askConfig :: Monad m => TokenId -> WithContext m (Maybe Config)
+askConfig tokenId = withConfig tokenId id
+
+askTestRunConfig
+    :: Monad m => TokenId -> WithContext m (Maybe TestRunValidationConfig)
+askTestRunConfig tokenId = withConfig tokenId configTestRun
+
+askAgentPKH :: Monad m => TokenId -> WithContext m (Maybe Owner)
+askAgentPKH tokenId = withConfig tokenId configAgent
 
 askValidation :: Monad m => TokenId -> WithContext m (Validation m)
 askValidation tokenId = do
@@ -64,13 +84,15 @@ askSubmit = ctxSubmit <$> WithContext ask
 
 withContext
     :: MPFS m
-    -> TestRunValidationConfig
-    -> Owner
     -> (TokenId -> Validation m)
     -> Submission m
     -> WithContext m a
     -> m a
-withContext mpfs testRunConfig agentPKH mkValidation submit (WithContext action) =
+withContext mpfs mkValidation submit (WithContext action) =
     runReaderT
         action
-        (Context mpfs testRunConfig agentPKH mkValidation submit)
+        Context
+            { ctxMPFS = mpfs
+            , ctxMkValidation = mkValidation
+            , ctxSubmit = submit
+            }

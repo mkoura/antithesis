@@ -28,15 +28,24 @@ data PublicKeyFailure
 
 instance Monad m => ToJSON m PublicKeyFailure where
     toJSON = \case
-        NoPublicKeyFound -> toJSON ("The user does not have any public key exposed in Github." :: String)
-        NoEd25519KeyFound -> toJSON
-            ("The user is expected to have public key with '"
-                <> expectedPrefix
-                <> "' exposed. And none was found" :: String)
-        NoEd25519KeyMatch -> toJSON
-            ("The user does not have the specified Ed25519 public key exposed in Github." :: String)
-        GithubError err -> toJSON
-            ("The following github error was encountered: " <> err :: String)
+        NoPublicKeyFound ->
+            toJSON
+                ("The user does not have any public key exposed in Github." :: String)
+        NoEd25519KeyFound ->
+            toJSON
+                ( "The user is expected to have public key with '"
+                    <> expectedPrefix
+                    <> "' exposed. And none was found"
+                    :: String
+                )
+        NoEd25519KeyMatch ->
+            toJSON
+                ( "The user does not have the specified Ed25519 public key exposed in Github."
+                    :: String
+                )
+        GithubError err ->
+            toJSON
+                ("The following github error was encountered: " <> err :: String)
 
 expectedPrefix :: String
 expectedPrefix = "ssh-ed25519 "

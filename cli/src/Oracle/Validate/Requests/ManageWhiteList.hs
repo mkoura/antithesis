@@ -34,6 +34,7 @@ data UpdateWhiteListFailure
     | WhiteListRepositoryKeyValidation KeyFailure
     | WhiteListGithubFailed Github.GithubResponseStatusCodeError
     | WhiteListAgentNotRecognized Owner
+    | WhiteListConfigNotAvailable
     deriving (Show, Eq)
 
 instance Monad m => ToJSON m UpdateWhiteListFailure where
@@ -49,6 +50,9 @@ instance Monad m => ToJSON m UpdateWhiteListFailure where
         object ["error" .= ("GitHub error: " ++ show err)]
     toJSON (WhiteListAgentNotRecognized agent) =
         object ["error" .= ("Agent not recognized: " ++ show agent)]
+    toJSON WhiteListConfigNotAvailable =
+        object
+            ["error" .= ("Token configuration is not available yet" :: String)]
 
 validateAgent
     :: Monad m

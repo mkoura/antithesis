@@ -183,8 +183,6 @@ setup auth = do
     WithTxHash txHash mTokenId <- calling call $ do
         withContext
             mpfsClient
-            undefined
-            agentWallet.owner
             (mkValidation auth)
             (wait180S oracleWallet)
             $ tokenCmdCore
@@ -205,12 +203,10 @@ setup auth = do
                     }
 
 teardown :: Auth -> ActionWith Context
-teardown auth Context{mpfs, tokenId, wait180S, oracleWallet, agentWallet} = do
+teardown auth Context{mpfs, tokenId, wait180S, oracleWallet} = do
     txHash <- calling mpfs $ do
         withContext
             mpfsClient
-            undefined
-            agentWallet.owner
             (mkValidation auth)
             (wait180S oracleWallet)
             $ tokenCmdCore

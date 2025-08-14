@@ -5,7 +5,7 @@ module Cli
 
 import Control.Monad.IO.Class (MonadIO (..))
 import Core.Context (withContext)
-import Core.Types.Basic (Owner (Owner), RequestRefId, TokenId)
+import Core.Types.Basic (RequestRefId, TokenId)
 import Core.Types.Tx (TxHash, WithTxHash (..))
 import Core.Types.Wallet (Wallet (owner))
 import Lib.GitHub (getOAUth)
@@ -16,9 +16,6 @@ import Lib.SSH.Private
     )
 import MPFS.API (getTokenFacts, mpfsClient, retractChange)
 import Oracle.Cli (OracleCommand (..), oracleCmd)
-import Oracle.Validate.Requests.TestRun.Config
-    ( TestRunValidationConfig (..)
-    )
 import Servant.Client (ClientM)
 import Submitting (Submission (..))
 import System.Environment (getEnv)
@@ -39,25 +36,12 @@ data Command a where
     RequesterCommand :: RequesterCommand a -> Command a
     OracleCommand :: OracleCommand a -> Command a
     AgentCommand :: AgentCommand NotReady a -> Command a
-    RetractRequest
-        :: { outputReference :: RequestRefId
-           }
-        -> Command TxHash
+    RetractRequest :: RequestRefId -> Command TxHash
     GetFacts :: TokenId -> Command JSValue
     Wallet :: WalletCommand a -> Command a
 
 deriving instance Show (Command a)
 deriving instance Eq (Command a)
-
-cmd
-    :: (Wallet -> Submission ClientM)
-    -> Either FilePath Wallet
-    -> Maybe SigningMap
-    -> Command a
-    -> ClientM a
-cmd submit mwf msign command = do
-    let cfg = TestRunValidationConfig 12 1
-    cmdCore submit cfg mwf msign command
 
 failNothing :: Applicative m => [Char] -> Maybe a -> m a
 failNothing w Nothing = error w
@@ -70,16 +54,14 @@ failLeft _ (Right x) = pure x
 data SetupError = TokenNotSpecified
     deriving (Show, Eq)
 
-cmdCore
+cmd
     :: (Wallet -> Submission ClientM)
-    -> TestRunValidationConfig
     -> Either FilePath Wallet
     -> Maybe SigningMap
     -> Command a
     -> ClientM a
-cmdCore
+cmd
     submit
-    testRunValidationConfig
     mWallet
     mSigning =
         \case
@@ -91,38 +73,26 @@ cmdCore
                     failNothing (sshKeySelector <> "not in the signing map")
                         $ signing
                         $ SSHKeySelector sshKeySelector
-                antithesisPKH <-
-                    liftIO $ Owner <$> getEnv "ANTI_AGENT_PUBLIC_KEY_HASH"
                 wallet <- failLeft ("No wallet @ " <>) mWallet
                 withContext
                     mpfsClient
-                    testRunValidationConfig
-                    antithesisPKH
                     (mkValidation auth)
                     (submit wallet)
                     $ requesterCmd (sign keyAPI) requesterCommand
             OracleCommand oracleCommand -> do
                 wallet <- failLeft ("No wallet @ " <>) mWallet
-                antithesisPKH <-
-                    liftIO $ Owner <$> getEnv "ANTI_AGENT_PUBLIC_KEY_HASH"
                 auth <- liftIO getOAUth
                 withContext
                     mpfsClient
-                    testRunValidationConfig
-                    antithesisPKH
                     (mkValidation auth)
                     (submit wallet)
                     $ oracleCmd
                         oracleCommand
             AgentCommand agentCommand -> do
-                antithesisPKH <-
-                    liftIO $ Owner <$> getEnv "ANTI_AGENT_PUBLIC_KEY_HASH"
                 auth <- liftIO getOAUth
                 wallet <- failLeft ("No wallet @ " <>) mWallet
                 withContext
                     mpfsClient
-                    testRunValidationConfig
-                    antithesisPKH
                     (mkValidation auth)
                     (submit wallet)
                     $ agentCmd (owner wallet) agentCommand

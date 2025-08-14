@@ -16,7 +16,7 @@ import Control.Monad (void)
 import Control.Monad.Trans.Class (lift)
 import Core.Context
     ( WithContext
-    , askAgentPKH
+    , askConfig
     , askMpfs
     , askSubmit
     , askValidation
@@ -41,13 +41,14 @@ import MPFS.API
     , RequestInsertBody (..)
     , RequestUpdateBody (..)
     )
+import Oracle.Config.Types (Config (..))
 import Oracle.Validate.Requests.ManageWhiteList
-    ( UpdateWhiteListFailure
+    ( UpdateWhiteListFailure (..)
     , validateAddWhiteListed
     , validateRemoveWhiteListed
     )
 import Oracle.Validate.Requests.TestRun.Update
-    ( UpdateTestRunFailure
+    ( UpdateTestRunFailure (..)
     , validateToDoneUpdate
     , validateToRunningUpdate
     )
@@ -55,6 +56,7 @@ import Oracle.Validate.Types
     ( AValidationResult
     , Validate
     , Validated
+    , liftMaybe
     , runValidate
     )
 import Submitting (Submission (..))
@@ -263,11 +265,12 @@ whiteList tokenId requester platform repo = do
                 , operation = Insert ()
                 }
     validation <- askValidation tokenId
-    agentPKH <- askAgentPKH
     Submission submit <- askSubmit
     mpfs <- askMpfs
+    mconfig <- askConfig tokenId
     lift $ runValidate $ do
-        void $ validateAddWhiteListed validation requester agentPKH change
+        Config{configAgent} <- liftMaybe WhiteListConfigNotAvailable mconfig
+        void $ validateAddWhiteListed validation requester configAgent change
         wtx <- lift $ submit $ \address -> do
             jkey <- toJSON key
             mpfsRequestInsert mpfs address tokenId
@@ -290,11 +293,13 @@ blackList tokenId requester platform repo = do
     let key = WhiteListKey platform repo
         change = Change (Key key) (Delete ())
     validation <- askValidation tokenId
-    agentPKH <- askAgentPKH
     Submission submit <- askSubmit
     mpfs <- askMpfs
+    mconfig <- askConfig tokenId
     lift $ runValidate $ do
-        void $ validateRemoveWhiteListed validation requester agentPKH change
+        Config{configAgent} <- liftMaybe WhiteListConfigNotAvailable mconfig
+        void
+            $ validateRemoveWhiteListed validation requester configAgent change
         wtx <- lift $ submit $ \address -> do
             jkey <- toJSON key
             mpfsRequestDelete mpfs address tokenId
@@ -332,12 +337,14 @@ signAndSubmitAnUpdate
         (AValidationResult UpdateTestRunFailure (WithTxHash new))
 signAndSubmitAnUpdate validate tokenId requester testRun oldState newState = do
     validation <- askValidation tokenId
-    agentPKH <- askAgentPKH
+    mconfig <- askConfig tokenId
     Submission submit <- askSubmit
     mpfs <- askMpfs
     lift $ runValidate $ do
+        Config{configAgent} <-
+            liftMaybe UpdateTestRunConfigNotAvailable mconfig
         void
-            $ validate validation agentPKH requester
+            $ validate validation configAgent requester
             $ Change (Key testRun)
             $ Update oldState newState
         wtx <- lift $ submit $ \address -> do

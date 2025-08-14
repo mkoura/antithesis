@@ -12,9 +12,8 @@ import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Trans.Class (lift)
 import Core.Context
     ( WithContext
-    , askAgentPKH
+    , askConfig
     , askMpfs
-    , askTestRunConfig
     , askValidation
     )
 import Core.Types.Basic (RequestRefId, TokenId)
@@ -37,6 +36,7 @@ import Oracle.Validate.Request
 import Oracle.Validate.Types
     ( AValidationResult
     , ValidationResult
+    , liftMaybe
     , notValidated
     , runValidate
     )
@@ -56,13 +56,16 @@ data ValidateCommand a where
 deriving instance Show (ValidateCommand a)
 deriving instance Eq (ValidateCommand a)
 
-newtype OracleValidateFailure
+data OracleValidateFailure
     = OracleValidateFailToParseToken TokenId
+    | OracleValidateConfigNotAvailable
     deriving (Show, Eq)
 
 instance Monad m => ToJSON m OracleValidateFailure where
     toJSON (OracleValidateFailToParseToken tk) =
         object ["error" .= ("Failed to parse token with ID: " ++ show tk)]
+    toJSON OracleValidateConfigNotAvailable =
+        toJSON ("Token configuration is not available yet" :: String)
 
 validateCmd
     :: MonadIO m
@@ -72,11 +75,11 @@ validateCmd
 validateCmd tk command = case command of
     ValidateRequests -> do
         mpfs <- askMpfs
-        testRunConfig <- askTestRunConfig
-        pkh <- askAgentPKH
+        mconfig <- askConfig tk
         validation <- askValidation tk
         lift $ runValidate $ case command of
             ValidateRequests -> do
+                config <- liftMaybe OracleValidateConfigNotAvailable mconfig
                 canonicalJSON <- lift $ mpfsGetToken mpfs tk
                 requests <- do
                     let mv = fromJSON canonicalJSON <&> tokenRequests
@@ -88,7 +91,7 @@ validateCmd tk command = case command of
                 forM requests $ \request -> lift $ do
                     RequestValidation (requestZooRefId request)
                         <$> runValidate
-                            (validateRequest testRunConfig pkh validation request)
+                            (validateRequest config validation request)
 
 data RequestValidation = RequestValidation
     { requestRefId :: RequestRefId

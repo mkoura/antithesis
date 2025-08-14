@@ -9,10 +9,9 @@ import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Trans.Class (lift)
 import Core.Context
     ( WithContext
-    , askAgentPKH
+    , askConfig
     , askMpfs
     , askSubmit
-    , askTestRunConfig
     , askValidation
     )
 import Core.Types.Basic (RequestRefId, TokenId)
@@ -80,6 +79,7 @@ data TokenUpdateFailure
     | TokenUpdateOfNoRequests
     | TokenUpdateRequestValidations
         [TokenUpdateRequestValidation]
+    | TokenUpdateConfigNotFound
     deriving (Show, Eq)
 
 instance Exception TokenUpdateFailure
@@ -92,6 +92,8 @@ instance Monad m => ToJSON m TokenUpdateFailure where
             toJSON ("No requests to include" :: String)
         TokenUpdateRequestValidations validations ->
             object ["tokenUpdateRequestValidations" .= validations]
+        TokenUpdateConfigNotFound ->
+            toJSON ("Token update config not available" :: String)
 
 data TokenCommand a where
     GetToken :: TokenId -> TokenCommand JSValue
@@ -127,14 +129,14 @@ tokenCmdCore
     -> WithContext m a
 tokenCmdCore command = do
     mpfs <- askMpfs
-    testRunConfig <- askTestRunConfig
-    pkh <- askAgentPKH
     Submission submit <- askSubmit
     case command of
         GetToken tk -> lift $ mpfsGetToken mpfs tk
         UpdateToken tk wanted -> do
             validation <- askValidation tk
+            mconfig <- askConfig tk
             lift $ runValidate $ do
+                config <- liftMaybe TokenUpdateConfigNotFound mconfig
                 when (null wanted) $ notValidated TokenUpdateOfNoRequests
                 mpendings <- lift $ fromJSON <$> mpfsGetToken mpfs tk
                 token <- liftMaybe (TokenNotParsable tk) mpendings
@@ -150,7 +152,7 @@ tokenCmdCore command = do
                                 (TokenUpdateRequestValidation req TokenUpdateRequestNotFound)
                                 $ find ((== req) . requestZooRefId) requests
                         promoteFailure tokenRequest
-                            $ validateRequest testRunConfig pkh validation tokenRequest
+                            $ validateRequest config validation tokenRequest
                 WithTxHash txHash _ <- lift
                     $ submit
                     $ \address -> mpfsUpdateToken mpfs address tk wanted

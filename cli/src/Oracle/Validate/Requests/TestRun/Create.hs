@@ -50,6 +50,7 @@ import Validation
 data CreateTestRunFailure
     = CreateTestRunRejections [TestRunRejection]
     | CreateTestRunKeyFailure KeyFailure
+    | CreateTestConfigNotAvailable
     deriving (Eq, Show)
 
 instance Monad m => ToJSON m CreateTestRunFailure where
@@ -57,6 +58,8 @@ instance Monad m => ToJSON m CreateTestRunFailure where
         object ["createTestRunRejections" .= rejections]
     toJSON (CreateTestRunKeyFailure keyFailure) =
         object ["createTestRunKeyFailure" .= keyFailure]
+    toJSON CreateTestConfigNotAvailable =
+        stringJSON "Token configuration is not available yet"
 
 validateCreateTestRun
     :: MonadIO m

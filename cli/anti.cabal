@@ -119,6 +119,7 @@ library
     Oracle.Validate.Options
     Oracle.Validate.Request
     Oracle.Validate.Requests.Config
+    Oracle.Validate.Requests.DownloadAssets
     Oracle.Validate.Requests.ManageWhiteList
     Oracle.Validate.Requests.RegisterRole
     Oracle.Validate.Requests.RegisterUser

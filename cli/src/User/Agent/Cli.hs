@@ -42,6 +42,8 @@ import MPFS.API
     , RequestUpdateBody (..)
     )
 import Oracle.Config.Types (Config (..))
+import Oracle.Validate.Requests.DownloadAssets
+    ( DownloadAssetsFailure )
 import Oracle.Validate.Requests.ManageWhiteList
     ( UpdateWhiteListFailure (..)
     , validateAddWhiteListed
@@ -66,7 +68,8 @@ import Text.JSON.Canonical
     , ToJSON (..)
     )
 import User.Agent.Types
-    ( TestRunMap (..)
+    ( TestRunId (..)
+    , TestRunMap (..)
     , TestRunStatus (..)
     , WhiteListKey (..)
     )
@@ -153,6 +156,8 @@ resolveOldState cmd = case cmd of
         pure $ Just $ WhiteList tokenId platform repo
     BlackList tokenId platform repo ->
         pure $ Just $ BlackList tokenId platform repo
+    DownloadAssets tokenId key ->
+        pure $ Just $ DownloadAssets tokenId key
 
 data IsReady = NotReady | Ready
     deriving (Show, Eq)
@@ -162,11 +167,6 @@ type family IfReady a b where
     IfReady Ready b = b
 
 data Role = Internal | External
-    deriving (Show, Eq)
-
-newtype TestRunId = TestRunId
-    { unTestRunId :: String
-    }
     deriving (Show, Eq)
 
 type family ResolveId phase where
@@ -222,6 +222,12 @@ data AgentCommand (phase :: IsReady) result where
         -> AgentCommand
             phase
             (AValidationResult UpdateWhiteListFailure (WithTxHash ()))
+    DownloadAssets
+        :: TokenId
+        -> TestRunId
+        -> AgentCommand
+            phase
+            (AValidationResult DownloadAssetsFailure (WithTxHash ()))
 
 deriving instance Show (AgentCommand NotReady result)
 deriving instance Eq (AgentCommand NotReady result)
@@ -244,6 +250,7 @@ agentCmdCore requester cmd = case cmd of
     Query tokenId -> queryCommand tokenId
     WhiteList tokenId platform repo -> whiteList tokenId requester platform repo
     BlackList tokenId platform repo -> blackList tokenId requester platform repo
+    DownloadAssets _tokentId _key -> undefined
 
 whiteList
     :: Monad m

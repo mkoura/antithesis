@@ -2,6 +2,7 @@ module User.Agent.Types
     ( TestRunStatus (..)
     , TestRunMap (..)
     , WhiteListKey (..)
+    , TestRunId (..)
     ) where
 
 import Control.Monad (unless)
@@ -17,6 +18,18 @@ import Text.JSON.Canonical
     , toJSString
     )
 import User.Types (Phase (..), TestRun, TestRunState)
+
+newtype TestRunId = TestRunId {testRunId :: String}
+    deriving (Show, Eq)
+
+instance Monad m => ToJSON m TestRunId where
+    toJSON (TestRunId hash) =
+        pure $ JSString $ toJSString hash
+
+instance (ReportSchemaErrors m) => FromJSON m TestRunId where
+    fromJSON i = do
+        str <- fromJSON @m @String i
+        pure $ TestRunId str
 
 data WhiteListKey = WhiteListKey
     { platform :: Platform

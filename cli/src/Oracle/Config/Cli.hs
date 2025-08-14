@@ -17,8 +17,11 @@ import Submitting (Submission (..))
 import Text.JSON.Canonical
 
 data ConfigCmd a where
-    SetConfig :: TokenId -> Config -> ConfigCmd (WithTxHash ())
     GetConfig :: TokenId -> ConfigCmd (Maybe Config)
+    SetConfig :: TokenId -> Config -> ConfigCmd (WithTxHash ())
+
+deriving instance Show (ConfigCmd a)
+deriving instance Eq (ConfigCmd a)
 
 configCmd
     :: MonadIO m => ConfigCmd a -> WithContext m a

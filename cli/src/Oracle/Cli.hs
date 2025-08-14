@@ -6,6 +6,7 @@ module Oracle.Cli
 import Control.Monad.IO.Class (MonadIO (..))
 import Core.Context (WithContext)
 import Core.Types.Basic (TokenId)
+import Oracle.Config.Cli (ConfigCmd (..), configCmd)
 import Oracle.Token.Cli (TokenCommand, tokenCmdCore)
 import Oracle.Validate.Cli (ValidateCommand, validateCmd)
 
@@ -13,6 +14,8 @@ data OracleCommand a where
     OracleTokenCommand :: TokenCommand a -> OracleCommand a
     OracleValidateCommand
         :: TokenId -> ValidateCommand a -> OracleCommand a
+    OracleSetConfigCommand
+        :: ConfigCmd a -> OracleCommand a
 
 deriving instance Show (OracleCommand a)
 deriving instance Eq (OracleCommand a)
@@ -27,3 +30,4 @@ oracleCmd = \case
         validateCmd
             tokenId
             validateCommand
+    OracleSetConfigCommand configCommand -> configCmd configCommand

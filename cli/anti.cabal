@@ -108,6 +108,7 @@ library
     Options
     Oracle.Cli
     Oracle.Config.Cli
+    Oracle.Config.Options
     Oracle.Config.Types
     Oracle.Options
     Oracle.Token.Cli

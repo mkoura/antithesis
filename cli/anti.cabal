@@ -107,6 +107,7 @@ library
     MPFS.API
     Options
     Oracle.Cli
+    Oracle.Config.Types
     Oracle.Options
     Oracle.Token.Cli
     Oracle.Token.Options
@@ -297,6 +298,7 @@ test-suite anti-unit-test
     Lib.JSON.Canonical.AesonSpec
     Lib.JSON.Canonical.ExtraSpec
     Lib.SSH.KeySpec
+    Oracle.Config.TypesSpec
     Oracle.Validate.Requests.ManageWhiteListSpec
     Oracle.Validate.Requests.RegisterRoleSpec
     Oracle.Validate.Requests.RegisterUserSpec

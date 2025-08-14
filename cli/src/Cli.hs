@@ -8,7 +8,6 @@ import Core.Context (withContext)
 import Core.Types.Basic (Owner (Owner), RequestRefId, TokenId)
 import Core.Types.Tx (TxHash, WithTxHash (..))
 import Core.Types.Wallet (Wallet (owner))
-import Data.Aeson (eitherDecodeFileStrict')
 import Lib.GitHub (getOAUth)
 import Lib.SSH.Private
     ( KeyAPI (..)
@@ -57,14 +56,7 @@ cmd
     -> Command a
     -> ClientM a
 cmd submit mwf msign command = do
-    cfg <- liftIO $ do
-        configFile <- getEnv "ANTI_CONFIG_FILE"
-        config <-
-            eitherDecodeFileStrict' configFile
-                :: IO (Either String TestRunValidationConfig)
-        case config of
-            Left err -> error $ "Failed to parse config file: " ++ err
-            Right cfg -> pure cfg
+    let cfg = TestRunValidationConfig 12 1
     cmdCore submit cfg mwf msign command
 
 failNothing :: Applicative m => [Char] -> Maybe a -> m a

@@ -44,7 +44,9 @@ import MPFS.API
     )
 import Oracle.Config.Types (Config (..))
 import Oracle.Validate.Requests.DownloadAssets
-    ( DownloadAssetsFailure )
+    ( DownloadAssetsFailure
+    , validateDownloadAssets
+    )
 import Oracle.Validate.Requests.ManageWhiteList
     ( UpdateWhiteListFailure (..)
     , validateAddWhiteListed
@@ -229,7 +231,7 @@ data AgentCommand (phase :: IsReady) result where
         -> Directory
         -> AgentCommand
             phase
-            (AValidationResult DownloadAssetsFailure (WithTxHash ()))
+            (AValidationResult DownloadAssetsFailure ())
 
 deriving instance Show (AgentCommand NotReady result)
 deriving instance Eq (AgentCommand NotReady result)
@@ -333,10 +335,13 @@ downloadAssets
     => TokenId
     -> TestRunId
     -> Directory
-    -> WithContext m (AValidationResult DownloadAssetsFailure (WithTxHash ()))
-downloadAssets tokenId _testRunId _dir = do
-    _testmap <- queryCommand tokenId
-    undefined
+    -> WithContext m (AValidationResult DownloadAssetsFailure ())
+downloadAssets tokenId testRunId dir = do
+    testmap <- queryCommand tokenId
+    validation <- askValidation tokenId
+    lift $ runValidate $ do
+        void $ validateDownloadAssets validation testmap testRunId dir
+        pure ()
 
 signAndSubmitAnUpdate
     :: (ToJSON m key, ToJSON m old, ToJSON m new, Monad m)

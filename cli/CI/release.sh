@@ -28,7 +28,7 @@ if ! gh release view "$release" >/dev/null 2>&1; then
     echo "Do you want to create it? (y/n)"
     read -r create_release
     if [[ "$create_release" == "y" ]]; then
-        gh release create "$release" --title "AntiCLI $release" --notes "Release $release" --draft
+        gh release create "$release" --title "$release" --notes "Release $release" --draft
         echo "Release '$release' created."
     else
         echo "Exiting without creating the release."

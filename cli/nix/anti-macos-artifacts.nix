@@ -18,7 +18,7 @@ let
       chmod -R +w $out/unpacked/*
     '';
     installPhase = ''
-      tar -C $out/unpacked -czvf $out/$pname-$version-macos.tar.gz .
+      tar -C $out/unpacked -czvf $out/$pname-$version-darwin64.tar.gz .
       rm -rf $out/unpacked
     '';
   };

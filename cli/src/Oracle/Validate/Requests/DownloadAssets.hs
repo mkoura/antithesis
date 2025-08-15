@@ -6,7 +6,7 @@ module Oracle.Validate.Requests.DownloadAssets
 where
 
 import Control.Monad (filterM)
-import Control.Monad.IO.Class (MonadIO (..))
+import Control.Monad.Trans.Class (lift)
 import Core.Types.Basic (Directory, Platform (..), Repository)
 import Core.Types.Fact
     ( Fact (..)
@@ -18,7 +18,9 @@ import Lib.JSON.Canonical.Extra (object, (.=))
 import Oracle.Validate.Types
     ( Validate
     , Validated (..)
-    , throwFalse
+    , mapFailure
+    , notValidated
+    , throwJusts
     )
 import User.Agent.Types
     ( TestRunId (..)
@@ -44,6 +46,10 @@ renderDownloadAssetsFailure (DownloadAssetsRepositoryNotInThePlatform repo) =
     "Repository is not in the platform: " ++ show repo
 renderDownloadAssetsFailure (DownloadAssetsTestRunIdNotFound (TestRunId testid)) =
     "Requested test id : " ++ show testid ++ " not found. Please refer to created ones using 'anti agent query'"
+renderDownloadAssetsFailure (DownloadAssetsSourceDirFailure SourceDirFailureDirAbsent) =
+    "There is no directory specified by test run"
+renderDownloadAssetsFailure (DownloadAssetsSourceDirFailure (SourceDirFailureGithubError err)) =
+    "When checking directory specified by test run github responded with " ++ show err
 
 instance Monad m => ToJSON m DownloadAssetsFailure where
     toJSON (DownloadAssetsPlatformUnsupported platform) =
@@ -53,6 +59,10 @@ instance Monad m => ToJSON m DownloadAssetsFailure where
             ["error" .= ("Repository is not in the platform: " ++ show repo)]
     toJSON (DownloadAssetsTestRunIdNotFound (TestRunId testid)) =
         object ["error" .= ("Requested test id : " ++ show testid ++ " not found. Please refer to created ones using 'anti agent query'")]
+    toJSON (DownloadAssetsSourceDirFailure SourceDirFailureDirAbsent) =
+        object ["error" .= ("There is no directory specified by test run" :: String)]
+    toJSON (DownloadAssetsSourceDirFailure (SourceDirFailureGithubError err)) =
+        object ["error" .= ("When checking directory specified by test run github responded with " ++ show err)]
 
 data SourceDirFailure =
       SourceDirFailureDirAbsent
@@ -60,7 +70,7 @@ data SourceDirFailure =
     deriving (Show, Eq)
 
 checkDirectory
-    :: MonadIO m
+    :: Monad m
     => Validation m
     -> TestRun
     -> m (Maybe SourceDirFailure)
@@ -86,7 +96,7 @@ validateDownloadAssets
     -> TestRunId
     -> Directory
     -> Validate DownloadAssetsFailure m Validated
-validateDownloadAssets _v TestRunMap{pending,running,done} testid _dir = do
+validateDownloadAssets validation TestRunMap{pending,running,done} testid _dir = do
     pendingR <- filterM inspectTestRunPending pending
     runningR <- filterM inspectTestRunRunning running
     doneR <- filterM inspectTestRunDone done
@@ -94,8 +104,11 @@ validateDownloadAssets _v TestRunMap{pending,running,done} testid _dir = do
             (extractTestRunPending <$> pendingR) ++
             (extractTestRunRunning <$> runningR) ++
             (extractTestRunDone <$> doneR)
-    throwFalse (null matched)
-        $ DownloadAssetsTestRunIdNotFound testid
+    case matched of
+        [] -> notValidated $  DownloadAssetsTestRunIdNotFound testid
+        firstMatched : _ -> do
+            sourceDirValidation <- lift $ checkDirectory validation firstMatched
+            mapFailure DownloadAssetsSourceDirFailure $ throwJusts sourceDirValidation
   where
     checkFact testrun  = do
         keyId <- keyHash @_ @TestRun testrun

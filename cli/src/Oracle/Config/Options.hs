@@ -8,19 +8,19 @@ module Oracle.Config.Options
 where
 
 import Core.Options (tokenIdOption)
-import Core.Types.Basic (Owner (..), TokenId)
+import Core.Types.Basic (Owner (..))
 import Lib.Box (Box (..))
-import Options.Applicative
+import OptEnvConf
     ( Parser
     , auto
     , command
+    , commands
     , help
-    , hsubparser
-    , info
     , long
     , metavar
     , option
-    , progDesc
+    , reader
+    , setting
     , strOption
     )
 import Oracle.Config.Cli (ConfigCmd (..))
@@ -32,26 +32,31 @@ import Oracle.Validate.Requests.TestRun.Config
 configOption :: Parser Config
 configOption = do
     minDuration <-
-        option
-            auto
-            ( long "min-test-duration"
-                <> metavar "MIN_TEST_HOURS"
-                <> help "Minimum duration of the tests in hours"
-            )
+        setting
+            [ long "min-test-duration"
+            , metavar "MIN_TEST_HOURS"
+            , help "Minimum duration of the tests in hours"
+            , option
+            , reader auto
+            ]
+
     maxDuration <-
-        option
-            auto
-            ( long "max-test-duration"
-                <> metavar "MAX_TEST_HOURS"
-                <> help "Maximum duration of the tests in hours"
-            )
+        setting
+            [ long "max-test-duration"
+            , metavar "MAX_TEST_HOURS"
+            , help "Maximum duration of the tests in hours"
+            , option
+            , reader auto
+            ]
     agent <-
         Owner
             <$> strOption
-                ( long "agent-pkh"
-                    <> metavar "AGENT_PUBLIC_KEY_HASH"
-                    <> help "Public key hash of the agent that will run the tests"
-                )
+                [ long "agent-pkh"
+                , metavar "AGENT_PUBLIC_KEY_HASH"
+                , help "Public key hash of the agent that will run the tests"
+                , option
+                ]
+
     pure
         $ Config
             { configAgent = agent
@@ -63,23 +68,20 @@ configOption = do
             }
 
 configCommandParser
-    :: Maybe TokenId
-    -> Parser (Box ConfigCmd)
-configCommandParser ptk =
-    hsubparser
-        ( command
+    :: Parser (Box ConfigCmd)
+configCommandParser =
+    commands
+        [ command
             "set"
-            ( info
-                ( fmap Box . SetConfig
-                    <$> tokenIdOption ptk
-                    <*> configOption
-                )
-                (progDesc "Update the oracle configuration")
+            "Update the oracle configuration"
+            ( fmap Box . SetConfig
+                <$> tokenIdOption
+                <*> configOption
             )
-            <> command
-                "get"
-                ( info
-                    (fmap Box GetConfig <$> tokenIdOption ptk)
-                    (progDesc "Get the oracle configuration")
-                )
-        )
+        , command
+            "get"
+            "Get the oracle configuration"
+            ( fmap Box GetConfig
+                <$> tokenIdOption
+            )
+        ]

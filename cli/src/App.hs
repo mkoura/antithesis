@@ -5,7 +5,6 @@ module App
 
 import Cli (cmd)
 import Control.Exception (SomeException (SomeException), catch, try)
-import Core.Types.Basic (TokenId (..))
 import Data.ByteString.Char8 qualified as B
 import Lib.Box (Box (..))
 import Lib.SSH.Private (decodePrivateSSHFile)
@@ -18,7 +17,7 @@ import Network.HTTP.Client
     )
 import Network.HTTP.Client.TLS (tlsManagerSettings)
 import Options (Options (..), parseArgs)
-import Options.Applicative (Alternative (..))
+import Paths_anti (version)
 import Servant.Client
     ( BaseUrl (..)
     , ClientError
@@ -34,7 +33,7 @@ import Submitting
     , readWallet
     , signAndSubmitMPFS
     )
-import System.Environment (getArgs, getEnv, lookupEnv)
+import System.Environment (getEnv, lookupEnv)
 import Text.JSON.Canonical (JSValue, ToJSON (..))
 
 data Result
@@ -48,19 +47,10 @@ data Result
     | Help
     deriving (Show)
 
-parseTokenId :: IO (Maybe TokenId)
-parseTokenId = do
-    tokenIdStr <- lookupEnv "ANTI_TOKEN_ID"
-    pure $ case tokenIdStr of
-        Nothing -> empty
-        Just tid -> pure $ TokenId tid
-
 client
     :: IO Result
 client = do
-    ptk <- parseTokenId
-    args <- getArgs
-    fc <- try $ parseArgs args ptk
+    fc <- try $ parseArgs version
     case fc of
         Left (SomeException _) -> return Help
         Right o@(Box (Options command)) -> do

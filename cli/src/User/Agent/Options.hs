@@ -6,21 +6,22 @@ module User.Agent.Options
     ) where
 
 import Core.Options (platformOption, repositoryOption, tokenIdOption)
-import Core.Types.Basic (Duration (..), TokenId)
+import Core.Types.Basic (Duration (..))
 import Core.Types.Tx (WithTxHash)
 import Lib.Box (Box (..))
-import Options.Applicative
+import OptEnvConf
     ( Alternative (..)
     , Parser
     , auto
     , command
+    , commands
     , eitherReader
     , help
-    , hsubparser
-    , info
     , long
+    , metavar
     , option
-    , progDesc
+    , reader
+    , setting
     , short
     , str
     )
@@ -43,51 +44,25 @@ import User.Types
     )
 
 agentCommandParser
-    :: Maybe TokenId
-    -> Parser (Box (AgentCommand NotReady))
-agentCommandParser ptk =
-    hsubparser
-        ( command
-            "accept-test"
-            ( info
-                (Box <$> acceptTestOptions ptk)
-                (progDesc "Request a test on a specific platform")
-            )
-            <> command
-                "reject-test"
-                ( info
-                    (Box <$> rejectTestOptions ptk)
-                    (progDesc "Reject a test with a reason")
-                )
-            <> command
-                "report-test"
-                ( info
-                    (Box <$> reportTestOptions ptk)
-                    (progDesc "Report the result of a test run")
-                )
-            <> command
-                "query"
-                ( info
-                    (Box <$> queryOptions ptk)
-                    (progDesc "Query the status of test runs")
-                )
-            <> command
-                "white-list"
-                ( info
-                    (Box <$> whitelistRepositoryOptions ptk)
-                    (progDesc "Whitelist a repository for test-runs")
-                )
-            <> command
-                "black-list"
-                ( info
-                    (Box <$> blacklistRepositoryOptions ptk)
-                    (progDesc "Blacklist a repository for test-runs")
-                )
-        )
+    :: Parser (Box (AgentCommand NotReady))
+agentCommandParser =
+    commands
+        [ command "accept-test" "Request a test on a specific platform"
+            $ Box <$> acceptTestOptions
+        , command "reject-test" "Reject a test with a reason"
+            $ Box <$> rejectTestOptions
+        , command "report-test" "Report the result of a test run"
+            $ Box <$> reportTestOptions
+        , command "query" "Query the status of test runs"
+            $ Box <$> queryOptions
+        , command "white-list" "Whitelist a repository for test-runs"
+            $ Box <$> whitelistRepositoryOptions
+        , command "black-list" "Blacklist a repository for test-runs"
+            $ Box <$> blacklistRepositoryOptions
+        ]
 
 whitelistRepositoryOptions
-    :: Maybe TokenId
-    -> Parser
+    :: Parser
         ( AgentCommand
             phase
             ( AValidationResult
@@ -95,15 +70,14 @@ whitelistRepositoryOptions
                 (WithTxHash ())
             )
         )
-whitelistRepositoryOptions ptk =
+whitelistRepositoryOptions =
     WhiteList
-        <$> tokenIdOption ptk
+        <$> tokenIdOption
         <*> platformOption
         <*> repositoryOption
 
 blacklistRepositoryOptions
-    :: Maybe TokenId
-    -> Parser
+    :: Parser
         ( AgentCommand
             phase
             ( AValidationResult
@@ -111,31 +85,31 @@ blacklistRepositoryOptions
                 (WithTxHash ())
             )
         )
-blacklistRepositoryOptions ptk =
+blacklistRepositoryOptions =
     BlackList
-        <$> tokenIdOption ptk
+        <$> tokenIdOption
         <*> platformOption
         <*> repositoryOption
 
 queryOptions
-    :: Maybe TokenId
-    -> Parser (AgentCommand NotReady TestRunMap)
-queryOptions ptk = Query <$> tokenIdOption ptk
+    :: Parser (AgentCommand NotReady TestRunMap)
+queryOptions = Query <$> tokenIdOption
 
 testRunIdOption
     :: Parser TestRunId
 testRunIdOption =
     TestRunId
-        <$> option
-            str
-            ( short 'i'
-                <> long "test-run-id"
-                <> help "The ID of the test run to accept/reject/report"
-            )
+        <$> setting
+            [ long "test-run-id"
+            , short 'i'
+            , metavar "TEST_RUN_ID"
+            , help "The ID of the test run to accept/reject/report"
+            , option
+            , reader str
+            ]
 
 acceptTestOptions
-    :: Maybe TokenId
-    -> Parser
+    :: Parser
         ( AgentCommand
             NotReady
             ( AValidationResult
@@ -143,14 +117,19 @@ acceptTestOptions
                 (WithTxHash (TestRunState RunningT))
             )
         )
-acceptTestOptions ptk =
-    Accept <$> tokenIdOption ptk <*> testRunIdOption <*> pure ()
+acceptTestOptions =
+    Accept <$> tokenIdOption <*> testRunIdOption <*> pure ()
 
 testRejectionParser :: Parser TestRunRejection
 testRejectionParser =
-    option
-        (eitherReader readReason)
-        (long "reason" <> help "TestRunRejection for rejection")
+    setting
+        [ long "reason"
+        , help "Reason for rejecting the test run"
+        , metavar "REJECTION_REASON"
+        , reader (eitherReader readReason)
+        , option
+        , reader (eitherReader readReason)
+        ]
   where
     readReason :: String -> Either String TestRunRejection
     readReason "broken-instructions" = Right BrokenInstructions
@@ -158,8 +137,7 @@ testRejectionParser =
     readReason _ = Left "Unknown reason for rejection"
 
 rejectTestOptions
-    :: Maybe TokenId
-    -> Parser
+    :: Parser
         ( AgentCommand
             NotReady
             ( AValidationResult
@@ -167,15 +145,14 @@ rejectTestOptions
                 (WithTxHash (TestRunState DoneT))
             )
         )
-rejectTestOptions ptk = do
+rejectTestOptions = do
     testRunId <- testRunIdOption
     reason <- many testRejectionParser
-    tokenId <- tokenIdOption ptk
+    tokenId <- tokenIdOption
     pure $ Reject tokenId testRunId () reason
 
 reportTestOptions
-    :: Maybe TokenId
-    -> Parser
+    :: Parser
         ( AgentCommand
             NotReady
             ( AValidationResult
@@ -183,14 +160,25 @@ reportTestOptions
                 (WithTxHash (TestRunState DoneT))
             )
         )
-reportTestOptions ptk = do
-    tokenId <- tokenIdOption ptk
+reportTestOptions = do
+    tokenId <- tokenIdOption
     testRunId <- testRunIdOption
     duration <-
         Duration
-            <$> option
-                auto
-                (long "duration" <> help "Duration of the test run in hours")
+            <$> setting
+                [ long "duration"
+                , help "Duration of the test run in hours"
+                , metavar "DURATION_HOURS"
+                , reader auto
+                , option
+                ]
     url <-
-        URL <$> option str (long "url" <> help "URL of the test report")
+        URL
+            <$> setting
+                [ long "url"
+                , help "URL of the test report"
+                , metavar "REPORT_URL"
+                , reader str
+                , option
+                ]
     pure $ Report tokenId testRunId () duration url

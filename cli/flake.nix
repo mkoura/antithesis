@@ -72,9 +72,7 @@
             inherit pkgs project node-project version;
             rewrite-libs = rewrite-libs.packages.default;
           };
-          info.packages = {
-            inherit version;
-            };
+          info.packages = { inherit version; };
           fullPackages = lib.mergeAttrsList [
             project.packages
             linux-artifacts.packages

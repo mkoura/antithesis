@@ -4,14 +4,10 @@ module Oracle.Validate.Options
     )
 where
 
-import Options.Applicative
+import OptEnvConf
     ( Parser
     , command
-    , helper
-    , hsubparser
-    , info
-    , progDesc
-    , (<**>)
+    , commands
     )
 import Oracle.Validate.Cli
     ( OracleValidateFailure
@@ -26,11 +22,7 @@ validateCommandParser
             (AValidationResult OracleValidateFailure [RequestValidation])
         )
 validateCommandParser =
-    hsubparser
-        ( command
-            "validate"
-            ( info
-                (pure ValidateRequests <**> helper)
-                (progDesc "Validate all requests")
-            )
-        )
+    commands
+        [ command "validate" "Validate all requests"
+            $ pure ValidateRequests
+        ]

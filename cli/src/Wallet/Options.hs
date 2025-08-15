@@ -5,28 +5,22 @@ module Wallet.Options
     ) where
 
 import Lib.Box (Box (..))
-import Options.Applicative
+import OptEnvConf
     ( Parser
     , command
-    , hsubparser
-    , info
-    , progDesc
+    , commands
     )
 import Wallet.Cli (WalletCommand (..))
 
 walletCommandParser :: Parser (Box WalletCommand)
 walletCommandParser =
-    hsubparser
-        ( command
+    commands
+        [ command
             "create"
-            ( info
-                (pure $ Box Create)
-                (progDesc "Create a new wallet")
-            )
-            <> command
-                "info"
-                ( info
-                    (pure $ Box Info)
-                    (progDesc "Get the wallet information")
-                )
-        )
+            "Create a new wallet"
+            $ pure (Box Create)
+        , command
+            "info"
+            "Get the wallet information"
+            $ pure (Box Info)
+        ]

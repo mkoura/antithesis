@@ -17,15 +17,12 @@ import Core.Options
     , tryOption
     , usernameOption
     )
-import Core.Types.Basic (TokenId)
 import Core.Types.Tx (TxHash, WithTxHash)
 import Lib.Box (Box (..))
-import Options.Applicative
+import OptEnvConf
     ( Parser
     , command
-    , hsubparser
-    , info
-    , progDesc
+    , commands
     )
 import Oracle.Validate.Requests.RegisterRole
     ( RegisterRoleFailure
@@ -47,12 +44,11 @@ import User.Types
     )
 
 addPublicKeyOptions
-    :: Maybe TokenId
-    -> Parser
+    :: Parser
         (RequesterCommand (AValidationResult RegisterUserFailure TxHash))
-addPublicKeyOptions ptk =
+addPublicKeyOptions =
     RegisterUser
-        <$> tokenIdOption ptk
+        <$> tokenIdOption
         <*> ( RegisterUserKey
                 <$> platformOption
                 <*> usernameOption
@@ -60,12 +56,11 @@ addPublicKeyOptions ptk =
             )
 
 removePublicKeyOptions
-    :: Maybe TokenId
-    -> Parser
+    :: Parser
         (RequesterCommand (AValidationResult UnregisterUserFailure TxHash))
-removePublicKeyOptions ptk =
+removePublicKeyOptions =
     UnregisterUser
-        <$> tokenIdOption ptk
+        <$> tokenIdOption
         <*> ( RegisterUserKey
                 <$> platformOption
                 <*> usernameOption
@@ -73,12 +68,11 @@ removePublicKeyOptions ptk =
             )
 
 addRoleOptions
-    :: Maybe TokenId
-    -> Parser
+    :: Parser
         (RequesterCommand (AValidationResult RegisterRoleFailure TxHash))
-addRoleOptions ptk =
+addRoleOptions =
     RegisterRole
-        <$> tokenIdOption ptk
+        <$> tokenIdOption
         <*> ( RegisterRoleKey
                 <$> platformOption
                 <*> repositoryOption
@@ -86,12 +80,11 @@ addRoleOptions ptk =
             )
 
 removeRoleOptions
-    :: Maybe TokenId
-    -> Parser
+    :: Parser
         (RequesterCommand (AValidationResult UnregisterRoleFailure TxHash))
-removeRoleOptions ptk =
+removeRoleOptions =
     UnregisterRole
-        <$> tokenIdOption ptk
+        <$> tokenIdOption
         <*> ( RegisterRoleKey
                 <$> platformOption
                 <*> repositoryOption
@@ -99,54 +92,32 @@ removeRoleOptions ptk =
             )
 
 requesterCommandParser
-    :: Maybe TokenId
-    -> Parser (Box RequesterCommand)
-requesterCommandParser ptk =
-    hsubparser
-        ( command
-            "create-test"
-            ( info
-                (Box <$> requestTestOptions ptk)
-                (progDesc "Request an antithesis test run")
-            )
-            <> command
-                "register-user"
-                ( info
-                    (Box <$> addPublicKeyOptions ptk)
-                    (progDesc "Register a user public key")
-                )
-            <> command
-                "unregister-user"
-                ( info
-                    (Box <$> removePublicKeyOptions ptk)
-                    (progDesc "Unregister a user public key")
-                )
-            <> command
-                "register-role"
-                ( info
-                    (Box <$> addRoleOptions ptk)
-                    (progDesc "Add a user to a repository")
-                )
-            <> command
-                "unregister-role"
-                ( info
-                    (Box <$> removeRoleOptions ptk)
-                    (progDesc "Remove a user from a repository")
-                )
-        )
+    :: Parser (Box RequesterCommand)
+requesterCommandParser =
+    commands
+        [ command "create-test" "Request an antithesis test run"
+            $ Box <$> requestTestOptions
+        , command "register-user" "Register a user public key"
+            $ Box <$> addPublicKeyOptions
+        , command "unregister-user" "Unregister a user public key"
+            $ Box <$> removePublicKeyOptions
+        , command "register-role" "Add a user to a repository"
+            $ Box <$> addRoleOptions
+        , command "unregister-role" "Remove a user from a repository"
+            $ Box <$> removeRoleOptions
+        ]
 
 requestTestOptions
-    :: Maybe TokenId
-    -> Parser
+    :: Parser
         ( RequesterCommand
             ( AValidationResult
                 CreateTestRunFailure
                 (WithTxHash (TestRunState PendingT))
             )
         )
-requestTestOptions ptk =
+requestTestOptions =
     RequestTest
-        <$> tokenIdOption ptk
+        <$> tokenIdOption
         <*> ( TestRun
                 <$> platformOption
                 <*> repositoryOption

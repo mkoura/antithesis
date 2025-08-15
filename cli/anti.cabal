@@ -84,6 +84,7 @@ common warnings
 library
   -- Import common warning flags.
   import:           warnings
+  other-modules:    Paths_anti
 
   -- Modules exported by the library.
   exposed-modules:
@@ -169,7 +170,7 @@ library
     , http-types
     , lens
     , memory
-    , optparse-applicative
+    , opt-env-conf
     , plutus-tx
     , random
     , scientific

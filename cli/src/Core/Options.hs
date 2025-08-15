@@ -39,6 +39,7 @@ import OptEnvConf
     , reader
     , setting
     , short
+    , str
     , strOption
     , value
     )
@@ -168,10 +169,9 @@ tryOption =
 tokenIdOption :: Parser TokenId
 tokenIdOption =
     TokenId
-        <$> strOption
-            [ long "token-id"
-            , env "ANTI_TOKEN_ID"
+        <$> setting
+            [ env "ANTI_TOKEN_ID"
             , metavar "TOKEN_ID"
-            , help
-                "The token ID for the request, Use the ANTI_TOKEN_ID environment variable to set it"
+            , help "The token ID of the antithesis token"
+            , reader str
             ]

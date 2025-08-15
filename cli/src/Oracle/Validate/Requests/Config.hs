@@ -1,6 +1,7 @@
 module Oracle.Validate.Requests.Config
-    ( validateConfig
+    ( validateInsertConfig
     , ConfigFailure (..)
+    , validateUpdateConfig
     )
 where
 
@@ -23,7 +24,12 @@ import Oracle.Validate.Types
     , notValidated
     )
 import Text.JSON.Canonical (Int54, ToJSON (..))
-import Validation (KeyFailure, Validation, insertValidation)
+import Validation
+    ( KeyFailure
+    , Validation
+    , insertValidation
+    , updateValidation
+    )
 
 data ConfigFailure
     = ConfigureKeyValidationFailure KeyFailure
@@ -48,7 +54,27 @@ instance Monad m => ToJSON m ConfigFailure where
                     ]
             ]
 
-validateConfig
+commonValidation
+    :: Monad m
+    => Owner
+    -> Owner
+    -> TestRunValidationConfig
+    -> Validate ConfigFailure m Validated
+commonValidation oracleOwner submitterOwner configTestRun = do
+    when (submitterOwner /= oracleOwner)
+        $ notValidated
+        $ ConfigureNotFromOracle submitterOwner
+    let minD = minDuration configTestRun
+        maxD = maxDuration configTestRun
+    when (minD < 1)
+        $ notValidated
+        $ ConfigureMinLessThanOne minD
+    when (maxD < minD)
+        $ notValidated
+        $ ConfigureMaxLessThanMin maxD minD
+    pure Validated
+
+validateInsertConfig
     :: Monad m
     => Validation m
     -> Owner
@@ -57,21 +83,35 @@ validateConfig
     -- ^ Submitter
     -> Change ConfigKey (OpI Config)
     -> Validate ConfigFailure m Validated
-validateConfig
-    v
+validateInsertConfig
+    validation
     oracleOwner
     submitterOwner
     change@(Change _ (Insert Config{configTestRun})) = do
-        mapFailure ConfigureKeyValidationFailure $ insertValidation v change
-        when (submitterOwner /= oracleOwner)
-            $ notValidated
-            $ ConfigureNotFromOracle submitterOwner
-        let minD = minDuration configTestRun
-            maxD = maxDuration configTestRun
-        when (minD < 1)
-            $ notValidated
-            $ ConfigureMinLessThanOne minD
-        when (maxD < minD)
-            $ notValidated
-            $ ConfigureMaxLessThanMin maxD minD
-        pure Validated
+        mapFailure ConfigureKeyValidationFailure
+            $ insertValidation validation change
+        commonValidation
+            oracleOwner
+            submitterOwner
+            configTestRun
+
+validateUpdateConfig
+    :: Monad m
+    => Validation m
+    -> Owner
+    -- ^ Oracle
+    -> Owner
+    -- ^ Submitter
+    -> Change ConfigKey (OpU Config Config)
+    -> Validate ConfigFailure m Validated
+validateUpdateConfig
+    validation
+    oracleOwner
+    submitterOwner
+    change@(Change _ (Update _ Config{configTestRun})) = do
+        mapFailure ConfigureKeyValidationFailure
+            $ updateValidation validation change
+        commonValidation
+            oracleOwner
+            submitterOwner
+            configTestRun

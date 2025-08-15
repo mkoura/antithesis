@@ -128,6 +128,8 @@ data RequestZoo where
         :: Request WhiteListKey (OpD ()) -> RequestZoo
     InsertConfigRequest
         :: Request ConfigKey (OpI Config) -> RequestZoo
+    UpdateConfigRequest
+        :: Request ConfigKey (OpU Config Config) -> RequestZoo
     UnknownInsertRequest
         :: Request JSValue (OpI JSValue) -> RequestZoo
     UnknownDeleteRequest
@@ -147,6 +149,7 @@ requestZooRefId (FinishedRequest req) = outputRefId req
 requestZooRefId (WhiteListRequest req) = outputRefId req
 requestZooRefId (BlackListRequest req) = outputRefId req
 requestZooRefId (InsertConfigRequest req) = outputRefId req
+requestZooRefId (UpdateConfigRequest req) = outputRefId req
 requestZooRefId (UnknownInsertRequest req) = outputRefId req
 requestZooRefId (UnknownDeleteRequest req) = outputRefId req
 requestZooRefId (UnknownUpdateRequest req) = outputRefId req
@@ -164,6 +167,7 @@ instance (Alternative m, ReportSchemaErrors m) => FromJSON m RequestZoo where
             <|> (WhiteListRequest <$> fromJSON v)
             <|> (BlackListRequest <$> fromJSON v)
             <|> (InsertConfigRequest <$> fromJSON v)
+            <|> (UpdateConfigRequest <$> fromJSON v)
             <|> (UnknownInsertRequest <$> fromJSON v)
             <|> (UnknownDeleteRequest <$> fromJSON v)
             <|> (UnknownUpdateRequest <$> fromJSON v)
@@ -180,6 +184,7 @@ instance Monad m => ToJSON m RequestZoo where
     toJSON (WhiteListRequest req) = toJSON req
     toJSON (BlackListRequest req) = toJSON req
     toJSON (InsertConfigRequest req) = toJSON req
+    toJSON (UpdateConfigRequest req) = toJSON req
     toJSON (UnknownInsertRequest req) = toJSON req
     toJSON (UnknownDeleteRequest req) = toJSON req
     toJSON (UnknownUpdateRequest req) = toJSON req

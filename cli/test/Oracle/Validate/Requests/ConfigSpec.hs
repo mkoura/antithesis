@@ -10,7 +10,7 @@ import Core.Types.Operation (Operation (..))
 import Oracle.Config.Types (Config (..), ConfigKey (..))
 import Oracle.Validate.Requests.Config
     ( ConfigFailure (..)
-    , validateConfig
+    , validateInsertConfig
     )
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig (..)
@@ -57,7 +57,7 @@ spec = do
                                     }
                             }
             let test =
-                    validateConfig noValidation oracleOwner oracleOwner change
+                    validateInsertConfig noValidation oracleOwner oracleOwner change
             pure $ runValidate test `shouldReturn` ValidationSuccess Validated
         it
             "fails to validate a config insertion with a minimum duration less than 1"
@@ -80,7 +80,7 @@ spec = do
                                         }
                                 }
                 let test =
-                        validateConfig noValidation oracleOwner oracleOwner change
+                        validateInsertConfig noValidation oracleOwner oracleOwner change
                 pure
                     $ runValidate test
                     `shouldReturn` ValidationFailure
@@ -106,7 +106,7 @@ spec = do
                                         }
                                 }
                 let test =
-                        validateConfig noValidation oracleOwner oracleOwner change
+                        validateInsertConfig noValidation oracleOwner oracleOwner change
                 pure
                     $ runValidate test
                     `shouldReturn` ValidationFailure
@@ -137,7 +137,7 @@ spec = do
                                         }
                                 }
                 let test =
-                        validateConfig noValidation oracleOwner attacker change
+                        validateInsertConfig noValidation oracleOwner attacker change
                 pure
                     $ when (attacker /= oracleOwner)
                     $ runValidate test

@@ -10,7 +10,10 @@ import Oracle.Types
     , RequestValidationFailure (..)
     , RequestZoo (..)
     )
-import Oracle.Validate.Requests.Config (validateConfig)
+import Oracle.Validate.Requests.Config
+    ( validateInsertConfig
+    , validateUpdateConfig
+    )
 import Oracle.Validate.Requests.ManageWhiteList
     ( validateAddWhiteListed
     , validateRemoveWhiteListed
@@ -87,7 +90,10 @@ validateRequest _ Nothing _ BlackListRequest{} =
     notValidated RequestValidationConfigNotAvailable
 validateRequest oracle _ validation (InsertConfigRequest (Request _ requester change)) =
     mapFailure ConfigFailure
-        $ validateConfig validation oracle requester change
+        $ validateInsertConfig validation oracle requester change
+validateRequest oracle _ validation (UpdateConfigRequest (Request _ requester change)) =
+    mapFailure ConfigFailure
+        $ validateUpdateConfig validation oracle requester change
 validateRequest _ _ _ (UnknownInsertRequest request) =
     notValidated
         $ UnknownInsertValidationFailure request

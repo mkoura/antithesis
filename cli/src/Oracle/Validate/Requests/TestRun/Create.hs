@@ -51,6 +51,7 @@ data CreateTestRunFailure
     = CreateTestRunRejections [TestRunRejection]
     | CreateTestRunKeyFailure KeyFailure
     | CreateTestConfigNotAvailable
+    | CreateTestRunInvalidSSHKey
     deriving (Eq, Show)
 
 instance Monad m => ToJSON m CreateTestRunFailure where
@@ -60,6 +61,8 @@ instance Monad m => ToJSON m CreateTestRunFailure where
         object ["createTestRunKeyFailure" .= keyFailure]
     toJSON CreateTestConfigNotAvailable =
         stringJSON "Token configuration is not available yet"
+    toJSON CreateTestRunInvalidSSHKey =
+        stringJSON "Invalid SSH key"
 
 validateCreateTestRun
     :: MonadIO m

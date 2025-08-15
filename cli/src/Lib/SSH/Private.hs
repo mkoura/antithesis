@@ -5,10 +5,9 @@ https://hackage.haskell.org/package/hssh-0.1.0.0/docs/src/Network.SSH.Key.html
 
 module Lib.SSH.Private
     ( decodePrivateSSHFile
+    , SSHClient (..)
     , Sign
     , KeyAPI (..)
-    , SSHKeySelector (..)
-    , SigningMap
     ) where
 
 import Control.Applicative (many, (<|>))
@@ -44,13 +43,14 @@ import Data.ByteString qualified as B
 import Data.ByteString.Char8 qualified as BC
 import Data.ByteString.Lazy qualified as BL
 import Data.Map.Strict qualified as Map
-import Data.String (IsString)
 import Data.Word (Word8)
 
-newtype SSHKeySelector = SSHKeySelector
+data SSHClient = SSHClient
     { sshKeySelector :: String
+    , sshKeyFile :: FilePath
+    , sshKeyPassphrase :: String
     }
-    deriving (Eq, Show, IsString, Ord)
+    deriving (Show, Eq)
 
 type Sign = BC.ByteString -> Ed25519.Signature
 
@@ -58,23 +58,21 @@ data KeyAPI = KeyAPI
     { sign :: Sign
     , publicKey :: Ed25519.PublicKey
     }
-type SigningMap = SSHKeySelector -> Maybe KeyAPI
 
 decodePrivateSSHFile
-    :: BC.ByteString
-    -> FilePath
-    -> IO (SSHKeySelector -> Maybe KeyAPI)
-decodePrivateSSHFile passphrase filePath = do
-    content <- B.readFile filePath
-    ks <- decodePrivateKeyFile passphrase content
+    :: SSHClient
+    -> IO (Maybe KeyAPI)
+decodePrivateSSHFile SSHClient{sshKeySelector, sshKeyFile, sshKeyPassphrase} = do
+    content <- B.readFile sshKeyFile
+    ks <- decodePrivateKeyFile (BC.pack sshKeyPassphrase) content
     let mkSign (KeyPairEd25519 pk sk, comment) =
-            let k = SSHKeySelector $ BC.unpack comment
+            let k = BC.unpack comment
             in  Map.singleton k
                     $ KeyAPI
                         { sign = Ed25519.sign sk pk
                         , publicKey = pk
                         }
-    pure $ flip Map.lookup $ foldMap mkSign ks
+    pure $ Map.lookup sshKeySelector $ foldMap mkSign ks
 
 data KeyPair
     = KeyPairEd25519 Ed25519.PublicKey Ed25519.SecretKey

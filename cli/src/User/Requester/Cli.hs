@@ -21,7 +21,11 @@ import Core.Types.Operation (Operation (..))
 import Core.Types.Tx (TxHash, WithTxHash (..))
 import Data.ByteString.Lazy qualified as BL
 import Data.Functor (($>))
-import Lib.SSH.Private (Sign)
+import Lib.SSH.Private
+    ( KeyAPI (..)
+    , SSHClient (..)
+    , decodePrivateSSHFile
+    )
 import MPFS.API
     ( MPFS (..)
     , RequestDeleteBody (..)
@@ -78,6 +82,7 @@ data RequesterCommand a where
         -> RequesterCommand (AValidationResult UnregisterRoleFailure TxHash)
     RequestTest
         :: TokenId
+        -> SSHClient
         -> TestRun
         -> Duration
         -> RequesterCommand
@@ -91,10 +96,9 @@ deriving instance Eq (RequesterCommand a)
 
 requesterCmd
     :: MonadIO m
-    => Sign
-    -> RequesterCommand a
+    => RequesterCommand a
     -> WithContext m a
-requesterCmd sign command = do
+requesterCmd command = do
     case command of
         RegisterUser tokenId request ->
             registerUser tokenId request
@@ -104,17 +108,17 @@ requesterCmd sign command = do
             registerRole tokenId request
         UnregisterRole tokenId request ->
             unregisterRole tokenId request
-        RequestTest tokenId testRun duration ->
+        RequestTest tokenId sshClient testRun duration ->
             createCommand
                 tokenId
-                sign
+                sshClient
                 testRun
                 duration
 
 createCommand
     :: MonadIO m
     => TokenId
-    -> Sign
+    -> SSHClient
     -> TestRun
     -> Duration
     -> WithContext
@@ -125,7 +129,7 @@ createCommand
         )
 createCommand
     tokenId
-    sign
+    sshClient
     testRun
     duration = do
         mconfig <- askConfig tokenId
@@ -136,6 +140,9 @@ createCommand
             Config{configTestRun} <-
                 liftMaybe CreateTestConfigNotAvailable mconfig
             key <- toJSON testRun
+            KeyAPI{sign} <-
+                liftMaybe CreateTestRunInvalidSSHKey
+                    =<< lift (liftIO $ decodePrivateSSHFile sshClient)
             let signature = sign $ BL.toStrict $ renderCanonicalJSON key
             let newState = Pending duration signature
             void

@@ -19,10 +19,17 @@ import Core.Options
     )
 import Core.Types.Tx (TxHash, WithTxHash)
 import Lib.Box (Box (..))
+import Lib.SSH.Private (SSHClient (..))
 import OptEnvConf
     ( Parser
     , command
     , commands
+    , env
+    , help
+    , metavar
+    , reader
+    , setting
+    , str
     )
 import Oracle.Validate.Requests.RegisterRole
     ( RegisterRoleFailure
@@ -107,6 +114,41 @@ requesterCommandParser =
             $ Box <$> removeRoleOptions
         ]
 
+sshClientOption
+    :: Parser SSHClient
+sshClientOption =
+    SSHClient
+        <$> keySelectorOption
+        <*> keyFileOption
+        <*> keyPasswordOption
+
+keySelectorOption :: Parser String
+keySelectorOption =
+    setting
+        [ env "ANTI_SSH_KEY_SELECTOR"
+        , help "Which key selector to use from the SSH file"
+        , metavar "STRING"
+        , reader str
+        ]
+
+keyFileOption :: Parser FilePath
+keyFileOption =
+    setting
+        [ env "ANTI_SSH_FILE"
+        , help "Path to the SSH private key file"
+        , metavar "FILEPATH"
+        , reader str
+        ]
+
+keyPasswordOption :: Parser String
+keyPasswordOption =
+    setting
+        [ env "ANTI_SSH_PASSWORD"
+        , help "Password to the decrypt the SSH private key"
+        , metavar "STRING"
+        , reader str
+        ]
+
 requestTestOptions
     :: Parser
         ( RequesterCommand
@@ -118,6 +160,7 @@ requestTestOptions
 requestTestOptions =
     RequestTest
         <$> tokenIdOption
+        <*> sshClientOption
         <*> ( TestRun
                 <$> platformOption
                 <*> repositoryOption

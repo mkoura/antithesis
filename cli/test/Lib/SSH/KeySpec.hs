@@ -7,16 +7,23 @@ import Crypto.PubKey.Ed25519 qualified as Ed25519
 import Data.ByteString qualified as B
 import Lib.SSH.Private
     ( KeyAPI (KeyAPI, publicKey, sign)
+    , SSHClient (..)
     , decodePrivateSSHFile
     )
 import Test.Hspec (Spec, beforeAll, describe, it)
 import Test.QuickCheck (Testable (property))
 
+client :: SSHClient
+client =
+    SSHClient
+        { sshKeySelector = "test_user"
+        , sshKeyFile = "test-E2E/fixtures/test_ed25519"
+        , sshKeyPassphrase = "pw"
+        }
+
 readKey :: IO KeyAPI
 readKey = do
-    signingMap <-
-        decodePrivateSSHFile "pw" "test-E2E/fixtures/test_ed25519"
-    Just api <- pure $ signingMap "test_user"
+    Just api <- decodePrivateSSHFile client
     pure api
 
 spec :: Spec

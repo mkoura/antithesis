@@ -5,9 +5,7 @@ module App
 
 import Cli (cmd)
 import Control.Exception (SomeException (SomeException), catch, try)
-import Data.ByteString.Char8 qualified as B
 import Lib.Box (Box (..))
-import Lib.SSH.Private (decodePrivateSSHFile)
 import Network.HTTP.Client
     ( ManagerSettings (..)
     , Request (requestBody)
@@ -61,14 +59,6 @@ client = do
                     mWallet <-
                         (Right <$> readWallet walletFile)
                             `catch` \(_ :: IOError) -> return $ Left walletFile
-                    mSigning <- do
-                        mf <- lookupEnv "ANTI_SSH_FILE"
-                        case mf of
-                            Just f -> do
-                                pw <- getEnv "ANTI_SSH_PASSWORD"
-                                r <- decodePrivateSSHFile (B.pack pw) f
-                                return $ Just r
-                            Nothing -> return Nothing
                     manger <-
                         newManager
                             $ if baseUrlScheme baseUrl == Https
@@ -89,7 +79,7 @@ client = do
                         submit = signAndSubmitMPFS sbmt
                     Success o walletFile mpfs_host
                         <$> runClientM
-                            (cmd submit mWallet mSigning command >>= toJSON)
+                            (cmd submit mWallet command >>= toJSON)
                             clientEnv
             action `catch` (return . Failure)
 

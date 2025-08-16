@@ -6,8 +6,9 @@ module Oracle.Validate.Requests.DownloadAssets
 where
 
 import Control.Monad (filterM)
+import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Class (lift)
-import Core.Types.Basic (Directory, Platform (..), Repository)
+import Core.Types.Basic (Directory(..), Platform (..), Repository)
 import Core.Types.Fact
     ( Fact (..)
     , keyHash
@@ -20,8 +21,10 @@ import Oracle.Validate.Types
     , Validated (..)
     , mapFailure
     , notValidated
+    , throwFalse
     , throwJusts
     )
+import System.Directory (doesDirectoryExist)
 import User.Agent.Types
     ( TestRunId (..)
     , TestRunMap (..)
@@ -37,6 +40,7 @@ data DownloadAssetsFailure
     | DownloadAssetsRepositoryNotInThePlatform Repository
     | DownloadAssetsTestRunIdNotFound TestRunId
     | DownloadAssetsSourceDirFailure SourceDirFailure
+    | DownloadAssetsTargetDirFailure
     deriving (Show, Eq)
 
 renderDownloadAssetsFailure :: DownloadAssetsFailure -> String
@@ -50,6 +54,8 @@ renderDownloadAssetsFailure (DownloadAssetsSourceDirFailure SourceDirFailureDirA
     "There is no directory specified by test run"
 renderDownloadAssetsFailure (DownloadAssetsSourceDirFailure (SourceDirFailureGithubError err)) =
     "When checking directory specified by test run github responded with " ++ show err
+renderDownloadAssetsFailure DownloadAssetsTargetDirFailure =
+    "There is no target local directory"
 
 instance Monad m => ToJSON m DownloadAssetsFailure where
     toJSON (DownloadAssetsPlatformUnsupported platform) =
@@ -63,18 +69,20 @@ instance Monad m => ToJSON m DownloadAssetsFailure where
         object ["error" .= ("There is no directory specified by test run" :: String)]
     toJSON (DownloadAssetsSourceDirFailure (SourceDirFailureGithubError err)) =
         object ["error" .= ("When checking directory specified by test run github responded with " ++ show err)]
+    toJSON DownloadAssetsTargetDirFailure =
+        object ["error" .= ("There is no target local directory" :: String)]
 
 data SourceDirFailure =
       SourceDirFailureDirAbsent
     | SourceDirFailureGithubError GithubResponseStatusCodeError
     deriving (Show, Eq)
 
-checkDirectory
+checkSourceDirectory
     :: Monad m
     => Validation m
     -> TestRun
     -> m (Maybe SourceDirFailure)
-checkDirectory
+checkSourceDirectory
     Validation{githubDirectoryExists}
     testRun = do
         existsE <-
@@ -89,14 +97,20 @@ checkDirectory
                     then Nothing
                     else Just SourceDirFailureDirAbsent
 
+checkTargetDirectory
+    :: Directory
+    -> IO Bool
+checkTargetDirectory (Directory dir) =
+    doesDirectoryExist dir
+
 validateDownloadAssets
-    :: Monad m
+    :: MonadIO m
     => Validation m
     -> TestRunMap
     -> TestRunId
     -> Directory
     -> Validate DownloadAssetsFailure m Validated
-validateDownloadAssets validation TestRunMap{pending,running,done} testid _dir = do
+validateDownloadAssets validation TestRunMap{pending,running,done} testid dir = do
     pendingR <- filterM inspectTestRunPending pending
     runningR <- filterM inspectTestRunRunning running
     doneR <- filterM inspectTestRunDone done
@@ -107,8 +121,10 @@ validateDownloadAssets validation TestRunMap{pending,running,done} testid _dir =
     case matched of
         [] -> notValidated $  DownloadAssetsTestRunIdNotFound testid
         firstMatched : _ -> do
-            sourceDirValidation <- lift $ checkDirectory validation firstMatched
-            mapFailure DownloadAssetsSourceDirFailure $ throwJusts sourceDirValidation
+            sourceDirValidation <- lift $ checkSourceDirectory validation firstMatched
+            _ <- mapFailure DownloadAssetsSourceDirFailure $ throwJusts sourceDirValidation
+            targetDirValidation <- liftIO $ checkTargetDirectory dir
+            throwFalse targetDirValidation DownloadAssetsTargetDirFailure
   where
     checkFact testrun  = do
         keyId <- keyHash @_ @TestRun testrun

@@ -17,6 +17,7 @@ module Oracle.Validate.Types
     , liftMaybe
     ) where
 
+import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Class (MonadTrans, lift)
 import Control.Monad.Trans.Except
     ( ExceptT (..)
@@ -35,6 +36,10 @@ newtype Validate e m a = Validate (ExceptT e m a)
 
 instance MonadTrans (Validate e) where
     lift = Validate . lift
+
+instance MonadIO m => MonadIO (Validate e m) where
+    liftIO = Validate . liftIO
+
 data AValidationResult e a
     = ValidationSuccess a
     | ValidationFailure e

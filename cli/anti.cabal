@@ -164,6 +164,7 @@ library
     , cardano-ledger-core    ^>=1.17.0.0
     , containers             ^>=0.6.8
     , crypton
+    , directory
     , exceptions
     , github
     , http-client

@@ -13,6 +13,7 @@ module User.Agent.Cli
 where
 
 import Control.Monad (void)
+import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Trans.Class (lift)
 import Core.Context
     ( WithContext
@@ -86,7 +87,7 @@ import User.Types
 import Validation (Validation)
 
 agentCmd
-    :: Monad m
+    :: MonadIO m
     => Owner
     -> AgentCommand NotReady a
     -> WithContext m a
@@ -239,7 +240,7 @@ deriving instance Show (AgentCommand Ready result)
 deriving instance Eq (AgentCommand Ready result)
 
 agentCmdCore
-    :: Monad m
+    :: MonadIO m
     => Owner
     -- ^ requester public key hash
     -> AgentCommand Ready result
@@ -331,7 +332,7 @@ queryCommand tokenId = do
             }
 
 downloadAssets
-    :: Monad m
+    :: MonadIO m
     => TokenId
     -> TestRunId
     -> Directory

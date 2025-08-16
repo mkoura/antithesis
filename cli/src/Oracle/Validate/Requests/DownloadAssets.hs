@@ -24,7 +24,7 @@ import Oracle.Validate.Types
     , throwFalse
     , throwJusts
     )
-import System.Directory (doesDirectoryExist)
+import System.Directory (doesDirectoryExist, getPermissions, writable)
 import User.Agent.Types
     ( TestRunId (..)
     , TestRunMap (..)
@@ -40,7 +40,8 @@ data DownloadAssetsFailure
     | DownloadAssetsRepositoryNotInThePlatform Repository
     | DownloadAssetsTestRunIdNotFound TestRunId
     | DownloadAssetsSourceDirFailure SourceDirFailure
-    | DownloadAssetsTargetDirFailure
+    | DownloadAssetsTargetDirNotFound
+    | DownloadAssetsTargetDirNotWritable
     deriving (Show, Eq)
 
 renderDownloadAssetsFailure :: DownloadAssetsFailure -> String
@@ -54,8 +55,10 @@ renderDownloadAssetsFailure (DownloadAssetsSourceDirFailure SourceDirFailureDirA
     "There is no directory specified by test run"
 renderDownloadAssetsFailure (DownloadAssetsSourceDirFailure (SourceDirFailureGithubError err)) =
     "When checking directory specified by test run github responded with " ++ show err
-renderDownloadAssetsFailure DownloadAssetsTargetDirFailure =
+renderDownloadAssetsFailure DownloadAssetsTargetDirNotFound =
     "There is no target local directory"
+renderDownloadAssetsFailure DownloadAssetsTargetDirNotWritable =
+    "The target local directory is not writable"
 
 instance Monad m => ToJSON m DownloadAssetsFailure where
     toJSON (DownloadAssetsPlatformUnsupported platform) =
@@ -69,8 +72,10 @@ instance Monad m => ToJSON m DownloadAssetsFailure where
         object ["error" .= ("There is no directory specified by test run" :: String)]
     toJSON (DownloadAssetsSourceDirFailure (SourceDirFailureGithubError err)) =
         object ["error" .= ("When checking directory specified by test run github responded with " ++ show err)]
-    toJSON DownloadAssetsTargetDirFailure =
+    toJSON DownloadAssetsTargetDirNotFound =
         object ["error" .= ("There is no target local directory" :: String)]
+    toJSON DownloadAssetsTargetDirNotWritable =
+        object ["error" .= ("The target local directory is not writable" :: String)]
 
 data SourceDirFailure =
       SourceDirFailureDirAbsent
@@ -103,6 +108,12 @@ checkTargetDirectory
 checkTargetDirectory (Directory dir) =
     doesDirectoryExist dir
 
+checkTargetDirectoryPermissions
+    :: Directory
+    -> IO Bool
+checkTargetDirectoryPermissions (Directory dir) =
+    writable <$> getPermissions dir
+
 validateDownloadAssets
     :: MonadIO m
     => Validation m
@@ -124,7 +135,9 @@ validateDownloadAssets validation TestRunMap{pending,running,done} testid dir = 
             sourceDirValidation <- lift $ checkSourceDirectory validation firstMatched
             _ <- mapFailure DownloadAssetsSourceDirFailure $ throwJusts sourceDirValidation
             targetDirValidation <- liftIO $ checkTargetDirectory dir
-            throwFalse targetDirValidation DownloadAssetsTargetDirFailure
+            _ <- throwFalse targetDirValidation DownloadAssetsTargetDirNotFound
+            targetDirWritableValidation <- liftIO $ checkTargetDirectoryPermissions dir
+            throwFalse targetDirWritableValidation DownloadAssetsTargetDirNotWritable
   where
     checkFact testrun  = do
         keyId <- keyHash @_ @TestRun testrun

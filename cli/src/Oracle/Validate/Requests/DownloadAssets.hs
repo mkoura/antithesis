@@ -8,7 +8,7 @@ where
 import Control.Monad (filterM)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Class (lift)
-import Core.Types.Basic (Directory(..))
+import Core.Types.Basic (Directory(..), FileName(..))
 import Core.Types.Fact
     ( Fact (..)
     , keyHash
@@ -24,7 +24,7 @@ import Oracle.Validate.Types
     , throwFalse
     , throwJusts
     )
-import System.Directory (doesDirectoryExist, getPermissions, writable)
+import System.Directory (doesDirectoryExist, getPermissions, withCurrentDirectory, writable)
 import User.Agent.Types
     ( TestRunId (..)
     , TestRunMap (..)
@@ -38,6 +38,8 @@ import Validation.DownloadFile
     ( DownloadedFileFailure (..)
     , renderDownloadedFileFailure
     )
+
+import qualified Data.Text.IO as T
 
 data DownloadAssetsFailure
     = DownloadAssetsTestRunIdNotFound TestRunId
@@ -99,6 +101,31 @@ checkSourceDirectory
                 if exists
                     then Nothing
                     else Just SourceDirFailureDirAbsent
+
+downloadFileAndWriteLocally
+    :: MonadIO m
+    => Validation m
+    -> TestRun
+    -> Directory
+    -> FileName
+    -> m (Maybe DownloadAssetsFailure)
+downloadFileAndWriteLocally
+    Validation{githubGetFile}
+    testRun
+    (Directory targetDir)
+    (FileName filename) = do
+        let (Directory sourceDir) = directory testRun
+        contentE <-
+            githubGetFile
+                (repository testRun)
+                (commitId testRun)
+                (FileName $ sourceDir <> "/" <> filename)
+        case contentE of
+            Left err -> pure $ Just $ DownloadAssetsValidationError err
+            Right txt -> do
+                liftIO $ withCurrentDirectory targetDir $
+                    T.writeFile filename txt
+                pure Nothing
 
 checkTargetDirectory
     :: Directory

@@ -5,7 +5,7 @@ module Oracle.Validate.Requests.DownloadAssets
     )
 where
 
-import Control.Monad (filterM)
+import Control.Monad (filterM, forM_)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Class (lift)
 import Core.Types.Basic (Directory(..), FileName(..))
@@ -146,7 +146,7 @@ validateDownloadAssets
     -> TestRunId
     -> Directory
     -> Validate DownloadAssetsFailure m Validated
-validateDownloadAssets validation TestRunMap{pending,running,done} testid dir@(Directory dir') = do
+validateDownloadAssets validation TestRunMap{pending,running,done} testid dir = do
     pendingR <- filterM inspectTestRunPending pending
     runningR <- filterM inspectTestRunRunning running
     doneR <- filterM inspectTestRunDone done
@@ -162,7 +162,14 @@ validateDownloadAssets validation TestRunMap{pending,running,done} testid dir@(D
             targetDirValidation <- liftIO $ checkTargetDirectory dir
             _ <- throwFalse targetDirValidation DownloadAssetsTargetDirNotFound
             targetDirWritableValidation <- liftIO $ checkTargetDirectoryPermissions dir
-            throwFalse targetDirWritableValidation DownloadAssetsTargetDirNotWritable
+            _<- throwFalse targetDirWritableValidation DownloadAssetsTargetDirNotWritable
+
+            forM_ ["README.md", "docker-compose.yaml", "testnet.yaml"] $ \filename -> do
+                fileValidation <- lift $ downloadFileAndWriteLocally validation firstMatched dir (FileName filename)
+                throwJusts fileValidation
+
+            pure Validated
+
   where
     checkFact testrun  = do
         keyId <- keyHash @_ @TestRun testrun

@@ -44,7 +44,7 @@ spec = do
             signature <- gen signatureGen
             let pendingState = Pending (Duration 5) signature
             testRunFact <- toJSFact testRun pendingState
-            let validation = mkValidation [testRunFact] [] [] [] [] []
+            let validation = mkValidation [testRunFact] [] [] [] [] [] []
                 newTestRunState = Rejected pendingState [BrokenInstructions]
                 test = validateToDoneCore validation testRun newTestRunState
             pure $ test `shouldReturn` Nothing
@@ -73,7 +73,7 @@ spec = do
                     request =
                         Pending (Duration differentDuration) differentSignature
                 testRunFact <- toJSFact testRun fact
-                let validation = mkValidation [testRunFact] [] [] [] [] []
+                let validation = mkValidation [testRunFact] [] [] [] [] [] []
                     newTestRunState = Rejected request [BrokenInstructions]
                     test = validateToDoneCore validation testRun newTestRunState
                 pure

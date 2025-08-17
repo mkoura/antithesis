@@ -38,6 +38,7 @@ import Control.Lens
 import Core.Types.Basic
     ( Commit (..)
     , Directory (..)
+    , FileName
     , Platform (Platform)
     , PublicKeyHash
     , Repository (..)
@@ -52,10 +53,12 @@ import Core.Types.Fact
     , parseFacts
     , toJSFact
     )
-import Crypto.PubKey.Ed25519 qualified as Ed25519
 import Data.ByteString (ByteString)
-import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.Maybe (mapMaybe)
+import Data.Text (Text)
+import Lib.GitHub
+    ( GetGithubFileFailure (..)
+    )
 import Lib.SSH.Public (SSHPublicKey)
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig (..)
@@ -87,8 +90,13 @@ import User.Types
     , tryIndexL
     )
 import Validation (Validation (..))
+import Validation.DownloadFile (DownloadedFileFailure (..), analyzeDownloadedFile)
 import Validation.RegisterRole (RepositoryRoleFailure (..))
 import Validation.RegisterUser (analyzeKeys)
+
+import qualified Crypto.PubKey.Ed25519 as Ed25519
+import qualified Data.ByteString.Lazy.Char8 as BL
+import qualified Data.List as L
 
 jsFactRole :: Monad m => TestRun -> m JSFact
 jsFactRole testRun =
@@ -118,8 +126,9 @@ mkValidation
     -> [(Username, SSHPublicKey)]
     -> [(Username, Repository)]
     -> [Repository]
+    -> [(FileName, Text)]
     -> Validation m
-mkValidation fs rs ds upk rr reposExists =
+mkValidation fs rs ds upk rr reposExists files =
     Validation
         { mpfsGetFacts = do
             db <- toJSON fs
@@ -146,6 +155,14 @@ mkValidation fs rs ds upk rr reposExists =
                 $ if (username, repository) `elem` rr
                     then Nothing
                     else Just NoRoleEntryInCodeowners
+        , githubGetFile = \_repository _commit filename ->
+            case L.lookup filename files of
+                Nothing -> return $
+                    Left
+                    $ GithubGetFileError
+                    $ GetGithubFileOtherFailure "file not present"
+                Just filecontent ->
+                    pure $ analyzeDownloadedFile filename (Right filecontent)
         }
 
 testRunGen :: Gen TestRun
@@ -214,7 +231,7 @@ changeTestRun l qc testRun = do
     pure $ testRun & l .~ (new ^. qc)
 
 noValidation :: Monad m => Validation m
-noValidation = mkValidation [] [] [] [] [] []
+noValidation = mkValidation [] [] [] [] [] [] []
 
 gitCommit :: TestRun -> (Repository, Commit)
 gitCommit testRun =

@@ -17,6 +17,7 @@ import Control.Monad.Trans.Class (lift)
 import Core.Types.Basic
     ( Commit
     , Directory
+    , FileName
     , PublicKeyHash
     , Repository
     , TokenId
@@ -26,6 +27,7 @@ import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Fact (Fact (..), JSFact, parseFacts)
 import Core.Types.Operation (Op (..))
 import Data.Maybe (mapMaybe)
+import Data.Text (Text)
 import GitHub (Auth)
 import Lib.GitHub qualified as GitHub
 import Lib.JSON.Canonical.Extra (object, (.=))
@@ -35,6 +37,10 @@ import Servant.Client (ClientM)
 import Text.JSON.Canonical (FromJSON (..), ToJSON)
 import Text.JSON.Canonical.Class (ToJSON (..))
 import User.Types (TestRun)
+import Validation.DownloadFile
+    ( DownloadedFileFailure
+    , inspectDownloadedFile
+    )
 import Validation.RegisterRole
     ( RepositoryRoleFailure
     , inspectRepoRoleForUser
@@ -71,6 +77,11 @@ data Validation m = Validation
         :: Username
         -> Repository
         -> m (Maybe RepositoryRoleFailure)
+    , githubGetFile
+        :: Repository
+        -> Commit
+        -> FileName
+        -> m (Either DownloadedFileFailure Text)
     }
 
 hoistValidation
@@ -87,6 +98,7 @@ hoistValidation
         , githubUserPublicKeys
         , githubRepositoryExists
         , githubRepositoryRole
+        , githubGetFile
         } =
         Validation
             { mpfsGetFacts = f mpfsGetFacts
@@ -101,6 +113,8 @@ hoistValidation
                 f . githubRepositoryExists
             , githubRepositoryRole =
                 \username repository -> f $ githubRepositoryRole username repository
+            , githubGetFile =
+                \repository commit filename -> f $ githubGetFile repository commit filename
             }
 
 mkValidation :: Auth -> TokenId -> Validation ClientM
@@ -119,7 +133,10 @@ mkValidation auth tk =
         , githubRepositoryExists = liftIO . GitHub.githubRepositoryExists auth
         , githubRepositoryRole = \username repository ->
             liftIO $ inspectRepoRoleForUser auth username repository
+        , githubGetFile = \repository commit filename ->
+            liftIO $ inspectDownloadedFile auth repository commit filename
         }
+
 data KeyFailure
     = KeyAlreadyExists String
     | KeyDoesNotExist String

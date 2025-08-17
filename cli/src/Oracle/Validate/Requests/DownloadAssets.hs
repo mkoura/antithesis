@@ -8,7 +8,7 @@ where
 import Control.Monad (filterM)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Class (lift)
-import Core.Types.Basic (Directory(..), Platform (..), Repository)
+import Core.Types.Basic (Directory(..))
 import Core.Types.Fact
     ( Fact (..)
     , keyHash
@@ -34,21 +34,20 @@ import User.Types (Phase (..), TestRun (..))
 import Validation
     ( Validation (..)
     )
+import Validation.DownloadFile
+    ( DownloadedFileFailure (..)
+    , renderDownloadedFileFailure
+    )
 
 data DownloadAssetsFailure
-    = DownloadAssetsPlatformUnsupported Platform
-    | DownloadAssetsRepositoryNotInThePlatform Repository
-    | DownloadAssetsTestRunIdNotFound TestRunId
+    = DownloadAssetsTestRunIdNotFound TestRunId
     | DownloadAssetsSourceDirFailure SourceDirFailure
     | DownloadAssetsTargetDirNotFound
     | DownloadAssetsTargetDirNotWritable
+    | DownloadAssetsValidationError DownloadedFileFailure
     deriving (Show, Eq)
 
 renderDownloadAssetsFailure :: DownloadAssetsFailure -> String
-renderDownloadAssetsFailure (DownloadAssetsPlatformUnsupported platform) =
-    "Platform is missing: " ++ show platform
-renderDownloadAssetsFailure (DownloadAssetsRepositoryNotInThePlatform repo) =
-    "Repository is not in the platform: " ++ show repo
 renderDownloadAssetsFailure (DownloadAssetsTestRunIdNotFound (TestRunId testid)) =
     "Requested test id : " ++ show testid ++ " not found. Please refer to created ones using 'anti agent query'"
 renderDownloadAssetsFailure (DownloadAssetsSourceDirFailure SourceDirFailureDirAbsent) =
@@ -59,13 +58,10 @@ renderDownloadAssetsFailure DownloadAssetsTargetDirNotFound =
     "There is no target local directory"
 renderDownloadAssetsFailure DownloadAssetsTargetDirNotWritable =
     "The target local directory is not writable"
+renderDownloadAssetsFailure (DownloadAssetsValidationError failure) =
+    "The file cannot pass validation. Details:  " <> renderDownloadedFileFailure failure
 
 instance Monad m => ToJSON m DownloadAssetsFailure where
-    toJSON (DownloadAssetsPlatformUnsupported platform) =
-        object ["error" .= ("Platform is missing: " ++ show platform)]
-    toJSON (DownloadAssetsRepositoryNotInThePlatform repo) =
-        object
-            ["error" .= ("Repository is not in the platform: " ++ show repo)]
     toJSON (DownloadAssetsTestRunIdNotFound (TestRunId testid)) =
         object ["error" .= ("Requested test id : " ++ show testid ++ " not found. Please refer to created ones using 'anti agent query'")]
     toJSON (DownloadAssetsSourceDirFailure SourceDirFailureDirAbsent) =
@@ -76,6 +72,8 @@ instance Monad m => ToJSON m DownloadAssetsFailure where
         object ["error" .= ("There is no target local directory" :: String)]
     toJSON DownloadAssetsTargetDirNotWritable =
         object ["error" .= ("The target local directory is not writable" :: String)]
+    toJSON (DownloadAssetsValidationError failure) =
+        object ["error" .= ("The file cannot pass validation. Details:  " <> renderDownloadedFileFailure failure)]
 
 data SourceDirFailure =
       SourceDirFailureDirAbsent

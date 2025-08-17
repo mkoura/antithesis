@@ -346,6 +346,7 @@ test-suite anti-unit-test
     , lens
     , QuickCheck
     , scientific
+    , text
 
   build-tool-depends: hspec-discover:hspec-discover
 

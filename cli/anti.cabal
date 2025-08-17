@@ -175,7 +175,6 @@ library
     , memory
     , mmark
     , opt-env-conf
-    , optparse-applicative
     , plutus-tx
     , random
     , scientific

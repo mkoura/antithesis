@@ -17,7 +17,7 @@ module Oracle.Validate.Types
     , liftMaybe
     ) where
 
-import Control.Monad.IO.Class (MonadIO(..))
+import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Trans.Class (MonadTrans, lift)
 import Control.Monad.Trans.Except
     ( ExceptT (..)

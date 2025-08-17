@@ -6,15 +6,14 @@ module Oracle.Validate.Requests.DownloadAssets
 where
 
 import Control.Monad (filterM, forM_)
-import Control.Monad.IO.Class (MonadIO(..))
+import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Trans.Class (lift)
-import Core.Types.Basic (Directory(..), FileName(..))
+import Core.Types.Basic (Directory (..), FileName (..))
 import Core.Types.Fact
     ( Fact (..)
     , keyHash
     )
 import Lib.GitHub (GithubResponseStatusCodeError)
-import Text.JSON.Canonical (ToJSON (..))
 import Lib.JSON.Canonical.Extra (object, (.=))
 import Oracle.Validate.Types
     ( Validate
@@ -24,7 +23,13 @@ import Oracle.Validate.Types
     , throwFalse
     , throwJusts
     )
-import System.Directory (doesDirectoryExist, getPermissions, withCurrentDirectory, writable)
+import System.Directory
+    ( doesDirectoryExist
+    , getPermissions
+    , withCurrentDirectory
+    , writable
+    )
+import Text.JSON.Canonical (ToJSON (..))
 import User.Agent.Types
     ( TestRunId (..)
     , TestRunMap (..)
@@ -39,7 +44,7 @@ import Validation.DownloadFile
     , renderDownloadedFileFailure
     )
 
-import qualified Data.Text.IO as T
+import Data.Text.IO qualified as T
 
 data DownloadAssetsFailure
     = DownloadAssetsTestRunIdNotFound TestRunId
@@ -51,34 +56,56 @@ data DownloadAssetsFailure
 
 renderDownloadAssetsFailure :: DownloadAssetsFailure -> String
 renderDownloadAssetsFailure (DownloadAssetsTestRunIdNotFound (TestRunId testid)) =
-    "Requested test id : " ++ show testid ++ " not found. Please refer to created ones using 'anti agent query'"
+    "Requested test id : "
+        ++ show testid
+        ++ " not found. Please refer to created ones using 'anti agent query'"
 renderDownloadAssetsFailure (DownloadAssetsSourceDirFailure SourceDirFailureDirAbsent) =
     "There is no directory specified by test run"
 renderDownloadAssetsFailure (DownloadAssetsSourceDirFailure (SourceDirFailureGithubError err)) =
-    "When checking directory specified by test run github responded with " ++ show err
+    "When checking directory specified by test run github responded with "
+        ++ show err
 renderDownloadAssetsFailure DownloadAssetsTargetDirNotFound =
     "There is no target local directory"
 renderDownloadAssetsFailure DownloadAssetsTargetDirNotWritable =
     "The target local directory is not writable"
 renderDownloadAssetsFailure (DownloadAssetsValidationError failure) =
-    "The file cannot pass validation. Details:  " <> renderDownloadedFileFailure failure
+    "The file cannot pass validation. Details:  "
+        <> renderDownloadedFileFailure failure
 
 instance Monad m => ToJSON m DownloadAssetsFailure where
     toJSON (DownloadAssetsTestRunIdNotFound (TestRunId testid)) =
-        object ["error" .= ("Requested test id : " ++ show testid ++ " not found. Please refer to created ones using 'anti agent query'")]
+        object
+            [ "error"
+                .= ( "Requested test id : "
+                        ++ show testid
+                        ++ " not found. Please refer to created ones using 'anti agent query'"
+                   )
+            ]
     toJSON (DownloadAssetsSourceDirFailure SourceDirFailureDirAbsent) =
-        object ["error" .= ("There is no directory specified by test run" :: String)]
+        object
+            ["error" .= ("There is no directory specified by test run" :: String)]
     toJSON (DownloadAssetsSourceDirFailure (SourceDirFailureGithubError err)) =
-        object ["error" .= ("When checking directory specified by test run github responded with " ++ show err)]
+        object
+            [ "error"
+                .= ( "When checking directory specified by test run github responded with "
+                        ++ show err
+                   )
+            ]
     toJSON DownloadAssetsTargetDirNotFound =
         object ["error" .= ("There is no target local directory" :: String)]
     toJSON DownloadAssetsTargetDirNotWritable =
-        object ["error" .= ("The target local directory is not writable" :: String)]
+        object
+            ["error" .= ("The target local directory is not writable" :: String)]
     toJSON (DownloadAssetsValidationError failure) =
-        object ["error" .= ("The file cannot pass validation. Details:  " <> renderDownloadedFileFailure failure)]
+        object
+            [ "error"
+                .= ( "The file cannot pass validation. Details:  "
+                        <> renderDownloadedFileFailure failure
+                   )
+            ]
 
-data SourceDirFailure =
-      SourceDirFailureDirAbsent
+data SourceDirFailure
+    = SourceDirFailureDirAbsent
     | SourceDirFailureGithubError GithubResponseStatusCodeError
     deriving (Show, Eq)
 
@@ -123,8 +150,9 @@ downloadFileAndWriteLocally
         case contentE of
             Left err -> pure $ Just $ DownloadAssetsValidationError err
             Right txt -> do
-                liftIO $ withCurrentDirectory targetDir $
-                    T.writeFile filename txt
+                liftIO
+                    $ withCurrentDirectory targetDir
+                    $ T.writeFile filename txt
                 pure Nothing
 
 checkTargetDirectory
@@ -146,32 +174,44 @@ validateDownloadAssets
     -> TestRunId
     -> Directory
     -> Validate DownloadAssetsFailure m Validated
-validateDownloadAssets validation TestRunMap{pending,running,done} testid dir = do
+validateDownloadAssets validation TestRunMap{pending, running, done} testid dir = do
     pendingR <- filterM inspectTestRunPending pending
     runningR <- filterM inspectTestRunRunning running
     doneR <- filterM inspectTestRunDone done
     let matched =
-            (extractTestRunPending <$> pendingR) ++
-            (extractTestRunRunning <$> runningR) ++
-            (extractTestRunDone <$> doneR)
+            (extractTestRunPending <$> pendingR)
+                ++ (extractTestRunRunning <$> runningR)
+                ++ (extractTestRunDone <$> doneR)
     case matched of
-        [] -> notValidated $  DownloadAssetsTestRunIdNotFound testid
+        [] -> notValidated $ DownloadAssetsTestRunIdNotFound testid
         firstMatched : _ -> do
-            sourceDirValidation <- lift $ checkSourceDirectory validation firstMatched
-            _ <- mapFailure DownloadAssetsSourceDirFailure $ throwJusts sourceDirValidation
+            sourceDirValidation <-
+                lift $ checkSourceDirectory validation firstMatched
+            _ <-
+                mapFailure DownloadAssetsSourceDirFailure
+                    $ throwJusts sourceDirValidation
             targetDirValidation <- liftIO $ checkTargetDirectory dir
             _ <- throwFalse targetDirValidation DownloadAssetsTargetDirNotFound
-            targetDirWritableValidation <- liftIO $ checkTargetDirectoryPermissions dir
-            _<- throwFalse targetDirWritableValidation DownloadAssetsTargetDirNotWritable
+            targetDirWritableValidation <-
+                liftIO $ checkTargetDirectoryPermissions dir
+            _ <-
+                throwFalse
+                    targetDirWritableValidation
+                    DownloadAssetsTargetDirNotWritable
 
             forM_ ["README.md", "docker-compose.yaml", "testnet.yaml"] $ \filename -> do
-                fileValidation <- lift $ downloadFileAndWriteLocally validation firstMatched dir (FileName filename)
+                fileValidation <-
+                    lift
+                        $ downloadFileAndWriteLocally
+                            validation
+                            firstMatched
+                            dir
+                            (FileName filename)
                 throwJusts fileValidation
 
             pure Validated
-
   where
-    checkFact testrun  = do
+    checkFact testrun = do
         keyId <- keyHash @_ @TestRun testrun
         pure $ testid == TestRunId keyId
     extractTestRunPending :: TestRunStatus PendingT -> TestRun

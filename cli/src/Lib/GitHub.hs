@@ -197,14 +197,14 @@ githubGetFile
     -> Maybe Commit
     -> FileName
     -> IO (Either GetGithubFileFailure T.Text)
-githubGetFile auth (Repository owner repo) commitM (FileName filename)  = do
+githubGetFile auth (Repository owner repo) commitM (FileName filename) = do
     response <-
         github auth
             $ GH.contentsForR
                 owner'
                 repo'
                 (T.pack filename)
-                ((\(Commit c) -> T.pack c)<$> commitM)
+                ((\(Commit c) -> T.pack c) <$> commitM)
     case response of
         Left e -> do
             res <- onStatusCodeOfException e $ \c -> do

@@ -342,7 +342,6 @@ downloadAssets tokenId testRunId dir = do
     validation <- askValidation tokenId
     lift $ runValidate $ do
         void $ validateDownloadAssets validation testmap testRunId dir
-        pure ()
 
 signAndSubmitAnUpdate
     :: (ToJSON m key, ToJSON m old, ToJSON m new, Monad m)

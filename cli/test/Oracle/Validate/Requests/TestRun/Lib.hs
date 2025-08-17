@@ -90,13 +90,16 @@ import User.Types
     , tryIndexL
     )
 import Validation (Validation (..))
-import Validation.DownloadFile (DownloadedFileFailure (..), analyzeDownloadedFile)
+import Validation.DownloadFile
+    ( DownloadedFileFailure (..)
+    , analyzeDownloadedFile
+    )
 import Validation.RegisterRole (RepositoryRoleFailure (..))
 import Validation.RegisterUser (analyzeKeys)
 
-import qualified Crypto.PubKey.Ed25519 as Ed25519
-import qualified Data.ByteString.Lazy.Char8 as BL
-import qualified Data.List as L
+import Crypto.PubKey.Ed25519 qualified as Ed25519
+import Data.ByteString.Lazy.Char8 qualified as BL
+import Data.List qualified as L
 
 jsFactRole :: Monad m => TestRun -> m JSFact
 jsFactRole testRun =
@@ -157,10 +160,11 @@ mkValidation fs rs ds upk rr reposExists files =
                     else Just NoRoleEntryInCodeowners
         , githubGetFile = \_repository _commit filename ->
             case L.lookup filename files of
-                Nothing -> return $
-                    Left
-                    $ GithubGetFileError
-                    $ GetGithubFileOtherFailure "file not present"
+                Nothing ->
+                    return
+                        $ Left
+                        $ GithubGetFileError
+                        $ GetGithubFileOtherFailure "file not present"
                 Just filecontent ->
                     pure $ analyzeDownloadedFile filename (Right filecontent)
         }

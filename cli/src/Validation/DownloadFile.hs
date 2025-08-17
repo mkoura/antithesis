@@ -14,6 +14,8 @@ import GitHub (Auth)
 import Lib.GitHub (GetGithubFileFailure, githubGetFile)
 
 import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
+import qualified Data.Yaml as Yaml
 import qualified Text.MMark as MMark
 
 data DownloadedFileFailure
@@ -43,6 +45,13 @@ analyzeDownloadedFile (FileName filename) = \case
             case MMark.parse filename file of
                 Left bundle ->
                     Just $ DownloadedFileParseError $ show bundle
+                Right _ ->
+                    Nothing
+        else if T.isSuffixOf "yaml" (T.pack filename) then
+            -- not interested in value only if there is error hence chosen random type that happens to have FromJSON instance
+            case Yaml.decodeEither' @Text (T.encodeUtf8 file) of
+                Left parseError ->
+                    Just $ DownloadedFileParseError $ show parseError
                 Right _ ->
                     Nothing
         else

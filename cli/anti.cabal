@@ -135,6 +135,7 @@ library
     User.Requester.Options
     User.Types
     Validation
+    Validation.DownloadFile
     Validation.RegisterRole
     Validation.RegisterUser
     Wallet.Cli

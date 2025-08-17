@@ -24,7 +24,7 @@ import Oracle.Validate.Types
     , throwFalse
     , throwJusts
     )
-import System.Directory (doesDirectoryExist, getPermissions, writable)
+import System.Directory (doesDirectoryExist, getPermissions,  writable)
 import User.Agent.Types
     ( TestRunId (..)
     , TestRunMap (..)
@@ -121,7 +121,7 @@ validateDownloadAssets
     -> TestRunId
     -> Directory
     -> Validate DownloadAssetsFailure m Validated
-validateDownloadAssets validation TestRunMap{pending,running,done} testid dir = do
+validateDownloadAssets validation TestRunMap{pending,running,done} testid dir@(Directory dir') = do
     pendingR <- filterM inspectTestRunPending pending
     runningR <- filterM inspectTestRunRunning running
     doneR <- filterM inspectTestRunDone done

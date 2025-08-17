@@ -5,6 +5,7 @@ module Core.Types.Basic
     ( Address (..)
     , Commit (..)
     , Directory (..)
+    , FileName (..)
     , Duration (..)
     , Host (..)
     , Owner (..)
@@ -134,6 +135,11 @@ newtype Directory = Directory String
     deriving (Eq, Show, Generic)
 
 instance Wrapped Directory
+
+newtype FileName = FileName String
+    deriving (Eq, Show, Generic)
+
+instance Wrapped FileName
 
 newtype Username = Username String
     deriving (Eq, Show, Generic)

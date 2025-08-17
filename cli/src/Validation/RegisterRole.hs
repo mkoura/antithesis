@@ -13,7 +13,7 @@ import Data.Maybe (catMaybes)
 import Data.Text (Text)
 import Data.Text qualified as T
 import GitHub (Auth)
-import Lib.GitHub (GetCodeOwnersFileFailure, githubGetCodeOwnersFile)
+import Lib.GitHub (GetGithubFileFailure, githubGetCodeOwnersFile)
 import Lib.JSON.Canonical.Extra (object, (.=))
 import Text.JSON.Canonical (ToJSON (..))
 
@@ -21,7 +21,7 @@ data RepositoryRoleFailure
     = NoRoleEntryInCodeowners
     | NoUsersAssignedToRoleInCodeowners
     | NoUserInCodeowners
-    | GithubGetError GetCodeOwnersFileFailure
+    | GithubGetError GetGithubFileFailure
     deriving (Eq, Show)
 
 instance Monad m => ToJSON m RepositoryRoleFailure where
@@ -40,7 +40,7 @@ instance Monad m => ToJSON m RepositoryRoleFailure where
 -- role: user1 user2 .. userX .. userN
 analyzeResponseCodeownersFile
     :: Username
-    -> Either GetCodeOwnersFileFailure Text
+    -> Either GetGithubFileFailure Text
     -> Maybe RepositoryRoleFailure
 analyzeResponseCodeownersFile (Username user) = \case
     Left failure ->
@@ -74,7 +74,7 @@ analyzeResponseCodeownersFile (Username user) = \case
 inspectRepoRoleForUserTemplate
     :: Username
     -> Repository
-    -> (Repository -> IO (Either GetCodeOwnersFileFailure Text))
+    -> (Repository -> IO (Either GetGithubFileFailure Text))
     -> IO (Maybe RepositoryRoleFailure)
 inspectRepoRoleForUserTemplate username repo downloadCodeownersFile = do
     resp <- downloadCodeownersFile repo

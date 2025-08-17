@@ -1,10 +1,11 @@
 module Lib.GitHub
     ( GithubResponseError (..)
-    , GetCodeOwnersFileFailure (..)
+    , GetGithubFileFailure (..)
     , GithubResponseStatusCodeError (..)
     , githubCommitExists
     , githubDirectoryExists
     , githubUserPublicKeys
+    , githubGetFile
     , githubGetCodeOwnersFile
     , githubRepositoryExists
     , getOAUth
@@ -16,6 +17,7 @@ import Control.Exception
 import Core.Types.Basic
     ( Commit (..)
     , Directory (..)
+    , FileName (..)
     , Repository (..)
     , Username (..)
     )
@@ -174,26 +176,35 @@ githubUserPublicKeys auth (Username name) = do
                 $ show e
         Right r -> pure $ Right $ GH.basicPublicSSHKeyKey <$> toList r
 
-data GetCodeOwnersFileFailure
-    = GetCodeOwnersFileDirectoryNotFound
-    | GetCodeOwnersFileNotAFile
-    | GetCodeOwnersFileUnsupportedEncoding String
-    | GetCodeOwnersFileOtherFailure String
-    | GetCodeOwnersFileCodeError GithubResponseStatusCodeError
+githubGetCodeOwnersFile
+    :: Auth -> Repository -> IO (Either GetGithubFileFailure T.Text)
+githubGetCodeOwnersFile auth repository =
+    githubGetFile auth repository Nothing (FileName "CODEOWNERS")
+
+data GetGithubFileFailure
+    = GetGithubFileDirectoryNotFound
+    | GetGithubFileNotAFile
+    | GetGithubFileUnsupportedEncoding String
+    | GetGithubFileOtherFailure String
+    | GetGithubFileCodeError GithubResponseStatusCodeError
     deriving (Eq, Show)
 
-instance Exception GetCodeOwnersFileFailure
+instance Exception GetGithubFileFailure
 
-githubGetCodeOwnersFile
-    :: Auth -> Repository -> IO (Either GetCodeOwnersFileFailure T.Text)
-githubGetCodeOwnersFile auth (Repository owner repo) = do
+githubGetFile
+    :: Auth
+    -> Repository
+    -> Maybe Commit
+    -> FileName
+    -> IO (Either GetGithubFileFailure T.Text)
+githubGetFile auth (Repository owner repo) commitM (FileName filename)  = do
     response <-
         github auth
             $ GH.contentsForR
                 owner'
                 repo'
-                "CODEOWNERS"
-                Nothing
+                (T.pack filename)
+                ((\(Commit c) -> T.pack c)<$> commitM)
     case response of
         Left e -> do
             res <- onStatusCodeOfException e $ \c -> do
@@ -202,15 +213,15 @@ githubGetCodeOwnersFile auth (Repository owner repo) = do
                         pure
                             . Just
                             . Left
-                            $ GetCodeOwnersFileDirectoryNotFound
+                            $ GetGithubFileDirectoryNotFound
                     _ ->
                         pure
                             . Just
                             . Left
-                            . GetCodeOwnersFileOtherFailure
+                            . GetGithubFileOtherFailure
                             $ show e
             case res of
-                Left err -> return $ Left $ GetCodeOwnersFileCodeError err
+                Left err -> return $ Left $ GetGithubFileCodeError err
                 Right a -> return a
         Right (GH.ContentFile contents) -> do
             let content = GH.contentFileContent contents
@@ -225,12 +236,12 @@ githubGetCodeOwnersFile auth (Repository owner repo) = do
                 enc ->
                     pure
                         . Left
-                        . GetCodeOwnersFileUnsupportedEncoding
+                        . GetGithubFileUnsupportedEncoding
                         $ T.unpack enc
         Right _ ->
             pure
                 . Left
-                $ GetCodeOwnersFileNotAFile
+                $ GetGithubFileNotAFile
   where
     owner' = N $ T.pack owner
     repo' = N $ T.pack repo

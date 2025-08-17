@@ -13,7 +13,7 @@ import Core.Types.Basic
 import Data.Text qualified as T
 import GitHub (Auth)
 import Lib.GitHub
-    ( GetCodeOwnersFileFailure (..)
+    ( GetGithubFileFailure (..)
     , githubGetCodeOwnersFile
     , githubRepositoryExists
     )
@@ -71,7 +71,7 @@ roleSpecs = do
         githubGetCodeOwnersFile
             auth
             (Repository "cardano-foundation" "hal-fixture-sec")
-            `shouldReturn` Left GetCodeOwnersFileDirectoryNotFound
+            `shouldReturn` Left GetGithubFileDirectoryNotFound
 
 userSpec :: Spec
 userSpec = do

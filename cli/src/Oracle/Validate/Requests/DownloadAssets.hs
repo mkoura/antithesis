@@ -24,7 +24,7 @@ import Oracle.Validate.Types
     , throwFalse
     , throwJusts
     )
-import System.Directory (doesDirectoryExist, getPermissions,  writable)
+import System.Directory (doesDirectoryExist, getPermissions, writable)
 import User.Agent.Types
     ( TestRunId (..)
     , TestRunMap (..)

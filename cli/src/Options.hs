@@ -1,3 +1,9 @@
+{-# LANGUAGE ApplicativeDo #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Avoid lambda" #-}
+{-# OPTIONS_GHC -Wno-unused-imports #-}
+
 module Options
     ( Command (..)
     , commandParser
@@ -12,8 +18,10 @@ import Core.Options
     , tokenIdOption
     , walletOption
     )
+import Core.Types.MPFS (mpfsClientOption)
 import Data.Version (Version)
 import Lib.Box (Box (..), fmapBox)
+import MPFS.API (mpfsClient)
 import OptEnvConf
     ( Parser
     , command
@@ -28,25 +36,30 @@ import Wallet.Options (walletCommandParser)
 newtype Options a = Options
     { optionsCommand :: Command a
     }
-    deriving (Eq, Show)
 
 commandParser :: Parser (Box Command)
 commandParser =
     commands
         [ command "oracle" "Manage oracle operations"
-            $ fmapBox OracleCommand <$> oracleCommandParser
+            $ (\c -> fmapBox (OracleCommand c))
+                <$> mpfsClientOption
+                <*> oracleCommandParser
         , command "requester" "Manage requester operations"
-            $ fmapBox RequesterCommand <$> requesterCommandParser
+            $ (\c -> fmapBox (RequesterCommand c))
+                <$> mpfsClientOption
+                <*> requesterCommandParser
+        , command "agent" "Manage agent operations"
+            $ (\c -> fmapBox (AgentCommand c))
+                <$> mpfsClientOption
+                <*> agentCommandParser
+        , command "wallet" "Manage wallet operations"
+            $ fmapBox Wallet <$> walletCommandParser
         , command
             "retract"
             "Retract a request"
             retractRequestOptions
         , command "facts" "Get token facts"
-            $ Box . GetFacts <$> tokenIdOption
-        , command "agent" "Manage agent operations"
-            $ fmapBox AgentCommand <$> agentCommandParser
-        , command "wallet" "Manage wallet operations"
-            $ fmapBox Wallet <$> walletCommandParser
+            $ fmap Box . GetFacts <$> mpfsClientOption <*> tokenIdOption
         ]
 
 optionsParser :: Parser (Box Options)
@@ -61,6 +74,7 @@ parseArgs version =
 
 retractRequestOptions :: Parser (Box Command)
 retractRequestOptions =
-    fmap Box . RetractRequest
-        <$> walletOption
+    fmap (fmap Box) . RetractRequest
+        <$> mpfsClientOption
+        <*> walletOption
         <*> outputReferenceParser

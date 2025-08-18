@@ -10,15 +10,8 @@ main :: IO ()
 main = do
     clientResult <- Anti.client
     case clientResult of
-        Success _ mpsHost e -> do
-            output <- do
-                let fs =
-                        [ "mpfsHost" .= mpsHost
-                        ]
-                            <> case e of
-                                Left err -> ["error" .= show err]
-                                Right result -> ["result" .= result]
-                object fs
+        Success e -> do
+            output <- object ["result" .= e]
             BL.putStrLn $ renderCanonicalJSON output
         Failure ex -> do
             output <- object ["error" .= show ex]

@@ -28,7 +28,6 @@ import Servant.Client
 import Submitting
     ( IfToWait (..)
     , Submitting (..)
-    , readWallet
     , signAndSubmitMPFS
     )
 import System.Environment (getEnv, lookupEnv)
@@ -37,7 +36,6 @@ import Text.JSON.Canonical (JSValue, ToJSON (..))
 data Result
     = Success
         { options :: Box Options
-        , walletFile :: FilePath
         , mpfsHost :: String
         , result :: Either ClientError JSValue
         }
@@ -54,18 +52,14 @@ client = do
         Right o@(Box (Options command)) -> do
             let action = do
                     mpfs_host <- getEnv "ANTI_MPFS_HOST"
+                    eiftw <- lookupEnv "ANTI_WAIT"
                     baseUrl <- parseBaseUrl mpfs_host
-                    walletFile <- getEnv "ANTI_WALLET_FILE"
-                    mWallet <-
-                        (Right <$> readWallet walletFile)
-                            `catch` \(_ :: IOError) -> return $ Left walletFile
                     manger <-
                         newManager
                             $ if baseUrlScheme baseUrl == Https
                                 then tlsManagerSettings
                                 else defaultManagerSettings
                     let clientEnv = mkClientEnv manger baseUrl
-                    eiftw <- lookupEnv "ANTI_WAIT"
                     let iftw = case eiftw of
                             Just s -> Wait (read s)
                             Nothing -> NoWait
@@ -77,9 +71,9 @@ client = do
                                 Right r -> return r
                     let sbmt = Submitting{ifToWait = iftw, runClient}
                         submit = signAndSubmitMPFS sbmt
-                    Success o walletFile mpfs_host
+                    Success o mpfs_host
                         <$> runClientM
-                            (cmd submit mWallet command >>= toJSON)
+                            (cmd submit command >>= toJSON)
                             clientEnv
             action `catch` (return . Failure)
 

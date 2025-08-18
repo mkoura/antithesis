@@ -11,9 +11,12 @@ module Core.Options
     , durationOption
     , tryOption
     , tokenIdOption
+    , readyMnemonicsOption
+    , walletOption
     )
 where
 
+import Control.Arrow (left)
 import Core.Types.Basic
     ( Commit (..)
     , Directory (..)
@@ -26,10 +29,21 @@ import Core.Types.Basic
     , Try (..)
     , Username (..)
     )
+import Core.Types.Wallet
+    ( Mnemonics (..)
+    , Wallet
+    )
+import Data.Aeson (Object)
+import Data.Aeson qualified as Aeson
+import Data.ByteString.Lazy qualified as BL
+import Data.Text (Text)
 import Data.Text qualified as T
 import OptEnvConf
     ( Parser
     , auto
+    , checkEither
+    , checkMapIO
+    , conf
     , env
     , help
     , long
@@ -42,8 +56,10 @@ import OptEnvConf
     , str
     , strOption
     , value
+    , withConfig
     )
 import OptEnvConf.Reader (Reader (..))
+import Submitting (readWallet)
 
 platformOption :: Parser Platform
 platformOption =
@@ -175,3 +191,33 @@ tokenIdOption =
             , help "The token ID of the antithesis token"
             , reader str
             ]
+
+mnemonicsClearTextOption :: Parser Text
+mnemonicsClearTextOption =
+    setting
+        [ help "The mnemonics for the wallet in clear text"
+        , conf "mnemonics"
+        , metavar "MNEMONICS"
+        ]
+
+readyMnemonicsOption :: Parser Mnemonics
+readyMnemonicsOption = ClearText <$> mnemonicsClearTextOption
+
+walletFileOption :: Parser FilePath
+walletFileOption =
+    setting
+        [ env "ANTI_WALLET_FILE"
+        , metavar "FILEPATH"
+        , help "The file path to the wallet secrets"
+        , reader str
+        ]
+
+mnemonicsObject :: Parser Object
+mnemonicsObject = checkMapIO f walletFileOption
+  where
+    f = fmap Aeson.eitherDecode . BL.readFile
+
+walletOption :: Parser Wallet
+walletOption =
+    withConfig (Just <$> mnemonicsObject)
+        $ checkEither (left show <$> readWallet) readyMnemonicsOption

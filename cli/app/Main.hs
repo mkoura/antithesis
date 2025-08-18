@@ -10,11 +10,10 @@ main :: IO ()
 main = do
     clientResult <- Anti.client
     case clientResult of
-        Success _ walletFile mpsHost e -> do
+        Success _ mpsHost e -> do
             output <- do
                 let fs =
-                        [ "walletFile" .= walletFile
-                        , "mpfsHost" .= mpsHost
+                        [ "mpfsHost" .= mpsHost
                         ]
                             <> case e of
                                 Left err -> ["error" .= show err]

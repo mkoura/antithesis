@@ -7,7 +7,7 @@ module Oracle.Config.Options
     )
 where
 
-import Core.Options (tokenIdOption)
+import Core.Options (tokenIdOption, walletOption)
 import Core.Types.Basic (Owner (..))
 import Lib.Box (Box (..))
 import OptEnvConf
@@ -74,8 +74,9 @@ configCommandParser =
         [ command
             "set"
             "Update the oracle configuration"
-            ( fmap Box . SetConfig
+            ( fmap (fmap Box) . SetConfig
                 <$> tokenIdOption
+                <*> walletOption
                 <*> configOption
             )
         , command

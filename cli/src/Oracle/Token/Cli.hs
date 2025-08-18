@@ -16,6 +16,7 @@ import Core.Context
     )
 import Core.Types.Basic (RequestRefId, TokenId)
 import Core.Types.Tx (TxHash, WithTxHash (WithTxHash))
+import Core.Types.Wallet (Wallet)
 import Data.Functor ((<&>))
 import Data.List (find)
 import Lib.JSON.Canonical.Extra (object, (.=))
@@ -98,16 +99,17 @@ instance Monad m => ToJSON m TokenUpdateFailure where
 
 data TokenCommand a where
     GetToken :: TokenId -> TokenCommand JSValue
-    BootToken :: TokenCommand (WithTxHash TokenId)
+    BootToken :: Wallet -> TokenCommand (WithTxHash TokenId)
     UpdateToken
         :: TokenId
+        -> Wallet
         -> [RequestRefId]
         -> TokenCommand
             ( AValidationResult
                 TokenUpdateFailure
                 TxHash
             )
-    EndToken :: TokenId -> TokenCommand TxHash
+    EndToken :: TokenId -> Wallet -> TokenCommand TxHash
 
 deriving instance Show (TokenCommand a)
 deriving instance Eq (TokenCommand a)
@@ -130,10 +132,10 @@ tokenCmdCore
     -> WithContext m a
 tokenCmdCore command = do
     mpfs <- askMpfs
-    Submission submit <- askSubmit
     case command of
         GetToken tk -> lift $ mpfsGetToken mpfs tk
-        UpdateToken tk wanted -> do
+        UpdateToken tk wallet wanted -> do
+            Submission submit <- ($ wallet) <$> askSubmit
             validation <- askValidation tk
             mconfig <- askConfig tk
             lift $ runValidate $ do
@@ -158,15 +160,19 @@ tokenCmdCore command = do
                     $ submit
                     $ \address -> mpfsUpdateToken mpfs address tk wanted
                 pure txHash
-        BootToken -> lift $ do
-            WithTxHash txHash jTokenId <- submit
-                $ \address -> mpfsBootToken mpfs address
-            case jTokenId of
-                Just tkId -> case fromJSON tkId of
-                    Nothing -> error "BootToken failed, TokenId is not valid JSON"
-                    Just tokenId -> pure $ WithTxHash txHash (Just tokenId)
-                _ -> error "BootToken failed, no TokenId returned"
-        EndToken tk -> lift $ do
-            WithTxHash txHash _ <- submit
-                $ \address -> mpfsEndToken mpfs address tk
-            pure txHash
+        BootToken wallet -> do
+            Submission submit <- ($ wallet) <$> askSubmit
+            lift $ do
+                WithTxHash txHash jTokenId <- submit
+                    $ \address -> mpfsBootToken mpfs address
+                case jTokenId of
+                    Just tkId -> case fromJSON tkId of
+                        Nothing -> error "BootToken failed, TokenId is not valid JSON"
+                        Just tokenId -> pure $ WithTxHash txHash (Just tokenId)
+                    _ -> error "BootToken failed, no TokenId returned"
+        EndToken tk wallet -> do
+            Submission submit <- ($ wallet) <$> askSubmit
+            lift $ do
+                WithTxHash txHash _ <- submit
+                    $ \address -> mpfsEndToken mpfs address tk
+                pure txHash

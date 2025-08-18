@@ -19,6 +19,7 @@ import Oracle.Validate.Types
     , throwFalse
     , throwLeft
     )
+import Submitting (WalletError)
 import Text.JSON.Canonical (ToJSON (..))
 import User.Agent.Types (WhiteListKey (..))
 import Validation
@@ -35,6 +36,7 @@ data UpdateWhiteListFailure
     | WhiteListGithubFailed Github.GithubResponseStatusCodeError
     | WhiteListAgentNotRecognized Owner
     | WhiteListConfigNotAvailable
+    | WhiteListWalletError WalletError
     deriving (Show, Eq)
 
 instance Monad m => ToJSON m UpdateWhiteListFailure where
@@ -53,6 +55,8 @@ instance Monad m => ToJSON m UpdateWhiteListFailure where
     toJSON WhiteListConfigNotAvailable =
         object
             ["error" .= ("Token configuration is not available yet" :: String)]
+    toJSON (WhiteListWalletError err) =
+        object ["error" .= ("Wallet error: " ++ show err)]
 
 validateAgent
     :: Monad m

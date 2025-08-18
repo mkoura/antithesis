@@ -19,6 +19,7 @@ import Core.Types.Basic (Duration, TokenId)
 import Core.Types.Change (Change (..), Key (..), deleteKey, insertKey)
 import Core.Types.Operation (Operation (..))
 import Core.Types.Tx (TxHash, WithTxHash (..))
+import Core.Types.Wallet (Wallet)
 import Data.ByteString.Lazy qualified as BL
 import Data.Functor (($>))
 import Lib.SSH.Private
@@ -66,22 +67,27 @@ import User.Types
 data RequesterCommand a where
     RegisterUser
         :: TokenId
+        -> Wallet
         -> RegisterUserKey
         -> RequesterCommand (AValidationResult RegisterUserFailure TxHash)
     UnregisterUser
         :: TokenId
+        -> Wallet
         -> RegisterUserKey
         -> RequesterCommand (AValidationResult UnregisterUserFailure TxHash)
     RegisterRole
         :: TokenId
+        -> Wallet
         -> RegisterRoleKey
         -> RequesterCommand (AValidationResult RegisterRoleFailure TxHash)
     UnregisterRole
         :: TokenId
+        -> Wallet
         -> RegisterRoleKey
         -> RequesterCommand (AValidationResult UnregisterRoleFailure TxHash)
     RequestTest
         :: TokenId
+        -> Wallet
         -> SSHClient
         -> TestRun
         -> Duration
@@ -100,17 +106,18 @@ requesterCmd
     -> WithContext m a
 requesterCmd command = do
     case command of
-        RegisterUser tokenId request ->
-            registerUser tokenId request
-        UnregisterUser tokenId request ->
-            unregisterUser tokenId request
-        RegisterRole tokenId request ->
-            registerRole tokenId request
-        UnregisterRole tokenId request ->
-            unregisterRole tokenId request
-        RequestTest tokenId sshClient testRun duration ->
+        RegisterUser tokenId wallet request ->
+            registerUser tokenId wallet request
+        UnregisterUser tokenId wallet request ->
+            unregisterUser tokenId wallet request
+        RegisterRole tokenId wallet request ->
+            registerRole tokenId wallet request
+        UnregisterRole tokenId wallet request ->
+            unregisterRole tokenId wallet request
+        RequestTest tokenId wallet sshClient testRun duration ->
             createCommand
                 tokenId
+                wallet
                 sshClient
                 testRun
                 duration
@@ -118,6 +125,7 @@ requesterCmd command = do
 createCommand
     :: MonadIO m
     => TokenId
+    -> Wallet
     -> SSHClient
     -> TestRun
     -> Duration
@@ -129,12 +137,13 @@ createCommand
         )
 createCommand
     tokenId
+    wallet
     sshClient
     testRun
     duration = do
         mconfig <- askConfig tokenId
         validation <- askValidation tokenId
-        Submission submit <- askSubmit
+        Submission submit <- ($ wallet) <$> askSubmit
         mpfs <- askMpfs
         lift $ runValidate $ do
             Config{configTestRun} <-
@@ -157,13 +166,15 @@ createCommand
 registerUser
     :: Monad m
     => TokenId
+    -> Wallet
     -> RegisterUserKey
     -> WithContext m (AValidationResult RegisterUserFailure TxHash)
 registerUser
     tokenId
+    wallet
     request = do
         mpfs <- askMpfs
-        Submission submit <- askSubmit
+        Submission submit <- ($ wallet) <$> askSubmit
         validation <- askValidation tokenId
         lift $ runValidate $ do
             void
@@ -181,14 +192,16 @@ registerUser
 unregisterUser
     :: Monad m
     => TokenId
+    -> Wallet
     -> RegisterUserKey
     -> WithContext m (AValidationResult UnregisterUserFailure TxHash)
 unregisterUser
     tokenId
+    wallet
     request = do
         mpfs <- askMpfs
         validation <- askValidation tokenId
-        Submission submit <- askSubmit
+        Submission submit <- ($ wallet) <$> askSubmit
         lift $ runValidate $ do
             void
                 $ validateUnregisterUser validation
@@ -205,14 +218,16 @@ unregisterUser
 registerRole
     :: Monad m
     => TokenId
+    -> Wallet
     -> RegisterRoleKey
     -> WithContext m (AValidationResult RegisterRoleFailure TxHash)
 registerRole
     tokenId
+    wallet
     request = do
         mpfs <- askMpfs
         validation <- askValidation tokenId
-        Submission submit <- askSubmit
+        Submission submit <- ($ wallet) <$> askSubmit
         lift $ runValidate $ do
             void
                 $ validateRegisterRole validation
@@ -229,14 +244,16 @@ registerRole
 unregisterRole
     :: Monad m
     => TokenId
+    -> Wallet
     -> RegisterRoleKey
     -> WithContext m (AValidationResult UnregisterRoleFailure TxHash)
 unregisterRole
     tokenId
+    wallet
     request = do
         mpfs <- askMpfs
         validation <- askValidation tokenId
-        Submission submit <- askSubmit
+        Submission submit <- ($ wallet) <$> askSubmit
         lift $ runValidate $ do
             void
                 $ validateUnregisterRole validation

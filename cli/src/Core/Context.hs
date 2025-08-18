@@ -17,6 +17,7 @@ import Control.Monad.Trans.Class (MonadTrans, lift)
 import Control.Monad.Trans.Reader (ReaderT (..), ask)
 import Core.Types.Basic (Owner, TokenId)
 import Core.Types.Fact (Fact (..), parseFacts)
+import Core.Types.Wallet (Wallet)
 import MPFS.API (MPFS (..))
 import Oracle.Config.Types
     ( Config (configAgent, configTestRun)
@@ -33,7 +34,7 @@ import Validation (Validation)
 data Context m = Context
     { ctxMPFS :: MPFS m
     , ctxMkValidation :: TokenId -> Validation m
-    , ctxSubmit :: Submission m
+    , ctxSubmit :: Wallet -> Submission m
     }
 
 newtype WithContext m a = WithContext
@@ -79,13 +80,13 @@ askValidation tokenId = do
     ctx <- WithContext ask
     return $ ctxMkValidation ctx tokenId
 
-askSubmit :: Monad m => WithContext m (Submission m)
+askSubmit :: Monad m => WithContext m (Wallet -> Submission m)
 askSubmit = ctxSubmit <$> WithContext ask
 
 withContext
     :: MPFS m
     -> (TokenId -> Validation m)
-    -> Submission m
+    -> (Wallet -> Submission m)
     -> WithContext m a
     -> m a
 withContext mpfs mkValidation submit (WithContext action) =

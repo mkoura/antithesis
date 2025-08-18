@@ -46,6 +46,7 @@ import Core.Types.Tx
     , WithUnsignedTx (WithUnsignedTx)
     )
 import Core.Types.Wallet (Wallet (..))
+import Data.Aeson qualified as Aeson
 import Data.Bifunctor (first)
 import Data.ByteString.Base16 (decode, encode)
 import Data.ByteString.Char8 qualified as B
@@ -108,7 +109,23 @@ loadEnvWallet :: String -> IO Wallet
 loadEnvWallet envVar = do
     walletFile <- lookupEnv envVar
     case walletFile of
-        Just file -> readWallet file
+        Just file -> do
+            content <- B.readFile file
+            case Aeson.decodeStrict content of
+                Just value -> case readWallet value of
+                    Left err ->
+                        error
+                            $ "Failed to read wallet from file "
+                                ++ file
+                                ++ ".\nError: "
+                                ++ show err
+                    Right wallet -> pure wallet
+                Nothing ->
+                    error
+                        $ "Failed to decode wallet file at "
+                            ++ file
+                            ++ ".\n \
+                               \ Please ensure it is a valid funded preprod wallet file."
         Nothing ->
             error
                 $ "Environment variable "
@@ -184,9 +201,9 @@ setup auth = do
         withContext
             mpfsClient
             (mkValidation auth)
-            (wait180S oracleWallet)
+            wait180S
             $ tokenCmdCore
-                BootToken
+            $ BootToken oracleWallet
     liftIO $ waitTx call txHash
     case mTokenId of
         Nothing -> error "BootToken failed, no TokenId returned"
@@ -208,9 +225,9 @@ teardown auth Context{mpfs, tokenId, wait180S, oracleWallet} = do
         withContext
             mpfsClient
             (mkValidation auth)
-            (wait180S oracleWallet)
+            wait180S
             $ tokenCmdCore
-            $ EndToken tokenId
+            $ EndToken tokenId oracleWallet
     liftIO $ waitTx mpfs txHash
 
 getFirstOutput :: AlonzoTx ConwayEra -> Maybe (String, Data)

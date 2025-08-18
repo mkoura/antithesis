@@ -1,5 +1,4 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -17,6 +16,7 @@ module Submitting
     , writeWallet
     , Submitting (..)
     , IfToWait (..)
+    , WalletError (..)
     )
 where
 
@@ -84,12 +84,9 @@ import Core.Types.Tx
     , WithTxHash (WithTxHash)
     , WithUnsignedTx (..)
     )
-import Core.Types.Wallet (Wallet (..))
+import Core.Types.Wallet (Mnemonics (..), Wallet (..))
 import Data.Aeson
-    ( FromJSON
-    , ToJSON
-    , eitherDecodeFileStrict'
-    , encode
+    ( encode
     )
 import Data.Bifunctor (first)
 import Data.ByteString (ByteString)
@@ -106,7 +103,6 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
-import GHC.Generics (Generic)
 import MPFS.API (getTransaction, submitTransaction)
 import Servant.Client (ClientM)
 import Text.JSON.Canonical (JSValue (..))
@@ -151,14 +147,6 @@ signAndSubmitMPFS sbmt Wallet{address, sign} = Submission $ \action -> do
             return $ WithTxHash txHash value
         Left e -> liftIO $ throwIO e
 
-data WalletDB = WalletDB
-    { mnemonics :: Text
-    }
-    deriving (Eq, Generic)
-
-instance FromJSON WalletDB
-instance ToJSON WalletDB
-
 data WalletError
     = InvalidMnemonic String
     | InvalidWalletFile String
@@ -167,18 +155,15 @@ data WalletError
 instance Exception WalletError
 
 readWallet
-    :: FilePath
-    -> IO Wallet
-readWallet walletFile = do
-    WalletDB{mnemonics} <-
-        either (throwIO . InvalidWalletFile) pure
-            =<< eitherDecodeFileStrict' walletFile
-    either throwIO pure $ walletFromMnemonic $ T.words mnemonics
+    :: Mnemonics
+    -> Either WalletError Wallet
+readWallet (ClearText mnemonics) = do
+    walletFromMnemonic $ T.words mnemonics
 
 writeWallet :: FilePath -> [Text] -> IO ()
 writeWallet walletFile mnemonicWords = do
-    let walletDB = WalletDB{mnemonics = T.unwords mnemonicWords}
-    BL.writeFile walletFile $ encode walletDB
+    let mnemonics = ClearText $ T.unwords mnemonicWords
+    BL.writeFile walletFile $ encode mnemonics
 
 walletFromMnemonic :: [Text] -> Either WalletError Wallet
 walletFromMnemonic mnemonicWords = do

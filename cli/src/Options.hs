@@ -7,7 +7,11 @@ module Options
     ) where
 
 import Cli (Command (..))
-import Core.Options (outputReferenceParser, tokenIdOption)
+import Core.Options
+    ( outputReferenceParser
+    , tokenIdOption
+    , walletOption
+    )
 import Data.Version (Version)
 import Lib.Box (Box (..), fmapBox)
 import OptEnvConf
@@ -57,5 +61,6 @@ parseArgs version =
 
 retractRequestOptions :: Parser (Box Command)
 retractRequestOptions =
-    Box . RetractRequest
-        <$> outputReferenceParser
+    fmap Box . RetractRequest
+        <$> walletOption
+        <*> outputReferenceParser

@@ -33,8 +33,7 @@ being_oracle
 anti oracle config set \
     --min-test-duration 1 \
     --max-test-duration 4 \
-    --agent-pkh "$ANTI_AGENT_PUBLIC_KEY_HASH" \
-    > /dev/null
+    --agent-pkh "$ANTI_AGENT_PUBLIC_KEY_HASH"
 
 log "Register 'cfhal' as a GitHub user"
 being_requester
@@ -62,8 +61,7 @@ log "Whitelist the cardano-foundation/hal-fixture-sin repository"
 being_agent
 anti agent white-list \
     --platform github \
-    --repository cardano-foundation/hal-fixture-sin \
-    > /dev/null
+    --repository cardano-foundation/hal-fixture-sin
 
 log "Include the repository whitelisting"
 include_requests

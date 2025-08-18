@@ -4,13 +4,19 @@ module Wallet.Options
     ( walletCommandParser
     ) where
 
+import Core.Options (walletOption)
 import Lib.Box (Box (..))
 import OptEnvConf
-    ( Parser
-    , command
-    , commands
-    )
 import Wallet.Cli (WalletCommand (..))
+
+walletFileOption :: Parser FilePath
+walletFileOption =
+    setting
+        [ help "File to store the wallet mnemonic"
+        , metavar "MNEMONICS"
+        , env "ANTI_WALLET_FILE"
+        , reader str
+        ]
 
 walletCommandParser :: Parser (Box WalletCommand)
 walletCommandParser =
@@ -18,9 +24,11 @@ walletCommandParser =
         [ command
             "create"
             "Create a new wallet"
-            $ pure (Box Create)
+            $ Box . Create
+                <$> walletFileOption
         , command
             "info"
             "Get the wallet information"
-            $ pure (Box Info)
+            $ Box . Info
+                <$> walletOption
         ]

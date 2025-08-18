@@ -39,24 +39,24 @@ instance Monad m => ToJSON m WalletInfo where
             ]
 
 data WalletCommand a where
-    Info :: WalletCommand (Either WalletError WalletInfo)
-    Create :: WalletCommand (Either WalletError WalletInfo)
+    Info :: Wallet -> WalletCommand (Either WalletError WalletInfo)
+    Create :: FilePath -> WalletCommand (Either WalletError WalletInfo)
 
 deriving instance Show (WalletCommand a)
 deriving instance Eq (WalletCommand a)
 
-walletCmd :: Either FilePath Wallet -> WalletCommand a -> IO a
-walletCmd (Right wallet) Info =
+walletCmd :: WalletCommand a -> IO a
+walletCmd (Info wallet) =
     pure
         $ Right
         $ WalletInfo
             { address = wallet.address
             , owner = wallet.owner
             }
-walletCmd (Left walletFile) Create = do
+walletCmd (Create walletFile) = do
     w12 <- replicateM 12 $ element englishWords
     case walletFromMnemonic w12 of
-        Left _e -> walletCmd (Left walletFile) Create
+        Left _e -> walletCmd (Create walletFile)
         Right wallet -> do
             writeWallet walletFile w12
             return
@@ -65,8 +65,6 @@ walletCmd (Left walletFile) Create = do
                     { address = wallet.address
                     , owner = wallet.owner
                     }
-walletCmd (Left _) Info = pure $ Left WalletMissing
-walletCmd (Right _) Create = pure $ Left WalletPresent
 
 element :: [a] -> IO a
 element xs = do

@@ -5,7 +5,12 @@ module User.Agent.Options
     ( agentCommandParser
     ) where
 
-import Core.Options (platformOption, repositoryOption, tokenIdOption)
+import Core.Options
+    ( platformOption
+    , repositoryOption
+    , tokenIdOption
+    , walletOption
+    )
 import Core.Types.Basic (Duration (..))
 import Core.Types.Tx (WithTxHash)
 import Lib.Box (Box (..))
@@ -73,6 +78,7 @@ whitelistRepositoryOptions
 whitelistRepositoryOptions =
     WhiteList
         <$> tokenIdOption
+        <*> walletOption
         <*> platformOption
         <*> repositoryOption
 
@@ -88,6 +94,7 @@ blacklistRepositoryOptions
 blacklistRepositoryOptions =
     BlackList
         <$> tokenIdOption
+        <*> walletOption
         <*> platformOption
         <*> repositoryOption
 
@@ -118,7 +125,11 @@ acceptTestOptions
             )
         )
 acceptTestOptions =
-    Accept <$> tokenIdOption <*> testRunIdOption <*> pure ()
+    Accept
+        <$> tokenIdOption
+        <*> walletOption
+        <*> testRunIdOption
+        <*> pure ()
 
 testRejectionParser :: Parser TestRunRejection
 testRejectionParser =
@@ -149,7 +160,8 @@ rejectTestOptions = do
     testRunId <- testRunIdOption
     reason <- many testRejectionParser
     tokenId <- tokenIdOption
-    pure $ Reject tokenId testRunId () reason
+    wallet <- walletOption
+    pure $ Reject tokenId wallet testRunId () reason
 
 reportTestOptions
     :: Parser
@@ -163,6 +175,7 @@ reportTestOptions
 reportTestOptions = do
     tokenId <- tokenIdOption
     testRunId <- testRunIdOption
+    wallet <- walletOption
     duration <-
         Duration
             <$> setting
@@ -181,4 +194,4 @@ reportTestOptions = do
                 , reader str
                 , option
                 ]
-    pure $ Report tokenId testRunId () duration url
+    pure $ Report tokenId wallet testRunId () duration url

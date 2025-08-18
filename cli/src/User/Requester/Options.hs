@@ -16,6 +16,7 @@ import Core.Options
     , tokenIdOption
     , tryOption
     , usernameOption
+    , walletOption
     )
 import Core.Types.Tx (TxHash, WithTxHash)
 import Lib.Box (Box (..))
@@ -56,6 +57,7 @@ addPublicKeyOptions
 addPublicKeyOptions =
     RegisterUser
         <$> tokenIdOption
+        <*> walletOption
         <*> ( RegisterUserKey
                 <$> platformOption
                 <*> usernameOption
@@ -68,6 +70,7 @@ removePublicKeyOptions
 removePublicKeyOptions =
     UnregisterUser
         <$> tokenIdOption
+        <*> walletOption
         <*> ( RegisterUserKey
                 <$> platformOption
                 <*> usernameOption
@@ -80,6 +83,7 @@ addRoleOptions
 addRoleOptions =
     RegisterRole
         <$> tokenIdOption
+        <*> walletOption
         <*> ( RegisterRoleKey
                 <$> platformOption
                 <*> repositoryOption
@@ -92,6 +96,7 @@ removeRoleOptions
 removeRoleOptions =
     UnregisterRole
         <$> tokenIdOption
+        <*> walletOption
         <*> ( RegisterRoleKey
                 <$> platformOption
                 <*> repositoryOption
@@ -160,6 +165,7 @@ requestTestOptions
 requestTestOptions =
     RequestTest
         <$> tokenIdOption
+        <*> walletOption
         <*> sshClientOption
         <*> ( TestRun
                 <$> platformOption

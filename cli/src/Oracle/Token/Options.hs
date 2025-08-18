@@ -6,7 +6,11 @@ module Oracle.Token.Options
     )
 where
 
-import Core.Options (outputReferenceParser, tokenIdOption)
+import Core.Options
+    ( outputReferenceParser
+    , tokenIdOption
+    , walletOption
+    )
 import Lib.Box (Box (..))
 import OptEnvConf
     ( Alternative (many)
@@ -24,10 +28,11 @@ tokenCommandParser =
     commands
         [ command "get" "Get the token" $ Box . GetToken <$> tokenIdOption
         , command "update" "Update the token"
-            $ fmap Box . UpdateToken
+            $ fmap (fmap Box) . UpdateToken
                 <$> tokenIdOption
+                <*> walletOption
                 <*> many outputReferenceParser
-        , command "boot" "Boot a new token" $ pure (Box BootToken)
+        , command "boot" "Boot a new token" $ Box . BootToken <$> walletOption
         , command "end" "End the token"
-            $ fmap Box EndToken <$> tokenIdOption
+            $ fmap Box . EndToken <$> tokenIdOption <*> walletOption
         ]

@@ -35,6 +35,7 @@ import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Fact (Fact (..), keyHash, parseFacts)
 import Core.Types.Operation (Op (..), Operation (..))
 import Core.Types.Tx (WithTxHash (..))
+import Core.Types.Wallet (Wallet (..))
 import Data.Functor (($>), (<&>))
 import Data.List (find)
 import MPFS.API
@@ -88,14 +89,13 @@ import Validation (Validation)
 
 agentCmd
     :: MonadIO m
-    => Owner
-    -> AgentCommand NotReady a
+    => AgentCommand NotReady a
     -> WithContext m a
-agentCmd agentId cmdNotReady = do
+agentCmd cmdNotReady = do
     mCmdReady <- resolveOldState cmdNotReady
     case mCmdReady of
         Nothing -> error "No previous state found for the command"
-        Just cmdReady -> agentCmdCore agentId cmdReady
+        Just cmdReady -> agentCmdCore cmdReady
 
 withExpectedState
     :: (FromJSON Maybe (TestRunState phase), Monad m)
@@ -144,22 +144,23 @@ resolveOldState
     => AgentCommand NotReady result
     -> WithContext m (Maybe (AgentCommand Ready result))
 resolveOldState cmd = case cmd of
-    Accept tokenId key () ->
-        withResolvedTestRun tokenId key $ \testRun ->
-            withExpectedState tokenId testRun $ pure . Accept tokenId testRun
-    Reject tokenId key () reason ->
+    Accept tokenId wallet key () ->
         withResolvedTestRun tokenId key $ \testRun ->
             withExpectedState tokenId testRun
-                $ \pending -> pure $ Reject tokenId testRun pending reason
-    Report tokenId key () duration url ->
+                $ pure . Accept tokenId wallet testRun
+    Reject tokenId wallet key () reason ->
+        withResolvedTestRun tokenId key $ \testRun ->
+            withExpectedState tokenId testRun
+                $ \pending -> pure $ Reject tokenId wallet testRun pending reason
+    Report tokenId wallet key () duration url ->
         withResolvedTestRun tokenId key $ \testRun ->
             withExpectedState tokenId testRun $ \runningState ->
-                pure $ Report tokenId testRun runningState duration url
+                pure $ Report tokenId wallet testRun runningState duration url
     Query tokenId -> pure $ Just $ Query tokenId
-    WhiteList tokenId platform repo ->
-        pure $ Just $ WhiteList tokenId platform repo
-    BlackList tokenId platform repo ->
-        pure $ Just $ BlackList tokenId platform repo
+    WhiteList tokenId m platform repo ->
+        pure $ Just $ WhiteList tokenId m platform repo
+    BlackList tokenId wallet platform repo ->
+        pure $ Just $ BlackList tokenId wallet platform repo
     DownloadAssets tokenId key dir ->
         pure $ Just $ DownloadAssets tokenId key dir
 
@@ -180,6 +181,7 @@ type family ResolveId phase where
 data AgentCommand (phase :: IsReady) result where
     Accept
         :: TokenId
+        -> Wallet
         -> ResolveId phase
         -> IfReady phase (TestRunState PendingT)
         -> AgentCommand
@@ -190,6 +192,7 @@ data AgentCommand (phase :: IsReady) result where
             )
     Reject
         :: TokenId
+        -> Wallet
         -> ResolveId phase
         -> IfReady phase (TestRunState PendingT)
         -> [TestRunRejection]
@@ -201,6 +204,7 @@ data AgentCommand (phase :: IsReady) result where
             )
     Report
         :: TokenId
+        -> Wallet
         -> ResolveId phase
         -> IfReady phase (TestRunState RunningT)
         -> Duration
@@ -214,6 +218,7 @@ data AgentCommand (phase :: IsReady) result where
     Query :: TokenId -> AgentCommand phase TestRunMap
     WhiteList
         :: TokenId
+        -> Wallet
         -> Platform
         -> Repository
         -> AgentCommand
@@ -221,6 +226,7 @@ data AgentCommand (phase :: IsReady) result where
             (AValidationResult UpdateWhiteListFailure (WithTxHash ()))
     BlackList
         :: TokenId
+        -> Wallet
         -> Platform
         -> Repository
         -> AgentCommand
@@ -241,26 +247,24 @@ deriving instance Eq (AgentCommand Ready result)
 
 agentCmdCore
     :: MonadIO m
-    => Owner
-    -- ^ requester public key hash
-    -> AgentCommand Ready result
+    => AgentCommand Ready result
     -> WithContext m result
-agentCmdCore requester cmd = case cmd of
-    Accept tokenId key pending ->
-        acceptCommand tokenId requester key pending
-    Reject tokenId key pending reason ->
-        rejectCommand tokenId requester key pending reason
-    Report tokenId key running duration url ->
-        reportCommand tokenId requester key running duration url
+agentCmdCore cmd = case cmd of
+    Accept tokenId wallet key pending ->
+        acceptCommand tokenId wallet key pending
+    Reject tokenId wallet key pending reason ->
+        rejectCommand tokenId wallet key pending reason
+    Report tokenId wallet key running duration url ->
+        reportCommand tokenId wallet key running duration url
     Query tokenId -> queryCommand tokenId
-    WhiteList tokenId platform repo -> whiteList tokenId requester platform repo
-    BlackList tokenId platform repo -> blackList tokenId requester platform repo
+    WhiteList tokenId wallet platform repo -> whiteList tokenId wallet platform repo
+    BlackList tokenId wallet platform repo -> blackList tokenId wallet platform repo
     DownloadAssets tokenId key dir -> downloadAssets tokenId key dir
 
 whiteList
     :: Monad m
     => TokenId
-    -> Owner
+    -> Wallet
     -> Platform
     -> Repository
     -> WithContext
@@ -269,15 +273,16 @@ whiteList
             UpdateWhiteListFailure
             (WithTxHash ())
         )
-whiteList tokenId requester platform repo = do
+whiteList tokenId wallet platform repo = do
     let key = WhiteListKey platform repo
         change =
             Change
                 { key = Key key
                 , operation = Insert ()
                 }
+        requester = owner wallet
     validation <- askValidation tokenId
-    Submission submit <- askSubmit
+    Submission submit <- ($ wallet) <$> askSubmit
     mpfs <- askMpfs
     mconfig <- askConfig tokenId
     lift $ runValidate $ do
@@ -292,7 +297,7 @@ whiteList tokenId requester platform repo = do
 blackList
     :: Monad m
     => TokenId
-    -> Owner
+    -> Wallet
     -> Platform
     -> Repository
     -> WithContext
@@ -301,11 +306,12 @@ blackList
             UpdateWhiteListFailure
             (WithTxHash ())
         )
-blackList tokenId requester platform repo = do
+blackList tokenId wallet platform repo = do
     let key = WhiteListKey platform repo
         change = Change (Key key) (Delete ())
+        requester = owner wallet
     validation <- askValidation tokenId
-    Submission submit <- askSubmit
+    Submission submit <- ($ wallet) <$> askSubmit
     mpfs <- askMpfs
     mconfig <- askConfig tokenId
     lift $ runValidate $ do
@@ -352,17 +358,18 @@ signAndSubmitAnUpdate
          -> Validate UpdateTestRunFailure m Validated
        )
     -> TokenId
-    -> Owner
+    -> Wallet
     -> key
     -> old
     -> new
     -> WithContext
         m
         (AValidationResult UpdateTestRunFailure (WithTxHash new))
-signAndSubmitAnUpdate validate tokenId requester testRun oldState newState = do
+signAndSubmitAnUpdate validate tokenId wallet testRun oldState newState = do
+    let requester = owner wallet
     validation <- askValidation tokenId
     mconfig <- askConfig tokenId
-    Submission submit <- askSubmit
+    Submission submit <- ($ wallet) <$> askSubmit
     mpfs <- askMpfs
     lift $ runValidate $ do
         Config{configAgent} <-
@@ -382,7 +389,7 @@ signAndSubmitAnUpdate validate tokenId requester testRun oldState newState = do
 reportCommand
     :: Monad m
     => TokenId
-    -> Owner
+    -> Wallet
     -> TestRun
     -> TestRunState RunningT
     -> Duration
@@ -393,11 +400,11 @@ reportCommand
             UpdateTestRunFailure
             (WithTxHash (TestRunState DoneT))
         )
-reportCommand tokenId requester testRun oldState duration url =
+reportCommand tokenId wallet testRun oldState duration url =
     signAndSubmitAnUpdate
         validateToDoneUpdate
         tokenId
-        requester
+        wallet
         testRun
         oldState
         $ Finished oldState duration url
@@ -405,7 +412,7 @@ reportCommand tokenId requester testRun oldState duration url =
 rejectCommand
     :: Monad m
     => TokenId
-    -> Owner
+    -> Wallet
     -> TestRun
     -> TestRunState PendingT
     -> [TestRunRejection]
@@ -415,11 +422,11 @@ rejectCommand
             UpdateTestRunFailure
             (WithTxHash (TestRunState DoneT))
         )
-rejectCommand tokenId requester testRun testRunState reason =
+rejectCommand tokenId wallet testRun testRunState reason =
     signAndSubmitAnUpdate
         validateToDoneUpdate
         tokenId
-        requester
+        wallet
         testRun
         testRunState
         $ Rejected testRunState reason
@@ -427,7 +434,7 @@ rejectCommand tokenId requester testRun testRunState reason =
 acceptCommand
     :: Monad m
     => TokenId
-    -> Owner
+    -> Wallet
     -> TestRun
     -> TestRunState PendingT
     -> WithContext
@@ -436,11 +443,11 @@ acceptCommand
             UpdateTestRunFailure
             (WithTxHash (TestRunState RunningT))
         )
-acceptCommand tokenId requester testRun testRunState =
+acceptCommand tokenId wallet testRun testRunState =
     signAndSubmitAnUpdate
         validateToRunningUpdate
         tokenId
-        requester
+        wallet
         testRun
         testRunState
         $ Accepted testRunState

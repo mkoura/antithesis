@@ -40,12 +40,14 @@ import Ouroboros.Network.AnchoredFragment qualified as AF
 import Ouroboros.Network.Block
 import Ouroboros.Network.ControlMessage (continueForever)
 import Ouroboros.Network.DeltaQ (defaultGSV)
+import Ouroboros.Network.Diffusion.Configuration (PeerSharing (PeerSharingDisabled))
 import Ouroboros.Network.Driver
+import Ouroboros.Network.IOManager (withIOManager)
+import Ouroboros.Network.Magic (NetworkMagic (..))
 import Ouroboros.Network.Mock.Chain qualified as Chain
 import Ouroboros.Network.Mock.ConcreteBlock
 import Ouroboros.Network.Mux
-import Ouroboros.Network.NodeToClient
-import Ouroboros.Network.NodeToNode
+import Ouroboros.Network.NodeToNode (ControlMessage (Terminate), ControlMessageSTM, DiffusionMode (InitiatorOnlyDiffusionMode), NodeToNodeVersion (NodeToNodeV_14), NodeToNodeVersionData (..), nodeToNodeCodecCBORTerm)
 import Ouroboros.Network.Point (WithOrigin (..))
 import Ouroboros.Network.Protocol.BlockFetch.Codec qualified as BlockFetch
 import Ouroboros.Network.Protocol.BlockFetch.Server qualified as BlockFetch
@@ -68,22 +70,28 @@ clientChainSync ::
   PortNumber ->
   IO ()
 clientChainSync peerName peerPort = withIOManager $ \iocp -> do
-  resolve >>= \AddrInfo{addrAddress} ->
+  resolve >>= \AddrInfo {addrAddress} ->
     void $
       connectToNode
         (socketSnocket iocp)
         makeSocketBearer
         ConnectToArgs
-          { ctaHandshakeCodec = unversionedHandshakeCodec,
+          { ctaHandshakeCodec = nodeToNodeHandshakeCodec,
             ctaHandshakeTimeLimits = noTimeLimitsHandshake,
-            ctaVersionDataCodec = unversionedProtocolDataCodec,
+            ctaVersionDataCodec = cborTermVersionDataCodec nodeToNodeCodecCBORTerm,
             ctaConnectTracers = nullNetworkConnectTracers,
             ctaHandshakeCallbacks = HandshakeCallbacks acceptableVersion queryVersion
           }
         mempty
         ( simpleSingletonVersions
-            UnversionedProtocol
-            UnversionedProtocolData
+            NodeToNodeV_14
+            ( NodeToNodeVersionData
+                { networkMagic = NetworkMagic 1,
+                  diffusionMode = InitiatorOnlyDiffusionMode,
+                  peerSharing = PeerSharingDisabled,
+                  query = False
+                }
+            )
             (\_ -> app)
         )
         Nothing

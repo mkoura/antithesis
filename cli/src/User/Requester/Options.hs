@@ -8,11 +8,11 @@ module User.Requester.Options
 
 import Core.Options
     ( commitOption
-    , directoryOption
     , durationOption
     , platformOption
     , pubkeyhashOption
     , repositoryOption
+    , testDirectoryOption
     , tokenIdOption
     , tryOption
     , usernameOption
@@ -170,7 +170,7 @@ requestTestOptions =
         <*> ( TestRun
                 <$> platformOption
                 <*> repositoryOption
-                <*> directoryOption
+                <*> testDirectoryOption
                 <*> commitOption
                 <*> tryOption
                 <*> usernameOption

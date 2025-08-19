@@ -6,7 +6,8 @@ module User.Agent.Options
     ) where
 
 import Core.Options
-    ( platformOption
+    ( downloadAssetsDirectoryOption
+    , platformOption
     , repositoryOption
     , tokenIdOption
     , walletOption
@@ -30,6 +31,7 @@ import OptEnvConf
     , short
     , str
     )
+import Oracle.Validate.Requests.DownloadAssets (DownloadAssetsFailure)
 import Oracle.Validate.Requests.ManageWhiteList
     ( UpdateWhiteListFailure
     )
@@ -64,7 +66,24 @@ agentCommandParser =
             $ Box <$> whitelistRepositoryOptions
         , command "black-list" "Blacklist a repository for test-runs"
             $ Box <$> blacklistRepositoryOptions
+        , command "download-assets" "Download test run assets"
+            $ Box <$> downloadAssetsOptions
         ]
+
+downloadAssetsOptions
+    :: Parser
+        ( AgentCommand
+            NotReady
+            ( AValidationResult
+                DownloadAssetsFailure
+                ()
+            )
+        )
+downloadAssetsOptions =
+    DownloadAssets
+        <$> tokenIdOption
+        <*> testRunIdOption
+        <*> downloadAssetsDirectoryOption
 
 whitelistRepositoryOptions
     :: Parser

@@ -4,7 +4,7 @@ module Core.Options
     ( platformOption
     , repositoryOption
     , commitOption
-    , directoryOption
+    , testDirectoryOption
     , usernameOption
     , pubkeyhashOption
     , outputReferenceParser
@@ -13,6 +13,7 @@ module Core.Options
     , tokenIdOption
     , readyMnemonicsOption
     , walletOption
+    , downloadAssetsDirectoryOption
     )
 where
 
@@ -55,7 +56,6 @@ import OptEnvConf
     , short
     , str
     , strOption
-    , value
     , withConfig
     )
 import OptEnvConf.Reader (Reader (..))
@@ -98,15 +98,25 @@ commitOption =
             , help "The commit hash or reference"
             ]
 
-directoryOption :: Parser Directory
-directoryOption =
+testDirectoryOption :: Parser Directory
+testDirectoryOption =
     Directory
         <$> strOption
             [ long "directory"
             , short 'd'
             , metavar "DIRECTORY"
-            , value "."
-            , help "The directory to run in (defaults to \".\")"
+            , help "The repository directory where test assets are located"
+            , option
+            ]
+
+downloadAssetsDirectoryOption :: Parser Directory
+downloadAssetsDirectoryOption =
+    Directory
+        <$> strOption
+            [ long "download-directory"
+            , short 'D'
+            , metavar "DIRECTORY"
+            , help "The directory where assets will be downloaded to"
             , option
             ]
 

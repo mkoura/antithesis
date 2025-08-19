@@ -44,14 +44,16 @@ import Ouroboros.Network.Diffusion.Configuration (PeerSharing (PeerSharingDisabl
 import Ouroboros.Network.Driver
 import Ouroboros.Network.IOManager (withIOManager)
 import Ouroboros.Network.Magic (NetworkMagic (..))
+import Ouroboros.Network.Mock.Chain (Chain)
 import Ouroboros.Network.Mock.Chain qualified as Chain
 import Ouroboros.Network.Mock.ConcreteBlock
 import Ouroboros.Network.Mux
-import Ouroboros.Network.NodeToNode (ControlMessage (Terminate), ControlMessageSTM, DiffusionMode (InitiatorOnlyDiffusionMode), NodeToNodeVersion (NodeToNodeV_14), NodeToNodeVersionData (..), nodeToNodeCodecCBORTerm)
+import Ouroboros.Network.NodeToNode (ControlMessage (..), ControlMessageSTM, DiffusionMode (InitiatorOnlyDiffusionMode), NodeToNodeVersion (NodeToNodeV_14), NodeToNodeVersionData (..), nodeToNodeCodecCBORTerm)
 import Ouroboros.Network.Point (WithOrigin (..))
 import Ouroboros.Network.Protocol.BlockFetch.Codec qualified as BlockFetch
 import Ouroboros.Network.Protocol.BlockFetch.Server qualified as BlockFetch
 import Ouroboros.Network.Protocol.BlockFetch.Type qualified as BlockFetch
+import Ouroboros.Network.Protocol.ChainSync.Client (ChainSyncClient (..), ClientStIdle (..), ClientStIntersect (..), ClientStNext (..))
 import Ouroboros.Network.Protocol.ChainSync.Client qualified as ChainSync
 import Ouroboros.Network.Protocol.ChainSync.Codec qualified as ChainSync
 import Ouroboros.Network.Protocol.ChainSync.Server qualified as ChainSync
@@ -70,8 +72,9 @@ clientChainSync ::
   PortNumber ->
   IO ()
 clientChainSync peerName peerPort = withIOManager $ \iocp -> do
-  resolve >>= \AddrInfo {addrAddress} ->
-    void $
+  AddrInfo {addrAddress} <- resolve
+  var <- newTVarIO Chain.Genesis
+  void $
       connectToNode
         (socketSnocket iocp)
         makeSocketBearer
@@ -92,7 +95,7 @@ clientChainSync peerName peerPort = withIOManager $ \iocp -> do
                   query = False
                 }
             )
-            (\_ -> app)
+            (\_ -> app var)
         )
         Nothing
         addrAddress
@@ -105,14 +108,16 @@ clientChainSync peerName peerPort = withIOManager $ \iocp -> do
               }
       head <$> getAddrInfo (Just hints) (Just peerName) (Just $ show peerPort)
 
-    app :: OuroborosApplicationWithMinimalCtx Mx.InitiatorMode addr LBS.ByteString IO () Void
-    app = demoProtocol2 $
+--    app :: OuroborosApplicationWithMinimalCtx Mx.InitiatorMode addr LBS.ByteString IO () Void
+    app var = demoProtocol2 $
       InitiatorProtocolOnly $
         mkMiniProtocolCbFromPeer $ \_ctx ->
           ( contramap show stdoutTracer,
             codecChainSync,
-            ChainSync.chainSyncClientPeer (chainSyncClient (continueForever Proxy) Nothing)
+            ChainSync.chainSyncClientPeer (client var)
           )
+
+    client var = chainSyncClient var (controlledClient _foo)
 
 -- TODO: provide sensible limits
 -- https://github.com/intersectmbo/ouroboros-network/issues/575
@@ -140,108 +145,220 @@ demoProtocol2 chainSync =
         }
     ]
 
-chainSyncClient ::
-  ControlMessageSTM IO ->
-  Maybe SlotNo ->
-  ChainSync.ChainSyncClient
-    BlockHeader
-    (Point BlockHeader)
-    (Point BlockHeader)
-    IO
-    ()
-chainSyncClient controlMessageSTM maxSlotNo =
-  ChainSync.ChainSyncClient $ do
-    curvar <- newTVarIO genesisAnchoredFragment
-    chainvar <- newTVarIO genesisAnchoredFragment
-    case chainSyncClient' controlMessageSTM maxSlotNo nullTracer curvar chainvar of
-      ChainSync.ChainSyncClient k -> k
+data Client header point tip m t = Client
+  { rollbackward :: point -> tip -> m (Either t (Client header point tip m t)),
+    rollforward :: header -> m (Either t (Client header point tip m t)),
+    points :: [point] -> m (Either t (Client header point tip m t))
+  }
 
-chainSyncClient' ::
-  ControlMessageSTM IO ->
-  Maybe SlotNo ->
-  Tracer IO (Point BlockHeader, Point BlockHeader) ->
-  StrictTVar IO (AF.AnchoredFragment BlockHeader) ->
-  StrictTVar IO (AF.AnchoredFragment BlockHeader) ->
-  ChainSync.ChainSyncClient
-    BlockHeader
-    (Point BlockHeader)
-    (Point BlockHeader)
-    IO
-    ()
-chainSyncClient' controlMessageSTM _maxSlotNo syncTracer _currentChainVar candidateChainVar =
-  ChainSync.ChainSyncClient (return requestNext)
+controlledClient ::
+  (MonadSTM m) =>
+  ControlMessageSTM m ->
+  Client header point tip m ()
+controlledClient controlMessageSTM = go
   where
-    requestNext ::
-      ChainSync.ClientStIdle
-        BlockHeader
-        (Point BlockHeader)
-        (Point BlockHeader)
-        IO
-        ()
-    requestNext =
-      ChainSync.SendMsgRequestNext
-        (pure ()) -- on MsgAwaitReply; could trace
-        handleNext
-
-    terminate ::
-      ChainSync.ClientStIdle
-        BlockHeader
-        (Point BlockHeader)
-        (Point BlockHeader)
-        IO
-        ()
-    terminate = ChainSync.SendMsgDone ()
-
-    handleNext ::
-      ChainSync.ClientStNext
-        BlockHeader
-        (Point BlockHeader)
-        (Point BlockHeader)
-        IO
-        ()
-    handleNext =
-      ChainSync.ClientStNext
-        { ChainSync.recvMsgRollForward = \header _pHead ->
-            ChainSync.ChainSyncClient $ do
-              addBlock header
-              cm <- atomically controlMessageSTM
-              return $ case cm of
-                Terminate -> terminate
-                _ -> requestNext,
-          ChainSync.recvMsgRollBackward = \pIntersect _pHead ->
-            ChainSync.ChainSyncClient $ do
-              rollback pIntersect
-              cm <- atomically controlMessageSTM
-              return $ case cm of
-                Terminate -> terminate
-                _ -> requestNext
+    go =
+      Client
+        { rollbackward = \_ _ -> do
+            ctrl <- atomically controlMessageSTM
+            case ctrl of
+              Continue -> pure (Right go)
+              Quiesce -> error "Ouroboros.Network.Protocol.ChainSync.Examples.controlledClient: unexpected Quiesce"
+              Terminate -> pure (Left ()),
+          rollforward = \_ -> do
+            ctrl <- atomically controlMessageSTM
+            case ctrl of
+              Continue -> pure (Right go)
+              Quiesce -> error "Ouroboros.Network.Protocol.ChainSync.Examples.controlledClient: unexpected Quiesce"
+              Terminate -> pure (Left ()),
+          points = \_ -> pure (Right go)
         }
 
-    addBlock :: BlockHeader -> IO ()
-    addBlock b = do
-      chain <- atomically $ do
-        chain <- readTVar candidateChainVar
-        let !chain' = shiftAnchoredFragment 50 b chain
-        writeTVar candidateChainVar chain'
-        return chain'
-      traceWith syncTracer (AF.lastPoint chain, AF.headPoint chain)
+chainSyncClient ::
+  forall header block tip m a.
+  ( HasHeader header,
+    HasHeader block,
+    HeaderHash header ~ HeaderHash block,
+    MonadSTM m
+  ) =>
+  StrictTVar m (Chain header) ->
+  Client header (Point block) tip m a ->
+  ChainSyncClient header (Point block) tip m a
+chainSyncClient chainvar client =
+  ChainSyncClient $
+    either SendMsgDone initialise <$> getChainPoints
+  where
+    initialise ::
+      ([Point block], Client header (Point block) tip m a) ->
+      ClientStIdle header (Point block) tip m a
+    initialise (points, client') =
+      SendMsgFindIntersect points $
+        -- In this consumer example, we do not care about whether the server
+        -- found an intersection or not. If not, we'll just sync from genesis.
+        --
+        -- Alternative policies here include:
+        --  iteratively finding the best intersection
+        --  rejecting the server if there is no intersection in the last K blocks
+        --
+        ClientStIntersect
+          { recvMsgIntersectFound = \_ _ -> ChainSyncClient (return (requestNext client')),
+            recvMsgIntersectNotFound = \_ -> ChainSyncClient (return (requestNext client'))
+          }
 
-    rollback :: Point BlockHeader -> IO ()
+    requestNext ::
+      Client header (Point block) tip m a ->
+      ClientStIdle header (Point block) tip m a
+    requestNext client' =
+      SendMsgRequestNext
+        -- We have the opportunity to do something when receiving
+        -- MsgAwaitReply. In this example we don't take up that opportunity.
+        (pure ())
+        (handleNext client')
+
+    handleNext ::
+      Client header (Point block) tip m a ->
+      ClientStNext header (Point block) tip m a
+    handleNext client' =
+      ClientStNext
+        { recvMsgRollForward = \header _tip -> ChainSyncClient $ do
+            addBlock header
+            choice <- rollforward client' header
+            pure $ case choice of
+              Left a -> SendMsgDone a
+              Right client'' -> requestNext client'',
+          recvMsgRollBackward = \pIntersect tip -> ChainSyncClient $ do
+            rollback pIntersect
+            choice <- rollbackward client' pIntersect tip
+            pure $ case choice of
+              Left a -> SendMsgDone a
+              Right client'' -> requestNext client''
+        }
+
+    getChainPoints :: m (Either a ([Point block], Client header (Point block) tip m a))
+    getChainPoints = do
+      pts <- Chain.selectPoints recentOffsets <$> atomically (readTVar chainvar)
+      choice <- points client (fmap castPoint pts)
+      pure $ case choice of
+        Left a -> Left a
+        Right client' -> Right (fmap castPoint pts, client')
+
+    addBlock :: header -> m ()
+    addBlock b = atomically $ do
+      chain <- readTVar chainvar
+      let !chain' = Chain.addBlock b chain
+      writeTVar chainvar chain'
+
+    rollback :: Point block -> m ()
     rollback p = atomically $ do
-      chain <- readTVar candidateChainVar
-      -- we do not handle rollback failure in this demo
-      let (Just !chain') = AF.rollback p chain
-      writeTVar candidateChainVar chain'
+      chain <- readTVar chainvar
+      -- TODO: handle rollback failure
+      let !chain' = case Chain.rollback (castPoint p) chain of
+            Just a -> a
+            Nothing -> error "out of scope rollback"
+      writeTVar chainvar chain'
 
-{-
-notTooFarAhead = atomically $ do
-    currentChain   <- readTVar currentChainVar
-    candidateChain <- readTVar candidateChainVar
-    check $ case (AF.headBlockNo currentChain,
-                  AF.headBlockNo candidateChain) of
-              (Just bn, Just bn') -> bn' < bn + 5
-              _                   -> True
--}
+-- chainSyncClient ::
+--   ControlMessageSTM IO ->
+--   Maybe SlotNo ->
+--   ChainSync.ChainSyncClient
+--     BlockHeader
+--     (Point BlockHeader)
+--     (Point BlockHeader)
+--     IO
+--     ()
+-- chainSyncClient controlMessageSTM maxSlotNo =
+--   ChainSync.ChainSyncClient $ do
+--     curvar <- newTVarIO genesisAnchoredFragment
+--     chainvar <- newTVarIO genesisAnchoredFragment
+--     case chainSyncClient' controlMessageSTM maxSlotNo nullTracer curvar chainvar of
+--       ChainSync.ChainSyncClient k -> k
+
+-- chainSyncClient' ::
+--   ControlMessageSTM IO ->
+--   Maybe SlotNo ->
+--   Tracer IO (Point BlockHeader, Point BlockHeader) ->
+--   StrictTVar IO (AF.AnchoredFragment BlockHeader) ->
+--   StrictTVar IO (AF.AnchoredFragment BlockHeader) ->
+--   ChainSync.ChainSyncClient
+--     BlockHeader
+--     (Point BlockHeader)
+--     (Point BlockHeader)
+--     IO
+--     ()
+-- chainSyncClient' controlMessageSTM _maxSlotNo syncTracer _currentChainVar candidateChainVar =
+--   ChainSync.ChainSyncClient (return requestNext)
+--   where
+--     requestNext ::
+--       ChainSync.ClientStIdle
+--         BlockHeader
+--         (Point BlockHeader)
+--         (Point BlockHeader)
+--         IO
+--         ()
+--     requestNext =
+--       ChainSync.SendMsgRequestNext
+--         (pure ()) -- on MsgAwaitReply; could trace
+--         handleNext
+
+--     terminate ::
+--       ChainSync.ClientStIdle
+--         BlockHeader
+--         (Point BlockHeader)
+--         (Point BlockHeader)
+--         IO
+--         ()
+--     terminate = ChainSync.SendMsgDone ()
+
+--     handleNext ::
+--       ChainSync.ClientStNext
+--         BlockHeader
+--         (Point BlockHeader)
+--         (Point BlockHeader)
+--         IO
+--         ()
+--     handleNext =
+--       ChainSync.ClientStNext
+--         { ChainSync.recvMsgRollForward = \header _pHead ->
+--             ChainSync.ChainSyncClient $ do
+--               addBlock header
+--               cm <- atomically controlMessageSTM
+--               return $ case cm of
+--                 Terminate -> terminate
+--                 _ -> requestNext,
+--           ChainSync.recvMsgRollBackward = \pIntersect _pHead ->
+--             ChainSync.ChainSyncClient $ do
+--               rollback pIntersect
+--               cm <- atomically controlMessageSTM
+--               return $ case cm of
+--                 Terminate -> terminate
+--                 _ -> requestNext
+--         }
+
+--     addBlock :: BlockHeader -> IO ()
+--     addBlock b = do
+--       chain <- atomically $ do
+--         chain <- readTVar candidateChainVar
+--         let !chain' = shiftAnchoredFragment 50 b chain
+--         writeTVar candidateChainVar chain'
+--         return chain'
+--       traceWith syncTracer (AF.lastPoint chain, AF.headPoint chain)
+
+--     rollback :: Point BlockHeader -> IO ()
+--     rollback p = atomically $ do
+--       chain <- readTVar candidateChainVar
+--       -- we do not handle rollback failure in this demo
+--       let (Just !chain') = AF.rollback p chain
+--       writeTVar candidateChainVar chain'
+
+-- {-
+-- notTooFarAhead = atomically $ do
+--     currentChain   <- readTVar currentChainVar
+--     candidateChain <- readTVar candidateChainVar
+--     check $ case (AF.headBlockNo currentChain,
+--                   AF.headBlockNo candidateChain) of
+--               (Just bn, Just bn') -> bn' < bn + 5
+--               _                   -> True
+-- -}
 
 codecChainSync ::
   ( CBOR.Serialise block,
@@ -262,14 +379,14 @@ codecChainSync =
     CBOR.encode
     CBOR.decode
 
-genesisAnchoredFragment :: AF.AnchoredFragment BlockHeader
-genesisAnchoredFragment = AF.Empty AF.AnchorGenesis
+-- genesisAnchoredFragment :: AF.AnchoredFragment BlockHeader
+-- genesisAnchoredFragment = AF.Empty AF.AnchorGenesis
 
-shiftAnchoredFragment ::
-  (HasHeader block) =>
-  Int ->
-  block ->
-  AF.AnchoredFragment block ->
-  AF.AnchoredFragment block
-shiftAnchoredFragment n b af =
-  AF.anchorNewest (fromIntegral (AF.length af - n)) af AF.:> b
+-- shiftAnchoredFragment ::
+--   (HasHeader block) =>
+--   Int ->
+--   block ->
+--   AF.AnchoredFragment block ->
+--   AF.AnchoredFragment block
+-- shiftAnchoredFragment n b af =
+--   AF.anchorNewest (fromIntegral (AF.length af - n)) af AF.:> b

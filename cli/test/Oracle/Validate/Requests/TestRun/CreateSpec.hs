@@ -6,12 +6,18 @@ where
 
 import Control.Lens ((%~), (.~))
 import Core.Types.Basic
-    ( Duration (..)
+    ( Directory (..)
+    , Duration (..)
+    , FileName (..)
     , organization
     , project
     )
 import Core.Types.Fact (JSFact, toJSFact)
 import Lib.SSH.Public (encodePublicKey)
+import Oracle.Validate.DownloadAssets
+    ( AssetValidationFailure (..)
+    , SourceDirFailure (..)
+    )
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig (..)
     )
@@ -129,6 +135,8 @@ spec = do
                                     sign
                                     previousTestRun
                         toJSFact previousTestRun previousState
+                prefix x = case testRun.directory of
+                    Directory d -> d <> "/" <> x
                 validation =
                     mkValidation
                         ([user, role, whiteListRepo] <> previous)
@@ -137,7 +145,10 @@ spec = do
                         []
                         []
                         []
-                        []
+                        [ (FileName $ prefix "README.md", "Hello, world!")
+                        , (FileName $ prefix "docker-compose.yaml", "version: '3.8'")
+                        , (FileName $ prefix "testnet.yaml", "testnet: true")
+                        ]
             testRunState <-
                 Pending (Duration duration)
                     <$> signTestRun sign testRun
@@ -296,7 +307,11 @@ spec = do
                             validation
                             testRun
                             testRunState
-                onConditionHaveReason mresult UnacceptableDirectory
+                onConditionHaveReason
+                    mresult
+                    ( UnacceptableAssets
+                        (AssetValidationSourceFailure SourceDirFailureDirAbsent)
+                    )
                     $ testRun /= testRun'
         it "reports not whitelisted repository" $ egenProperty $ do
             testConfig <- testConfigEGen

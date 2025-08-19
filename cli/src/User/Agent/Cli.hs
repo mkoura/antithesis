@@ -45,7 +45,7 @@ import MPFS.API
     , RequestUpdateBody (..)
     )
 import Oracle.Config.Types (Config (..))
-import Oracle.Validate.Requests.DownloadAssets
+import Oracle.Validate.DownloadAssets
     ( DownloadAssetsFailure
     , validateDownloadAssets
     )

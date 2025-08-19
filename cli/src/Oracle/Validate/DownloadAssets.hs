@@ -1,7 +1,9 @@
-module Oracle.Validate.Requests.DownloadAssets
-    ( renderDownloadAssetsFailure
-    , validateDownloadAssets
+module Oracle.Validate.DownloadAssets
+    ( validateDownloadAssets
+    , validateAssets
     , DownloadAssetsFailure (..)
+    , AssetValidationFailure (..)
+    , SourceDirFailure (..)
     )
 where
 
@@ -35,7 +37,10 @@ import User.Agent.Types
     , TestRunMap (..)
     , TestRunStatus (..)
     )
-import User.Types (Phase (..), TestRun (..))
+import User.Types
+    ( Phase (..)
+    , TestRun (..)
+    )
 import Validation
     ( Validation (..)
     )
@@ -46,31 +51,34 @@ import Validation.DownloadFile
 
 import Data.Text.IO qualified as T
 
-data DownloadAssetsFailure
-    = DownloadAssetsTestRunIdNotFound TestRunId
-    | DownloadAssetsSourceDirFailure SourceDirFailure
+data AssetValidationFailure
+    = AssetValidationSourceFailure SourceDirFailure
+    | AssetValidationParseError DownloadedFileFailure
     | DownloadAssetsTargetDirNotFound
     | DownloadAssetsTargetDirNotWritable
-    | DownloadAssetsValidationError DownloadedFileFailure
     deriving (Show, Eq)
 
-renderDownloadAssetsFailure :: DownloadAssetsFailure -> String
-renderDownloadAssetsFailure (DownloadAssetsTestRunIdNotFound (TestRunId testid)) =
-    "Requested test id : "
-        ++ show testid
-        ++ " not found. Please refer to created ones using 'anti agent query'"
-renderDownloadAssetsFailure (DownloadAssetsSourceDirFailure SourceDirFailureDirAbsent) =
-    "There is no directory specified by test run"
-renderDownloadAssetsFailure (DownloadAssetsSourceDirFailure (SourceDirFailureGithubError err)) =
-    "When checking directory specified by test run github responded with "
-        ++ show err
-renderDownloadAssetsFailure DownloadAssetsTargetDirNotFound =
-    "There is no target local directory"
-renderDownloadAssetsFailure DownloadAssetsTargetDirNotWritable =
-    "The target local directory is not writable"
-renderDownloadAssetsFailure (DownloadAssetsValidationError failure) =
-    "The file cannot pass validation. Details:  "
-        <> renderDownloadedFileFailure failure
+instance Monad m => ToJSON m AssetValidationFailure where
+    toJSON (AssetValidationSourceFailure failure) =
+        object
+            ["error" .= ("Source directory validation failed: " <> show failure)]
+    toJSON (AssetValidationParseError failure) =
+        object
+            [ "error"
+                .= ( "Downloaded file validation failed: "
+                        <> renderDownloadedFileFailure failure
+                   )
+            ]
+    toJSON DownloadAssetsTargetDirNotFound =
+        object ["error" .= ("There is no target local directory" :: String)]
+    toJSON DownloadAssetsTargetDirNotWritable =
+        object
+            ["error" .= ("The target local directory is not writable" :: String)]
+
+data DownloadAssetsFailure
+    = DownloadAssetsTestRunIdNotFound TestRunId
+    | DownloadAssetsValidationError AssetValidationFailure
+    deriving (Show, Eq)
 
 instance Monad m => ToJSON m DownloadAssetsFailure where
     toJSON (DownloadAssetsTestRunIdNotFound (TestRunId testid)) =
@@ -81,28 +89,8 @@ instance Monad m => ToJSON m DownloadAssetsFailure where
                         ++ " not found. Please refer to created ones using 'anti agent query'"
                    )
             ]
-    toJSON (DownloadAssetsSourceDirFailure SourceDirFailureDirAbsent) =
-        object
-            ["error" .= ("There is no directory specified by test run" :: String)]
-    toJSON (DownloadAssetsSourceDirFailure (SourceDirFailureGithubError err)) =
-        object
-            [ "error"
-                .= ( "When checking directory specified by test run github responded with "
-                        ++ show err
-                   )
-            ]
-    toJSON DownloadAssetsTargetDirNotFound =
-        object ["error" .= ("There is no target local directory" :: String)]
-    toJSON DownloadAssetsTargetDirNotWritable =
-        object
-            ["error" .= ("The target local directory is not writable" :: String)]
     toJSON (DownloadAssetsValidationError failure) =
-        object
-            [ "error"
-                .= ( "The file cannot pass validation. Details:  "
-                        <> renderDownloadedFileFailure failure
-                   )
-            ]
+        object ["error" .= failure]
 
 data SourceDirFailure
     = SourceDirFailureDirAbsent
@@ -135,7 +123,7 @@ downloadFileAndWriteLocally
     -> TestRun
     -> Directory
     -> FileName
-    -> m (Maybe DownloadAssetsFailure)
+    -> m (Maybe AssetValidationFailure)
 downloadFileAndWriteLocally
     Validation{githubGetFile}
     testRun
@@ -148,7 +136,7 @@ downloadFileAndWriteLocally
                 (commitId testRun)
                 (FileName $ sourceDir <> "/" <> filename)
         case contentE of
-            Left err -> pure $ Just $ DownloadAssetsValidationError err
+            Left err -> pure $ Just $ AssetValidationParseError err
             Right txt -> do
                 liftIO
                     $ withCurrentDirectory targetDir
@@ -184,32 +172,9 @@ validateDownloadAssets validation TestRunMap{pending, running, done} testid dir 
                 ++ (extractTestRunDone <$> doneR)
     case matched of
         [] -> notValidated $ DownloadAssetsTestRunIdNotFound testid
-        firstMatched : _ -> do
-            sourceDirValidation <-
-                lift $ checkSourceDirectory validation firstMatched
-            _ <-
-                mapFailure DownloadAssetsSourceDirFailure
-                    $ throwJusts sourceDirValidation
-            targetDirValidation <- liftIO $ checkTargetDirectory dir
-            _ <- throwFalse targetDirValidation DownloadAssetsTargetDirNotFound
-            targetDirWritableValidation <-
-                liftIO $ checkTargetDirectoryPermissions dir
-            _ <-
-                throwFalse
-                    targetDirWritableValidation
-                    DownloadAssetsTargetDirNotWritable
-
-            forM_ ["README.md", "docker-compose.yaml", "testnet.yaml"] $ \filename -> do
-                fileValidation <-
-                    lift
-                        $ downloadFileAndWriteLocally
-                            validation
-                            firstMatched
-                            dir
-                            (FileName filename)
-                throwJusts fileValidation
-
-            pure Validated
+        firstMatched : _ ->
+            mapFailure DownloadAssetsValidationError
+                $ validateAssets dir validation firstMatched
   where
     checkFact testrun = do
         keyId <- keyHash @_ @TestRun testrun
@@ -223,3 +188,36 @@ validateDownloadAssets validation TestRunMap{pending, running, done} testid dir 
     inspectTestRunPending (StatusPending fact) = checkFact $ factKey fact
     inspectTestRunRunning (StatusRunning fact) = checkFact $ factKey fact
     inspectTestRunDone (StatusDone fact) = checkFact $ factKey fact
+
+validateAssets
+    :: MonadIO m
+    => Directory
+    -> Validation m
+    -> TestRun
+    -> Validate AssetValidationFailure m Validated
+validateAssets dir validation testRun = do
+    sourceDirValidation <-
+        lift $ checkSourceDirectory validation testRun
+    _ <-
+        mapFailure AssetValidationSourceFailure
+            $ throwJusts sourceDirValidation
+    targetDirValidation <- liftIO $ checkTargetDirectory dir
+    _ <- throwFalse targetDirValidation DownloadAssetsTargetDirNotFound
+    targetDirWritableValidation <-
+        liftIO $ checkTargetDirectoryPermissions dir
+    _ <-
+        throwFalse
+            targetDirWritableValidation
+            DownloadAssetsTargetDirNotWritable
+
+    forM_ ["README.md", "docker-compose.yaml", "testnet.yaml"] $ \filename -> do
+        fileValidation <-
+            lift
+                $ downloadFileAndWriteLocally
+                    validation
+                    testRun
+                    dir
+                    (FileName filename)
+        throwJusts fileValidation
+
+    pure Validated

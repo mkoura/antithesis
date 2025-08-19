@@ -185,7 +185,7 @@ data GetGithubFileFailure
     = GetGithubFileDirectoryNotFound
     | GetGithubFileNotAFile
     | GetGithubFileUnsupportedEncoding String
-    | GetGithubFileOtherFailure String
+    | GetGithubFileOtherFailure FilePath String
     | GetGithubFileCodeError GithubResponseStatusCodeError
     deriving (Eq, Show)
 
@@ -218,7 +218,7 @@ githubGetFile auth (Repository owner repo) commitM (FileName filename) = do
                         pure
                             . Just
                             . Left
-                            . GetGithubFileOtherFailure
+                            . GetGithubFileOtherFailure filename
                             $ show e
             case res of
                 Left err -> return $ Left $ GetGithubFileCodeError err

@@ -73,10 +73,9 @@ anti requester create-test \
     --username cfhal \
     --repository cardano-foundation/hal-fixture-sin \
     --directory antithesis-test \
-    --commit 8e99893bf511dc75041b0347dc5af4bec54ce5d4 \
+    --commit a7741a44dfddfe05822e1a49862ceea43ecd657d \
     --try 1 \
-    --duration 1 \
-    > /dev/null
+    --duration 1
 
 log "Include the test run registration"
 include_requests
@@ -97,10 +96,9 @@ anti requester create-test \
     --username cfhal \
     --repository cardano-foundation/hal-fixture-sin \
     --directory antithesis-test \
-    --commit 8e99893bf511dc75041b0347dc5af4bec54ce5d4 \
+    --commit a7741a44dfddfe05822e1a49862ceea43ecd657d \
     --try 2 \
-    --duration 1 \
-    > /dev/null
+    --duration 1
 
 log "Include the new test run request"
 include_requests

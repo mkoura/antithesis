@@ -117,10 +117,10 @@ library
     Oracle.Token.Options
     Oracle.Types
     Oracle.Validate.Cli
+    Oracle.Validate.DownloadAssets
     Oracle.Validate.Options
     Oracle.Validate.Request
     Oracle.Validate.Requests.Config
-    Oracle.Validate.Requests.DownloadAssets
     Oracle.Validate.Requests.ManageWhiteList
     Oracle.Validate.Requests.RegisterRole
     Oracle.Validate.Requests.RegisterUser
@@ -182,6 +182,7 @@ library
     , servant
     , servant-client
     , string-qq
+    , temporary
     , text
     , transformers
     , vector

@@ -6,6 +6,7 @@ module User.Requester.Cli
     ) where
 
 import Control.Monad (void)
+import Control.Monad.Catch (MonadMask)
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Trans.Class (lift)
 import Core.Context
@@ -101,7 +102,7 @@ deriving instance Show (RequesterCommand a)
 deriving instance Eq (RequesterCommand a)
 
 requesterCmd
-    :: MonadIO m
+    :: (MonadIO m, MonadMask m)
     => RequesterCommand a
     -> WithContext m a
 requesterCmd command = do
@@ -123,7 +124,7 @@ requesterCmd command = do
                 duration
 
 createCommand
-    :: MonadIO m
+    :: (MonadIO m, MonadMask m)
     => TokenId
     -> Wallet
     -> SSHClient

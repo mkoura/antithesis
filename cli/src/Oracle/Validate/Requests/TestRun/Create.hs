@@ -7,19 +7,23 @@ module Oracle.Validate.Requests.TestRun.Create
     , CreateTestRunFailure (..)
     ) where
 
-import Control.Monad (unless)
+import Control.Monad.Catch (MonadMask)
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Trans.Class (lift)
-import Core.Types.Basic (Duration (..), Try (..))
+import Core.Types.Basic (Directory (..), Duration (..), Try (..))
 import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Fact (Fact (..))
 import Core.Types.Operation (Op (..), Operation (..))
 import Crypto.PubKey.Ed25519 qualified as Ed25519
 import Data.ByteString.Lazy qualified as BL
-import Data.Maybe (catMaybes, mapMaybe)
+import Data.Maybe (mapMaybe)
 import Lib.GitHub (GithubResponseError, GithubResponseStatusCodeError)
 import Lib.JSON.Canonical.Extra (object, stringJSON, (.=))
 import Lib.SSH.Public (decodePublicKey)
+import Oracle.Validate.DownloadAssets
+    ( AssetValidationFailure
+    , validateAssets
+    )
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig (..)
     )
@@ -27,8 +31,10 @@ import Oracle.Validate.Types
     ( Validate
     , Validated (..)
     , mapFailure
-    , notValidated
+    , sequenceValidate
+    , throwJusts
     )
+import System.IO.Temp (withSystemTempDirectory)
 import Text.JSON.Canonical
     ( ToJSON (..)
     , renderCanonicalJSON
@@ -65,7 +71,7 @@ instance Monad m => ToJSON m CreateTestRunFailure where
         stringJSON "Invalid SSH key"
 
 validateCreateTestRun
-    :: MonadIO m
+    :: (MonadIO m, MonadMask m)
     => TestRunValidationConfig
     -> Validation m
     -> Change TestRun (OpI (TestRunState PendingT))
@@ -87,11 +93,11 @@ data TestRunRejection
     | UnacceptableCommit
     | UnacceptableTryIndex
     | UnacceptableRole
-    | UnacceptableDirectory
     | UnacceptableSignature
     | GithubResponseError GithubResponseError
     | GithubResponseStatusCodeError GithubResponseStatusCodeError
     | RepositoryNotWhitelisted
+    | UnacceptableAssets AssetValidationFailure
     deriving (Eq, Show)
 
 instance Monad m => ToJSON m TestRunRejection where
@@ -103,8 +109,6 @@ instance Monad m => ToJSON m TestRunRejection where
         stringJSON "unacceptable try index"
     toJSON UnacceptableRole =
         stringJSON "unacceptable role"
-    toJSON UnacceptableDirectory =
-        stringJSON "unacceptable directory"
     toJSON UnacceptableSignature =
         stringJSON "unacceptable signature"
     toJSON (GithubResponseError err) =
@@ -113,6 +117,8 @@ instance Monad m => ToJSON m TestRunRejection where
         object ["githubResponseStatusCodeError" .= err]
     toJSON RepositoryNotWhitelisted =
         stringJSON "repository not whitelisted"
+    toJSON (UnacceptableAssets failure) =
+        object ["unacceptableAssets" .= failure]
 
 checkDuration
     :: TestRunValidationConfig -> Duration -> Maybe TestRunRejection
@@ -187,26 +193,6 @@ checkCommit
                     then Nothing
                     else Just UnacceptableCommit
 
-checkDirectory
-    :: MonadIO m
-    => Validation m
-    -> TestRun
-    -> m (Maybe TestRunRejection)
-checkDirectory
-    Validation{githubDirectoryExists}
-    testRun = do
-        existsE <-
-            githubDirectoryExists
-                testRun.repository
-                (commitId testRun)
-                (directory testRun)
-        pure $ case existsE of
-            Left err -> Just $ GithubResponseStatusCodeError err
-            Right exists ->
-                if exists
-                    then Nothing
-                    else Just UnacceptableDirectory
-
 checkSignature
     :: Monad m
     => Validation m
@@ -231,7 +217,7 @@ checkSignature
             else return $ Just UnacceptableSignature
 
 validateCreateTestRunCore
-    :: MonadIO m
+    :: (MonadIO m, MonadMask m)
     => TestRunValidationConfig
     -> Validation m
     -> TestRun
@@ -242,18 +228,17 @@ validateCreateTestRunCore
     validation
     testRun
     (Pending duration signature) = do
-        result <-
-            lift
-                $ catMaybes
-                    <$> sequence
-                        [ pure $ checkDuration config duration
-                        , checkRole validation testRun
-                        , checkTryIndex validation testRun
-                        , checkCommit validation testRun
-                        , checkDirectory validation testRun
-                        , checkSignature validation testRun signature
-                        , checkWhiteList validation testRun
+        withSystemTempDirectory "antithesis-test-run"
+            $ \tmpDir -> do
+                let liftValidate f = lift (f validation testRun) >>= throwJusts
+                Validated
+                    <$ sequenceValidate
+                        [ throwJusts $ checkDuration config duration
+                        , liftValidate checkRole
+                        , liftValidate checkTryIndex
+                        , liftValidate checkCommit
+                        , mapFailure UnacceptableAssets
+                            $ validateAssets (Directory tmpDir) validation testRun
+                        , liftValidate checkWhiteList
+                        , liftValidate $ \v t -> checkSignature v t signature
                         ]
-        unless (null result)
-            $ notValidated result
-        pure Validated

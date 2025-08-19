@@ -97,6 +97,7 @@ import Validation.DownloadFile
 import Validation.RegisterRole (RepositoryRoleFailure (..))
 import Validation.RegisterUser (analyzeKeys)
 
+import Core.Types.Basic (FileName (..))
 import Crypto.PubKey.Ed25519 qualified as Ed25519
 import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.List qualified as L
@@ -158,13 +159,13 @@ mkValidation fs rs ds upk rr reposExists files =
                 $ if (username, repository) `elem` rr
                     then Nothing
                     else Just NoRoleEntryInCodeowners
-        , githubGetFile = \_repository _commit filename ->
+        , githubGetFile = \_repository _commit filename@(FileName name) ->
             case L.lookup filename files of
                 Nothing ->
                     return
                         $ Left
                         $ GithubGetFileError
-                        $ GetGithubFileOtherFailure "file not present"
+                        $ GetGithubFileOtherFailure name "file not present"
                 Just filecontent ->
                     pure $ analyzeDownloadedFile filename (Right filecontent)
         }

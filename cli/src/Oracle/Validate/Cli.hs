@@ -8,6 +8,7 @@ module Oracle.Validate.Cli
     ) where
 
 import Control.Monad (forM)
+import Control.Monad.Catch (MonadMask)
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Trans.Class (lift)
 import Core.Context
@@ -67,7 +68,7 @@ instance Monad m => ToJSON m OracleValidateFailure where
         toJSON ("Token configuration is not available yet" :: String)
 
 validateCmd
-    :: MonadIO m
+    :: (MonadIO m, MonadMask m)
     => TokenId
     -> ValidateCommand a
     -> WithContext m a

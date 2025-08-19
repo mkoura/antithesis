@@ -17,6 +17,7 @@ module Oracle.Validate.Types
     , liftMaybe
     ) where
 
+import Control.Monad.Catch (MonadCatch, MonadMask (..), MonadThrow)
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Trans.Class (MonadTrans, lift)
 import Control.Monad.Trans.Except
@@ -32,8 +33,12 @@ import Lib.JSON.Canonical.Extra
 import Text.JSON.Canonical.Class (ToJSON (..))
 
 newtype Validate e m a = Validate (ExceptT e m a)
-    deriving (Functor, Applicative, Monad)
+    deriving
+        (Functor, Applicative, Monad, MonadMask, MonadCatch, MonadThrow)
 
+-- instance MonadMask m => MonadMask (Validate e m) where
+--     mask a = Validate $ mask $ \restore -> runExceptT (a (Validate . restore))
+--     uninterruptibleMask a = Validate $ uninterruptibleMask $ \restore -> runExceptT (a (Validate . restore))
 instance MonadTrans (Validate e) where
     lift = Validate . lift
 

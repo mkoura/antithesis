@@ -31,7 +31,7 @@ import OptEnvConf
     , short
     , str
     )
-import Oracle.Validate.Requests.DownloadAssets (DownloadAssetsFailure)
+import Oracle.Validate.DownloadAssets (DownloadAssetsFailure)
 import Oracle.Validate.Requests.ManageWhiteList
     ( UpdateWhiteListFailure
     )

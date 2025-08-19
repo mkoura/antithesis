@@ -5,6 +5,7 @@ module Oracle.Token.Cli
 
 import Control.Exception (Exception)
 import Control.Monad (void, when)
+import Control.Monad.Catch (MonadMask)
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Trans.Class (lift)
 import Core.Context
@@ -127,7 +128,7 @@ promoteFailure req =
         )
 
 tokenCmdCore
-    :: (MonadIO m)
+    :: (MonadIO m, MonadMask m)
     => TokenCommand a
     -> WithContext m a
 tokenCmdCore command = do

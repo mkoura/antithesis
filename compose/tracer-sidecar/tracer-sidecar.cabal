@@ -1,60 +1,70 @@
-cabal-version:      3.4
-name:               tracer-sidecar
-version:            0.1.0.0
+cabal-version:   3.4
+name:            tracer-sidecar
+version:         0.1.0.0
+
 -- synopsis:
 -- description:
-license:            Apache-2.0
-license-file:       LICENSE
-author:             Cardano Foundation
-maintainer:         hal@cardanofoundation.org
+license:         Apache-2.0
+license-file:    LICENSE
+author:          Cardano Foundation
+maintainer:      hal@cardanofoundation.org
+
 -- copyright:
-build-type:         Simple
-extra-doc-files:    CHANGELOG.md
+build-type:      Simple
+extra-doc-files: CHANGELOG.md
+
 -- extra-source-files:
 
 common warnings
-    ghc-options: -Wall
+  ghc-options:
+    -Wall -Wunused-imports -Wunused-packages -Wmissing-export-lists
+    -Wname-shadowing -Wdeferred-out-of-scope-variables
+    -Wpartial-type-signatures -Wredundant-constraints
 
 executable tracer-sidecar
-    import:           warnings
-    main-is:          Main.hs
-    -- other-extensions:
-    build-depends:    base
-                    , aeson
-                    , aeson-qq
-                    , text
-                    , time
-                    , directory
-                    , bytestring
-                    , filepath
-                    , containers
-                    , stm
-                    , generic-lens
-                    , optics-core
-                    , tracer-sidecar
-    hs-source-dirs:   app
-    default-language: Haskell2010
+  import:           warnings
+  main-is:          Main.hs
+
+  -- other-extensions:
+  build-depends:
+    , aeson
+    , aeson-qq
+    , base
+    , bytestring
+    , containers
+    , directory
+    , filepath
+    , generic-lens
+    , optics-core
+    , stm
+    , text
+    , time
+    , tracer-sidecar
+
+  hs-source-dirs:   app
+  default-language: Haskell2010
 
 library
   import:          warnings
   hs-source-dirs:  src
   build-depends:
-    , base
     , aeson
     , aeson-qq
-    , text
-    , time
-    , directory
+    , base
     , bytestring
-    , filepath
     , containers
-    , stm
+    , directory
+    , filepath
     , generic-lens
     , optics-core
+    , stm
+    , text
+    , time
     , transformers
+
   exposed-modules:
-    Cardano.Antithesis.Sdk
     Cardano.Antithesis.LogMessage
+    Cardano.Antithesis.Sdk
     Cardano.Antithesis.Sidecar
 
 test-suite test
@@ -62,14 +72,15 @@ test-suite test
   type:               exitcode-stdio-1.0
   hs-source-dirs:     test
   main-is:            Main.hs
-  build-depends:      base
-                    , hspec
-                    , tracer-sidecar
-                    , aeson
-                    , bytestring
-                    , hspec-golden
-                    , text
-                    , filepath
+  build-depends:
+    , aeson
+    , base
+    , bytestring
+    , filepath
+    , hspec
+    , hspec-golden
+    , text
+    , tracer-sidecar
+
   build-tool-depends: hspec-discover:hspec-discover
-  other-modules:
-   Spec
+  other-modules:      Spec

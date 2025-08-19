@@ -27,6 +27,7 @@ library
                     , directory
                     , infinite-list
                     , io-classes:{si-timers, strict-stm}
+                    , network
                     , network-mux
                     , optparse-applicative
                     , ouroboros-network:{ouroboros-network, cardano-diffusion}

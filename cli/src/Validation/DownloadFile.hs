@@ -10,13 +10,13 @@ module Validation.DownloadFile
     ) where
 
 import Core.Types.Basic (Commit, FileName (..), Repository)
+import Data.Aeson (Value)
 import Data.Text (Text)
-import GitHub (Auth)
-import Lib.GitHub (GetGithubFileFailure, githubGetFile)
-
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Data.Yaml qualified as Yaml
+import GitHub (Auth)
+import Lib.GitHub (GetGithubFileFailure, githubGetFile)
 import Text.MMark qualified as MMark
 
 data DownloadedFileFailure
@@ -30,7 +30,7 @@ renderDownloadedFileFailure = \case
     GithubGetFileError failure ->
         "Error when interacting with github. Details: " <> show failure
     DownloadedFileParseError failure ->
-        "The downloaded file seems to have pare error. Details: "
+        "The downloaded file seems to have parse error. Details: "
             <> show failure
     DownloadedFileNotSupported ->
         "Only `md` and `yaml` files are currently supported in validation"
@@ -51,13 +51,11 @@ analyzeDownloadedFile (FileName filename) = \case
                     Right file
             else
                 if T.isSuffixOf "yaml" (T.pack filename)
-                    then
-                        -- not interested in value only if there is error hence chosen random type that happens to have FromJSON instance
-                        case Yaml.decodeEither' @Text (T.encodeUtf8 file) of
-                            Left parseError ->
-                                Left $ DownloadedFileParseError $ show parseError
-                            Right _ ->
-                                Right file
+                    then case Yaml.decodeAllEither' @Value (T.encodeUtf8 file) of
+                        Left parseError ->
+                            Left $ DownloadedFileParseError $ show parseError
+                        Right _ ->
+                            Right file
                     else
                         Left DownloadedFileNotSupported
 

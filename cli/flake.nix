@@ -59,7 +59,7 @@
             inherit (inputs) nixpkgs flake-utils haskellNix;
           };
           project = import ./nix/anti-project.nix {
-            indexState = "2025-05-07T00:00:00Z";
+            indexState = "2025-08-07T00:00:00Z";
             inherit CHaP;
             inherit pkgs;
             inherit cardano-cli;

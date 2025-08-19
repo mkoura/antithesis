@@ -19,12 +19,32 @@ library
     build-depends:    base
                     , aeson
                     , text
+
+                    , async
+                    , bytestring
+                    , containers
+                    , contra-tracer
+                    , directory
+                    , infinite-list
+                    , network-mux
+                    , optparse-applicative
+                    , io-classes:{strict-stm}
+                    , ouroboros-network:ouroboros-network
+                    , ouroboros-network-api
+                    , ouroboros-network-framework
+                    , ouroboros-network-mock
+                    , ouroboros-network-protocols
+                    , random
+                    , serialise
+                    , typed-protocols
+
     exposed-modules:  Adversary
+    other-modules:    Adversary.ChainSync
 
 executable adversary
     import:           settings
     main-is:          Main.hs
-    build-depends:    base ^>=4.18.3.0, adversary
+    build-depends:    base, adversary
     hs-source-dirs:   app
 
 test-suite adversary-test

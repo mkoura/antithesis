@@ -26,10 +26,10 @@ library
                     , contra-tracer
                     , directory
                     , infinite-list
+                    , io-classes:{si-timers, strict-stm}
                     , network-mux
                     , optparse-applicative
-                    , io-classes:{strict-stm}
-                    , ouroboros-network:ouroboros-network
+                    , ouroboros-network:{ouroboros-network, cardano-diffusion}
                     , ouroboros-network-api
                     , ouroboros-network-framework
                     , ouroboros-network-mock

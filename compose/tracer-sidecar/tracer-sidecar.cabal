@@ -31,18 +31,14 @@ executable tracer-sidecar
     , aeson-qq
     , base
     , bytestring
-    , containers
     , directory
     , filepath
-    , generic-lens
-    , optics-core
-    , stm
     , text
-    , time
     , tracer-sidecar
 
   hs-source-dirs:   app
   default-language: Haskell2010
+  other-modules:    Antithesis
 
 library
   import:          warnings
@@ -53,11 +49,6 @@ library
     , base
     , bytestring
     , containers
-    , directory
-    , filepath
-    , generic-lens
-    , optics-core
-    , stm
     , text
     , time
     , transformers
@@ -76,10 +67,8 @@ test-suite test
     , aeson
     , base
     , bytestring
-    , filepath
     , hspec
     , hspec-golden
-    , text
     , tracer-sidecar
 
   build-tool-depends: hspec-discover:hspec-discover

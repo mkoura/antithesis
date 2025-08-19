@@ -1,6 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
-module Antithesis where
+{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
+
+module Antithesis
+    ( sometimesForksDeclaration
+    , sometimesForksReached
+    , writeSdkJsonl
+    )
+where
 
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Text as T
@@ -37,17 +44,17 @@ import System.IO
 -- | Append a JSON Value as one line to $ANTITHESIS_OUTPUT_DIR/sdk.jsonl
 writeSdkJsonl :: Value -> IO ()
 writeSdkJsonl v = do
-  dir <- fromMaybe "/tmp"<$> lookupEnv "ANTITHESIS_OUTPUT_DIR"
-  let outFile = dir ++ "/sdk.jsonl"
-  -- open in AppendMode and write the JSON + newline
-  withFile outFile AppendMode $ \h ->
-    BL.hPutStr h (encode v <> "\n")
-
+    dir <- fromMaybe "/tmp" <$> lookupEnv "ANTITHESIS_OUTPUT_DIR"
+    let outFile = dir ++ "/sdk.jsonl"
+    -- open in AppendMode and write the JSON + newline
+    withFile outFile AppendMode $ \h ->
+        BL.hPutStr h (encode v <> "\n")
 
 -- Hard code values for now
 
 sometimesForksDeclaration :: Value
-sometimesForksDeclaration = [aesonQQ|
+sometimesForksDeclaration =
+    [aesonQQ|
 {
   "antithesis_assert": {
     "id":           "Sometimes forks",
@@ -71,33 +78,35 @@ sometimesForksDeclaration = [aesonQQ|
 
 sometimesForksReached :: HasCallStack => Value
 sometimesForksReached =
-  let
-      ((funcName, loc) : _) = getCallStack callStack
+    let
+        ((funcName, loc) : _) = getCallStack callStack
 
-      file   = T.pack (srcLocFile      loc)
-      modName = T.pack (srcLocModule    loc)
-      func   = T.pack funcName
-      line   = srcLocStartLine loc
-      column = srcLocStartCol  loc
+        file = T.pack (srcLocFile loc)
+        modName = T.pack (srcLocModule loc)
+        func = T.pack funcName
+        line = srcLocStartLine loc
+        column = srcLocStartCol loc
 
-      locObj = object
-        [ "file"         .= file
-        , "function"     .= func
-        , "class"        .= modName
-        , "begin_line"   .= line
-        , "begin_column" .= column
-        ]
-
-  in object
-     [ "antithesis_assert" .= object
-       [ "id"           .= ("Sometimes forks" :: Text)
-       , "message"      .= ("Sometimes forks" :: Text)
-       , "condition"    .= True
-       , "display_type" .= ("Sometimes"     :: Text)
-       , "hit"          .= True
-       , "must_hit"     .= True
-       , "assert_type"  .= ("sometimes"     :: Text)
-       , "location"     .= locObj
-       , "details"      .= Null
-       ]
-     ]
+        locObj =
+            object
+                [ "file" .= file
+                , "function" .= func
+                , "class" .= modName
+                , "begin_line" .= line
+                , "begin_column" .= column
+                ]
+    in
+        object
+            [ "antithesis_assert"
+                .= object
+                    [ "id" .= ("Sometimes forks" :: Text)
+                    , "message" .= ("Sometimes forks" :: Text)
+                    , "condition" .= True
+                    , "display_type" .= ("Sometimes" :: Text)
+                    , "hit" .= True
+                    , "must_hit" .= True
+                    , "assert_type" .= ("sometimes" :: Text)
+                    , "location" .= locObj
+                    , "details" .= Null
+                    ]
+            ]

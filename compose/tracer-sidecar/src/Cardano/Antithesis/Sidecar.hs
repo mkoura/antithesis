@@ -5,13 +5,28 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Cardano.Antithesis.Sidecar where
+module Cardano.Antithesis.Sidecar
+    ( mkSpec
+    , initialStateIO
+    , processMessageIO
+    , Output (..)
+    , processMessages
+    , initialState
+    )
+where
 
 import Cardano.Antithesis.LogMessage
+    ( LogMessage (LogMessage, details, host, json, kind, sev)
+    , LogMessageData (AddedToCurrentChain, newtip)
+    , Severity (Critical)
+    )
 import Cardano.Antithesis.Sdk
-
-import qualified Data.ByteString.Char8 as B8
-import qualified Data.ByteString.Lazy as BL
+    ( alwaysOrUnreachableDeclaration
+    , alwaysOrUnreachableFailed
+    , sometimesTracesDeclaration
+    , sometimesTracesReached
+    , writeSdkJsonl
+    )
 import qualified Data.Set as Set
 import qualified Data.Text as T
 
@@ -28,8 +43,6 @@ import Control.Monad.Trans.Writer.Strict
     )
 import Data.Aeson
     ( Value
-    , encode
-    , toJSON
     )
 import Data.Foldable
     ( foldl'
@@ -52,7 +65,8 @@ import Data.Text
 
 mkSpec :: Int -> Spec
 mkSpec nPools = do
-    mapM_ sometimesTraces
+    mapM_
+        sometimesTraces
         [ "TraceAddBlockEvent.SwitchedToAFork"
         , "PeerStatusChanged"
         ]
@@ -73,26 +87,28 @@ mkSpec nPools = do
         LogMessage
             { host
             , details = AddedToCurrentChain{newtip}
-            }
-        = (:[]) $ StdOut $ unwords
-            [ T.unpack host
-            , "added"
-            , T.unpack newtip
-            , "to current chain"
-            ]
+            } =
+            (: [])
+                $ StdOut
+                $ unwords
+                    [ T.unpack host
+                    , "added"
+                    , T.unpack newtip
+                    , "to current chain"
+                    ]
     forwardAddedToCurrentChain _ _ = []
 
 -- State -----------------------------------------------------------------------
 
 newtype State = State
-  { unreachedAssertions :: Set Text
-  }
+    { unreachedAssertions :: Set Text
+    }
 
 initialState :: Spec -> (State, [Output])
 initialState spec =
-  ( foldl (\a f -> f a) s0 setupFns
-  , declarations spec
-  )
+    ( foldl (\a f -> f a) s0 setupFns
+    , declarations spec
+    )
   where
     s0 = State mempty
     setupFns = stateInitFunctions spec
@@ -102,12 +118,14 @@ initialState spec =
 type Spec = SpecWith ()
 
 newtype SpecWith a = Spec (Writer [Rule] a)
-  deriving (Functor, Applicative, Monad) via (Writer [Rule])
+    deriving (Functor, Applicative, Monad) via (Writer [Rule])
 
 data Rule = Rule
-    { ruleProcess     :: State -> LogMessage -> (State, [Output])
-    , ruleDeclaration :: Maybe Value -- ^ Makes it possible to declare the assertion to the antithesis sdk
-    , ruleInit        :: State -> State -- ^ Makes it possible to initialize the 'State'
+    { _ruleProcess :: State -> LogMessage -> (State, [Output])
+    , ruleDeclaration :: Maybe Value
+    -- ^ Makes it possible to declare the assertion to the antithesis sdk
+    , ruleInit :: State -> State
+    -- ^ Makes it possible to initialize the 'State'
     }
 
 data Output
@@ -120,13 +138,17 @@ data Output
 --
 -- Will cause a test failure if the provided function ever returns 'False'.
 alwaysOrUnreachable
-  :: Text -- ^ Name and identifier
-  -> (State -> LogMessage -> Bool)
-  -> Spec
+    :: Text
+    -- ^ Name and identifier
+    -> (State -> LogMessage -> Bool)
+    -> Spec
 alwaysOrUnreachable name f =
-  Spec $ tell [ Rule process  (Just (alwaysOrUnreachableDeclaration name)) initState]
+    Spec
+        $ tell
+            [ Rule process (Just (alwaysOrUnreachableDeclaration name)) initState
+            ]
   where
-    initState s = s { unreachedAssertions = Set.insert name (unreachedAssertions s) }
+    initState s = s{unreachedAssertions = Set.insert name (unreachedAssertions s)}
 
     process :: State -> LogMessage -> (State, [Output])
     process s@(State scanningFor) msg@LogMessage{json} = case f s msg of
@@ -136,24 +158,26 @@ alwaysOrUnreachable name f =
                 , [AntithesisSdk $ alwaysOrUnreachableFailed name json]
                 )
             | otherwise -> (State scanningFor, [])
-        True  -> (State scanningFor, [])
+        True -> (State scanningFor, [])
 
 observe :: (State -> LogMessage -> [Output]) -> Spec
 observe process = do
-    Spec $ tell [ Rule (\s msg -> (s, process s msg)) Nothing id]
-
+    Spec $ tell [Rule (\s msg -> (s, process s msg)) Nothing id]
 
 -- | Declare an antithesis 'sometimes' assertion.
 --
 -- Will cause a test failure unless the provided function returns 'True' once.
 sometimes
-  :: Text -- ^ Name and identifier
-  -> (State -> LogMessage -> Bool)
-  -> Spec
+    :: Text
+    -- ^ Name and identifier
+    -> (State -> LogMessage -> Bool)
+    -> Spec
 sometimes name f =
-  Spec $ tell [ Rule process  (Just (sometimesTracesDeclaration name)) initState]
+    Spec
+        $ tell
+            [Rule process (Just (sometimesTracesDeclaration name)) initState]
   where
-    initState s = s { unreachedAssertions = Set.insert name (unreachedAssertions s) }
+    initState s = s{unreachedAssertions = Set.insert name (unreachedAssertions s)}
 
     process :: State -> LogMessage -> (State, [Output])
     process s@(State scanningFor) msg
@@ -174,18 +198,19 @@ stateInitFunctions (Spec s) = map ruleInit $ execWriter s
 
 processMessage :: Spec -> State -> LogMessage -> (State, [Output])
 processMessage (Spec w) =
-  let rules = execWriter w
-  in \s0 logMsg ->
-       let step (s, vals) (Rule f _ _) =
-             let (s', newVals) = f s logMsg
-             in  (s', vals ++ newVals)
-           (finalState, collected) = foldl' step (s0, []) rules
-       in  (finalState, reverse collected)
+    let rules = execWriter w
+    in  \s0 logMsg ->
+            let step (s, vals) (Rule f _ _) =
+                    let (s', newVals) = f s logMsg
+                    in  (s', vals ++ newVals)
+                (finalState, collected) = foldl' step (s0, []) rules
+            in  (finalState, reverse collected)
 
-processMessages :: Spec -> (State, [Output]) -> [LogMessage] -> (State, [Output])
+processMessages
+    :: Spec -> (State, [Output]) -> [LogMessage] -> (State, [Output])
 processMessages spec st =
-    second (concat . (v:))
-  . mapAccumL (processMessage spec) s
+    second (concat . (v :))
+        . mapAccumL (processMessage spec) s
   where
     (s, v) = st
 
@@ -195,7 +220,7 @@ hoistToIO :: (State, [Output]) -> IO State
 hoistToIO (s, vals) = do
     forM_ vals $ \case
         AntithesisSdk v -> writeSdkJsonl v
-        StdOut t        -> putStrLn t
+        StdOut t -> putStrLn t
     return s
 
 initialStateIO :: Spec -> IO State

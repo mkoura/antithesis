@@ -35,6 +35,7 @@ let
 
 in {
   devShells.default = project.shell;
-  packages.tracer-sidecar = project.hsPkgs.tracer-sidecar.components.exes.tracer-sidecar;
+  packages.tracer-sidecar =
+    project.hsPkgs.tracer-sidecar.components.exes.tracer-sidecar;
   inherit project;
 }

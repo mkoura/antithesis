@@ -65,13 +65,13 @@
             inherit cardano-cli;
           };
 
-          fullPackages = lib.mergeAttrsList [
-            project.packages
-          ];
+          fullPackages = lib.mergeAttrsList [ project.packages ];
 
         in {
 
-          packages = fullPackages // { default = project.packages.tracer-sidecar; };
+          packages = fullPackages // {
+            default = project.packages.tracer-sidecar;
+          };
           inherit (project) devShells;
         };
 

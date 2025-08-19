@@ -1,13 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
-
-
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-{-# HLINT ignore "Use :" #-}
 
-module Main where
+module Main
+    ( main
+    )
+where
 
 import Cardano.Antithesis.LogMessage
 import Cardano.Antithesis.Sdk
@@ -24,19 +21,16 @@ import Control.Concurrent
     )
 import Control.Monad
     ( filterM
-    , forM
     , forM_
     , forever
     , unless
     )
 import Data.Aeson
     ( ToJSON (toJSON)
-    , Value (Null)
     , eitherDecode
     )
 import System.Directory
-    ( doesDirectoryExist
-    , doesFileExist
+    ( doesFileExist
     , listDirectory
     )
 import System.Environment
@@ -44,8 +38,7 @@ import System.Environment
     , getEnv
     )
 import System.FilePath
-    ( takeExtension
-    , (</>)
+    ( (</>)
     )
 import System.IO
     ( BufferMode (LineBuffering, NoBuffering)
@@ -66,9 +59,8 @@ main = do
     putStrLn "starting tracer-sidecar..."
     args <- getArgs
     dir <- case args of
-             [d] -> return d
-             _   -> error "Usage: <executable name> <directory>"
-
+        [d] -> return d
+        _ -> error "Usage: <executable name> <directory>"
 
     (nPools :: Int) <- read <$> getEnv "POOLS"
 
@@ -76,14 +68,20 @@ main = do
 
     files <- waitFor (nodeLogFiles dir) $ \files -> do
         threadDelay 2000000 -- allow log files to be created
-        putStrLn $ unlines $
-            [ "Looking for " <> show nPools <> " log files, found "
-                <> show (length files) <> ":"
-            ] ++ map ("- " <>) files
+        putStrLn
+            $ unlines
+            $ ( "Looking for "
+                    <> show nPools
+                    <> " log files, found "
+                    <> show (length files)
+                    <> ":"
+              )
+                : map ("- " <>) files
         let details = toJSON files
         let cond = length files == nPools
-        unless cond $
-            writeSdkJsonl $ sometimesFailed "finds all node log files" details
+        unless cond
+            $ writeSdkJsonl
+            $ sometimesFailed "finds all node log files" details
         return cond
 
     writeSdkJsonl $ sometimesTracesReached "finds all node log files"
@@ -93,7 +91,8 @@ main = do
     let spec = mkSpec nPools
     mvar <- newMVar =<< initialStateIO spec
     forM_ files $ \file ->
-      forkIO $ tailJsonLines file (modifyMVar_ mvar . flip (processMessageIO spec))
+        forkIO
+            $ tailJsonLines file (modifyMVar_ mvar . flip (processMessageIO spec))
     forever $ threadDelay maxBound
   where
     waitFor :: Monad m => m a -> (a -> m Bool) -> m a
@@ -106,28 +105,28 @@ main = do
 
 nodeLogFiles :: FilePath -> IO [FilePath]
 nodeLogFiles dir = do
-  entries <- listDirectory dir
-  let paths = map (\node -> dir </> node </> "node.json") entries
-  filterM doesFileExist paths
+    entries <- listDirectory dir
+    let paths = map (\node -> dir </> node </> "node.json") entries
+    filterM doesFileExist paths
 
 tailJsonLines :: FilePath -> (LogMessage -> IO ()) -> IO ()
 tailJsonLines path action = tailLines path $ \bs ->
-  case eitherDecode $ BL.fromStrict bs of
-      Right msg -> action msg
-      Left _e   -> pure () -- putStrLn $ "warning: unrecognized line: " <> B8.unpack bs <> " " <> show e
+    case eitherDecode $ BL.fromStrict bs of
+        Right msg -> action msg
+        Left _e -> pure () -- putStrLn $ "warning: unrecognized line: " <> B8.unpack bs <> " " <> show e
 
 tailLines :: FilePath -> (B8.ByteString -> IO ()) -> IO ()
 tailLines path callback = withFile path ReadMode $ \h -> do
     -- read up to current EOF without closing the handle
     let drain = do
-          eof <- hIsEOF h
-          unless eof $ B8.hGetLine h >>= callback >> drain
+            eof <- hIsEOF h
+            unless eof $ B8.hGetLine h >>= callback >> drain
     drain
 
     -- switch to unbuffered mode and follow new data
     hSetBuffering h NoBuffering
     forever $ do
-      eof <- hIsEOF h
-      if eof
-         then threadDelay 100000
-         else B8.hGetLine h >>= callback
+        eof <- hIsEOF h
+        if eof
+            then threadDelay 100000
+            else B8.hGetLine h >>= callback

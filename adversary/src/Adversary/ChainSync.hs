@@ -11,111 +11,154 @@
 
 module Adversary.ChainSync where
 
+import Adversary.ChainSyncOld (recentOffsets)
 import Codec.Serialise qualified as CBOR
-import Control.Applicative (many)
-import Control.Concurrent (threadDelay)
-import Control.Concurrent.Async
 import Control.Concurrent.Class.MonadSTM.Strict
-import Control.Exception
-import Control.Monad (when)
-import Control.Monad.Class.MonadTime.SI (Time (..))
-import Control.Tracer
-import Data.ByteString.Char8 qualified as BSC
+    ( MonadSTM (atomically)
+    , StrictTVar
+    , newTVarIO
+    , readTVar
+    , readTVarIO
+    , writeTVar
+    )
+import Control.Tracer (Contravariant (contramap), stdoutTracer)
 import Data.ByteString.Lazy qualified as LBS
-import Data.Foldable (traverse_)
 import Data.Functor (void)
-import Data.List (maximumBy)
-import Data.List.Infinite (Infinite ((:<)))
-import Data.List.Infinite qualified as Inf
-import Data.Map qualified as Map
-import Data.Proxy (Proxy (..))
-import Data.Set (Set)
-import Data.Set qualified as Set
-import Data.Void (Void)
-import Network.Mux qualified as Mx
+import Data.List.NonEmpty qualified as NE
 import Network.Socket
-import Network.TypedProtocol.Codec
-import Options.Applicative qualified as Opts
-import Ouroboros.Network.AnchoredFragment qualified as AF
+    ( AddrInfo (AddrInfo, addrAddress, addrFlags, addrSocketType)
+    , AddrInfoFlag (AI_PASSIVE)
+    , PortNumber
+    , SocketType (Stream)
+    , defaultHints
+    , getAddrInfo
+    )
+import Network.TypedProtocol.Codec (Codec)
 import Ouroboros.Network.Block
-import Ouroboros.Network.ControlMessage (continueForever)
-import Ouroboros.Network.DeltaQ (defaultGSV)
-import Ouroboros.Network.Diffusion.Configuration (PeerSharing (PeerSharingDisabled))
-import Ouroboros.Network.Driver
+    ( HasHeader
+    , HeaderHash
+    , Point
+    , castPoint
+    )
+import Ouroboros.Network.Diffusion.Configuration
+    ( PeerSharing (PeerSharingDisabled)
+    )
 import Ouroboros.Network.IOManager (withIOManager)
 import Ouroboros.Network.Magic (NetworkMagic (..))
 import Ouroboros.Network.Mock.Chain (Chain)
 import Ouroboros.Network.Mock.Chain qualified as Chain
-import Ouroboros.Network.Mock.ConcreteBlock
 import Ouroboros.Network.Mux
-import Ouroboros.Network.NodeToNode (ControlMessage (..), ControlMessageSTM, DiffusionMode (InitiatorOnlyDiffusionMode), NodeToNodeVersion (NodeToNodeV_14), NodeToNodeVersionData (..), nodeToNodeCodecCBORTerm)
-import Ouroboros.Network.Point (WithOrigin (..))
-import Ouroboros.Network.Protocol.BlockFetch.Codec qualified as BlockFetch
-import Ouroboros.Network.Protocol.BlockFetch.Server qualified as BlockFetch
-import Ouroboros.Network.Protocol.BlockFetch.Type qualified as BlockFetch
-import Ouroboros.Network.Protocol.ChainSync.Client (ChainSyncClient (..), ClientStIdle (..), ClientStIntersect (..), ClientStNext (..))
+    ( MiniProtocol
+        ( MiniProtocol
+        , miniProtocolLimits
+        , miniProtocolNum
+        , miniProtocolRun
+        , miniProtocolStart
+        )
+    , MiniProtocolLimits (..)
+    , MiniProtocolNum (MiniProtocolNum)
+    , OuroborosApplication (OuroborosApplication)
+    , OuroborosApplicationWithMinimalCtx
+    , RunMiniProtocol (InitiatorProtocolOnly)
+    , RunMiniProtocolWithMinimalCtx
+    , StartOnDemandOrEagerly (StartOnDemand)
+    , mkMiniProtocolCbFromPeer
+    )
+import Ouroboros.Network.NodeToNode
+    ( ControlMessage (..)
+    , ControlMessageSTM
+    , DiffusionMode (InitiatorOnlyDiffusionMode)
+    , NodeToNodeVersion (NodeToNodeV_14)
+    , NodeToNodeVersionData (..)
+    , nodeToNodeCodecCBORTerm
+    )
+import Ouroboros.Network.Protocol.ChainSync.Client
+    ( ChainSyncClient (..)
+    , ClientStIdle (..)
+    , ClientStIntersect (..)
+    , ClientStNext (..)
+    )
 import Ouroboros.Network.Protocol.ChainSync.Client qualified as ChainSync
 import Ouroboros.Network.Protocol.ChainSync.Codec qualified as ChainSync
-import Ouroboros.Network.Protocol.ChainSync.Server qualified as ChainSync
 import Ouroboros.Network.Protocol.ChainSync.Type qualified as ChainSync
 import Ouroboros.Network.Protocol.Handshake
-import Ouroboros.Network.Protocol.Handshake.Unversioned
-import Ouroboros.Network.Server.Simple qualified as Server.Simple
+    ( Acceptable (acceptableVersion)
+    , Queryable (queryVersion)
+    , cborTermVersionDataCodec
+    , noTimeLimitsHandshake
+    , nodeToNodeHandshakeCodec
+    , simpleSingletonVersions
+    )
 import Ouroboros.Network.Snocket
+    ( makeSocketBearer
+    , socketSnocket
+    )
 import Ouroboros.Network.Socket
-import System.Directory
-import System.Random (RandomGen, StdGen)
-import System.Random qualified as Random
-
-clientChainSync ::
-  String ->
-  PortNumber ->
-  IO ()
-clientChainSync peerName peerPort = withIOManager $ \iocp -> do
-  AddrInfo {addrAddress} <- resolve
-  var <- newTVarIO Chain.Genesis
-  void $
-      connectToNode
-        (socketSnocket iocp)
-        makeSocketBearer
-        ConnectToArgs
-          { ctaHandshakeCodec = nodeToNodeHandshakeCodec,
-            ctaHandshakeTimeLimits = noTimeLimitsHandshake,
-            ctaVersionDataCodec = cborTermVersionDataCodec nodeToNodeCodecCBORTerm,
-            ctaConnectTracers = nullNetworkConnectTracers,
-            ctaHandshakeCallbacks = HandshakeCallbacks acceptableVersion queryVersion
-          }
-        mempty
-        ( simpleSingletonVersions
-            NodeToNodeV_14
-            ( NodeToNodeVersionData
-                { networkMagic = NetworkMagic 1,
-                  diffusionMode = InitiatorOnlyDiffusionMode,
-                  peerSharing = PeerSharingDisabled,
-                  query = False
-                }
-            )
-            (\_ -> app var)
+    ( ConnectToArgs
+        ( ConnectToArgs
+        , ctaConnectTracers
+        , ctaHandshakeCallbacks
+        , ctaHandshakeCodec
+        , ctaHandshakeTimeLimits
+        , ctaVersionDataCodec
         )
-        Nothing
-        addrAddress
+    , HandshakeCallbacks (HandshakeCallbacks)
+    , connectToNode
+    , nullNetworkConnectTracers
+    )
+
+clientChainSync
+    :: String
+    -> PortNumber
+    -> IO ()
+clientChainSync peerName peerPort = withIOManager $ \iocp -> do
+    AddrInfo{addrAddress} <- resolve
+    var <- newTVarIO Chain.Genesis
+    void
+        $ connectToNode
+            (socketSnocket iocp)
+            makeSocketBearer
+            ConnectToArgs
+                { ctaHandshakeCodec = nodeToNodeHandshakeCodec
+                , ctaHandshakeTimeLimits = noTimeLimitsHandshake
+                , ctaVersionDataCodec = cborTermVersionDataCodec nodeToNodeCodecCBORTerm
+                , ctaConnectTracers = nullNetworkConnectTracers
+                , ctaHandshakeCallbacks =
+                    HandshakeCallbacks acceptableVersion queryVersion
+                }
+            mempty
+            ( simpleSingletonVersions
+                NodeToNodeV_14
+                ( NodeToNodeVersionData
+                    { networkMagic = NetworkMagic 1
+                    , diffusionMode = InitiatorOnlyDiffusionMode
+                    , peerSharing = PeerSharingDisabled
+                    , query = False
+                    }
+                )
+                (\_ -> app var)
+            )
+            Nothing
+            addrAddress
   where
     resolve = do
-      let hints =
-            defaultHints
-              { addrFlags = [AI_PASSIVE],
-                addrSocketType = Stream
-              }
-      head <$> getAddrInfo (Just hints) (Just peerName) (Just $ show peerPort)
+        let hints =
+                defaultHints
+                    { addrFlags = [AI_PASSIVE]
+                    , addrSocketType = Stream
+                    }
+        NE.head
+            <$> getAddrInfo (Just hints) (Just peerName) (Just $ show peerPort)
 
---    app :: OuroborosApplicationWithMinimalCtx Mx.InitiatorMode addr LBS.ByteString IO () Void
-    app var = demoProtocol2 $
-      InitiatorProtocolOnly $
-        mkMiniProtocolCbFromPeer $ \_ctx ->
-          ( contramap show stdoutTracer,
-            codecChainSync,
-            ChainSync.chainSyncClientPeer (client var)
-          )
+    --    app :: OuroborosApplicationWithMinimalCtx Mx.InitiatorMode addr LBS.ByteString IO () Void
+    app var = demoProtocol2
+        $ InitiatorProtocolOnly
+        $ mkMiniProtocolCbFromPeer
+        $ \_ctx ->
+            ( contramap show stdoutTracer
+            , codecChainSync
+            , ChainSync.chainSyncClientPeer (client var)
+            )
 
     client var = chainSyncClient var (controlledClient _foo)
 
@@ -123,139 +166,148 @@ clientChainSync peerName peerPort = withIOManager $ \iocp -> do
 -- https://github.com/intersectmbo/ouroboros-network/issues/575
 maximumMiniProtocolLimits :: MiniProtocolLimits
 maximumMiniProtocolLimits =
-  MiniProtocolLimits
-    { maximumIngressQueue = maxBound
-    }
+    MiniProtocolLimits
+        { maximumIngressQueue = maxBound
+        }
 
 --
 -- Chain sync demo
 --
 
-demoProtocol2 ::
-  -- | chainSync
-  RunMiniProtocolWithMinimalCtx appType addr bytes m a b ->
-  OuroborosApplicationWithMinimalCtx appType addr bytes m a b
+demoProtocol2
+    :: RunMiniProtocolWithMinimalCtx appType addr bytes m a b
+    -- ^ chainSync
+    -> OuroborosApplicationWithMinimalCtx appType addr bytes m a b
 demoProtocol2 chainSync =
-  OuroborosApplication
-    [ MiniProtocol
-        { miniProtocolNum = MiniProtocolNum 2,
-          miniProtocolStart = StartOnDemand,
-          miniProtocolLimits = maximumMiniProtocolLimits,
-          miniProtocolRun = chainSync
-        }
-    ]
+    OuroborosApplication
+        [ MiniProtocol
+            { miniProtocolNum = MiniProtocolNum 2
+            , miniProtocolStart = StartOnDemand
+            , miniProtocolLimits = maximumMiniProtocolLimits
+            , miniProtocolRun = chainSync
+            }
+        ]
 
 data Client header point tip m t = Client
-  { rollbackward :: point -> tip -> m (Either t (Client header point tip m t)),
-    rollforward :: header -> m (Either t (Client header point tip m t)),
-    points :: [point] -> m (Either t (Client header point tip m t))
-  }
+    { rollbackward
+        :: point
+        -> tip
+        -> m (Either t (Client header point tip m t))
+    , rollforward :: header -> m (Either t (Client header point tip m t))
+    , points :: [point] -> m (Either t (Client header point tip m t))
+    }
 
-controlledClient ::
-  (MonadSTM m) =>
-  ControlMessageSTM m ->
-  Client header point tip m ()
+controlledClient
+    :: (MonadSTM m)
+    => ControlMessageSTM m
+    -> Client header point tip m ()
 controlledClient controlMessageSTM = go
   where
     go =
-      Client
-        { rollbackward = \_ _ -> do
-            ctrl <- atomically controlMessageSTM
-            case ctrl of
-              Continue -> pure (Right go)
-              Quiesce -> error "Ouroboros.Network.Protocol.ChainSync.Examples.controlledClient: unexpected Quiesce"
-              Terminate -> pure (Left ()),
-          rollforward = \_ -> do
-            ctrl <- atomically controlMessageSTM
-            case ctrl of
-              Continue -> pure (Right go)
-              Quiesce -> error "Ouroboros.Network.Protocol.ChainSync.Examples.controlledClient: unexpected Quiesce"
-              Terminate -> pure (Left ()),
-          points = \_ -> pure (Right go)
-        }
+        Client
+            { rollbackward = \_ _ -> do
+                ctrl <- atomically controlMessageSTM
+                case ctrl of
+                    Continue -> pure (Right go)
+                    Quiesce ->
+                        error
+                            "Ouroboros.Network.Protocol.ChainSync.Examples.controlledClient: unexpected Quiesce"
+                    Terminate -> pure (Left ())
+            , rollforward = \_ -> do
+                ctrl <- atomically controlMessageSTM
+                case ctrl of
+                    Continue -> pure (Right go)
+                    Quiesce ->
+                        error
+                            "Ouroboros.Network.Protocol.ChainSync.Examples.controlledClient: unexpected Quiesce"
+                    Terminate -> pure (Left ())
+            , points = \_ -> pure (Right go)
+            }
 
-chainSyncClient ::
-  forall header block tip m a.
-  ( HasHeader header,
-    HasHeader block,
-    HeaderHash header ~ HeaderHash block,
-    MonadSTM m
-  ) =>
-  StrictTVar m (Chain header) ->
-  Client header (Point block) tip m a ->
-  ChainSyncClient header (Point block) tip m a
+chainSyncClient
+    :: forall header block tip m a
+     . ( HasHeader header
+       , HeaderHash header ~ HeaderHash block
+       , MonadSTM m
+       )
+    => StrictTVar m (Chain header)
+    -> Client header (Point block) tip m a
+    -> ChainSyncClient header (Point block) tip m a
 chainSyncClient chainvar client =
-  ChainSyncClient $
-    either SendMsgDone initialise <$> getChainPoints
+    ChainSyncClient
+        $ either SendMsgDone initialise <$> getChainPoints
   where
-    initialise ::
-      ([Point block], Client header (Point block) tip m a) ->
-      ClientStIdle header (Point block) tip m a
+    initialise
+        :: ([Point block], Client header (Point block) tip m a)
+        -> ClientStIdle header (Point block) tip m a
     initialise (points, client') =
-      SendMsgFindIntersect points $
-        -- In this consumer example, we do not care about whether the server
-        -- found an intersection or not. If not, we'll just sync from genesis.
-        --
-        -- Alternative policies here include:
-        --  iteratively finding the best intersection
-        --  rejecting the server if there is no intersection in the last K blocks
-        --
-        ClientStIntersect
-          { recvMsgIntersectFound = \_ _ -> ChainSyncClient (return (requestNext client')),
-            recvMsgIntersectNotFound = \_ -> ChainSyncClient (return (requestNext client'))
-          }
+        SendMsgFindIntersect points
+            $
+            -- In this consumer example, we do not care about whether the server
+            -- found an intersection or not. If not, we'll just sync from genesis.
+            --
+            -- Alternative policies here include:
+            --  iteratively finding the best intersection
+            --  rejecting the server if there is no intersection in the last K blocks
+            --
+            ClientStIntersect
+                { recvMsgIntersectFound = \_ _ -> ChainSyncClient (return (requestNext client'))
+                , recvMsgIntersectNotFound = \_ -> ChainSyncClient (return (requestNext client'))
+                }
 
-    requestNext ::
-      Client header (Point block) tip m a ->
-      ClientStIdle header (Point block) tip m a
+    requestNext
+        :: Client header (Point block) tip m a
+        -> ClientStIdle header (Point block) tip m a
     requestNext client' =
-      SendMsgRequestNext
-        -- We have the opportunity to do something when receiving
-        -- MsgAwaitReply. In this example we don't take up that opportunity.
-        (pure ())
-        (handleNext client')
+        SendMsgRequestNext
+            -- We have the opportunity to do something when receiving
+            -- MsgAwaitReply. In this example we don't take up that opportunity.
+            (pure ())
+            (handleNext client')
 
-    handleNext ::
-      Client header (Point block) tip m a ->
-      ClientStNext header (Point block) tip m a
+    handleNext
+        :: Client header (Point block) tip m a
+        -> ClientStNext header (Point block) tip m a
     handleNext client' =
-      ClientStNext
-        { recvMsgRollForward = \header _tip -> ChainSyncClient $ do
-            addBlock header
-            choice <- rollforward client' header
-            pure $ case choice of
-              Left a -> SendMsgDone a
-              Right client'' -> requestNext client'',
-          recvMsgRollBackward = \pIntersect tip -> ChainSyncClient $ do
-            rollback pIntersect
-            choice <- rollbackward client' pIntersect tip
-            pure $ case choice of
-              Left a -> SendMsgDone a
-              Right client'' -> requestNext client''
-        }
+        ClientStNext
+            { recvMsgRollForward = \header _tip -> ChainSyncClient $ do
+                addBlock header
+                choice <- rollforward client' header
+                pure $ case choice of
+                    Left a -> SendMsgDone a
+                    Right client'' -> requestNext client''
+            , recvMsgRollBackward = \pIntersect tip -> ChainSyncClient $ do
+                rollback pIntersect
+                choice <- rollbackward client' pIntersect tip
+                pure $ case choice of
+                    Left a -> SendMsgDone a
+                    Right client'' -> requestNext client''
+            }
 
-    getChainPoints :: m (Either a ([Point block], Client header (Point block) tip m a))
+    getChainPoints
+        :: m (Either a ([Point block], Client header (Point block) tip m a))
     getChainPoints = do
-      pts <- Chain.selectPoints recentOffsets <$> atomically (readTVar chainvar)
-      choice <- points client (fmap castPoint pts)
-      pure $ case choice of
-        Left a -> Left a
-        Right client' -> Right (fmap castPoint pts, client')
+        pts <-
+            Chain.selectPoints recentOffsets <$> readTVarIO chainvar
+        choice <- points client (fmap castPoint pts)
+        pure $ case choice of
+            Left a -> Left a
+            Right client' -> Right (fmap castPoint pts, client')
 
     addBlock :: header -> m ()
     addBlock b = atomically $ do
-      chain <- readTVar chainvar
-      let !chain' = Chain.addBlock b chain
-      writeTVar chainvar chain'
+        chain <- readTVar chainvar
+        let !chain' = Chain.addBlock b chain
+        writeTVar chainvar chain'
 
     rollback :: Point block -> m ()
     rollback p = atomically $ do
-      chain <- readTVar chainvar
-      -- TODO: handle rollback failure
-      let !chain' = case Chain.rollback (castPoint p) chain of
-            Just a -> a
-            Nothing -> error "out of scope rollback"
-      writeTVar chainvar chain'
+        chain <- readTVar chainvar
+        -- TODO: handle rollback failure
+        let !chain' = case Chain.rollback (castPoint p) chain of
+                Just a -> a
+                Nothing -> error "out of scope rollback"
+        writeTVar chainvar chain'
 
 -- chainSyncClient ::
 --   ControlMessageSTM IO ->
@@ -360,24 +412,24 @@ chainSyncClient chainvar client =
 --               _                   -> True
 -- -}
 
-codecChainSync ::
-  ( CBOR.Serialise block,
-    CBOR.Serialise point,
-    CBOR.Serialise tip
-  ) =>
-  Codec
-    (ChainSync.ChainSync block point tip)
-    CBOR.DeserialiseFailure
-    IO
-    LBS.ByteString
+codecChainSync
+    :: ( CBOR.Serialise block
+       , CBOR.Serialise point
+       , CBOR.Serialise tip
+       )
+    => Codec
+        (ChainSync.ChainSync block point tip)
+        CBOR.DeserialiseFailure
+        IO
+        LBS.ByteString
 codecChainSync =
-  ChainSync.codecChainSync
-    CBOR.encode
-    CBOR.decode
-    CBOR.encode
-    CBOR.decode
-    CBOR.encode
-    CBOR.decode
+    ChainSync.codecChainSync
+        CBOR.encode
+        CBOR.decode
+        CBOR.encode
+        CBOR.decode
+        CBOR.encode
+        CBOR.decode
 
 -- genesisAnchoredFragment :: AF.AnchoredFragment BlockHeader
 -- genesisAnchoredFragment = AF.Empty AF.AnchorGenesis

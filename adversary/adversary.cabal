@@ -10,58 +10,73 @@ build-type:      Simple
 extra-doc-files: CHANGELOG.md
 
 common settings
-    ghc-options: -Wall
-    default-language:   Haskell2010
+  ghc-options:
+    -Wall -Wunused-imports -Wunused-packages -Wmissing-export-lists
+    -Wname-shadowing -Wdeferred-out-of-scope-variables
+    -Wpartial-type-signatures -Wredundant-constraints
+
+  default-extensions:
+    BangPatterns
+    DeriveAnyClass
+    DeriveGeneric
+    DerivingStrategies
+    DuplicateRecordFields
+    FlexibleContexts
+    FlexibleInstances
+    ImportQualifiedPost
+    LambdaCase
+    NamedFieldPuns
+    OverloadedStrings
+    RecordWildCards
+    ScopedTypeVariables
+    TypeApplications
+    TypeFamilies
+    TypeOperators
 
 library
-    import: settings
-    hs-source-dirs:   src
-    build-depends:    base
-                    , aeson
-                    , text
+  import:          settings
+  hs-source-dirs:  src
+  build-depends:
+    , aeson
+    , base
+    , bytestring
+    , contra-tracer
+    , io-classes:strict-stm
+    , network
+    , ouroboros-network
+    , ouroboros-network-api
+    , ouroboros-network-framework
+    , ouroboros-network-mock
+    , ouroboros-network-protocols
+    , serialise
+    , text
+    , typed-protocols
 
-                    , async
-                    , bytestring
-                    , containers
-                    , contra-tracer
-                    , directory
-                    , infinite-list
-                    , io-classes:{si-timers, strict-stm}
-                    , network
-                    , network-mux
-                    , optparse-applicative
-                    , ouroboros-network:{ouroboros-network, cardano-diffusion}
-                    , ouroboros-network-api
-                    , ouroboros-network-framework
-                    , ouroboros-network-mock
-                    , ouroboros-network-protocols
-                    , random
-                    , serialise
-                    , typed-protocols
-
-    exposed-modules:  Adversary
-    other-modules:    Adversary.ChainSync
+  exposed-modules: Adversary
+  other-modules:
+    Adversary.ChainSync
+    Adversary.ChainSyncOld
 
 executable adversary
-    import:           settings
-    main-is:          Main.hs
-    build-depends:    base, adversary
-    hs-source-dirs:   app
+  import:         settings
+  main-is:        Main.hs
+  build-depends:
+    , adversary
+    , base
+
+  hs-source-dirs: app
 
 test-suite adversary-test
-    import:           settings
-    other-modules:    AdversarySpec
-    type:             exitcode-stdio-1.0
+  import:             settings
+  other-modules:      AdversarySpec
+  type:               exitcode-stdio-1.0
+  hs-source-dirs:     test
+  main-is:            Main.hs
+  build-depends:
+    , adversary
+    , aeson
+    , base
+    , hspec
+    , QuickCheck
 
-    hs-source-dirs:   test
-
-    main-is:          Main.hs
-
-    build-depends:
-      , base
-      , aeson
-      , hspec
-      , QuickCheck
-      , adversary
-
-    build-tool-depends: hspec-discover:hspec-discover
+  build-tool-depends: hspec-discover:hspec-discover

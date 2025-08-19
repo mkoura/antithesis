@@ -54,10 +54,6 @@
             ];
             inherit system;
           };
-          rewrite-libs = import ./CI/rewrite-libs/rewrite-libs.nix {
-            inherit system;
-            inherit (inputs) nixpkgs flake-utils haskellNix;
-          };
           project = import ./nix/project.nix {
             indexState = "2025-05-07T00:00:00Z";
             inherit CHaP;
@@ -65,12 +61,9 @@
             inherit cardano-cli;
           };
 
-          fullPackages = lib.mergeAttrsList [
-            project.packages
-          ];
+          fullPackages = lib.mergeAttrsList [ project.packages ];
 
         in {
-
           packages = fullPackages // { default = project.packages.adversary; };
           inherit (project) devShells;
         };

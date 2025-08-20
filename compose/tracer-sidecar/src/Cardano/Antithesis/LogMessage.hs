@@ -46,7 +46,10 @@ data LogMessageData
     | OtherLogMessageData
         { originalObject :: Value
         }
-    deriving (Show, Generic)
+    | ServerError
+        { reason :: Text
+        }
+    deriving (Show, Generic, Eq)
 
 -- | Details of the new tip selection view.
 data NewTipSelectView = NewTipSelectView
@@ -57,16 +60,20 @@ data NewTipSelectView = NewTipSelectView
     , slotNo :: Int
     , tieBreakVRF :: Text
     }
-    deriving (Show, Generic, FromJSON)
+    deriving (Show, Generic, FromJSON, Eq)
 
 instance FromJSON LogMessageData where
     parseJSON = withObject "LogMessageData" $ \o -> do
-        (tag :: Maybe Text) <- o .:? "kind"
-        case tag of
+        (kind :: Maybe Text) <- o .:? "kind"
+
+        case kind of
             Just "AddedToCurrentChain" ->
                 AddedToCurrentChain
                     <$> o .: "newTipSelectView"
                     <*> o .: "newtip"
+            Just "ServerError" ->
+                ServerError
+                    <$> o .: "reason"
             -- Fallback: capture the raw object for unknown tags
             _ ->
                 pure $ OtherLogMessageData $ Object o

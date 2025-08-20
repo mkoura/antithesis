@@ -16,8 +16,8 @@ module Cardano.Antithesis.Sidecar
 where
 
 import Cardano.Antithesis.LogMessage
-    ( LogMessage (LogMessage, details, host, json, kind, sev)
-    , LogMessageData (AddedToCurrentChain, newtip)
+    ( LogMessage (..)
+    , LogMessageData (..)
     , Severity (Critical)
     )
 import Cardano.Antithesis.Sdk
@@ -76,8 +76,8 @@ mkSpec nPools = do
         sometimes ("Any " <> pool <> " log") $ \_s LogMessage{host} ->
             fromJust (T.stripSuffix ".example" host) == pool
 
-    alwaysOrUnreachable "no critical logs" $ \_s LogMessage{sev} ->
-        sev < Critical
+    alwaysOrUnreachable "no critical logs" $ \_s msg@LogMessage{sev} ->
+        justANodeKill msg || sev < Critical
 
     observe forwardAddedToCurrentChain
   where
@@ -88,7 +88,7 @@ mkSpec nPools = do
             { host
             , details = AddedToCurrentChain{newtip}
             } =
-            (: [])
+            pure
                 $ StdOut
                 $ unwords
                     [ T.unpack host
@@ -97,6 +97,11 @@ mkSpec nPools = do
                     , "to current chain"
                     ]
     forwardAddedToCurrentChain _ _ = []
+
+justANodeKill :: LogMessage -> Bool
+justANodeKill LogMessage{ns, details} =
+    "Net.Server.Remote.Error" == ns
+        && details == ServerError{reason = "AsyncCancelled"}
 
 -- State -----------------------------------------------------------------------
 

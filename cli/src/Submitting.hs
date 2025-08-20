@@ -76,6 +76,7 @@ import Control.Monad (void)
 import Control.Monad.Catch (MonadCatch (..))
 import Control.Monad.IO.Class (MonadIO (..))
 import Core.Types.Basic (Address (..), Owner (..))
+import Core.Types.Mnemonics
 import Core.Types.Tx
     ( SignTxError (..)
     , SignedTx (..)
@@ -84,7 +85,9 @@ import Core.Types.Tx
     , WithTxHash (WithTxHash)
     , WithUnsignedTx (..)
     )
-import Core.Types.Wallet (Mnemonics (..), Wallet (..))
+import Core.Types.Wallet
+    ( Wallet (..)
+    )
 import Data.Aeson
     ( encode
     )
@@ -159,10 +162,13 @@ readWallet
     -> Either WalletError Wallet
 readWallet (ClearText mnemonics) = do
     walletFromMnemonic $ T.words mnemonics
+readWallet (Decryptable mnemonics _passphrase) =
+    walletFromMnemonic $ T.words mnemonics
 
 writeWallet :: FilePath -> [Text] -> IO ()
 writeWallet walletFile mnemonicWords = do
-    let mnemonics = ClearText $ T.unwords mnemonicWords
+    let mnemonics :: Mnemonics =
+            ClearText $ T.unwords mnemonicWords
     BL.writeFile walletFile $ encode mnemonics
 
 walletFromMnemonic :: [Text] -> Either WalletError Wallet

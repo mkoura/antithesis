@@ -38,7 +38,7 @@ import Control.Lens
 import Core.Types.Basic
     ( Commit (..)
     , Directory (..)
-    , FileName
+    , FileName (..)
     , Platform (Platform)
     , PublicKeyHash
     , Repository (..)
@@ -53,7 +53,10 @@ import Core.Types.Fact
     , parseFacts
     , toJSFact
     )
+import Crypto.PubKey.Ed25519 qualified as Ed25519
 import Data.ByteString (ByteString)
+import Data.ByteString.Lazy.Char8 qualified as BL
+import Data.List qualified as L
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import Lib.GitHub
@@ -96,11 +99,6 @@ import Validation.DownloadFile
     )
 import Validation.RegisterRole (RepositoryRoleFailure (..))
 import Validation.RegisterUser (analyzeKeys)
-
-import Core.Types.Basic (FileName (..))
-import Crypto.PubKey.Ed25519 qualified as Ed25519
-import Data.ByteString.Lazy.Char8 qualified as BL
-import Data.List qualified as L
 
 jsFactRole :: Monad m => TestRun -> m JSFact
 jsFactRole testRun =

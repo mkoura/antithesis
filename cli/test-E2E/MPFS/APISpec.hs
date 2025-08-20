@@ -101,6 +101,16 @@ import Text.JSON.Canonical
     , fromJSString
     )
 import Validation (mkValidation)
+import Core.Types.Mnemonics (Mnemonics(..))
+
+newtype UnencryptedWallet = UnencryptedWallet
+    { _unencryptedMenmonics :: Text
+    }
+
+instance Aeson.FromJSON UnencryptedWallet where
+    parseJSON = Aeson.withObject "UnencryptedWallet" $ \v -> do
+        UnencryptedWallet <$> v Aeson..: "mnemonics"
+
 
 mpfsPolicyId :: String
 mpfsPolicyId = "c1e392ee7da9415f946de9d2aef9607322b47d6e84e8142ef0c340bf"
@@ -112,7 +122,7 @@ loadEnvWallet envVar = do
         Just file -> do
             content <- B.readFile file
             case Aeson.decodeStrict content of
-                Just value -> case readWallet value of
+                Just (UnencryptedWallet mnemonics) -> case readWallet $ ClearText mnemonics of
                     Left err ->
                         error
                             $ "Failed to read wallet from file "

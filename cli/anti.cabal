@@ -96,6 +96,7 @@ library
     Core.Types.CageDatum
     Core.Types.Change
     Core.Types.Fact
+    Core.Types.Mnemonics
     Core.Types.MPFS
     Core.Types.Operation
     Core.Types.Tx

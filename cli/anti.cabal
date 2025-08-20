@@ -91,6 +91,7 @@ library
     App
     Cli
     Core.Context
+    Core.Encryption
     Core.Options
     Core.Types.Basic
     Core.Types.CageDatum
@@ -282,6 +283,7 @@ test-suite anti-unit-test
 
   -- Modules included in this executable, other than Main.
   other-modules:
+    Core.EncryptionSpec
     Lib.JSON.Canonical.AesonSpec
     Lib.JSON.Canonical.ExtraSpec
     Lib.SSH.KeySpec

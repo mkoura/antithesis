@@ -14,6 +14,8 @@ x-cardano-node: &cardano-node
       --port 3001
       --host-addr 0.0.0.0
       +RTS -N -A16m -qg -qb -RTS
+  restart:
+    always
   depends_on:
       configurator:
         condition: service_completed_successfully

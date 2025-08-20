@@ -1,5 +1,6 @@
 module Core.Types.Mnemonics
     ( Mnemonics (..)
+    , MnemonicsPhase (..)
     ) where
 
 import Data.Aeson
@@ -9,12 +10,14 @@ import Data.Aeson
     )
 import Data.Text (Text)
 
-data Mnemonics where
-    ClearText :: Text -> Mnemonics
-    Decryptable :: Text -> Text -> Mnemonics
+data MnemonicsPhase = EncryptedS | DecryptedS
 
-instance ToJSON Mnemonics where
+data Mnemonics phase where
+    ClearText :: Text -> Mnemonics 'DecryptedS
+    Encrypted :: Text -> Mnemonics 'EncryptedS
+
+instance ToJSON (Mnemonics phase) where
     toJSON (ClearText mnemonics) =
         object ["mnemonics" .= mnemonics]
-    toJSON (Decryptable mnemonics _) =
+    toJSON (Encrypted mnemonics) =
         object ["encryptedMnemonics" .= mnemonics]

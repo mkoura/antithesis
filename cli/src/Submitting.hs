@@ -75,6 +75,7 @@ import Control.Lens ((%~))
 import Control.Monad (void)
 import Control.Monad.Catch (MonadCatch (..))
 import Control.Monad.IO.Class (MonadIO (..))
+import Core.Encryption (encryptText)
 import Core.Types.Basic (Address (..), Owner (..))
 import Core.Types.Mnemonics
 import Core.Types.Tx
@@ -158,18 +159,22 @@ data WalletError
 instance Exception WalletError
 
 readWallet
-    :: Mnemonics
+    :: Mnemonics 'DecryptedS
     -> Either WalletError Wallet
 readWallet (ClearText mnemonics) = do
     walletFromMnemonic $ T.words mnemonics
-readWallet (Decryptable mnemonics _passphrase) =
-    walletFromMnemonic $ T.words mnemonics
 
-writeWallet :: FilePath -> [Text] -> IO ()
-writeWallet walletFile mnemonicWords = do
-    let mnemonics :: Mnemonics =
-            ClearText $ T.unwords mnemonicWords
-    BL.writeFile walletFile $ encode mnemonics
+writeWallet :: FilePath -> [Text] -> Maybe Text -> IO ()
+writeWallet walletFile mnemonicWords passphrase = do
+    case passphrase of
+        Just p -> do
+            encrypted <- encryptText p 10 $ T.unwords mnemonicWords
+            BL.writeFile walletFile $ encode $ Encrypted encrypted
+        Nothing ->
+            BL.writeFile walletFile
+                $ encode
+                $ ClearText
+                $ T.unwords mnemonicWords
 
 walletFromMnemonic :: [Text] -> Either WalletError Wallet
 walletFromMnemonic mnemonicWords = do

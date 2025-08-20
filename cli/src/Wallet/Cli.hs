@@ -8,6 +8,7 @@ module Wallet.Cli
 import Control.Monad (replicateM)
 import Core.Types.Basic (Address, Owner)
 import Core.Types.Wallet (Wallet (..))
+import Data.Text (Text)
 import Lib.JSON.Canonical.Extra (object, (.=))
 import Submitting (walletFromMnemonic, writeWallet)
 import System.Random (randomRIO)
@@ -40,7 +41,10 @@ instance Monad m => ToJSON m WalletInfo where
 
 data WalletCommand a where
     Info :: Wallet -> WalletCommand (Either WalletError WalletInfo)
-    Create :: FilePath -> WalletCommand (Either WalletError WalletInfo)
+    Create
+        :: FilePath
+        -> Maybe Text
+        -> WalletCommand (Either WalletError WalletInfo)
 
 deriving instance Show (WalletCommand a)
 deriving instance Eq (WalletCommand a)
@@ -53,12 +57,12 @@ walletCmd (Info wallet) =
             { address = wallet.address
             , owner = wallet.owner
             }
-walletCmd (Create walletFile) = do
+walletCmd (Create walletFile passphrase) = do
     w12 <- replicateM 12 $ element englishWords
     case walletFromMnemonic w12 of
-        Left _e -> walletCmd (Create walletFile)
+        Left _e -> walletCmd (Create walletFile passphrase)
         Right wallet -> do
-            writeWallet walletFile w12
+            writeWallet walletFile w12 passphrase
             return
                 $ Right
                 $ WalletInfo

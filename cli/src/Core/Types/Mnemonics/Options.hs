@@ -1,8 +1,10 @@
 module Core.Types.Mnemonics.Options
     ( mnemonicsParser
+    , walletPassphraseCommon
     ) where
 
-import Core.Types.Mnemonics (Mnemonics (..))
+import Core.Encryption (decryptText)
+import Core.Types.Mnemonics (Mnemonics (..), MnemonicsPhase (..))
 import Data.Aeson
     ( Object
     )
@@ -11,11 +13,13 @@ import Data.ByteString.Lazy qualified as BL
 import Data.Text (Text)
 import OptEnvConf
     ( Alternative ((<|>))
+    , Builder
     , Parser
     , checkMapIO
     , conf
     , env
     , help
+    , mapIO
     , metavar
     , reader
     , setting
@@ -38,16 +42,18 @@ mnemonicsEncryptedOption =
         , conf "encryptedMnemonics"
         , metavar "ENCRYPTED_MNEMONICS"
         ]
-
+walletPassphraseCommon :: [Builder a]
+walletPassphraseCommon =
+    [ env "ANTI_WALLET_PASSPHRASE"
+    , metavar "PASSPHRASE"
+    , help "The passphrase for the encrypted mnemonics"
+    ]
 walletPassphraseOption
-    :: Parser Text
+    :: Parser (Text -> IO Text)
 walletPassphraseOption =
-    setting
-        [ env "ANTI_WALLET_PASSPHRASE"
-        , metavar "PASSPHRASE"
-        , help "The passphrase for the encrypted mnemonics"
-        , reader str
-        ]
+    fmap decryptText
+        $ setting
+        $ reader str : walletPassphraseCommon
 
 walletFileOption :: Parser FilePath
 walletFileOption =
@@ -58,10 +64,11 @@ walletFileOption =
         , reader str
         ]
 
-coreMnemonicsParser :: Parser Mnemonics
+coreMnemonicsParser :: Parser (Mnemonics 'DecryptedS)
 coreMnemonicsParser =
-    ClearText <$> mnemonicsClearTextOption
-        <|> Decryptable <$> mnemonicsEncryptedOption <*> walletPassphraseOption
+    fmap ClearText
+        $ mnemonicsClearTextOption
+        <|> mapIO id (walletPassphraseOption <*> mnemonicsEncryptedOption)
 
 mnemonicsObject :: Parser Object
 mnemonicsObject =
@@ -69,5 +76,5 @@ mnemonicsObject =
         (fmap Aeson.eitherDecode . BL.readFile)
         walletFileOption
 
-mnemonicsParser :: Parser Mnemonics
+mnemonicsParser :: Parser (Mnemonics 'DecryptedS)
 mnemonicsParser = withConfig (Just <$> mnemonicsObject) coreMnemonicsParser

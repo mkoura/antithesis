@@ -97,6 +97,7 @@ library
     Core.Types.Change
     Core.Types.Fact
     Core.Types.Mnemonics
+    Core.Types.Mnemonics.Options
     Core.Types.MPFS
     Core.Types.Operation
     Core.Types.Tx

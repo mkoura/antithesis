@@ -38,6 +38,7 @@ import Core.Types.Basic
     )
 import Core.Types.CageDatum (CageDatum (..))
 import Core.Types.Change (Change (..), Key (..))
+import Core.Types.Mnemonics (Mnemonics (..))
 import Core.Types.Operation (Op (..), Operation (..))
 import Core.Types.Tx
     ( TxHash
@@ -101,7 +102,6 @@ import Text.JSON.Canonical
     , fromJSString
     )
 import Validation (mkValidation)
-import Core.Types.Mnemonics (Mnemonics(..))
 
 newtype UnencryptedWallet = UnencryptedWallet
     { _unencryptedMenmonics :: Text
@@ -110,7 +110,6 @@ newtype UnencryptedWallet = UnencryptedWallet
 instance Aeson.FromJSON UnencryptedWallet where
     parseJSON = Aeson.withObject "UnencryptedWallet" $ \v -> do
         UnencryptedWallet <$> v Aeson..: "mnemonics"
-
 
 mpfsPolicyId :: String
 mpfsPolicyId = "c1e392ee7da9415f946de9d2aef9607322b47d6e84e8142ef0c340bf"

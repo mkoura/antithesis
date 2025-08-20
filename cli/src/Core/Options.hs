@@ -29,7 +29,7 @@ import Core.Types.Basic
     , Try (..)
     , Username (..)
     )
-import Core.Types.Mnemonics (mnemonicsParser)
+import Core.Types.Mnemonics.Options (mnemonicsParser)
 import Core.Types.Wallet
     ( Wallet
     )

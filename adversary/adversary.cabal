@@ -41,16 +41,18 @@ library
     , base
     , bytestring
     , contra-tracer
-    , io-classes:strict-stm
+    , io-classes
+    , strict-stm
     , network
-    , ouroboros-network
-    , ouroboros-network-api
-    , ouroboros-network-framework
     , ouroboros-network-mock
+    , ouroboros-network-api
+    , ouroboros-network
+    , ouroboros-network-framework
     , ouroboros-network-protocols
+    , ouroboros-consensus-cardano ^>= 0.25
+    , typed-protocols
     , serialise
     , text
-    , typed-protocols
 
   exposed-modules: Adversary
   other-modules:

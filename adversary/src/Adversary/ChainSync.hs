@@ -12,6 +12,9 @@ import Control.Concurrent.Class.MonadSTM.Strict
     , readTVarIO
     , writeTVar
     )
+import Ouroboros.Consensus.Cardano
+    ( CardanoBlock
+    )
 import Control.Tracer (Contravariant (contramap), stdoutTracer)
 import Data.ByteString.Lazy qualified as LBS
 import Data.Functor (void)
@@ -72,13 +75,15 @@ import Ouroboros.Network.Protocol.ChainSync.Client
 import Ouroboros.Network.Protocol.ChainSync.Client qualified as ChainSync
 import Ouroboros.Network.Protocol.ChainSync.Codec qualified as ChainSync
 import Ouroboros.Network.Protocol.ChainSync.Type qualified as ChainSync
-import Ouroboros.Network.Protocol.Handshake
+import Ouroboros.Network.Protocol.Handshake.Version
     ( Acceptable (acceptableVersion)
     , Queryable (queryVersion)
-    , cborTermVersionDataCodec
+    , simpleSingletonVersions
+    )
+import Ouroboros.Network.Protocol.Handshake.Codec
+    ( cborTermVersionDataCodec
     , noTimeLimitsHandshake
     , nodeToNodeHandshakeCodec
-    , simpleSingletonVersions
     )
 import Ouroboros.Network.Snocket
     ( makeSocketBearer
@@ -104,7 +109,7 @@ clientChainSync
     -> IO ()
 clientChainSync peerName peerPort = withIOManager $ \iocp -> do
     AddrInfo{addrAddress} <- resolve
-    var <- newTVarIO Chain.Genesis
+    var <- newTVarIO (Chain.Genesis :: Chain CardanoBlock )
     void
         $ connectToNode
             (socketSnocket iocp)

@@ -56,9 +56,9 @@ nix build .#macos64.tarball
 ### Improving CLI
 
 ```bash
-source <(anti --bash-completion-script `which anti`)
+source <(anti --bash-completion-script "$(which anti)")
 antij(){ anti "$@" | jq .result; }
-complete -o filenames -F _anti antij
+complete -o filenames -F _opt_env_conf_completion_anti antij
 ```
 
 ### Environemnt variables
@@ -83,6 +83,13 @@ The anti command will read the wallet file from the `ANTI_WALLET_FILE` environme
 export ANTI_WALLET_FILE=wallet.json
 ```
 
+Optionally you can provide a passphrase to encrypt the mnemonic phrase in the wallet file:
+
+```bash
+read -s -p "Enter your wallet passphrase: " ANTI_WALLET_PASSPHRASE
+export ANTI_WALLET_PASSPHRASE
+```
+
 You can create a wallet file with the `anti wallet create` command:
 
 ```bash
@@ -95,8 +102,11 @@ It will fail to re-create the file if it already exists. You can review this wal
 anti wallet info
 ```
 
+Remember to read your wallet passphrase into the `ANTI_WALLET_PASSPHRASE` environment variable before running any command that requires the wallet.
+
 > Fund your wallet with some tAda tokens on preprod, for example using the [Cardano Testnet Faucet](https://docs.cardano.org/cardano-testnets/tools/faucet/).
 >
+
 ### Antithesis token
 
 This is the unique token that identifies the Antithesis access interface. You need to refer to it setting the `ANTI_TOKEN_ID` environment variable.

@@ -19,6 +19,7 @@ import Core.Types.Basic (RequestRefId, TokenId)
 import Core.Types.Tx (TxHash, WithTxHash (WithTxHash))
 import Core.Types.Wallet (Wallet (..))
 import Data.Functor ((<&>))
+import Data.Functor.Identity (Identity (..))
 import Data.List (find)
 import Lib.JSON.Canonical.Extra (object, (.=))
 import MPFS.API
@@ -30,6 +31,7 @@ import Oracle.Types
     , RequestZoo
     , Token (..)
     , TokenState (..)
+    , fmapMToken
     , requestZooRefId
     )
 import Oracle.Validate.Request
@@ -38,6 +40,7 @@ import Oracle.Validate.Request
 import Oracle.Validate.Types
     ( AValidationResult (..)
     , Validate
+    , ValidationResult
     , liftMaybe
     , mapFailure
     , notValidated
@@ -47,7 +50,6 @@ import Oracle.Validate.Types
 import Submitting (Submission (..))
 import Text.JSON.Canonical
     ( FromJSON (fromJSON)
-    , JSValue (..)
     , ToJSON (..)
     )
 
@@ -101,8 +103,18 @@ instance Monad m => ToJSON m TokenUpdateFailure where
         TokenUpdateNotRequestedFromTokenOwner ->
             toJSON ("Token update not requested from token owner" :: String)
 
+newtype TokenInfoFailure = TokenInfoTokenNotParsable TokenId
+    deriving (Show, Eq)
+
+instance Monad m => ToJSON m TokenInfoFailure where
+    toJSON (TokenInfoTokenNotParsable tk) =
+        object ["tokenNotParsable" .= tk]
+
 data TokenCommand a where
-    GetToken :: TokenId -> TokenCommand JSValue
+    GetToken
+        :: TokenId
+        -> TokenCommand
+            (AValidationResult TokenInfoFailure (Token WithValidation))
     BootToken :: Wallet -> TokenCommand (WithTxHash TokenId)
     UpdateToken
         :: TokenId
@@ -130,6 +142,19 @@ promoteFailure req =
             . TokenUpdateRequestValidationFailure
         )
 
+data WithValidation x = WithValidation
+    { validation :: ValidationResult RequestValidationFailure
+    , request :: x
+    }
+    deriving (Show, Eq)
+
+instance (Monad m, ToJSON m x) => ToJSON m (WithValidation x) where
+    toJSON (WithValidation mvalidation request) =
+        object
+            [ "validation" .= mvalidation
+            , "request" .= request
+            ]
+
 tokenCmdCore
     :: (MonadIO m, MonadMask m)
     => TokenCommand a
@@ -137,7 +162,20 @@ tokenCmdCore
 tokenCmdCore command = do
     mpfs <- askMpfs
     case command of
-        GetToken tk -> lift $ mpfsGetToken mpfs tk
+        GetToken tk -> do
+            validation <- askValidation $ Just tk
+            mconfig <- askConfig tk
+            lift $ runValidate $ do
+                mpendings <- lift $ fromJSON <$> mpfsGetToken mpfs tk
+                token <- liftMaybe (TokenInfoTokenNotParsable tk) mpendings
+                let oracle = tokenOwner $ tokenState token
+                    f (Identity req) = do
+                        r <-
+                            runValidate
+                                $ validateRequest oracle mconfig validation req
+                        pure $ WithValidation r req
+                lift $ fmapMToken f token
+        -- validateRequest oracle mconfig validation
         UpdateToken tk wallet wanted -> do
             Submission submit <- ($ wallet) <$> askSubmit
             validation <- askValidation $ Just tk
@@ -156,10 +194,10 @@ tokenCmdCore command = do
                     $ sequenceValidate
                     $ wanted
                     <&> \req -> do
-                        tokenRequest <-
+                        Identity tokenRequest <-
                             liftMaybe
                                 (TokenUpdateRequestValidation req TokenUpdateRequestNotFound)
-                                $ find ((== req) . requestZooRefId) requests
+                                $ find ((== req) . requestZooRefId . runIdentity) requests
                         promoteFailure tokenRequest
                             $ validateRequest oracle mconfig validation tokenRequest
                 WithTxHash txHash _ <- lift

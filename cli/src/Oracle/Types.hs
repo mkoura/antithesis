@@ -1,4 +1,5 @@
 {-# LANGUAGE StrictData #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Oracle.Types
     ( Request (..)
@@ -7,6 +8,8 @@ module Oracle.Types
     , RequestZoo (..)
     , requestZooRefId
     , RequestValidationFailure (..)
+    , fmapToken
+    , fmapMToken
     ) where
 
 import Control.Applicative (Alternative, (<|>))
@@ -14,6 +17,7 @@ import Core.Types.Basic (Owner, RequestRefId)
 import Core.Types.Change (Change (..))
 import Core.Types.Operation (Op (..), Operation (..))
 import Core.Types.Tx (Root)
+import Data.Functor.Identity (Identity)
 import Lib.JSON.Canonical.Extra (object, withObject, (.:), (.=))
 import Oracle.Config.Types (Config, ConfigKey)
 import Oracle.Validate.Requests.Config (ConfigFailure)
@@ -189,13 +193,34 @@ instance Monad m => ToJSON m RequestZoo where
     toJSON (UnknownDeleteRequest req) = toJSON req
     toJSON (UnknownUpdateRequest req) = toJSON req
 
-data Token = Token
+data Token r = Token
     { tokenRefId :: RequestRefId
     , tokenState :: TokenState
-    , tokenRequests :: [RequestZoo]
+    , tokenRequests :: [r RequestZoo]
     }
 
-instance Monad m => ToJSON m Token where
+fmapToken :: (r RequestZoo -> r' RequestZoo) -> Token r -> Token r'
+fmapToken f (Token refId state requests) =
+    Token
+        { tokenRefId = refId
+        , tokenState = state
+        , tokenRequests = f <$> requests
+        }
+
+fmapMToken
+    :: (Monad m)
+    => (r RequestZoo -> m (r' RequestZoo))
+    -> Token r
+    -> m (Token r')
+fmapMToken f (Token refId state requests) = do
+    requests' <- mapM f requests
+    pure
+        $ Token
+            { tokenRefId = refId
+            , tokenState = state
+            , tokenRequests = requests'
+            }
+instance (Monad m, ToJSON m (r RequestZoo)) => ToJSON m (Token r) where
     toJSON (Token refId state requests) =
         object
             [ "outputRefId" .= refId
@@ -205,7 +230,7 @@ instance Monad m => ToJSON m Token where
 
 instance
     (Alternative m, ReportSchemaErrors m)
-    => FromJSON m Token
+    => FromJSON m (Token Identity)
     where
     fromJSON = withObject "Token" $ \v -> do
         refId <- v .: "outputRefId"

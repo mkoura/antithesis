@@ -1,6 +1,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
+{-# OPTIONS_GHC -Wno-redundant-constraints #-}
 
 module Lib.JSON.Canonical.Extra
     ( getField
@@ -236,3 +237,9 @@ instance Applicative m => ToJSON m () where
 instance (ReportSchemaErrors m) => FromJSON m () where
     fromJSON JSNull = pure ()
     fromJSON v = expectedButGotValue "()" v
+
+instance (Monad m, ToJSON m a) => ToJSON m (Identity a) where
+    toJSON (Identity a) = toJSON a
+
+instance (ReportSchemaErrors m, FromJSON m a) => FromJSON m (Identity a) where
+    fromJSON v = Identity <$> fromJSON v

@@ -146,13 +146,18 @@ expectedGet1=$(
     cat <<EOF
 [
   {
-    "change": {
-      "key": "{\"platform\":\"github\",\"repository\":{\"organization\":\"cardano-foundation\",\"project\":\"hal-fixture-sin\"},\"type\":\"register-role\",\"user\":\"cfhal\"}",
-      "type": "insert",
-      "value": "null"
-    },
-    "outputRefId": "$outputRoleRef1",
-    "owner": $owner
+    "request": {
+        "change": {
+            "key": "{\"platform\":\"github\",\"repository\":{\"organization\":\"cardano-foundation\",\"project\":\"hal-fixture-sin\"},\"type\":\"register-role\",\"user\":\"cfhal\"}",
+            "operation": {
+                "type": "insert",
+                "value": "null"
+            }
+        },
+        "outputRefId": "1a56ff76fe4b87a98f89d7f8ac1f50e058ff3375a2d06d0b1026cf2082a863e6-0",
+        "owner": "8da87507ba0a8a3c67eaeb8ec768dee132ad8ecac6f526ac526f0c9f"
+        },
+    "validation": "validated"
   }
 ]
 EOF
@@ -160,7 +165,7 @@ EOF
 
 resultGet1=$(anti oracle token get | jq '.result.requests')
 
-if [[ "$(echo "$resultGet1" | jq -S 'sort_by(.outputRefId)')" != "$(echo "$expectedGet1" | jq -S 'sort_by(.outputRefId)')" ]]; then
+if [[ "$(echo "$resultGet1" | jq -S 'sort_by(.request.outputRefId)')" != "$(echo "$expectedGet1" | jq -S 'sort_by(.request.outputRefId)')" ]]; then
     emitMismatch 4 "get token requests" "$resultGet1" "$expectedGet1"
 fi
 
@@ -194,7 +199,7 @@ EOF
 
 resultGet2=$(anti oracle token get | jq '.result.requests')
 
-if [[ "$(echo "$resultGet2" | jq -S 'sort_by(.outputRefId)')" != "$(echo "$expectedGet2" | jq -S 'sort_by(.outputRefId)')" ]]; then
+if [[ "$(echo "$resultGet2" | jq -S 'sort_by(.request.outputRefId)')" != "$(echo "$expectedGet2" | jq -S 'sort_by(.request.outputRefId)')" ]]; then
     emitMismatch 6 "get token requests" "$resultGet2" "$expectedGet2"
 fi
 
@@ -313,6 +318,6 @@ EOF
 
 resultGet3=$(anti oracle token get | jq '.result.requests')
 
-if [[ "$(echo "$resultGet3" | jq -S 'sort_by(.outputRefId)')" != "$(echo "$expectedGet3" | jq -S 'sort_by(.outputRefId)')" ]]; then
+if [[ "$(echo "$resultGet3" | jq -S 'sort_by(.request.outputRefId)')" != "$(echo "$expectedGet3" | jq -S 'sort_by(.request.outputRefId)')" ]]; then
     emitMismatch 11 "get token requests" "$resultGet3" "$expectedGet3"
 fi

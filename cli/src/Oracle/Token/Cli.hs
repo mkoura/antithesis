@@ -17,7 +17,7 @@ import Core.Context
     )
 import Core.Types.Basic (RequestRefId, TokenId)
 import Core.Types.Tx (TxHash, WithTxHash (WithTxHash))
-import Core.Types.Wallet (Wallet)
+import Core.Types.Wallet (Wallet (..))
 import Data.Functor ((<&>))
 import Data.List (find)
 import Lib.JSON.Canonical.Extra (object, (.=))
@@ -83,6 +83,7 @@ data TokenUpdateFailure
     | TokenUpdateRequestValidations
         [TokenUpdateRequestValidation]
     | TokenUpdateConfigNotFound
+    | TokenUpdateNotRequestedFromTokenOwner
     deriving (Show, Eq)
 
 instance Exception TokenUpdateFailure
@@ -97,6 +98,8 @@ instance Monad m => ToJSON m TokenUpdateFailure where
             object ["tokenUpdateRequestValidations" .= validations]
         TokenUpdateConfigNotFound ->
             toJSON ("Token update config not available" :: String)
+        TokenUpdateNotRequestedFromTokenOwner ->
+            toJSON ("Token update not requested from token owner" :: String)
 
 data TokenCommand a where
     GetToken :: TokenId -> TokenCommand JSValue
@@ -145,6 +148,8 @@ tokenCmdCore command = do
                 token <- liftMaybe (TokenNotParsable tk) mpendings
                 let requests = tokenRequests token
                     oracle = tokenOwner $ tokenState token
+                when (owner wallet /= oracle)
+                    $ notValidated TokenUpdateNotRequestedFromTokenOwner
                 when (null requests) $ notValidated TokenUpdateOfNoRequests
                 void
                     $ mapFailure TokenUpdateRequestValidations

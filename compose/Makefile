@@ -6,7 +6,7 @@ description:="${testnet} run"
 duration:=1
 recipients:=antithesis@cardanofoundation.org
 registry:=ghcr.io/cardano-foundation/antithesis
-testnet:=
+testnet:=cardano_node_master
 url:=https://cardano.antithesis.com/api/v1/launch/cardano
 username:=cardano
 
@@ -72,12 +72,6 @@ push-shared:
 	docker push ${registry}/tracer-sidecar:latest
 	docker push ${registry}/configurator:latest
 
-build: TESTNET build-config build-compose
-
-build-compose: TESTNET ## Build cardano-node container
-	export INTERNAL_NETWORK=false ; \
-		cd testnets/${testnet} ; docker compose build
-
 build-config: TESTNET ## Build config container image
 	docker build \
 		--label "org.opencontainers.image.source=https://github.com/cardano-foundation/antithesis" \
@@ -92,7 +86,6 @@ push-config: TESTNET ## Push config container image
 	docker push ${registry}/config:latest
 
 up: TESTNET ## Start Run local Docker Compose
-
 	export INTERNAL_NETWORK=true ; \
 	cd testnets/${testnet} ; docker compose up --detach
 

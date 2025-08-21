@@ -1,6 +1,7 @@
 module Core.Types.Mnemonics.Options
     ( mnemonicsParser
     , walletPassphraseCommon
+    , walletFileOption
     ) where
 
 import Core.Encryption (decryptText)
@@ -60,7 +61,7 @@ walletFileOption =
     setting
         [ env "ANTI_WALLET_FILE"
         , metavar "FILEPATH"
-        , help "The file path to the wallet secrets"
+        , help "The file path to the wallet secrets mnemonics"
         , reader str
         ]
 

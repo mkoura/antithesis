@@ -5,20 +5,14 @@ module Wallet.Options
     ) where
 
 import Core.Options (walletOption)
-import Core.Types.Mnemonics.Options (walletPassphraseCommon)
+import Core.Types.Mnemonics.Options
+    ( walletFileOption
+    , walletPassphraseCommon
+    )
 import Data.Text (Text)
 import Lib.Box (Box (..))
 import OptEnvConf
 import Wallet.Cli (WalletCommand (..))
-
-walletFileOption :: Parser FilePath
-walletFileOption =
-    setting
-        [ help "File to store the wallet mnemonic"
-        , metavar "MNEMONICS"
-        , env "ANTI_WALLET_FILE"
-        , reader str
-        ]
 
 walletCommandParser :: Parser (Box WalletCommand)
 walletCommandParser =
@@ -32,8 +26,9 @@ walletCommandParser =
         , command
             "info"
             "Get the wallet information"
-            $ Box . Info
+            $ fmap Box . Info
                 <$> walletOption
+                <*> walletFileOption
         ]
 
 passphraseOption :: Parser (Maybe Text)

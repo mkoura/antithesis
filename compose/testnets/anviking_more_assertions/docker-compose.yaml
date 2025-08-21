@@ -53,11 +53,11 @@ services:
       <<: *env
       POOL_ID: "3"
 
-  s1:
+  sidecar:
     image: ${registry}${testnet}_sidecar:latest
     restart: on-failure
-    container_name: s1
-    hostname: s1.example
+    container_name: sidecar
+    hostname: sidecar.example
     environment:
       POOLS: "3"
   tracer:

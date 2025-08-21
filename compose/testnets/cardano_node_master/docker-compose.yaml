@@ -80,10 +80,10 @@ services:
       - p5-configs:/configs
       - tracer:/tracer
 
-  s1:
+  sidecar:
     image: ghcr.io/cardano-foundation/antithesis/sidecar:latest
-    container_name: s1
-    hostname: s1.example
+    container_name: sidecar
+    hostname: sidecar.example
     environment:
       POOLS: "5" # FIXME: could remove
 

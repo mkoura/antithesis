@@ -147,13 +147,13 @@ Docker and `make` are the only requirement to build and run your own testnets.
 - List all available scripts inside of the `sidecar` container
 
   ```
-  docker exec -ti s1 find /opt/composer/ -type f
+  docker exec -ti sidecar find /opt/composer/ -type f
   ```
 
 - Execute a script inside of the `sidecar` container
 
   ```
-  docker exec -ti s1 /opt/composer/convergence/eventually_converged.sh
+  docker exec -ti sidecar /opt/composer/convergence/eventually_converged.sh
   ```
 
 - Dump a specific file of container `p1`

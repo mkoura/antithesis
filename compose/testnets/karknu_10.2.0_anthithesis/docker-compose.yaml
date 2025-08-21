@@ -160,11 +160,11 @@ services:
       POOL_ID: "12"
       PEER_SHARING: "false"
 
-  s1:
+  sidecar:
     image: ${registry}${testnet}_sidecar:latest
     restart: on-failure
-    container_name: s1
-    hostname: s1.example
+    container_name: sidecar
+    hostname: sidecar.example
     environment:
       POOLS: "12"
 

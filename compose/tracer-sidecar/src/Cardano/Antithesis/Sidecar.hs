@@ -99,9 +99,8 @@ mkSpec nPools = do
     forwardAddedToCurrentChain _ _ = []
 
 justANodeKill :: LogMessage -> Bool
-justANodeKill LogMessage{ns, details} =
-    "Net.Server.Remote.Error" == ns
-        && details == ServerError{reason = "AsyncCancelled"}
+justANodeKill LogMessage{details} =
+    details == ServerError{reason = "AsyncCancelled"}
 
 -- State -----------------------------------------------------------------------
 

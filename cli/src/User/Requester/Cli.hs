@@ -5,7 +5,7 @@ module User.Requester.Cli
     , RequesterCommand (..)
     ) where
 
-import Control.Monad (void)
+import Control.Monad (forM, forM_, void)
 import Control.Monad.Catch (MonadMask)
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Trans.Class (lift)
@@ -16,13 +16,22 @@ import Core.Context
     , askSubmit
     , askValidation
     )
-import Core.Types.Basic (Duration, TokenId)
+import Core.Types.Basic
+    ( Directory (..)
+    , Duration
+    , FileName (..)
+    , Repository (..)
+    , TokenId
+    )
 import Core.Types.Change (Change (..), Key (..), deleteKey, insertKey)
 import Core.Types.Operation (Operation (..))
 import Core.Types.Tx (TxHash, WithTxHash (..))
 import Core.Types.Wallet (Wallet)
+import Data.Bifunctor (Bifunctor (..))
 import Data.ByteString.Lazy qualified as BL
 import Data.Functor (($>))
+import Data.Text.IO qualified as T
+import Lib.JSON.Canonical.Extra (object, (.=))
 import Lib.SSH.Private
     ( KeyAPI (..)
     , SSHClient (..)
@@ -53,7 +62,10 @@ import Oracle.Validate.Requests.TestRun.Create
 import Oracle.Validate.Types
     ( AValidationResult
     , liftMaybe
+    , mapFailure
     , runValidate
+    , sequenceValidate
+    , throwLeft
     )
 import Submitting (Submission (..))
 import Text.JSON.Canonical (ToJSON (..), renderCanonicalJSON)
@@ -64,6 +76,22 @@ import User.Types
     , TestRun (..)
     , TestRunState (..)
     )
+import Validation (Validation (..))
+import Validation.DownloadFile (DownloadedFileFailure)
+
+newtype GenerateAssetsFailure
+    = GenerateAssetsFailure [(FileName, DownloadedFileFailure)]
+
+instance Monad m => ToJSON m GenerateAssetsFailure where
+    toJSON (GenerateAssetsFailure failures) =
+        object
+            [
+                ( "generateAssetsFailure"
+                , mapM
+                    (\(FileName fn, err) -> object ["file" .= fn, "error" .= err])
+                    failures
+                )
+            ]
 
 data RequesterCommand a where
     RegisterUser
@@ -97,6 +125,13 @@ data RequesterCommand a where
                 CreateTestRunFailure
                 (WithTxHash (TestRunState PendingT))
             )
+    GenerateAssets
+        :: Directory
+        -> RequesterCommand
+            ( AValidationResult
+                GenerateAssetsFailure
+                ()
+            )
 
 deriving instance Show (RequesterCommand a)
 deriving instance Eq (RequesterCommand a)
@@ -122,6 +157,29 @@ requesterCmd command = do
                 sshClient
                 testRun
                 duration
+        GenerateAssets directory -> generateAssets directory
+
+generateAssets
+    :: MonadIO m
+    => Directory
+    -> WithContext m (AValidationResult GenerateAssetsFailure ())
+generateAssets (Directory targetDirectory) = do
+    Validation{githubGetFile} <- askValidation Nothing
+    lift $ runValidate $ do
+        downloads <- forM ["docker-compose.yaml", "README.md", "testnet.yaml"] $ \filename -> do
+            fmap (bimap (FileName filename,) (filename,))
+                $ lift
+                $ githubGetFile
+                    (Repository "cardano-foundation" "antithesis")
+                    Nothing
+                    (FileName $ "compose/testnets/cardano_node_master/" <> filename)
+        contents <-
+            mapFailure GenerateAssetsFailure
+                $ sequenceValidate
+                $ fmap (throwLeft id) downloads
+        forM_ contents $ \(filename, content) -> do
+            let filePath = targetDirectory <> "/" <> filename
+            liftIO $ T.writeFile filePath content
 
 createCommand
     :: (MonadIO m, MonadMask m)

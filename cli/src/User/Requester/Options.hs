@@ -8,6 +8,7 @@ module User.Requester.Options
 
 import Core.Options
     ( commitOption
+    , downloadAssetsDirectoryOption
     , durationOption
     , platformOption
     , pubkeyhashOption
@@ -117,6 +118,8 @@ requesterCommandParser =
             $ Box <$> addRoleOptions
         , command "unregister-role" "Remove a user from a repository"
             $ Box <$> removeRoleOptions
+        , command "generate-asssets" "Generate assets for a test run"
+            $ Box . GenerateAssets <$> downloadAssetsDirectoryOption
         ]
 
 sshClientOption

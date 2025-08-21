@@ -17,6 +17,8 @@ import Data.Text.Encoding qualified as T
 import Data.Yaml qualified as Yaml
 import GitHub (Auth)
 import Lib.GitHub (GetGithubFileFailure, githubGetFile)
+import Lib.JSON.Canonical.Extra (object, (.=))
+import Text.JSON.Canonical (ToJSON (..))
 import Text.MMark qualified as MMark
 
 data DownloadedFileFailure
@@ -24,6 +26,17 @@ data DownloadedFileFailure
     | DownloadedFileParseError String
     | DownloadedFileNotSupported
     deriving (Eq, Show)
+
+instance Monad m => ToJSON m DownloadedFileFailure where
+    toJSON (GithubGetFileError failure) =
+        object ["githubGetFileError" .= show failure]
+    toJSON (DownloadedFileParseError failure) =
+        object ["downloadedFileParseError" .= failure]
+    toJSON DownloadedFileNotSupported =
+        object
+            [ "downloadedFileNotSupported"
+                .= ("Only `md` and `yaml` files are supported" :: Text)
+            ]
 
 renderDownloadedFileFailure :: DownloadedFileFailure -> String
 renderDownloadedFileFailure = \case

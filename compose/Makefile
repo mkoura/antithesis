@@ -72,6 +72,9 @@ push-shared:
 	docker push ${registry}/tracer-sidecar:latest
 	docker push ${registry}/configurator:latest
 
+build-and-push-shared: build-shared
+	$(MAKE) push-shared
+
 build-config: TESTNET ## Build config container image
 	docker build \
 		--label "org.opencontainers.image.source=https://github.com/cardano-foundation/antithesis" \

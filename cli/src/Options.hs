@@ -60,6 +60,8 @@ commandParser =
             retractRequestOptions
         , command "facts" "Get token facts"
             $ fmap Box . GetFacts <$> mpfsClientOption <*> tokenIdOption
+        , command "token" "Get the token content"
+            $ fmap Box . GetToken <$> mpfsClientOption <*> tokenIdOption
         ]
 
 optionsParser :: Parser (Box Options)

@@ -31,7 +31,6 @@ import Oracle.Types
     , RequestZoo
     , Token (..)
     , TokenState (..)
-    , fmapMToken
     , requestZooRefId
     )
 import Oracle.Validate.Request
@@ -40,7 +39,6 @@ import Oracle.Validate.Request
 import Oracle.Validate.Types
     ( AValidationResult (..)
     , Validate
-    , ValidationResult
     , liftMaybe
     , mapFailure
     , notValidated
@@ -103,18 +101,7 @@ instance Monad m => ToJSON m TokenUpdateFailure where
         TokenUpdateNotRequestedFromTokenOwner ->
             toJSON ("Token update not requested from token owner" :: String)
 
-newtype TokenInfoFailure = TokenInfoTokenNotParsable TokenId
-    deriving (Show, Eq)
-
-instance Monad m => ToJSON m TokenInfoFailure where
-    toJSON (TokenInfoTokenNotParsable tk) =
-        object ["tokenNotParsable" .= tk]
-
 data TokenCommand a where
-    GetToken
-        :: TokenId
-        -> TokenCommand
-            (AValidationResult TokenInfoFailure (Token WithValidation))
     BootToken :: Wallet -> TokenCommand (WithTxHash TokenId)
     UpdateToken
         :: TokenId
@@ -142,19 +129,6 @@ promoteFailure req =
             . TokenUpdateRequestValidationFailure
         )
 
-data WithValidation x = WithValidation
-    { validation :: ValidationResult RequestValidationFailure
-    , request :: x
-    }
-    deriving (Show, Eq)
-
-instance (Monad m, ToJSON m x) => ToJSON m (WithValidation x) where
-    toJSON (WithValidation mvalidation request) =
-        object
-            [ "validation" .= mvalidation
-            , "request" .= request
-            ]
-
 tokenCmdCore
     :: (MonadIO m, MonadMask m)
     => TokenCommand a
@@ -162,19 +136,6 @@ tokenCmdCore
 tokenCmdCore command = do
     mpfs <- askMpfs
     case command of
-        GetToken tk -> do
-            validation <- askValidation $ Just tk
-            mconfig <- askConfig tk
-            lift $ runValidate $ do
-                mpendings <- lift $ fromJSON <$> mpfsGetToken mpfs tk
-                token <- liftMaybe (TokenInfoTokenNotParsable tk) mpendings
-                let oracle = tokenOwner $ tokenState token
-                    f (Identity req) = do
-                        r <-
-                            runValidate
-                                $ validateRequest oracle mconfig validation req
-                        pure $ WithValidation r req
-                lift $ fmapMToken f token
         -- validateRequest oracle mconfig validation
         UpdateToken tk wallet wanted -> do
             Submission submit <- ($ wallet) <$> askSubmit

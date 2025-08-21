@@ -26,8 +26,7 @@ tokenCommandParser
     :: Parser (Box TokenCommand)
 tokenCommandParser =
     commands
-        [ command "get" "Get the token" $ Box . GetToken <$> tokenIdOption
-        , command "update" "Update the token"
+        [ command "update" "Update the token"
             $ fmap (fmap Box) . UpdateToken
                 <$> tokenIdOption
                 <*> walletOption

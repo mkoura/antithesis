@@ -39,7 +39,7 @@ being_requester
 outputRef=$(getOutputRef "$result")
 anti retract -o "$outputRef"
 
-result=$(anti oracle token get | jq '.result.requests')
+result=$(anti token | jq '.result.requests')
 if [[ "$result" == "[]" ]]; then
     log "Test passed: User registration successfully retracted"
 else

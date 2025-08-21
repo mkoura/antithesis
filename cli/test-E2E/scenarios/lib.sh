@@ -104,8 +104,8 @@ being_requester (){
 
 include_requests() {
     being_oracle
-    validation=$(anti oracle requests validate)
-    references=$(echo "$validation" | jq -r '.result | .[] | select(.validation == "validated") | .reference')
+    validation=$(anti token)
+    references=$(echo "$validation" | jq -r '.result.requests | .[] | select(.validation == "validated") | .request.outputRefId')
     if [ -z "$references" ]; then
         log "No references validated: $validation"
         exit 1

@@ -24,12 +24,12 @@ anti requester register-user --platform github --username alice --pubkeyhash AAA
 
 As with all other requests, once submitted regularly you have to wait for the oracle to merge your request into the Antithesis token.
 
-You can use the `anti oracle token get` command to inspect your pending requests in the Antithesis token.
+You can use the `anti token` command to inspect your pending requests in the Antithesis token.
 
 You can use the `anti facts` command to query the Antithesis token and see if your user is part of the facts.
 
 ```bash
-anti oracle token get | jq '.result.requests' "
+anti token | jq '.result.requests' "
 ```
 
 Until your requests is there, you cannot proceed with the next steps.
@@ -50,6 +50,3 @@ To unregister a user, you can use the `anti requester unregister-user` command.
 ```bash
 anti requester unregister-user --platform github --username alice --pubkeyhash AAAAC3NzaC1lZDI1NTE5AAAAIO773JHqlyLm5XzOjSe+Q5yFJyLFuMLL6+n63t4t7HR8
 ```
-
-
-

@@ -33,10 +33,8 @@ result=$(anti requester register-user \
 outputRef=$(getOutputRef "$result")
 
 log "Pending requests for the anti oracle token:"
-anti oracle token get | jq '.result.requests | .[]'
+anti token | jq '.result.requests | .[]'
 
-log "Validating the requests pending for the anti oracle token..."
-anti oracle requests validate | jq -r '.result'
 
 log "Updating the anti oracle token with output reference $outputRef..."
 anti oracle token update -o "$outputRef" >/dev/null
@@ -53,10 +51,7 @@ result=$(anti requester register-role \
 outputRef=$(getOutputRef "$result")
 
 log "Pending requests for the anti oracle token:"
-anti oracle token get | jq '.result.requests | .[]'
-
-log "Validating the requests pending for the anti oracle token..."
-anti oracle requests validate | jq -r '.result'
+anti token | jq '.result.requests | .[]'
 
 log "Updating the anti oracle token with output reference $outputRef..."
 anti oracle token update -o "$outputRef" >/dev/null
@@ -75,10 +70,7 @@ result=$(anti requester create-test \
 
 outputRef=$(getOutputRef "$result")
 log "Pending requests for the anti oracle token:"
-anti oracle token get | jq '.result.requests | .[]'
-
-log "Validating the requests pending for the anti oracle token..."
-anti oracle requests validate | jq -r '.result'
+anti token | jq '.result.requests | .[]'
 
 log "Updating the anti oracle token with output reference $outputRef..."
 anti oracle token update -o "$outputRef" >/dev/null

@@ -18,15 +18,10 @@ You can review the token info anytime with
 
 
 ```bash
-anti oracle token get | jq '.result'
+anti token | jq '.result'
 ```
-## Validating requests
+In the requests field you will notice the `validation` field, which will be set to `validated` for all requests that have been validated .
 
-You can use the validate command to automate the process of oracling the requests
-
-```bash
-anti oracle requests validate
-```
 
 ## Updating the anti token
 

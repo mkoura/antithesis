@@ -39,7 +39,7 @@ if [ -z "$GITHUB_PERSONAL_ACCESS_TOKEN" ]; then
     exit 1
 fi
 
-resultVal1=$(anti oracle requests validate | jq -r '.result')
+resultVal1=$(anti token | jq -r '.result.requests | [.[] | select(.validation == "validated") | {"reference": .request.outputRefId, "validation": .validation}]')
 
 expectedVal1=$(
     cat <<EOF
@@ -87,7 +87,7 @@ if [[ "$(echo "$outputRegRes2")" != "$(echo "$expectedRegRes2")" ]]; then
     emitMismatch 1 "incorrect request" "$outputRegRes2" "$expectedRegRes2"
 fi
 
-resultVal2=$(anti oracle requests validate | jq -r '.result')
+resultVal2=$(anti token | jq -r '.result.requests | [.[] | select(.validation == "validated") | {"reference": .request.outputRefId, "validation": .validation}]')
 
 expectedVal2=$(
     cat <<EOF
@@ -114,7 +114,7 @@ resultRole1=$(anti requester register-role \
 outputRoleRef1=$(getOutputRef "$resultRole1")
 
 log "Created role registration request with output reference: $outputRoleRef1"
-resultVal3=$(anti oracle requests validate | jq -r '.result')
+resultVal3=$(anti token | jq -r '.result.requests | [.[] | select(.validation == "validated") | {"reference": .request.outputRefId, "validation": .validation}]')
 
 expectedVal3=$(
     cat <<EOF
@@ -140,8 +140,6 @@ anti oracle token update -o "$outputRegRef1" >/dev/null
 
 printFacts
 
-owner=$(anti wallet info | jq '.result.owner')
-
 expectedGet1=$(
     cat <<EOF
 [
@@ -154,7 +152,7 @@ expectedGet1=$(
                 "value": "null"
             }
         },
-        "outputRefId": "1a56ff76fe4b87a98f89d7f8ac1f50e058ff3375a2d06d0b1026cf2082a863e6-0",
+        "outputRefId": "$outputRoleRef1",
         "owner": "8da87507ba0a8a3c67eaeb8ec768dee132ad8ecac6f526ac526f0c9f"
         },
     "validation": "validated"
@@ -163,13 +161,13 @@ expectedGet1=$(
 EOF
 )
 
-resultGet1=$(anti oracle token get | jq '.result.requests')
+resultGet1=$(anti token | jq '.result.requests')
 
 if [[ "$(echo "$resultGet1" | jq -S 'sort_by(.request.outputRefId)')" != "$(echo "$expectedGet1" | jq -S 'sort_by(.request.outputRefId)')" ]]; then
     emitMismatch 4 "get token requests" "$resultGet1" "$expectedGet1"
 fi
 
-resultVal4=$(anti oracle requests validate | jq -r '.result')
+resultVal4=$(anti token | jq -r '.result.requests | [.[] | select(.validation == "validated") | {"reference": .request.outputRefId, "validation": .validation}]')
 
 expectedVal4=$(
     cat <<EOF
@@ -197,7 +195,7 @@ expectedGet2=$(
 EOF
 )
 
-resultGet2=$(anti oracle token get | jq '.result.requests')
+resultGet2=$(anti token | jq '.result.requests')
 
 if [[ "$(echo "$resultGet2" | jq -S 'sort_by(.request.outputRefId)')" != "$(echo "$expectedGet2" | jq -S 'sort_by(.request.outputRefId)')" ]]; then
     emitMismatch 6 "get token requests" "$resultGet2" "$expectedGet2"
@@ -211,7 +209,7 @@ resultUnRole1=$(anti requester unregister-role \
 outputUnRoleRef1=$(getOutputRef "$resultUnRole1")
 
 log "Created role unregistration request with output reference: $outputUnRoleRef1"
-resultVal5=$(anti oracle requests validate | jq -r '.result')
+resultVal5=$(anti token | jq -r '.result.requests | [.[] | select(.validation == "validated") | {"reference": .request.outputRefId, "validation": .validation}]')
 
 expectedVal5=$(
     cat <<EOF
@@ -259,7 +257,7 @@ if [[ "$(echo "$outputUnRoleRes2" | jq)" != "$(echo "$expectedUnRoleRes2" | jq)"
     emitMismatch 8 "incorrect request" "$outputUnRoleRes2" "$expectedUnRoleRes2"
 fi
 
-resultVal6=$(anti oracle requests validate | jq -r '.result')
+resultVal6=$(anti token | jq -r '.result.requests | [.[] | select(.validation == "validated") | {"reference": .request.outputRefId, "validation": .validation}]')
 
 expectedVal6=$(
     cat <<EOF
@@ -284,7 +282,7 @@ resultUnReg1=$(anti requester unregister-user \
 outputUnRegRef1=$(getOutputRef "$resultUnReg1")
 
 log "Created unregistration request with valid public key with output reference: $outputUnRegRef1"
-resultVal7=$(anti oracle requests validate | jq -r '.result')
+resultVal7=$(anti token | jq -r '.result.requests | [.[] | select(.validation == "validated") | {"reference": .request.outputRefId, "validation": .validation}]')
 
 expectedVal7=$(
     cat <<EOF
@@ -316,7 +314,7 @@ expectedGet3=$(
 EOF
 )
 
-resultGet3=$(anti oracle token get | jq '.result.requests')
+resultGet3=$(anti token | jq '.result.requests')
 
 if [[ "$(echo "$resultGet3" | jq -S 'sort_by(.request.outputRefId)')" != "$(echo "$expectedGet3" | jq -S 'sort_by(.request.outputRefId)')" ]]; then
     emitMismatch 11 "get token requests" "$resultGet3" "$expectedGet3"

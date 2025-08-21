@@ -119,9 +119,7 @@ library
     Oracle.Token.Cli
     Oracle.Token.Options
     Oracle.Types
-    Oracle.Validate.Cli
     Oracle.Validate.DownloadAssets
-    Oracle.Validate.Options
     Oracle.Validate.Request
     Oracle.Validate.Requests.Config
     Oracle.Validate.Requests.ManageWhiteList

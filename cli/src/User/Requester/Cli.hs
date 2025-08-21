@@ -143,7 +143,7 @@ createCommand
     testRun
     duration = do
         mconfig <- askConfig tokenId
-        validation <- askValidation tokenId
+        validation <- askValidation $ Just tokenId
         Submission submit <- ($ wallet) <$> askSubmit
         mpfs <- askMpfs
         lift $ runValidate $ do
@@ -176,7 +176,7 @@ registerUser
     request = do
         mpfs <- askMpfs
         Submission submit <- ($ wallet) <$> askSubmit
-        validation <- askValidation tokenId
+        validation <- askValidation $ Just tokenId
         lift $ runValidate $ do
             void
                 $ validateRegisterUser validation
@@ -201,7 +201,7 @@ unregisterUser
     wallet
     request = do
         mpfs <- askMpfs
-        validation <- askValidation tokenId
+        validation <- askValidation $ Just tokenId
         Submission submit <- ($ wallet) <$> askSubmit
         lift $ runValidate $ do
             void
@@ -227,7 +227,7 @@ registerRole
     wallet
     request = do
         mpfs <- askMpfs
-        validation <- askValidation tokenId
+        validation <- askValidation $ Just tokenId
         Submission submit <- ($ wallet) <$> askSubmit
         lift $ runValidate $ do
             void
@@ -253,7 +253,7 @@ unregisterRole
     wallet
     request = do
         mpfs <- askMpfs
-        validation <- askValidation tokenId
+        validation <- askValidation $ Just tokenId
         Submission submit <- ($ wallet) <$> askSubmit
         lift $ runValidate $ do
             void

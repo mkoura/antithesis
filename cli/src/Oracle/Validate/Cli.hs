@@ -76,7 +76,7 @@ validateCmd tk command = case command of
     ValidateRequests -> do
         mpfs <- askMpfs
         mconfig <- askConfig tk
-        validation <- askValidation tk
+        validation <- askValidation $ Just tk
         lift $ runValidate $ case command of
             ValidateRequests -> do
                 canonicalJSON <- lift $ mpfsGetToken mpfs tk

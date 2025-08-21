@@ -140,7 +140,7 @@ tokenCmdCore command = do
         GetToken tk -> lift $ mpfsGetToken mpfs tk
         UpdateToken tk wallet wanted -> do
             Submission submit <- ($ wallet) <$> askSubmit
-            validation <- askValidation tk
+            validation <- askValidation $ Just tk
             mconfig <- askConfig tk
             lift $ runValidate $ do
                 when (null wanted) $ notValidated TokenUpdateOfNoRequests

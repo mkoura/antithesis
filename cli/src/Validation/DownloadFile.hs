@@ -76,12 +76,12 @@ inspectDownloadedFileTemplate repo commit filename downloadFile = do
 inspectDownloadedFile
     :: Auth
     -> Repository
-    -> Commit
+    -> Maybe Commit
     -> FileName
     -> IO (Either DownloadedFileFailure Text)
 inspectDownloadedFile auth repo commit filename =
     inspectDownloadedFileTemplate
         repo
-        (Just commit)
+        commit
         filename
         $ githubGetFile auth

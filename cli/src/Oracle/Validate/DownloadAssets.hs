@@ -133,7 +133,7 @@ downloadFileAndWriteLocally
         contentE <-
             githubGetFile
                 (repository testRun)
-                (commitId testRun)
+                (Just $ commitId testRun)
                 (FileName $ sourceDir <> "/" <> filename)
         case contentE of
             Left err -> pure $ Just $ AssetValidationParseError err

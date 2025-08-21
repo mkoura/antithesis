@@ -79,7 +79,7 @@ data Validation m = Validation
         -> m (Maybe RepositoryRoleFailure)
     , githubGetFile
         :: Repository
-        -> Commit
+        -> Maybe Commit
         -> FileName
         -> m (Either DownloadedFileFailure Text)
     }
@@ -117,13 +117,14 @@ hoistValidation
                 \repository commit filename -> f $ githubGetFile repository commit filename
             }
 
-mkValidation :: Auth -> TokenId -> Validation ClientM
-mkValidation auth tk =
+mkValidation :: Auth -> Maybe TokenId -> Validation ClientM
+mkValidation auth tk = do
+    let getFacts :: (FromJSON Maybe k, FromJSON Maybe v) => ClientM [Fact k v]
+        getFacts = maybe (pure []) (fmap parseFacts . getTokenFacts) tk
     Validation
-        { mpfsGetFacts = parseFacts <$> getTokenFacts tk
-        , mpfsGetTestRuns = do
-            facts <- parseFacts <$> getTokenFacts tk
-            pure $ mapMaybe (\(Fact k _ :: JSFact) -> fromJSON k) facts
+        { mpfsGetFacts = getFacts
+        , mpfsGetTestRuns =
+            mapMaybe (\(Fact k _ :: JSFact) -> fromJSON k) <$> getFacts
         , githubCommitExists = \repository commit ->
             liftIO $ GitHub.githubCommitExists auth repository commit
         , githubDirectoryExists = \repository commit dir ->

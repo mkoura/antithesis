@@ -33,7 +33,7 @@ import Validation (Validation)
 -- have a type for each command
 data Context m = Context
     { ctxMPFS :: MPFS m
-    , ctxMkValidation :: TokenId -> Validation m
+    , ctxMkValidation :: Maybe TokenId -> Validation m
     , ctxSubmit :: Wallet -> Submission m
     }
 
@@ -75,7 +75,8 @@ askTestRunConfig tokenId = withConfig tokenId configTestRun
 askAgentPKH :: Monad m => TokenId -> WithContext m (Maybe Owner)
 askAgentPKH tokenId = withConfig tokenId configAgent
 
-askValidation :: Monad m => TokenId -> WithContext m (Validation m)
+askValidation
+    :: Monad m => Maybe TokenId -> WithContext m (Validation m)
 askValidation tokenId = do
     ctx <- WithContext ask
     return $ ctxMkValidation ctx tokenId
@@ -85,7 +86,7 @@ askSubmit = ctxSubmit <$> WithContext ask
 
 withContext
     :: MPFS m
-    -> (TokenId -> Validation m)
+    -> (Maybe TokenId -> Validation m)
     -> (Wallet -> Submission m)
     -> WithContext m a
     -> m a

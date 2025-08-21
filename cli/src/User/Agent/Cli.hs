@@ -281,7 +281,7 @@ whiteList tokenId wallet platform repo = do
                 , operation = Insert ()
                 }
         requester = owner wallet
-    validation <- askValidation tokenId
+    validation <- askValidation $ Just tokenId
     Submission submit <- ($ wallet) <$> askSubmit
     mpfs <- askMpfs
     mconfig <- askConfig tokenId
@@ -310,7 +310,7 @@ blackList tokenId wallet platform repo = do
     let key = WhiteListKey platform repo
         change = Change (Key key) (Delete ())
         requester = owner wallet
-    validation <- askValidation tokenId
+    validation <- askValidation $ Just tokenId
     Submission submit <- ($ wallet) <$> askSubmit
     mpfs <- askMpfs
     mconfig <- askConfig tokenId
@@ -345,7 +345,7 @@ downloadAssets
     -> WithContext m (AValidationResult DownloadAssetsFailure ())
 downloadAssets tokenId testRunId dir = do
     testmap <- queryCommand tokenId
-    validation <- askValidation tokenId
+    validation <- askValidation $ Just tokenId
     lift $ runValidate $ do
         void $ validateDownloadAssets validation testmap testRunId dir
 
@@ -367,7 +367,7 @@ signAndSubmitAnUpdate
         (AValidationResult UpdateTestRunFailure (WithTxHash new))
 signAndSubmitAnUpdate validate tokenId wallet testRun oldState newState = do
     let requester = owner wallet
-    validation <- askValidation tokenId
+    validation <- askValidation $ Just tokenId
     mconfig <- askConfig tokenId
     Submission submit <- ($ wallet) <$> askSubmit
     mpfs <- askMpfs

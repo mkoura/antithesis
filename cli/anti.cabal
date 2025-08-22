@@ -103,6 +103,7 @@ library
     Core.Types.Operation
     Core.Types.Tx
     Core.Types.Wallet
+    Facts
     Lib.Box
     Lib.GitHub
     Lib.JSON.Canonical.Aeson

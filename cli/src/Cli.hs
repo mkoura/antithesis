@@ -11,11 +11,11 @@ import Core.Types.MPFS (MPFSClient (..))
 import Core.Types.Tx (TxHash, WithTxHash (..))
 import Core.Types.Wallet (Wallet)
 import Data.Functor.Identity (Identity (..))
+import Facts (FactsSelection, factsCmd)
 import Lib.GitHub (getOAUth)
 import Lib.JSON.Canonical.Extra
 import MPFS.API
     ( MPFS (..)
-    , getTokenFacts
     , mpfsClient
     , retractChange
     )
@@ -34,7 +34,7 @@ import Oracle.Validate.Types
     , runValidate
     )
 import Submitting (Submission (..))
-import Text.JSON.Canonical (FromJSON (..), JSValue, ToJSON (..))
+import Text.JSON.Canonical (FromJSON (..), ToJSON (..))
 import User.Agent.Cli
     ( AgentCommand (..)
     , IsReady (NotReady)
@@ -53,7 +53,7 @@ data Command a where
     AgentCommand :: MPFSClient -> AgentCommand NotReady a -> Command a
     RetractRequest
         :: MPFSClient -> Wallet -> RequestRefId -> Command TxHash
-    GetFacts :: MPFSClient -> TokenId -> Command JSValue
+    GetFacts :: MPFSClient -> TokenId -> FactsSelection a -> Command a
     Wallet :: WalletCommand a -> Command a
     GetToken
         :: MPFSClient
@@ -106,8 +106,8 @@ cmd = \case
                 $ submit
                 $ \address ->
                     retractChange address refId
-    GetFacts MPFSClient{runMPFS} tokenId -> do
-        runMPFS $ getTokenFacts tokenId
+    GetFacts MPFSClient{runMPFS} tokenId factsCommand ->
+        runMPFS $ factsCmd mpfsClient tokenId factsCommand
     Wallet walletCommand -> liftIO $ walletCmd walletCommand
     GetToken
         MPFSClient{runMPFS, submitTx}

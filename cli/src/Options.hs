@@ -20,18 +20,20 @@ import Core.Options
     )
 import Core.Types.MPFS (mpfsClientOption)
 import Data.Version (Version)
+import Facts (FactsSelection (..), TestRunSelection (..))
 import Lib.Box (Box (..), fmapBox)
 import MPFS.API (mpfsClient)
 import OptEnvConf
     ( Parser
     , command
     , commands
-    , runParser
+    , runParser, (<|>)
     )
 import Oracle.Options (oracleCommandParser)
 import User.Agent.Options (agentCommandParser)
 import User.Requester.Options (requesterCommandParser)
 import Wallet.Options (walletCommandParser)
+import Control.Applicative (optional)
 
 newtype Options a = Options
     { optionsCommand :: Command a
@@ -59,9 +61,35 @@ commandParser =
             "Retract a request"
             retractRequestOptions
         , command "facts" "Get token facts"
-            $ fmap Box . GetFacts <$> mpfsClientOption <*> tokenIdOption
+            $ (\c tk -> fmapBox (GetFacts c tk))
+                <$> mpfsClientOption
+                <*> tokenIdOption
+                <*> factsSelectionParser
         , command "token" "Get the token content"
             $ fmap Box . GetToken <$> mpfsClientOption <*> tokenIdOption
+        ]
+
+factsSelectionParser :: Parser (Box FactsSelection)
+factsSelectionParser =
+    commands
+        [ command "user" "Get registered users" (pure $ Box UserFacts)
+        , command "role" "Get registered roles" (pure $ Box RoleFacts)
+        , command
+            "test-run"
+            "Get test runs"
+            (fmapBox TestRunFacts <$> testRunSelectionParser)
+        ] <|> pure (Box AllFacts)
+
+testRunSelectionParser :: Parser (Box TestRunSelection)
+testRunSelectionParser =
+    commands
+        [ command "pending" "Get pending test runs" (pure $ Box TestRunPending)
+        , command "running" "Get running test runs" (pure $ Box TestRunRunning)
+        , command "done" "Get done test runs" (pure $ Box TestRunDone)
+        , command
+            "rejected"
+            "Get rejected test runs"
+            (pure $ Box TestRunRejected)
         ]
 
 optionsParser :: Parser (Box Options)

@@ -8,7 +8,9 @@ where
 import Core.Types.Basic (TokenId)
 import Core.Types.Fact (Fact (..), parseFacts)
 import MPFS.API (MPFS, mpfsGetTokenFacts)
+import Oracle.Config.Types (Config, ConfigKey)
 import Text.JSON.Canonical
+import User.Agent.Types (WhiteListKey)
 import User.Types
     ( Phase (..)
     , RegisterUserKey
@@ -28,7 +30,10 @@ data FactsSelection a where
     UserFacts :: FactsSelection [Fact RegisterUserKey ()]
     RoleFacts :: FactsSelection [Fact RegisterUserKey ()]
     TestRunFacts :: TestRunSelection a -> FactsSelection a
+    ConfigFact :: FactsSelection [Fact ConfigKey Config]
+    WhiteListedFacts :: FactsSelection [Fact WhiteListKey ()]
     AllFacts :: FactsSelection [Fact JSValue JSValue]
+
 retrieveAnyFacts
     :: (FromJSON Maybe k, FromJSON Maybe v, Functor m)
     => MPFS m
@@ -59,4 +64,6 @@ factsCmd mpfs tokenId (TestRunFacts TestRunRejected) = do
                 _ -> False
             )
             facts
+factsCmd mpfs tokenId ConfigFact = retrieveAnyFacts mpfs tokenId
+factsCmd mpfs tokenId WhiteListedFacts = retrieveAnyFacts mpfs tokenId
 factsCmd mpfs tokenId AllFacts = retrieveAnyFacts mpfs tokenId

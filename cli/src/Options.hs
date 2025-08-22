@@ -13,6 +13,7 @@ module Options
     ) where
 
 import Cli (Command (..))
+import Control.Applicative (optional)
 import Core.Options
     ( outputReferenceParser
     , tokenIdOption
@@ -27,13 +28,13 @@ import OptEnvConf
     ( Parser
     , command
     , commands
-    , runParser, (<|>)
+    , runParser
+    , (<|>)
     )
 import Oracle.Options (oracleCommandParser)
 import User.Agent.Options (agentCommandParser)
 import User.Requester.Options (requesterCommandParser)
 import Wallet.Options (walletCommandParser)
-import Control.Applicative (optional)
 
 newtype Options a = Options
     { optionsCommand :: Command a
@@ -78,7 +79,16 @@ factsSelectionParser =
             "test-run"
             "Get test runs"
             (fmapBox TestRunFacts <$> testRunSelectionParser)
-        ] <|> pure (Box AllFacts)
+        , command
+            "config"
+            "Get the oracle configuration"
+            (pure $ Box ConfigFact)
+        , command
+            "white-listed"
+            "Get white-listed repositories"
+            (pure $ Box WhiteListedFacts)
+        ]
+        <|> pure (Box AllFacts)
 
 testRunSelectionParser :: Parser (Box TestRunSelection)
 testRunSelectionParser =

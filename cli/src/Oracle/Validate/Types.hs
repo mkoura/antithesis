@@ -15,6 +15,7 @@ module Oracle.Validate.Types
     , throwFalse
     , throwLeft
     , liftMaybe
+    , hoistValidate
     ) where
 
 import Control.Monad.Catch (MonadCatch, MonadMask (..), MonadThrow)
@@ -36,9 +37,9 @@ newtype Validate e m a = Validate (ExceptT e m a)
     deriving
         (Functor, Applicative, Monad, MonadMask, MonadCatch, MonadThrow)
 
--- instance MonadMask m => MonadMask (Validate e m) where
---     mask a = Validate $ mask $ \restore -> runExceptT (a (Validate . restore))
---     uninterruptibleMask a = Validate $ uninterruptibleMask $ \restore -> runExceptT (a (Validate . restore))
+hoistValidate
+    :: (forall x. m x -> n x) -> Validate e m a -> Validate e n a
+hoistValidate f (Validate a) = Validate $ ExceptT $ f $ runExceptT a
 instance MonadTrans (Validate e) where
     lift = Validate . lift
 

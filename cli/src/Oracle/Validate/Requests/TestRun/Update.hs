@@ -41,6 +41,8 @@ data UpdateTestRunFailure
     | UpdateTestRunAgentRejection AgentRejection
     | UpdateTestRunRequestNotFromAgent Owner
     | UpdateTestRunConfigNotAvailable
+    | UpdateTestRunPreviousStateNotFound
+    | UpdateTestRunTestRunIdNotResolved
     | UpdateTestRunWrongPreviousState
     deriving (Show, Eq)
 
@@ -54,6 +56,10 @@ instance Monad m => ToJSON m UpdateTestRunFailure where
             object ["updateTestRunRequestNotFromAgent" .= show owner]
         UpdateTestRunConfigNotAvailable ->
             toJSON ("Token configuration is not available yet" :: String)
+        UpdateTestRunPreviousStateNotFound ->
+            toJSON ("Previous state for test run not found" :: String)
+        UpdateTestRunTestRunIdNotResolved ->
+            toJSON ("Test run ID is not resolved" :: String)
         UpdateTestRunWrongPreviousState ->
             toJSON ("Wrong previous state for test run" :: String)
 

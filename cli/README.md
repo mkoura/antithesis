@@ -93,13 +93,13 @@ export ANTI_WALLET_PASSPHRASE
 You can create a wallet file with the `anti wallet create` command:
 
 ```bash
-anti wallet create
+antij wallet create
 ```
 
 It will fail to re-create the file if it already exists. You can review this wallet info anytime with
 
 ```bash
-anti wallet info
+antij wallet info
 ```
 
 Remember to read your wallet passphrase into the `ANTI_WALLET_PASSPHRASE` environment variable before running any command that requires the wallet.
@@ -126,13 +126,48 @@ To do that, you can set the `ANTI_WAIT` environment variable to the number of se
 export ANTI_WAIT=120
 ```
 
+## Querying the token state
+
+You can query the state of the Antithesis token with the following command:
+
+```bash
+antij token
+```
+
+This will show
+- the token owner a.k.a. the oracle identity
+- the pending change requests
+- the root of the mpf tree
+- the current UTxO of the state
+
 ## Querying facts of the Antithesis token
 
 You can always query the Antithesis token and its facts
 
 ```bash
-anti facts | jq '.result'
+antij facts
 ```
+
+Will query all facts
+
+But you can also query specific facts, for example:
+
+```bash
+antij facts user
+```
+will report the GitHub registered users.
+
+Or
+
+```bash
+antij facts test-run pending
+```
+will report the pending test runs.
+
+```bash
+anti facts --help
+```
+will show you all the available facts you can query.
 
 ## Design
 

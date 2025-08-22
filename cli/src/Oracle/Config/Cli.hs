@@ -27,7 +27,7 @@ configCmd
     :: MonadIO m => ConfigCmd a -> WithContext m a
 configCmd (SetConfig tokenId wallet config) = do
     mpfs <- askMpfs
-    Submission submit <- ($ wallet) <$> askSubmit
+    Submission submit <- askSubmit wallet
     present <- lift $ factsCmd mpfs tokenId ConfigFact
     jkey <- toJSON ConfigKey
     jvalue <- toJSON config

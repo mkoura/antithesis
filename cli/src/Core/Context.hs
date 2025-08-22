@@ -81,8 +81,8 @@ askValidation tokenId = do
     ctx <- WithContext ask
     return $ ctxMkValidation ctx tokenId
 
-askSubmit :: Monad m => WithContext m (Wallet -> Submission m)
-askSubmit = ctxSubmit <$> WithContext ask
+askSubmit :: Monad m => Wallet -> WithContext m (Submission m)
+askSubmit w = flip ctxSubmit w <$> WithContext ask
 
 withContext
     :: MPFS m

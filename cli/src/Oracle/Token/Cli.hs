@@ -153,7 +153,7 @@ tokenCmdCore command = do
     case command of
         -- validateRequest oracle mconfig validation
         UpdateToken tk wallet wanted -> do
-            Submission submit <- ($ wallet) <$> askSubmit
+            Submission submit <- askSubmit wallet
             validation <- askValidation $ Just tk
             mconfig <- askConfig tk
             lift $ runValidate $ do
@@ -181,7 +181,7 @@ tokenCmdCore command = do
                     $ \address -> mpfsUpdateToken mpfs address tk wanted
                 pure txHash
         BootToken wallet -> do
-            Submission submit <- ($ wallet) <$> askSubmit
+            Submission submit <- askSubmit wallet
             lift $ do
                 WithTxHash txHash jTokenId <- submit $ mpfsBootToken mpfs
                 runValidate $ do
@@ -189,7 +189,7 @@ tokenCmdCore command = do
                     tokenId <- liftMaybe TokenIdNotValidJSON $ fromJSON tkId
                     pure $ WithTxHash txHash (Just tokenId)
         EndToken tk wallet -> do
-            Submission submit <- ($ wallet) <$> askSubmit
+            Submission submit <- askSubmit wallet
             lift $ do
                 WithTxHash txHash _ <- submit
                     $ \address -> mpfsEndToken mpfs address tk

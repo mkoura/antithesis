@@ -248,7 +248,7 @@ whiteList tokenId wallet platform repo = do
                 }
         requester = owner wallet
     validation <- askValidation $ Just tokenId
-    Submission submit <- ($ wallet) <$> askSubmit
+    Submission submit <- askSubmit wallet
     mpfs <- askMpfs
     mconfig <- askConfig tokenId
     lift $ runValidate $ do
@@ -277,7 +277,7 @@ blackList tokenId wallet platform repo = do
         change = Change (Key key) (Delete ())
         requester = owner wallet
     validation <- askValidation $ Just tokenId
-    Submission submit <- ($ wallet) <$> askSubmit
+    Submission submit <- askSubmit wallet
     mpfs <- askMpfs
     mconfig <- askConfig tokenId
     lift $ runValidate $ do
@@ -332,7 +332,7 @@ signAndSubmitAnUpdate validate tokenId wallet (Fact testRun oldState) newState =
     let requester = owner wallet
     validation <- lift $ askValidation $ Just tokenId
     mconfig <- lift $ askConfig tokenId
-    Submission submit <- lift $ ($ wallet) <$> askSubmit
+    Submission submit <- lift $ askSubmit wallet
     mpfs <- lift askMpfs
     Config{configAgent} <-
         liftMaybe UpdateTestRunConfigNotAvailable mconfig

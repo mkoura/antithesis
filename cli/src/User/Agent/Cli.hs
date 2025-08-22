@@ -8,7 +8,6 @@ module User.Agent.Cli
     , TestRunId (..)
     , IsReady (..)
     , agentCmd
-    , agentCmdCore
     )
 where
 
@@ -60,7 +59,7 @@ import Oracle.Validate.Requests.TestRun.Update
     , validateToRunningUpdate
     )
 import Oracle.Validate.Types
-    ( AValidationResult
+    ( AValidationResult (..)
     , Validate
     , Validated
     , liftMaybe
@@ -86,16 +85,6 @@ import User.Types
     , URL (..)
     )
 import Validation (Validation)
-
-agentCmd
-    :: MonadIO m
-    => AgentCommand NotReady a
-    -> WithContext m a
-agentCmd cmdNotReady = do
-    mCmdReady <- resolveOldState cmdNotReady
-    case mCmdReady of
-        Nothing -> error "No previous state found for the command"
-        Just cmdReady -> agentCmdCore cmdReady
 
 withExpectedState
     :: (FromJSON Maybe (TestRunState phase), Monad m)
@@ -139,30 +128,42 @@ withResolvedTestRun tk (TestRunId testRunId) cont = do
         Nothing -> pure Nothing
         Just testRun -> cont testRun
 
-resolveOldState
-    :: Monad m
-    => AgentCommand NotReady result
-    -> WithContext m (Maybe (AgentCommand Ready result))
-resolveOldState cmd = case cmd of
-    Accept tokenId wallet key () ->
-        withResolvedTestRun tokenId key $ \testRun ->
-            withExpectedState tokenId testRun
-                $ pure . Accept tokenId wallet testRun
-    Reject tokenId wallet key () reason ->
-        withResolvedTestRun tokenId key $ \testRun ->
-            withExpectedState tokenId testRun
-                $ \pending -> pure $ Reject tokenId wallet testRun pending reason
-    Report tokenId wallet key () duration url ->
-        withResolvedTestRun tokenId key $ \testRun ->
-            withExpectedState tokenId testRun $ \runningState ->
-                pure $ Report tokenId wallet testRun runningState duration url
-    Query tokenId -> pure $ Just $ Query tokenId
-    WhiteList tokenId m platform repo ->
-        pure $ Just $ WhiteList tokenId m platform repo
+updateTestRunState
+    :: (Monad m, FromJSON Maybe (TestRunState phase))
+    => TokenId
+    -> TestRunId
+    -> ( TestRun
+         -> TestRunState phase
+         -> WithContext m (AValidationResult UpdateTestRunFailure a)
+       )
+    -> WithContext m (AValidationResult UpdateTestRunFailure a)
+updateTestRunState tokenId key f = do
+    mResult <- withResolvedTestRun tokenId key $ \testRun ->
+        withExpectedState tokenId testRun $ f testRun
+    pure $ case mResult of
+        Nothing -> ValidationFailure UpdateTestRunWrongPreviousState
+        Just result -> result
+
+agentCmd
+    :: MonadIO m
+    => AgentCommand NotReady a
+    -> WithContext m a
+agentCmd = \case
+    Query tokenId -> queryCommand tokenId
+    WhiteList tokenId wallet platform repo ->
+        whiteList tokenId wallet platform repo
     BlackList tokenId wallet platform repo ->
-        pure $ Just $ BlackList tokenId wallet platform repo
-    DownloadAssets tokenId key dir ->
-        pure $ Just $ DownloadAssets tokenId key dir
+        blackList tokenId wallet platform repo
+    DownloadAssets tokenId key dir -> downloadAssets tokenId key dir
+    Accept tokenId wallet key () -> do
+        updateTestRunState tokenId key $ \testRun testRunState ->
+            acceptCommand tokenId wallet testRun testRunState
+    Reject tokenId wallet key () reason -> do
+        updateTestRunState tokenId key $ \testRun testRunState ->
+            rejectCommand tokenId wallet testRun testRunState reason
+    Report tokenId wallet key () duration url -> do
+        updateTestRunState tokenId key $ \testRun testRunState ->
+            reportCommand tokenId wallet testRun testRunState duration url
 
 data IsReady = NotReady | Ready
     deriving (Show, Eq)
@@ -244,22 +245,6 @@ deriving instance Show (AgentCommand NotReady result)
 deriving instance Eq (AgentCommand NotReady result)
 deriving instance Show (AgentCommand Ready result)
 deriving instance Eq (AgentCommand Ready result)
-
-agentCmdCore
-    :: MonadIO m
-    => AgentCommand Ready result
-    -> WithContext m result
-agentCmdCore cmd = case cmd of
-    Accept tokenId wallet key pending ->
-        acceptCommand tokenId wallet key pending
-    Reject tokenId wallet key pending reason ->
-        rejectCommand tokenId wallet key pending reason
-    Report tokenId wallet key running duration url ->
-        reportCommand tokenId wallet key running duration url
-    Query tokenId -> queryCommand tokenId
-    WhiteList tokenId wallet platform repo -> whiteList tokenId wallet platform repo
-    BlackList tokenId wallet platform repo -> blackList tokenId wallet platform repo
-    DownloadAssets tokenId key dir -> downloadAssets tokenId key dir
 
 whiteList
     :: Monad m

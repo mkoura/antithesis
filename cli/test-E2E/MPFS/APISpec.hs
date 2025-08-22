@@ -78,6 +78,7 @@ import Oracle.Token.Cli
     ( TokenCommand (..)
     , tokenCmdCore
     )
+import Oracle.Validate.Types (AValidationResult (ValidationSuccess))
 import PlutusTx (Data, fromData)
 import Servant.Client (ClientM, mkClientEnv, parseBaseUrl, runClientM)
 import Submitting
@@ -206,7 +207,7 @@ setup auth = do
                 Left err -> throwIO err
                 Right res -> return res
         wait180S = signAndSubmitMPFS wait180
-    WithTxHash txHash mTokenId <- calling call $ do
+    ValidationSuccess (WithTxHash txHash mTokenId) <- calling call $ do
         withContext
             mpfsClient
             (mkValidation auth)

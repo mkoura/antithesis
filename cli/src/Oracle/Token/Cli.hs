@@ -88,6 +88,18 @@ data TokenUpdateFailure
 
 instance Exception TokenUpdateFailure
 
+data TokenBootFailure
+    = NoTokenIdReturned
+    | TokenIdNotValidJSON
+    deriving (Show, Eq)
+
+instance Monad m => ToJSON m TokenBootFailure where
+    toJSON = \case
+        NoTokenIdReturned ->
+            toJSON ("No TokenId returned" :: String)
+        TokenIdNotValidJSON ->
+            toJSON ("TokenId is not valid JSON" :: String)
+
 instance Monad m => ToJSON m TokenUpdateFailure where
     toJSON = \case
         TokenNotParsable tk ->
@@ -102,7 +114,10 @@ instance Monad m => ToJSON m TokenUpdateFailure where
             toJSON ("Token update not requested from token owner" :: String)
 
 data TokenCommand a where
-    BootToken :: Wallet -> TokenCommand (WithTxHash TokenId)
+    BootToken
+        :: Wallet
+        -> TokenCommand
+            (AValidationResult TokenBootFailure (WithTxHash TokenId))
     UpdateToken
         :: TokenId
         -> Wallet
@@ -168,13 +183,11 @@ tokenCmdCore command = do
         BootToken wallet -> do
             Submission submit <- ($ wallet) <$> askSubmit
             lift $ do
-                WithTxHash txHash jTokenId <- submit
-                    $ \address -> mpfsBootToken mpfs address
-                case jTokenId of
-                    Just tkId -> case fromJSON tkId of
-                        Nothing -> error "BootToken failed, TokenId is not valid JSON"
-                        Just tokenId -> pure $ WithTxHash txHash (Just tokenId)
-                    _ -> error "BootToken failed, no TokenId returned"
+                WithTxHash txHash jTokenId <- submit $ mpfsBootToken mpfs
+                runValidate $ do
+                    tkId <- liftMaybe NoTokenIdReturned jTokenId
+                    tokenId <- liftMaybe TokenIdNotValidJSON $ fromJSON tkId
+                    pure $ WithTxHash txHash (Just tokenId)
         EndToken tk wallet -> do
             Submission submit <- ($ wallet) <$> askSubmit
             lift $ do

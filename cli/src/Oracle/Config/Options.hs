@@ -52,7 +52,7 @@ configOption = do
         Owner
             <$> strOption
                 [ long "agent-pkh"
-                , metavar "AGENT_PUBLIC_KEY_HASH"
+                , metavar "PUBLIC_KEY_HASH"
                 , help "Public key hash of the agent that will run the tests"
                 , option
                 ]
@@ -78,11 +78,5 @@ configCommandParser =
                 <$> tokenIdOption
                 <*> walletOption
                 <*> configOption
-            )
-        , command
-            "get"
-            "Get the oracle configuration"
-            ( fmap Box GetConfig
-                <$> tokenIdOption
             )
         ]

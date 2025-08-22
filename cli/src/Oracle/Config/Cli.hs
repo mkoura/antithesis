@@ -8,17 +8,16 @@ import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Trans.Class (lift)
 import Core.Context (WithContext, askMpfs, askSubmit)
 import Core.Types.Basic (TokenId)
-import Core.Types.Fact (Fact (..), parseFacts)
 import Core.Types.Tx (WithTxHash (..))
 import Core.Types.Wallet (Wallet)
 import Data.Functor (void)
+import Facts (FactsSelection (..), factsCmd)
 import MPFS.API
 import Oracle.Config.Types
 import Submitting (Submission (..))
 import Text.JSON.Canonical
 
 data ConfigCmd a where
-    GetConfig :: TokenId -> ConfigCmd (Maybe Config)
     SetConfig :: TokenId -> Wallet -> Config -> ConfigCmd (WithTxHash ())
 
 deriving instance Show (ConfigCmd a)
@@ -29,15 +28,11 @@ configCmd
 configCmd (SetConfig tokenId wallet config) = do
     mpfs <- askMpfs
     Submission submit <- ($ wallet) <$> askSubmit
-    present <- configCmd (GetConfig tokenId)
+    present <- lift $ factsCmd mpfs tokenId ConfigFact
     jkey <- toJSON ConfigKey
     jvalue <- toJSON config
     case present of
-        Nothing -> do
-            lift $ fmap void $ submit $ \address ->
-                mpfsRequestInsert mpfs address tokenId
-                    $ RequestInsertBody{key = jkey, value = jvalue}
-        Just oldConfig -> do
+        [oldConfig] -> do
             oldValue <- toJSON oldConfig
             lift $ fmap void $ submit $ \address ->
                 mpfsRequestUpdate mpfs address tokenId
@@ -46,12 +41,7 @@ configCmd (SetConfig tokenId wallet config) = do
                         , newValue = jvalue
                         , oldValue
                         }
-configCmd (GetConfig tokenId) = do
-    mpfs <- askMpfs
-    facts :: [Fact ConfigKey Config] <-
-        fmap parseFacts
-            $ lift
-            $ mpfsGetTokenFacts mpfs tokenId
-    pure $ case facts of
-        [Fact _ c] -> Just c
-        _ -> Nothing
+        _ -> do
+            lift $ fmap void $ submit $ \address ->
+                mpfsRequestInsert mpfs address tokenId
+                    $ RequestInsertBody{key = jkey, value = jvalue}

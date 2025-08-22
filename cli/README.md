@@ -57,7 +57,14 @@ nix build .#macos64.tarball
 
 ```bash
 source <(anti --bash-completion-script "$(which anti)")
-antij(){ anti "$@" | jq .result; }
+antij() {
+    result=$(anti "$@")
+    if [ "$(echo "$result" | jq '.error')" != "null" ]; then
+        echo "$result" | jq 
+    else
+        echo "$result" | jq '.result'
+    fi
+}
 complete -o filenames -F _opt_env_conf_completion_anti antij
 ```
 

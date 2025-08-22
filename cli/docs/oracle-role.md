@@ -42,23 +42,6 @@ antij token | jq .state
 
 Critically the owner matches the wallet owner.
 
-## Publishing the oracle configuration
-
-Before requesters can request test-runs, the oracle should select the agent identity and in general expose validation parameters so that the requesters and the agent can pre-validate their requests.
-
-This is done with the `anti oracle config set` command.
-
-
-```bash
-anti oracle config set  --min-test-duration MIN_TEST_HOURS --max-test-duration MAX_TEST_HOURS --agent-pkh PUBLIC_KEY_HASH
-```
-
-This will end up in a fact and so  we can inspect it with the `anti facts` command.
-
-```bash
-antij facts config
-```
-
 ## Updating the anti token
 
 The main responsibility of the oracle is to include change requests in the Antithesis token.
@@ -85,4 +68,25 @@ To delete the Antithesis token, you can use the `anti oracle token delete` comma
 
 ```bash
 anti oracle token delete
+```
+
+## Publishing the oracle configuration
+
+Before requesters can request test-runs, the oracle should select the agent identity and in general expose validation parameters so that the requesters and the agent can pre-validate their requests.
+
+This is done with the `anti oracle config set` command.
+
+
+```bash
+anti oracle config set  --min-test-duration MIN_TEST_HOURS --max-test-duration MAX_TEST_HOURS --agent-pkh PUBLIC_KEY_HASH
+```
+
+In this situation the oracle is acting like a user and so this request will end up in the Antithesis token as a request for change.
+
+*Apply the token update command to commit the request to the Antithesis token*
+
+This will end up in a fact and so anyone can inspect it with the `anti facts` command.
+
+```bash
+antij facts config
 ```

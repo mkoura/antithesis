@@ -33,12 +33,6 @@ nix shell github:cardano-foundation/antithesis?dir=cli#anti
 
 ### Building the tarballs
 
-To build standalone packages with
-- anti
-- cardano-cli
-- cardano-address
-- bech32
-
 On linux, you can build a nix derivation with
 
 ```bash
@@ -60,7 +54,7 @@ source <(anti --bash-completion-script "$(which anti)")
 antij() {
     result=$(anti "$@")
     if [ "$(echo "$result" | jq '.error')" != "null" ]; then
-        echo "$result" | jq 
+        echo "$result" | jq
     else
         echo "$result" | jq '.result'
     fi
@@ -121,7 +115,6 @@ This is the unique token that identifies the Antithesis access interface. You ne
 ```bash
 export ANTI_TOKEN_ID=865ebcf5e1d6bafcc121030a6e167474a426271d965b78e36d90485adf540575
 ```
-
 
 ### Set the timeout for the `anti` command
 
@@ -184,6 +177,7 @@ will show you all the available facts you can query.
 
 Depending on your role you can access the different manuals.
 
-- [Test-runs Requester manual](docs/requester-role.md)
-- [Oracle manual](docs/oracle-role.md)
-- [Antithesis Agent manual](docs/antithesis-agent-role.md)
+- [Requester manual](docs/requester-role.md). A test-run requester is the regular user of the system. They can register users and roles, and request test-runs.
+- [Agent manual](docs/antithesis-agent-role.md). This is a special role that holds the key to the Antithesis platform. It is responsible  for
+  whitelisting repository and managing test-runs, from pending state to running and completed.
+- [Oracle manual](docs/oracle-role.md). The oracle is the owner of the Antithesis token. It is almost mechanically responsible for merging change requests from the agent and the requester.

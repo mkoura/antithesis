@@ -90,34 +90,13 @@ import Validation (Validation)
 type ValidateWithContext m a =
     Validate UpdateTestRunFailure (WithContext m) a
 
-withExpectedState
-    :: (FromJSON Maybe (TestRunState phase), Monad m)
-    => TokenId
-    -> TestRun
-    -> (TestRunState phase -> ValidateWithContext m result)
-    -> ValidateWithContext m result
-withExpectedState tokenId testRun cont = do
-    facts <- lift
-        $ fmap parseFacts
-        $ withMPFS
-        $ \mpfs -> mpfsGetTokenFacts mpfs tokenId
-    jsonKey <- toJSON testRun
-    jPreviousState <-
-        liftMaybe UpdateTestRunPreviousStateNotFound
-            $ find ((== jsonKey) . factKey) facts
-    value <-
-        liftMaybe UpdateTestRunWrongPreviousState
-            $ fromJSON
-            $ factValue jPreviousState
-    cont value
-
-withResolvedTestRun
-    :: Monad m
+withPreviousTestRunState
+    :: (Monad m, FromJSON Maybe (TestRunState phase))
     => TokenId
     -> TestRunId
-    -> (TestRun -> ValidateWithContext m a)
+    -> (Fact TestRun (TestRunState phase) -> ValidateWithContext m a)
     -> ValidateWithContext m a
-withResolvedTestRun tk (TestRunId testRunId) cont = do
+withPreviousTestRunState tk (TestRunId testRunId) cont = do
     facts <- lift
         $ fmap parseFacts
         $ withMPFS
@@ -126,24 +105,25 @@ withResolvedTestRun tk (TestRunId testRunId) cont = do
         match (Fact key _) = case keyHash key of
             Nothing -> False
             Just keyId -> keyId == testRunId
-    testRun <-
+    fact <-
         liftMaybe UpdateTestRunTestRunIdNotResolved
-            $ factKey <$> find match facts
-    cont testRun
+            $ find match facts
+    value <-
+        liftMaybe UpdateTestRunWrongPreviousState
+            $ fromJSON
+            $ factValue fact
+    cont fact{factValue = value}
 
 updateTestRunState
     :: (Monad m, FromJSON Maybe (TestRunState phase))
     => TokenId
     -> TestRunId
-    -> ( TestRun
-         -> TestRunState phase
+    -> ( Fact TestRun (TestRunState phase)
          -> ValidateWithContext m a
        )
     -> WithContext m (AValidationResult UpdateTestRunFailure a)
-updateTestRunState tokenId key f = do
-    runValidate
-        $ withResolvedTestRun tokenId key
-        $ \testRun -> withExpectedState tokenId testRun $ f testRun
+updateTestRunState tokenId key =
+    runValidate . withPreviousTestRunState tokenId key
 
 agentCmd
     :: MonadIO m
@@ -156,15 +136,15 @@ agentCmd = \case
     BlackList tokenId wallet platform repo ->
         blackList tokenId wallet platform repo
     DownloadAssets tokenId key dir -> downloadAssets tokenId key dir
-    Accept tokenId wallet key () -> do
-        updateTestRunState tokenId key $ \testRun testRunState ->
-            acceptCommand tokenId wallet testRun testRunState
-    Reject tokenId wallet key () reason -> do
-        updateTestRunState tokenId key $ \testRun testRunState ->
-            rejectCommand tokenId wallet testRun testRunState reason
-    Report tokenId wallet key () duration url -> do
-        updateTestRunState tokenId key $ \testRun testRunState ->
-            reportCommand tokenId wallet testRun testRunState duration url
+    Accept tokenId wallet key () ->
+        updateTestRunState tokenId key $ \fact ->
+            acceptCommand tokenId wallet fact
+    Reject tokenId wallet key () reason ->
+        updateTestRunState tokenId key $ \fact ->
+            rejectCommand tokenId wallet fact reason
+    Report tokenId wallet key () duration url ->
+        updateTestRunState tokenId key $ \fact ->
+            reportCommand tokenId wallet fact duration url
 
 data IsReady = NotReady | Ready
     deriving (Show, Eq)
@@ -345,11 +325,10 @@ signAndSubmitAnUpdate
        )
     -> TokenId
     -> Wallet
-    -> key
-    -> old
+    -> Fact key old
     -> new
     -> ValidateWithContext m (WithTxHash new)
-signAndSubmitAnUpdate validate tokenId wallet testRun oldState newState = do
+signAndSubmitAnUpdate validate tokenId wallet (Fact testRun oldState) newState = do
     let requester = owner wallet
     validation <- lift $ askValidation $ Just tokenId
     mconfig <- lift $ askConfig tokenId
@@ -374,55 +353,49 @@ reportCommand
     :: Monad m
     => TokenId
     -> Wallet
-    -> TestRun
-    -> TestRunState RunningT
+    -> Fact TestRun (TestRunState RunningT)
     -> Duration
     -> URL
     -> ValidateWithContext
         m
         (WithTxHash (TestRunState DoneT))
-reportCommand tokenId wallet testRun oldState duration url =
+reportCommand tokenId wallet fact duration url =
     signAndSubmitAnUpdate
         validateToDoneUpdate
         tokenId
         wallet
-        testRun
-        oldState
-        $ Finished oldState duration url
+        fact
+        $ Finished (factValue fact) duration url
 
 rejectCommand
     :: Monad m
     => TokenId
     -> Wallet
-    -> TestRun
-    -> TestRunState PendingT
+    -> Fact TestRun (TestRunState PendingT)
     -> [TestRunRejection]
     -> ValidateWithContext
         m
         (WithTxHash (TestRunState DoneT))
-rejectCommand tokenId wallet testRun testRunState reason =
+rejectCommand tokenId wallet fact reason =
     signAndSubmitAnUpdate
         validateToDoneUpdate
         tokenId
         wallet
-        testRun
-        testRunState
-        $ Rejected testRunState reason
+        fact
+        $ Rejected (factValue fact) reason
 
 acceptCommand
     :: Monad m
     => TokenId
     -> Wallet
-    -> TestRun
-    -> TestRunState PendingT
+    -> Fact TestRun (TestRunState PendingT)
     -> ValidateWithContext
         m
         (WithTxHash (TestRunState RunningT))
-acceptCommand tokenId wallet testRun testRunState =
+acceptCommand tokenId wallet fact =
     signAndSubmitAnUpdate
         validateToRunningUpdate
         tokenId
         wallet
-        testRun
-        testRunState
-        $ Accepted testRunState
+        fact
+        $ Accepted (factValue fact)

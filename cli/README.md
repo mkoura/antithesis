@@ -86,27 +86,42 @@ export ANTI_WALLET_FILE=wallet.json
 
 Optionally you can provide a passphrase to encrypt the mnemonic phrase in the wallet file:
 
+> Setting a passphrase is highly recommended to protect your wallet
+
+A less secure way to provide the passphrase is to set the `ANTI_WALLET_PASSPHRASE` environment variable:
+
 ```bash
 read -s -p "Enter your wallet passphrase: " ANTI_WALLET_PASSPHRASE
 export ANTI_WALLET_PASSPHRASE
 ```
-
 You can create a wallet file with the `anti wallet create` command:
 
 ```bash
 antij wallet create
 ```
 
-It will fail to re-create the file if it already exists. You can review this wallet info anytime with
+A more secure way is to let the CLI prompt you for the passphrase when needed.
+
+```bash
+antij wallet create --ask-passphrase
+```
+
+If you set the `ANTI_INTERACTIVE_PASSWORD` environment variable to any value, the CLI will prompt you for the passphrase every time it needs it.
+
+```bash
+export ANTI_INTERACTIVE_PASSWORD=1
+```
+
+You can review this wallet info anytime with
 
 ```bash
 antij wallet info
 ```
 
-Remember to read your wallet passphrase into the `ANTI_WALLET_PASSPHRASE` environment variable before running any command that requires the wallet.
+>  Store a copy of your encrypted/plaintext wallet file in a password manager. Think twice before storing a plaintext wallet file. Store your passphrase in a password manager too. ATM we do not support hardware wallets like Ledger or Trezor.
 
 > Fund your wallet with some tAda tokens on preprod, for example using the [Cardano Testnet Faucet](https://docs.cardano.org/cardano-testnets/tools/faucet/).
->
+
 
 ### Antithesis token
 

@@ -2,6 +2,7 @@ module Core.Types.Mnemonics.Options
     ( mnemonicsParser
     , walletPassphraseCommon
     , walletFileOption
+    , queryConsole
     ) where
 
 import Control.Exception (try)
@@ -12,6 +13,7 @@ import Data.Aeson
     )
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
+import Data.Functor (($>))
 import Data.Text (Text)
 import Data.Text qualified as T
 import OptEnvConf
@@ -30,7 +32,6 @@ import OptEnvConf
     , setting
     , short
     , str
-    , switch
     , withConfig
     )
 import System.Console.Haskeline
@@ -56,8 +57,12 @@ walletPassphraseCommon =
     mapIO id
         $ setting
             [ help "Prompt for the passphrase for the encrypted mnemonics"
-            , long "interactive-wallet-passphrase"
-            , switch $ queryConsole "Enter passphrase for encrypted mnemonics"
+            , env "ANTI_INTERACTIVE_PASSWORD"
+            , metavar "NONE"
+            , long "ask-passphrase"
+            , option
+            , reader
+                $ str @String $> queryConsole "Enter passphrase for encrypted mnemonics"
             ]
         <|> setting
             [ env "ANTI_WALLET_PASSPHRASE"

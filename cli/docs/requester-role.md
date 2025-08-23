@@ -111,14 +111,23 @@ Before proceding be careful to set the necessary signing assets in your environm
 
   Path to the SSH private key file
   env: ANTI_SSH_FILE FILEPATH
-
-  Password to the decrypt the SSH private key
-  env: ANTI_SSH_PASSWORD STRING
 ```
 
-The file at ANTI_SSH_FILE FILEPATH is the encrypted ssh private key matching the user registration.
+As with the wallet passphrase you can set the password in the environment variable
+
+```bash
+read -s -p "Enter password to decrypt the SSH private key: " ANTI_INTERACTIVE_PASSWORD
+export ANTI_INTERACTIVE_PASSWORD
+```
+
+Or better paste it from a password manager each time you need it using the 'ask-password' option
+
+Or set the `ANTI_INTERACTIVE_PASSWORD` environment variable to any value.
+
+> The file at ANTI_SSH_FILE path has to be the encrypted ssh private key matching the user registration [see above](#registering-a-user-public-key).
 
 To request a test-run, you can use the `antij requester create-test` command.
+
 ```bash
 antij requester create-test --platform github --username alice --repository yourorg/yourrepo --directory ./path/to/your/test/directory --commit your_commit_hash --try 1 --duration 2
 ```
@@ -132,5 +141,3 @@ You can check the status of your test-run requests with the `antij facts test-ru
 ```bash
 antij facts test-run pending
 ```
-
-

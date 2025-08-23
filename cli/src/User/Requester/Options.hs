@@ -19,7 +19,10 @@ import Core.Options
     , usernameOption
     , walletOption
     )
+import Core.Types.Mnemonics.Options (queryConsole)
 import Core.Types.Tx (TxHash, WithTxHash)
+import Data.Functor (($>))
+import Data.Text qualified as T
 import Lib.Box (Box (..))
 import Lib.SSH.Private (SSHClient (..))
 import OptEnvConf
@@ -28,10 +31,14 @@ import OptEnvConf
     , commands
     , env
     , help
+    , long
+    , mapIO
     , metavar
+    , option
     , reader
     , setting
     , str
+    , (<|>)
     )
 import Oracle.Validate.Requests.RegisterRole
     ( RegisterRoleFailure
@@ -150,12 +157,25 @@ keyFileOption =
 
 keyPasswordOption :: Parser String
 keyPasswordOption =
-    setting
-        [ env "ANTI_SSH_PASSWORD"
-        , help "Password to the decrypt the SSH private key"
-        , metavar "STRING"
-        , reader str
-        ]
+    mapIO id
+        $ setting
+            [ help "Prompt for the password to decrypt the SSH private key"
+            , env "ANTI_INTERACTIVE_PASSWORD"
+            , metavar "NONE"
+            , long "ask-password"
+            , option
+            , reader
+                $ str @String
+                    $> ( T.unpack
+                            <$> queryConsole "Enter password for SSH private key"
+                       )
+            ]
+        <|> setting
+            [ env "ANTI_SSH_PASSWORD"
+            , help "Password to the decrypt the SSH private key"
+            , metavar "STRING"
+            , reader (pure <$> str)
+            ]
 
 requestTestOptions
     :: Parser

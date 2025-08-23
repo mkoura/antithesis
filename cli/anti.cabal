@@ -171,6 +171,7 @@ library
     , directory
     , exceptions
     , github
+    , haskeline
     , http-client
     , http-client-tls
     , http-types

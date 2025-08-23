@@ -30,20 +30,18 @@ instance (ToJSON m a, Monad m) => ToJSON m (Either WalletError a) where
 data WalletInfo = WalletInfo
     { address :: Address
     , owner :: Owner
-    , filePath :: FilePath
     }
 
 instance Monad m => ToJSON m WalletInfo where
-    toJSON WalletInfo{address, owner, filePath} =
+    toJSON WalletInfo{address, owner} =
         object
             [ "address" .= address
             , "owner" .= owner
-            , "filePath" .= filePath
             ]
 
 data WalletCommand a where
     Info
-        :: Wallet -> FilePath -> WalletCommand (Either WalletError WalletInfo)
+        :: Wallet -> WalletCommand (Either WalletError WalletInfo)
     Create
         :: FilePath
         -> Maybe Text
@@ -53,13 +51,12 @@ deriving instance Show (WalletCommand a)
 deriving instance Eq (WalletCommand a)
 
 walletCmd :: WalletCommand a -> IO a
-walletCmd (Info wallet filePath) =
+walletCmd (Info wallet) =
     pure
         $ Right
         $ WalletInfo
             { address = wallet.address
             , owner = wallet.owner
-            , filePath = filePath
             }
 walletCmd (Create walletFile passphrase) = do
     w12 <- replicateM 12 $ element englishWords
@@ -72,7 +69,6 @@ walletCmd (Create walletFile passphrase) = do
                 $ WalletInfo
                     { address = wallet.address
                     , owner = wallet.owner
-                    , filePath = walletFile
                     }
 
 element :: [a] -> IO a

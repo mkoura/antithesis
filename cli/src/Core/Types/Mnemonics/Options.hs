@@ -12,21 +12,27 @@ import Data.Aeson
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
 import Data.Text (Text)
+import Data.Text qualified as T
 import OptEnvConf
     ( Alternative ((<|>))
-    , Builder
     , Parser
+    , checkEither
     , checkMapIO
     , conf
     , env
     , help
+    , long
     , mapIO
     , metavar
+    , option
     , reader
     , setting
+    , short
     , str
+    , switch
     , withConfig
     )
+import System.Console.Haskeline
 
 mnemonicsClearTextOption :: Parser Text
 mnemonicsClearTextOption =
@@ -43,33 +49,48 @@ mnemonicsEncryptedOption =
         , conf "encryptedMnemonics"
         , metavar "ENCRYPTED_MNEMONICS"
         ]
-walletPassphraseCommon :: [Builder a]
+
+walletPassphraseCommon :: Parser Text
 walletPassphraseCommon =
-    [ env "ANTI_WALLET_PASSPHRASE"
-    , metavar "PASSPHRASE"
-    , help "The passphrase for the encrypted mnemonics"
-    ]
-walletPassphraseOption
-    :: Parser (Text -> IO Text)
-walletPassphraseOption =
-    fmap decryptText
+    mapIO id
         $ setting
-        $ reader str : walletPassphraseCommon
+            [ help "Prompt for the passphrase for the encrypted mnemonics"
+            , long "interactive-wallet-passphrase"
+            , switch $ queryConsole "Enter passphrase for encrypted mnemonics"
+            ]
+        <|> setting
+            [ env "ANTI_WALLET_PASSPHRASE"
+            , metavar "PASSPHRASE"
+            , help "The passphrase for the encrypted mnemonics"
+            , reader $ fmap (pure . T.pack) str
+            ]
+
+queryConsole :: String -> IO Text
+queryConsole prompt = runInputT defaultSettings $ do
+    pw <- getPassword (Just '*') (prompt <> ": ")
+    case pw of
+        Nothing -> pure ""
+        Just pw' -> pure $ T.pack pw'
 
 walletFileOption :: Parser FilePath
 walletFileOption =
     setting
         [ env "ANTI_WALLET_FILE"
         , metavar "FILEPATH"
-        , help "The file path to the wallet secrets mnemonics"
+        , help "The file path to the wallet secret mnemonics"
+        , long "wallet"
+        , short 'w'
         , reader str
+        , option
         ]
 
 coreMnemonicsParser :: Parser (Mnemonics 'DecryptedS)
 coreMnemonicsParser =
     fmap ClearText
         $ mnemonicsClearTextOption
-        <|> mapIO id (walletPassphraseOption <*> mnemonicsEncryptedOption)
+        <|> checkEither
+            id
+            (decryptText <$> walletPassphraseCommon <*> mnemonicsEncryptedOption)
 
 mnemonicsObject :: Parser Object
 mnemonicsObject =

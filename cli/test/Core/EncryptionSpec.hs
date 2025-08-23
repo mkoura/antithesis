@@ -33,11 +33,11 @@ spec = do
             $ forAll gen
             $ \(message, passphrase, runs) -> do
                 encrypted <- encrypt passphrase runs message
-                decrypted <- decrypt passphrase encrypted
-                decrypted `shouldBe` message
+                let decrypted = decrypt passphrase encrypted
+                decrypted `shouldBe` Right message
         it "should encrypt and decrypt a Text message correctly"
             $ forAll genText
             $ \(message, passphrase, runs) -> do
                 encrypted <- encryptText passphrase runs message
-                decrypted <- decryptText passphrase encrypted
-                decrypted `shouldBe` message
+                let decrypted = decryptText passphrase encrypted
+                decrypted `shouldBe` Right message

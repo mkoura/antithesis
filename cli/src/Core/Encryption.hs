@@ -148,7 +148,7 @@ decrypt
     -- ^ passphrase
     -> ByteString
     -- ^ encrypted message
-    -> IO ByteString
+    -> Either String ByteString
 decrypt passphrase encrypted = do
     case parseEncrypted encrypted of
         Nothing -> error "Failed to parse encrypted message iv"
@@ -178,12 +178,14 @@ decryptText
     -- ^ passphrase
     -> Text
     -- ^ encrypted message
-    -> IO Text
+    -> Either String Text
     -- ^ decrypted message
 decryptText passphrase encrypted = do
     let encryptedBS = convertFromBase Base16 (encodeUtf8 encrypted)
     case encryptedBS of
-        Left err -> error $ "Failed to decode encrypted message: " ++ err
+        Left _err -> Left "Decryption failed: invalid base16 message"
         Right encBS -> do
             decrypted <- decrypt (encodeUtf8 passphrase) encBS
-            pure $ decodeUtf8 decrypted
+            case decodeUtf8' decrypted of
+                Left _err -> Left "Decryption failed: invalid UTF8 decrypted"
+                Right txt -> pure txt

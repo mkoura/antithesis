@@ -26,15 +26,9 @@ walletCommandParser =
         , command
             "info"
             "Get the wallet information"
-            $ fmap Box . Info
+            $ Box . Info
                 <$> walletOption
-                <*> walletFileOption
         ]
 
 passphraseOption :: Parser (Maybe Text)
-passphraseOption =
-    setting
-        $ walletPassphraseCommon
-            <> [ reader $ Just <$> str
-               , value Nothing
-               ]
+passphraseOption = optional walletPassphraseCommon

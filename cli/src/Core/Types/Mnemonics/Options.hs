@@ -4,6 +4,7 @@ module Core.Types.Mnemonics.Options
     , walletFileOption
     ) where
 
+import Control.Exception (try)
 import Core.Encryption (decryptText)
 import Core.Types.Mnemonics (Mnemonics (..), MnemonicsPhase (..))
 import Data.Aeson
@@ -92,11 +93,15 @@ coreMnemonicsParser =
             id
             (decryptText <$> walletPassphraseCommon <*> mnemonicsEncryptedOption)
 
+readJSONFile :: FilePath -> IO (Either String Object)
+readJSONFile fp = do
+    econtent <- try $ BL.readFile fp
+    case econtent of
+        Left (e :: IOError) -> return $ Left $ show e
+        Right content -> return $ Aeson.eitherDecode content
+
 mnemonicsObject :: Parser Object
-mnemonicsObject =
-    checkMapIO
-        (fmap Aeson.eitherDecode . BL.readFile)
-        walletFileOption
+mnemonicsObject = checkMapIO readJSONFile walletFileOption
 
 mnemonicsParser :: Parser (Mnemonics 'DecryptedS)
 mnemonicsParser = withConfig (Just <$> mnemonicsObject) coreMnemonicsParser

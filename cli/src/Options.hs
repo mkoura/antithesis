@@ -20,15 +20,32 @@ import Core.Options
     , walletOption
     )
 import Core.Types.MPFS (mpfsClientOption)
+import Core.Types.Mnemonics.Options (queryConsole)
+import Data.ByteString.Char8 qualified as B
+import Data.Functor (($>))
+import Data.Text (Text)
+import Data.Text qualified as T
+import Data.Text.Encoding qualified as T
 import Data.Version (Version)
 import Facts (FactsSelection (..), TestRunSelection (..))
+import GitHub (Auth (..))
 import Lib.Box (Box (..), fmapBox)
 import MPFS.API (mpfsClient)
 import OptEnvConf
     ( Parser
+    , auto
     , command
     , commands
+    , env
+    , help
+    , long
+    , mapIO
+    , metavar
+    , option
+    , reader
     , runParser
+    , setting
+    , str
     , (<|>)
     )
 import Oracle.Options (oracleCommandParser)
@@ -40,20 +57,47 @@ newtype Options a = Options
     { optionsCommand :: Command a
     }
 
+githubAuthOption :: Parser Auth
+githubAuthOption =
+    fmap OAuth
+        $ mapIO id
+        $ setting
+            [ help "Prompt for the passphrase for the encrypted mnemonics"
+            , env "ANTI_INTERACTIVE_PASSWORD"
+            , metavar "NONE"
+            , long "ask-passphrase"
+            , option
+            , reader
+                $ str @String
+                    $> ( T.encodeUtf8
+                            <$> queryConsole "Enter your GitHub personal access token: "
+                       )
+            ]
+        <|> setting
+            [ env "GITHUB_PERSONAL_ACCESS_TOKEN"
+            , metavar "PASSPHRASE"
+            , help
+                "A GitHub personal access token with access to public repositories"
+            , reader $ fmap (pure . B.pack) str
+            ]
+
 commandParser :: Parser (Box Command)
 commandParser =
     commands
         [ command "oracle" "Manage oracle operations"
-            $ (\c -> fmapBox (OracleCommand c))
-                <$> mpfsClientOption
+            $ (\a c -> fmapBox (OracleCommand a c))
+                <$> githubAuthOption
+                <*> mpfsClientOption
                 <*> oracleCommandParser
         , command "requester" "Manage requester operations"
-            $ (\c -> fmapBox (RequesterCommand c))
-                <$> mpfsClientOption
+            $ (\a c -> fmapBox (RequesterCommand a c))
+                <$> githubAuthOption
+                <*> mpfsClientOption
                 <*> requesterCommandParser
         , command "agent" "Manage agent operations"
-            $ (\c -> fmapBox (AgentCommand c))
-                <$> mpfsClientOption
+            $ (\a c -> fmapBox (AgentCommand a c))
+                <$> githubAuthOption
+                <*> mpfsClientOption
                 <*> agentCommandParser
         , command "wallet" "Manage wallet operations"
             $ fmapBox Wallet <$> walletCommandParser
@@ -67,7 +111,10 @@ commandParser =
                 <*> tokenIdOption
                 <*> factsSelectionParser
         , command "token" "Get the token content"
-            $ fmap Box . GetToken <$> mpfsClientOption <*> tokenIdOption
+            $ (\a -> fmap Box . GetToken a)
+                <$> githubAuthOption
+                <*> mpfsClientOption
+                <*> tokenIdOption
         ]
 
 factsSelectionParser :: Parser (Box FactsSelection)

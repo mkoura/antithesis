@@ -12,7 +12,7 @@ import Core.Types.Tx (TxHash, WithTxHash (..))
 import Core.Types.Wallet (Wallet)
 import Data.Functor.Identity (Identity (..))
 import Facts (FactsSelection, factsCmd)
-import Lib.GitHub (getOAUth)
+import GitHub (Auth)
 import Lib.JSON.Canonical.Extra
 import MPFS.API
     ( MPFS (..)
@@ -48,15 +48,18 @@ import Validation (mkValidation)
 import Wallet.Cli (WalletCommand, walletCmd)
 
 data Command a where
-    RequesterCommand :: MPFSClient -> RequesterCommand a -> Command a
-    OracleCommand :: MPFSClient -> OracleCommand a -> Command a
-    AgentCommand :: MPFSClient -> AgentCommand NotReady a -> Command a
+    RequesterCommand
+        :: Auth -> MPFSClient -> RequesterCommand a -> Command a
+    OracleCommand :: Auth -> MPFSClient -> OracleCommand a -> Command a
+    AgentCommand
+        :: Auth -> MPFSClient -> AgentCommand NotReady a -> Command a
     RetractRequest
         :: MPFSClient -> Wallet -> RequestRefId -> Command TxHash
     GetFacts :: MPFSClient -> TokenId -> FactsSelection a -> Command a
     Wallet :: WalletCommand a -> Command a
     GetToken
-        :: MPFSClient
+        :: Auth
+        -> MPFSClient
         -> TokenId
         -> Command
             (AValidationResult TokenInfoFailure (Token WithValidation))
@@ -67,9 +70,9 @@ data SetupError = TokenNotSpecified
 cmd :: Command a -> IO a
 cmd = \case
     RequesterCommand
+        auth
         MPFSClient{runMPFS, submitTx}
         requesterCommand -> do
-            auth <- getOAUth
             runMPFS
                 $ withContext
                     mpfsClient
@@ -77,9 +80,9 @@ cmd = \case
                     submitTx
                 $ requesterCmd requesterCommand
     OracleCommand
+        auth
         MPFSClient{runMPFS, submitTx}
         oracleCommand -> do
-            auth <- getOAUth
             runMPFS
                 $ withContext
                     mpfsClient
@@ -87,9 +90,9 @@ cmd = \case
                     submitTx
                 $ oracleCmd oracleCommand
     AgentCommand
+        auth
         MPFSClient{runMPFS, submitTx}
         agentCommand -> do
-            auth <- getOAUth
             runMPFS
                 $ withContext
                     mpfsClient
@@ -110,9 +113,9 @@ cmd = \case
         runMPFS $ factsCmd mpfsClient tokenId factsCommand
     Wallet walletCommand -> liftIO $ walletCmd walletCommand
     GetToken
+        auth
         MPFSClient{runMPFS, submitTx}
         tk -> do
-            auth <- getOAUth
             runMPFS
                 $ withContext
                     mpfsClient

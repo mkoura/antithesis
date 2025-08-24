@@ -8,7 +8,6 @@ module Lib.GitHub
     , githubGetFile
     , githubGetCodeOwnersFile
     , githubRepositoryExists
-    , getOAUth
     ) where
 
 import Control.Exception
@@ -22,7 +21,6 @@ import Core.Types.Basic
     , Username (..)
     )
 import Data.ByteString.Base64 qualified as B64
-import Data.ByteString.Char8 qualified as BC
 import Data.Foldable (Foldable (..))
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
@@ -36,13 +34,7 @@ import Network.HTTP.Client
     , Response (..)
     )
 import Network.HTTP.Types (Status (..))
-import System.Environment (getEnv)
 import Text.JSON.Canonical
-
-getOAUth :: IO Auth
-getOAUth = do
-    tk <- BC.pack <$> getEnv "GITHUB_PERSONAL_ACCESS_TOKEN"
-    return $ OAuth tk
 
 data GithubResponseError
     = GithubResponseErrorRepositoryNotFound

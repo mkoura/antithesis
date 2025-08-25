@@ -15,7 +15,6 @@ module Options
     ) where
 
 import Cli (Command (..))
-import Control.Applicative (optional)
 import Core.Options
     ( outputReferenceParser
     , tokenIdOption
@@ -26,17 +25,13 @@ import Core.Types.Mnemonics.Options (queryConsole)
 import Data.ByteString.Char8 qualified as B
 import Data.Functor (($>))
 import Data.String.QQ (s)
-import Data.Text (Text)
-import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Data.Version (Version)
 import Facts (FactsSelection (..), TestRunSelection (..))
 import GitHub (Auth (..))
 import Lib.Box (Box (..), fmapBox)
-import MPFS.API (mpfsClient)
 import OptEnvConf
     ( Parser
-    , auto
     , command
     , commands
     , env
@@ -44,7 +39,6 @@ import OptEnvConf
     , long
     , mapIO
     , metavar
-    , option
     , reader
     , runParser
     , setting

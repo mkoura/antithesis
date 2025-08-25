@@ -5,6 +5,7 @@ The process
 - poll the MPFS system to get new requests. (get token)
 - batches requests and calls MPFS to include them in the token state.
 -}
+{-# LANGUAGE QuasiQuotes #-}
 
 module Oracle.Process
     ( ProcessOptions (..)
@@ -23,6 +24,7 @@ import Core.Types.Basic (RequestRefId, TokenId)
 import Core.Types.MPFS (MPFSClient (..), mpfsClientOption)
 import Core.Types.Wallet (Wallet)
 import Data.Functor (void)
+import Data.String.QQ (s)
 import GitHub (Auth)
 import MPFS.API (mpfsClient)
 import OptEnvConf
@@ -40,11 +42,32 @@ import Oracle.Validate.Types (AValidationResult (..), Validated (..))
 import Paths_anti (version)
 import Validation (mkValidation)
 
+intro :: String
+intro =
+    [s|
+    Cardano Antithesis Oracle Process
+
+    This process will run indefinitely, polling the MPFS system for new requests
+    to include in the oracle token. It will batch requests according to the
+    maximum number of requests per batch specified, and will include them in
+    the token state.
+
+    To stop the process, simply interrupt it (Ctrl+C).
+
+    To get help on the available options, use the --help flag.
+
+    To get bash cli completion use
+
+    > source <(anti-oracle --bash-completion-script "$(which anti-oracle)")
+
+    Fish and zsh completions are also available.
+    |]
+
 parseArgs :: IO ProcessOptions
 parseArgs =
     runParser
         version
-        "anithesis-oracle-process - Automated antithesis oracle process"
+        intro
         processOptionsParser
 
 data ProcessOptions = ProcessOptions

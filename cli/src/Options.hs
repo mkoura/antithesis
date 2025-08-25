@@ -1,8 +1,9 @@
 {-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
 {-# HLINT ignore "Avoid lambda" #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
 
 module Options
     ( Command (..)
@@ -24,6 +25,7 @@ import Core.Types.MPFS (mpfsClientOption)
 import Core.Types.Mnemonics.Options (queryConsole)
 import Data.ByteString.Char8 qualified as B
 import Data.Functor (($>))
+import Data.String.QQ (s)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
@@ -161,11 +163,32 @@ testRunSelectionParser =
 optionsParser :: Parser (Box Options)
 optionsParser = fmapBox Options <$> commandParser
 
+intro :: String
+intro =
+    [s|
+    anti - A tool for managing Antithesis test runs on Cardano
+
+    This tool is used by all 3 roles in the Cardano to Antithesis interface.
+    The roles are:
+      - Requester: Requests test runs on Antithesis
+      - Agent: Manage test runs on Antithesis
+      - Oracle: Manages the interface state database (see oracle-anti for an automated oracle process)
+
+    Each role has a set of commands that can be used to manage their respective
+    operations. Use the --help flag to see the available commands and options.
+
+    To get bash cli completion use
+
+    > source <(anti --bash-completion-script "$(which anti)")
+
+    Fish and zsh completions are also available.
+    |]
+
 parseArgs :: Version -> IO (Box Options)
 parseArgs version =
     runParser
         version
-        "anti - A tool for managing Antithesis test runs"
+        intro
         optionsParser
 
 retractRequestOptions :: Parser (Box Command)

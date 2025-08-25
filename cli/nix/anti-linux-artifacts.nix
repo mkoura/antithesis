@@ -1,12 +1,14 @@
 { pkgs, node-project, version, project, ... }:
 let
   anti = project.musl64.anti.components.exes.anti;
+  anti-oracle = project.musl64.anti.components.exes.anti-oracle;
   tarball-derivation = pkgs.stdenv.mkDerivation rec {
     pname = "anti";
     inherit version;
     unpackPhase = ''
       mkdir -p $out/unpacked
       cp ${anti}/bin/anti $out/unpacked
+      cp ${anti-oracle}/bin/anti-oracle $out/unpacked
       chmod -R +w $out/unpacked/*
     '';
     installPhase = ''

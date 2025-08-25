@@ -3,6 +3,7 @@
 let
   inherit (pkgs) lib;
   anti = project.packages.anti;
+  anti-oracle = project.packages.anti-oracle;
   tarball-derivation = pkgs.stdenv.mkDerivation {
     pname = "anti";
     inherit version;
@@ -11,6 +12,7 @@ let
     unpackPhase = ''
       mkdir -p $out/unpacked
       cp ${anti}/bin/anti $out/unpacked
+      cp ${anti-oracle}/bin/anti-oracle $out/unpacked
       ( cd $out/unpacked ;
         ${rewrite-libs}/bin/rewrite-libs . `ls -1 | grep -Fv .dylib`
         for a in *; do /usr/bin/codesign -f -s - $a; done

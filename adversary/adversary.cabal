@@ -37,6 +37,9 @@ library
   import:          settings
   hs-source-dirs:  src
   build-depends:
+    , cardano-ledger-byron
+    , ouroboros-consensus-protocol ^>=0.12.0.0
+    , ouroboros-consensus
     , aeson
     , base
     , bytestring
@@ -44,6 +47,7 @@ library
     , io-classes
     , strict-stm
     , network
+    , network-mux
     , ouroboros-network-mock
     , ouroboros-network-api
     , ouroboros-network

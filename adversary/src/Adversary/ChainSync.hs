@@ -1,7 +1,10 @@
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 module Adversary.ChainSync where
 
+import Cardano.Chain.Slotting
 import Adversary.ChainSyncOld (recentOffsets)
 import Codec.Serialise qualified as CBOR
 import Control.Concurrent.Class.MonadSTM.Strict
@@ -12,10 +15,14 @@ import Control.Concurrent.Class.MonadSTM.Strict
     , readTVarIO
     , writeTVar
     )
+import Ouroboros.Consensus.Shelley.Ledger.SupportsProtocol ()
+import Data.Void (Void)
 import Ouroboros.Consensus.Cardano
-    ( CardanoBlock
+    ( CardanoBlock, ProtVer (..), ShelleyGenesis
     )
-import Control.Tracer (Contravariant (contramap), stdoutTracer)
+import Ouroboros.Consensus.Shelley.Ledger.NetworkProtocolVersion ()
+import Ouroboros.Consensus.Protocol.Praos.Header ()
+import Control.Tracer (Contravariant (contramap), stdoutTracer, nullTracer)
 import Data.ByteString.Lazy qualified as LBS
 import Data.Functor (void)
 import Data.List.NonEmpty qualified as NE
@@ -31,8 +38,7 @@ import Network.TypedProtocol.Codec (Codec)
 import Ouroboros.Network.Block
     ( HasHeader
     , HeaderHash
-    , Point
-    , castPoint
+    , castPoint, encodeTip, decodeTip
     )
 import Ouroboros.Network.Diffusion.Configuration
     ( PeerSharing (PeerSharingDisabled)
@@ -40,6 +46,7 @@ import Ouroboros.Network.Diffusion.Configuration
 import Ouroboros.Network.IOManager (withIOManager)
 import Ouroboros.Network.Magic (NetworkMagic (..))
 import Ouroboros.Network.Mock.Chain (Chain)
+import Ouroboros.Consensus.Node.Serialisation (encodeNodeToNode, decodeNodeToNode)
 import Ouroboros.Network.Mock.Chain qualified as Chain
 import Ouroboros.Network.Mux
     ( MiniProtocol
@@ -102,14 +109,32 @@ import Ouroboros.Network.Socket
     , connectToNode
     , nullNetworkConnectTracers
     )
+import qualified Ouroboros.Consensus.Cardano.Block as Consensus
+import Network.Mux qualified as Mx
+import Ouroboros.Network.ControlMessage (continueForever)
+import Data.Data (Proxy(Proxy))
+import qualified Ouroboros.Network.Block as Network
+import Ouroboros.Consensus.Shelley.Ledger (mkShelleyBlockConfig, ShelleyNodeToNodeVersion (ShelleyNodeToNodeVersion1), CodecConfig (ShelleyCodecConfig))
+import Ouroboros.Consensus.Protocol.Praos (Praos)
+import Ouroboros.Consensus.Cardano.Block (ConwayEra, StandardCrypto, CodecConfig (CardanoCodecConfig))
+import Ouroboros.Consensus.Cardano.Node (pattern CardanoNodeToNodeVersion2)
+import Ouroboros.Consensus.Block.Abstract (encodeRawHash, decodeRawHash)
+import Ouroboros.Consensus.Byron.Ledger (mkByronCodecConfig, CodecConfig (..))
+
+type Block = Consensus.CardanoBlock Consensus.StandardCrypto
+type Header = Consensus.Header Block
+type Tip = Network.Tip Block
+type Point = Network.Point Header
 
 clientChainSync
     :: String
     -> PortNumber
+    -> ProtVer
+    -> ShelleyGenesis
     -> IO ()
-clientChainSync peerName peerPort = withIOManager $ \iocp -> do
+clientChainSync peerName peerPort protVer shelleyGenesis = withIOManager $ \iocp -> do
     AddrInfo{addrAddress} <- resolve
-    var <- newTVarIO (Chain.Genesis :: Chain CardanoBlock )
+    var <- newTVarIO (Chain.Genesis :: Chain Header)
     void
         $ connectToNode
             (socketSnocket iocp)
@@ -146,17 +171,21 @@ clientChainSync peerName peerPort = withIOManager $ \iocp -> do
         NE.head
             <$> getAddrInfo (Just hints) (Just peerName) (Just $ show peerPort)
 
-    --    app :: OuroborosApplicationWithMinimalCtx Mx.InitiatorMode addr LBS.ByteString IO () Void
+    app
+        :: StrictTVar IO (Chain Header)
+        -> OuroborosApplicationWithMinimalCtx Mx.InitiatorMode addr LBS.ByteString IO () Void
     app var = demoProtocol2
         $ InitiatorProtocolOnly
         $ mkMiniProtocolCbFromPeer
         $ \_ctx ->
-            ( contramap show stdoutTracer
-            , codecChainSync
+            ( nullTracer --contramap show stdoutTracer
+            , codecChainSync protVer shelleyGenesis
             , ChainSync.chainSyncClientPeer (client var)
             )
 
-    client var = chainSyncClient var (controlledClient _foo)
+    client :: StrictTVar IO (Chain Header) -> ChainSyncClient Header Point Tip IO ()
+    client var = chainSyncClient var (controlledClient $ continueForever (Proxy @IO))
+
 
 -- TODO: provide sensible limits
 -- https://github.com/intersectmbo/ouroboros-network/issues/575
@@ -221,21 +250,13 @@ controlledClient controlMessageSTM = go
             }
 
 chainSyncClient
-    :: forall header block tip m a
-     . ( HasHeader header
-       , HeaderHash header ~ HeaderHash block
-       , MonadSTM m
-       )
-    => StrictTVar m (Chain header)
-    -> Client header (Point block) tip m a
-    -> ChainSyncClient header (Point block) tip m a
+    :: StrictTVar IO (Chain Header)
+    -> Client Header Point Tip IO a
+    -> ChainSyncClient Header Point Tip IO a
 chainSyncClient chainvar client =
     ChainSyncClient
         $ either SendMsgDone initialise <$> getChainPoints
   where
-    initialise
-        :: ([Point block], Client header (Point block) tip m a)
-        -> ClientStIdle header (Point block) tip m a
     initialise (points, client') =
         SendMsgFindIntersect points
             $
@@ -251,9 +272,6 @@ chainSyncClient chainvar client =
                 , recvMsgIntersectNotFound = \_ -> ChainSyncClient (return (requestNext client'))
                 }
 
-    requestNext
-        :: Client header (Point block) tip m a
-        -> ClientStIdle header (Point block) tip m a
     requestNext client' =
         SendMsgRequestNext
             -- We have the opportunity to do something when receiving
@@ -261,9 +279,6 @@ chainSyncClient chainvar client =
             (pure ())
             (handleNext client')
 
-    handleNext
-        :: Client header (Point block) tip m a
-        -> ClientStNext header (Point block) tip m a
     handleNext client' =
         ClientStNext
             { recvMsgRollForward = \header _tip -> ChainSyncClient $ do
@@ -280,8 +295,6 @@ chainSyncClient chainvar client =
                     Right client'' -> requestNext client''
             }
 
-    getChainPoints
-        :: m (Either a ([Point block], Client header (Point block) tip m a))
     getChainPoints = do
         pts <-
             Chain.selectPoints recentOffsets <$> readTVarIO chainvar
@@ -290,13 +303,11 @@ chainSyncClient chainvar client =
             Left a -> Left a
             Right client' -> Right (fmap castPoint pts, client')
 
-    addBlock :: header -> m ()
     addBlock b = atomically $ do
         chain <- readTVar chainvar
         let !chain' = Chain.addBlock b chain
         writeTVar chainvar chain'
 
-    rollback :: Point block -> m ()
     rollback p = atomically $ do
         chain <- readTVar chainvar
         -- TODO: handle rollback failure
@@ -409,23 +420,40 @@ chainSyncClient chainvar client =
 -- -}
 
 codecChainSync
-    :: ( CBOR.Serialise block
-       , CBOR.Serialise point
-       , CBOR.Serialise tip
-       )
-    => Codec
-        (ChainSync.ChainSync block point tip)
+    :: ProtVer
+    -> ShelleyGenesis
+    -> Codec
+        (ChainSync.ChainSync Header Point Tip)
         CBOR.DeserialiseFailure
         IO
         LBS.ByteString
-codecChainSync =
+codecChainSync _protVer _shelleyGenesis =
     ChainSync.codecChainSync
+        enc
+        dec
         CBOR.encode
         CBOR.decode
-        CBOR.encode
-        CBOR.decode
-        CBOR.encode
-        CBOR.decode
+        encTip
+        decTip
+  where
+--    enc :: SerialiseNodeToNode blk a => a -> Encoding
+    enc = encodeNodeToNode @Block ccfg version
+    dec = decodeNodeToNode @Block ccfg version
+
+    encTip = encodeTip (encodeRawHash (Proxy @Block))
+    decTip = decodeTip (decodeRawHash (Proxy @Block))
+    ccfg =
+          CardanoCodecConfig
+            (ByronCodecConfig $ EpochSlots 42)
+            ShelleyCodecConfig
+            ShelleyCodecConfig
+            ShelleyCodecConfig
+            ShelleyCodecConfig
+            ShelleyCodecConfig
+            ShelleyCodecConfig
+
+    version = CardanoNodeToNodeVersion2 -- @Block
+
 
 -- genesisAnchoredFragment :: AF.AnchoredFragment BlockHeader
 -- genesisAnchoredFragment = AF.Empty AF.AnchorGenesis

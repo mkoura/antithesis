@@ -32,6 +32,7 @@ import OptEnvConf
     , setting
     , short
     , str
+    , switch
     , withConfig
     )
 import System.Console.Haskeline
@@ -57,12 +58,17 @@ walletPassphraseCommon =
     mapIO id
         $ setting
             [ help "Prompt for the passphrase for the encrypted mnemonics"
-            , env "ANTI_INTERACTIVE_PASSWORD"
+            , env "ANTI_INTERACTIVE_SECRETS"
             , metavar "NONE"
-            , long "ask-passphrase"
-            , option
             , reader
                 $ str @String $> queryConsole "Enter passphrase for encrypted mnemonics"
+            ]
+        <|> setting
+            [ help "Prompt for the passphrase for the encrypted mnemonics"
+            , metavar "NONE"
+            , long "ask-wallet-passphrase"
+            , switch
+                $ queryConsole "Enter passphrase for encrypted mnemonics"
             ]
         <|> setting
             [ env "ANTI_WALLET_PASSPHRASE"

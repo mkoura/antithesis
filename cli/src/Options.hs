@@ -47,6 +47,7 @@ import OptEnvConf
     , runParser
     , setting
     , str
+    , switch
     , (<|>)
     )
 import Oracle.Options (oracleCommandParser)
@@ -64,15 +65,22 @@ githubAuthOption =
         $ mapIO id
         $ setting
             [ help "Prompt for the passphrase for the encrypted mnemonics"
-            , env "ANTI_INTERACTIVE_PASSWORD"
+            , env "ANTI_INTERACTIVE_SECRETS"
             , metavar "NONE"
-            , long "ask-passphrase"
-            , option
             , reader
-                $ str @String
+                ( str @String
                     $> ( T.encodeUtf8
-                            <$> queryConsole "Enter your GitHub personal access token: "
+                            <$> queryConsole "Enter your GitHub personal access token"
                        )
+                )
+            ]
+        <|> setting
+            [ help "Prompt for the passphrase for the encrypted mnemonics"
+            , metavar "NONE"
+            , long "ask-github-pat"
+            , switch
+                $ T.encodeUtf8
+                    <$> queryConsole "Enter your GitHub personal access token"
             ]
         <|> setting
             [ env "ANTI_GITHUB_PAT"

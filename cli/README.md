@@ -106,10 +106,10 @@ A more secure way is to let the CLI prompt you for the passphrase when needed.
 antij wallet create --ask-passphrase
 ```
 
-If you set the `ANTI_INTERACTIVE_PASSWORD` environment variable to any value, the CLI will prompt you for the passphrase every time it needs it.
+If you set the `ANTI_INTERACTIVE_SECRETS` environment variable to any value, the CLI will prompt you for the passphrase every time it needs it.
 
 ```bash
-export ANTI_INTERACTIVE_PASSWORD=1
+export ANTI_INTERACTIVE_SECRETS=1
 ```
 
 You can review this wallet info anytime with

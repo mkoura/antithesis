@@ -116,13 +116,13 @@ Before proceding be careful to set the necessary signing assets in your environm
 As with the wallet passphrase you can set the password in the environment variable
 
 ```bash
-read -s -p "Enter password to decrypt the SSH private key: " ANTI_INTERACTIVE_PASSWORD
-export ANTI_INTERACTIVE_PASSWORD
+read -s -p "Enter password to decrypt the SSH private key: " ANTI_INTERACTIVE_SECRETS
+export ANTI_INTERACTIVE_SECRETS
 ```
 
 Or better paste it from a password manager each time you need it using the 'ask-password' option
 
-Or set the `ANTI_INTERACTIVE_PASSWORD` environment variable to any value.
+Or set the `ANTI_INTERACTIVE_SECRETS` environment variable to any value.
 
 > The file at ANTI_SSH_FILE path has to be the encrypted ssh private key matching the user registration [see above](#registering-a-user-public-key).
 

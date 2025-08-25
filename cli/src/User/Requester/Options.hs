@@ -34,10 +34,10 @@ import OptEnvConf
     , long
     , mapIO
     , metavar
-    , option
     , reader
     , setting
     , str
+    , switch
     , (<|>)
     )
 import Oracle.Validate.Requests.RegisterRole
@@ -160,15 +160,21 @@ keyPasswordOption =
     mapIO id
         $ setting
             [ help "Prompt for the password to decrypt the SSH private key"
-            , env "ANTI_INTERACTIVE_PASSWORD"
+            , env "ANTI_INTERACTIVE_SECRETS"
             , metavar "NONE"
-            , long "ask-password"
-            , option
             , reader
                 $ str @String
                     $> ( T.unpack
                             <$> queryConsole "Enter password for SSH private key"
                        )
+            ]
+        <|> setting
+            [ help "Prompt for the password to decrypt the SSH private key"
+            , metavar "NONE"
+            , long "ask-ssh-password"
+            , switch
+                $ T.unpack
+                    <$> queryConsole "Enter password for SSH private key"
             ]
         <|> setting
             [ env "ANTI_SSH_PASSWORD"

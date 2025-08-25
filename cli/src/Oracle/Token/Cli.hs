@@ -1,6 +1,7 @@
 module Oracle.Token.Cli
     ( tokenCmdCore
     , TokenCommand (..)
+    , TokenUpdateFailure (..)
     ) where
 
 import Control.Exception (Exception)

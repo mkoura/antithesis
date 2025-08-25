@@ -10,6 +10,7 @@ module Options
     , Options (..)
     , optionsParser
     , parseArgs
+    , githubAuthOption
     ) where
 
 import Cli (Command (..))

@@ -2,6 +2,7 @@
 
 module Core.Types.MPFS
     ( MPFSClient (..)
+    , newClient
     , mpfsClientOption
     )
 where

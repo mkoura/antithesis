@@ -117,6 +117,7 @@ library
     Oracle.Config.Options
     Oracle.Config.Types
     Oracle.Options
+    Oracle.Process
     Oracle.Token.Cli
     Oracle.Token.Options
     Oracle.Types
@@ -216,6 +217,29 @@ executable anti
     , base
     , bytestring
     , canonical-json
+
+  -- Directories containing source files.
+
+  -- Base language which the package is written in.
+  default-language: Haskell2010
+
+executable anti-oracle
+  -- Import common warning flags.
+  import:           warnings
+
+  -- .hs or .lhs file containing the Main module.
+  main-is:          app/anti-oracle.hs
+
+  -- Modules included in this executable, other than Main.
+  -- other-modules:
+
+  -- LANGUAGE extensions used by modules in this package.
+  -- other-extensions:
+
+  -- Other library packages from which modules are imported.
+  build-depends:
+    , anti
+    , base
 
   -- Directories containing source files.
 

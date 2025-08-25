@@ -13,6 +13,7 @@ module Core.Context
     , askConfig
     ) where
 
+import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Trans.Class (MonadTrans, lift)
 import Control.Monad.Trans.Reader (ReaderT (..), ask)
 import Core.Types.Basic (Owner, TokenId)
@@ -40,7 +41,7 @@ data Context m = Context
 newtype WithContext m a = WithContext
     { _getWithContext :: ReaderT (Context m) m a
     }
-    deriving (Functor, Applicative, Monad)
+    deriving (Functor, Applicative, Monad, MonadIO)
 
 instance MonadTrans WithContext where
     lift = WithContext . lift

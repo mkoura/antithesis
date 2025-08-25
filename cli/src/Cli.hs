@@ -1,6 +1,7 @@
 module Cli
     ( cmd
     , Command (..)
+    , WithValidation (..)
     ) where
 
 import Control.Monad.IO.Class (MonadIO (..))

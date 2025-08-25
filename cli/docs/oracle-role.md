@@ -9,13 +9,13 @@ Oracle operations needs a wallet. Given the role aside setting the `ANTI_WALLET_
 You can create a wallet with the `anti wallet create` command.
 
 ```bash
-antij wallet create
+anti wallet create
 ```
 
 The current oracle wallet reports
 
 ```bash
-antij wallet info
+anti wallet info
 ```
 
 ```json
@@ -37,7 +37,7 @@ It will create the Antithesis token. This token is a unique identifier for the A
 You can review the token info anytime with
 
 ```bash
-antij token | jq .state
+anti token | jq .state
 ```
 
 Critically the owner matches the wallet owner.
@@ -46,10 +46,10 @@ Critically the owner matches the wallet owner.
 
 The main responsibility of the oracle is to include change requests in the Antithesis token.
 
-Pending change requests can be queried with the `antij token` command.
+Pending change requests can be queried with the `anti token` command.
 
 ```bash
-antij token | jq '.requests'
+anti token | jq '.requests'
 ```
 
 In the requests field you will notice the `validation` field, which will be set to `validated` for all requests that have been validated .
@@ -88,5 +88,5 @@ In this situation the oracle is acting like a user and so this request will end 
 This will end up in a fact and so anyone can inspect it with the `anti facts` command.
 
 ```bash
-antij facts config
+anti facts config
 ```

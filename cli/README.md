@@ -49,20 +49,17 @@ nix build .#macos64.tarball
 
 ### Improving CLI
 
+You can enable bash completion for the `anti` command by adding the following line to your `.bashrc` or `.bash_profile` file:
 ```bash
 source <(anti --bash-completion-script "$(which anti)")
-antij() {
-    result=$(anti "$@")
-    if [ "$(echo "$result" | jq '.error')" != "null" ]; then
-        echo "$result" | jq
-    else
-        echo "$result" | jq '.result'
-    fi
-}
-complete -o filenames -F _opt_env_conf_completion_anti antij
 ```
 
-### Environemnt variables
+You can have a pretty output (not valid JSON,  but easier to read) by passing --pretty switch or setting the `ANTI_PRETTY` environment variable to any value:
+```bash
+export ANTI_PRETTY=1
+```
+
+### Environment variables
 
 
 #### MPFS host
@@ -97,13 +94,13 @@ export ANTI_WALLET_PASSPHRASE
 You can create a wallet file with the `anti wallet create` command:
 
 ```bash
-antij wallet create
+anti wallet create
 ```
 
 A more secure way is to let the CLI prompt you for the passphrase when needed.
 
 ```bash
-antij wallet create --ask-passphrase
+anti wallet create --ask-passphrase
 ```
 
 If you set the `ANTI_INTERACTIVE_SECRETS` environment variable to any value, the CLI will prompt you for the passphrase every time it needs it.
@@ -115,7 +112,7 @@ export ANTI_INTERACTIVE_SECRETS=1
 You can review this wallet info anytime with
 
 ```bash
-antij wallet info
+anti wallet info
 ```
 
 >  Store a copy of your encrypted/plaintext wallet file in a password manager. Think twice before storing a plaintext wallet file. Store your passphrase in a password manager too. ATM we do not support hardware wallets like Ledger or Trezor.
@@ -146,7 +143,7 @@ export ANTI_WAIT=120
 You can query the state of the Antithesis token with the following command:
 
 ```bash
-antij token
+anti token
 ```
 
 This will show
@@ -160,7 +157,7 @@ This will show
 You can always query the Antithesis token and its facts
 
 ```bash
-antij facts
+anti facts
 ```
 
 Will query all facts
@@ -168,14 +165,14 @@ Will query all facts
 But you can also query specific facts, for example:
 
 ```bash
-antij facts user
+anti facts user
 ```
 will report the GitHub registered users.
 
 Or
 
 ```bash
-antij facts test-run pending
+anti facts test-run pending
 ```
 will report the pending test runs.
 

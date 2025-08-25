@@ -17,7 +17,7 @@ fund_wallets
 log "Create an anti token"
 being_oracle
 result=$(anti oracle token boot)
-tokenId=$(echo "$result" | jq -r '.result.value')
+tokenId=$(echo "$result" | jq -r '.value')
 export ANTI_TOKEN_ID="$tokenId"
 log "Anti token id $tokenId"
 
@@ -83,7 +83,7 @@ include_requests
 log "Reject the test run with no reasons..."
 being_agent
 validation=$(anti agent query)
-references=$(echo "$validation" | jq -r '.result | .pending | .[] | .id')
+references=$(echo "$validation" | jq -r '.pending | .[] | .id')
 anti agent reject-test -i "$references" > /dev/null
 
 log "Include the test run rejection"
@@ -106,7 +106,7 @@ include_requests
 log "Accept the new test run request because it's a scenario"
 being_agent
 validation=$(anti agent query)
-references=$(echo "$validation" | jq -r '.result | .pending | .[] | .id')
+references=$(echo "$validation" | jq -r '.pending | .[] | .id')
 anti agent accept-test -i "$references" > /dev/null
 
 log "Include the test run acceptance"
@@ -115,7 +115,7 @@ include_requests
 log "Finish the test run"
 being_agent
 validation=$(anti agent query)
-references=$(echo "$validation" | jq -r '.result | .running | .[] | .id')
+references=$(echo "$validation" | jq -r '.running | .[] | .id')
 anti agent report-test -i "$references" \
     --duration 1 \
     --url "https://example.com/report" \
@@ -125,4 +125,4 @@ log "Include the test run report"
 include_requests
 
 log "Facts:"
-anti facts | jq .result | jq .[]
+anti facts | jq .[]

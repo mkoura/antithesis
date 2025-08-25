@@ -12,7 +12,7 @@ unset ANTI_TOKEN_ID
 log "Creating an anti token..."
 result=$(anti oracle token boot)
 
-tokenId=$(echo "$result" | jq -r '.result.value')
+tokenId=$(echo "$result" | jq -r '.value')
 log "Anti token ID: $tokenId"
 
 export ANTI_TOKEN_ID="$tokenId"
@@ -33,7 +33,7 @@ result=$(anti requester register-user \
 outputRef=$(getOutputRef "$result")
 
 log "Pending requests for the anti oracle token:"
-anti token | jq '.result.requests | .[]'
+anti token | jq '.requests | .[]'
 
 
 log "Updating the anti oracle token with output reference $outputRef..."
@@ -51,7 +51,7 @@ result=$(anti requester register-role \
 outputRef=$(getOutputRef "$result")
 
 log "Pending requests for the anti oracle token:"
-anti token | jq '.result.requests | .[]'
+anti token | jq '.requests | .[]'
 
 log "Updating the anti oracle token with output reference $outputRef..."
 anti oracle token update -o "$outputRef" >/dev/null
@@ -70,7 +70,7 @@ result=$(anti requester create-test \
 
 outputRef=$(getOutputRef "$result")
 log "Pending requests for the anti oracle token:"
-anti token | jq '.result.requests | .[]'
+anti token | jq '.requests | .[]'
 
 log "Updating the anti oracle token with output reference $outputRef..."
 anti oracle token update -o "$outputRef" >/dev/null

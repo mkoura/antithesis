@@ -75,7 +75,7 @@ E2E match="":
         echo "Waiting for indexer to be ready..."
         sleep 2
     done
-    address=$(anti wallet info | jq -r '.result.address')
+    address=$(anti wallet info | jq -r '.address')
     echo "Funding address: $address"
     topup(){
         curl -s -X 'POST' \
@@ -94,7 +94,7 @@ E2E match="":
         echo "Retrying topup..."
         sleep 2
     done
-    owner=$(anti wallet info | jq -r '.result.owner')
+    owner=$(anti wallet info | jq -r '.owner')
     export ANTI_AGENT_PUBLIC_KEY_HASH=$owner
     echo "Starting E2E tests..."
     just E2E-tests "{{match}}"

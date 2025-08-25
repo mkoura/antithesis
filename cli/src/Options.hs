@@ -44,6 +44,7 @@ import OptEnvConf
     , setting
     , str
     , switch
+    , value
     , (<|>)
     )
 import Oracle.Options (oracleCommandParser)
@@ -51,9 +52,8 @@ import User.Agent.Options (agentCommandParser)
 import User.Requester.Options (requesterCommandParser)
 import Wallet.Options (walletCommandParser)
 
-newtype Options a = Options
-    { optionsCommand :: Command a
-    }
+data Options a where
+    Options :: Bool -> Command a -> Options a
 
 githubAuthOption :: Parser Auth
 githubAuthOption =
@@ -154,8 +154,20 @@ testRunSelectionParser =
             (pure $ Box TestRunRejected)
         ]
 
+prettyOption :: Parser Bool
+prettyOption =
+    setting
+        [ env "ANTI_PRETTY"
+        , help "Pretty print JSON output"
+        , metavar "NONE"
+        , long "pretty"
+        , switch True
+        , value False
+        , reader (str @String $> True)
+        ]
+
 optionsParser :: Parser (Box Options)
-optionsParser = fmapBox Options <$> commandParser
+optionsParser = (\c -> fmapBox $ Options c) <$> prettyOption <*> commandParser
 
 intro :: String
 intro =

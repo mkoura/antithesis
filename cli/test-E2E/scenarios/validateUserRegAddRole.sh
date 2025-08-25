@@ -14,7 +14,7 @@ log "Using ANTI_MPFS_HOST: $ANTI_MPFS_HOST"
 log "Creating an anti token..."
 result=$(anti oracle token boot)
 
-tokenId=$(echo "$result" | jq -r '.result.value')
+tokenId=$(echo "$result" | jq -r '.value')
 log "Anti token ID: $tokenId"
 
 export ANTI_TOKEN_ID="$tokenId"
@@ -39,7 +39,7 @@ if [ -z "$ANTI_GITHUB_PAT" ]; then
     exit 1
 fi
 
-resultVal1=$(anti token | jq -r '.result.requests | [.[] | select(.validation == "validated") | {"reference": .request.outputRefId, "validation": .validation}]')
+resultVal1=$(anti token | jq -r '.requests | [.[] | select(.validation == "validated") | {"reference": .request.outputRefId, "validation": .validation}]')
 
 expectedVal1=$(
     cat <<EOF
@@ -70,7 +70,7 @@ resultReg2=$(anti requester register-user \
     --username cfhal \
     --pubkeyhash AAAAC3NzaC1lZDI1NTE5AAAAILjwzNvy87HbzYV2lsW3UjVoxtpq4Nrj84djo3puarCH)
 
-outputRegRes2=$(echo $resultReg2 | jq -r '.result')
+outputRegRes2=$(echo $resultReg2 | jq)
 log "resultReg2: $resultReg2"
 
 expectedRegRes2=$(
@@ -87,7 +87,7 @@ if [[ "$(echo "$outputRegRes2")" != "$(echo "$expectedRegRes2")" ]]; then
     emitMismatch 1 "incorrect request" "$outputRegRes2" "$expectedRegRes2"
 fi
 
-resultVal2=$(anti token | jq -r '.result.requests | [.[] | select(.validation == "validated") | {"reference": .request.outputRefId, "validation": .validation}]')
+resultVal2=$(anti token | jq -r '.requests | [.[] | select(.validation == "validated") | {"reference": .request.outputRefId, "validation": .validation}]')
 
 expectedVal2=$(
     cat <<EOF
@@ -114,7 +114,7 @@ resultRole1=$(anti requester register-role \
 outputRoleRef1=$(getOutputRef "$resultRole1")
 
 log "Created role registration request with output reference: $outputRoleRef1"
-resultVal3=$(anti token | jq -r '.result.requests | [.[] | select(.validation == "validated") | {"reference": .request.outputRefId, "validation": .validation}]')
+resultVal3=$(anti token | jq -r '.requests | [.[] | select(.validation == "validated") | {"reference": .request.outputRefId, "validation": .validation}]')
 
 expectedVal3=$(
     cat <<EOF
@@ -161,13 +161,13 @@ expectedGet1=$(
 EOF
 )
 
-resultGet1=$(anti token | jq '.result.requests')
+resultGet1=$(anti token | jq '.requests')
 
 if [[ "$(echo "$resultGet1" | jq -S 'sort_by(.request.outputRefId)')" != "$(echo "$expectedGet1" | jq -S 'sort_by(.request.outputRefId)')" ]]; then
     emitMismatch 4 "get token requests" "$resultGet1" "$expectedGet1"
 fi
 
-resultVal4=$(anti token | jq -r '.result.requests | [.[] | select(.validation == "validated") | {"reference": .request.outputRefId, "validation": .validation}]')
+resultVal4=$(anti token | jq -r '.requests | [.[] | select(.validation == "validated") | {"reference": .request.outputRefId, "validation": .validation}]')
 
 expectedVal4=$(
     cat <<EOF
@@ -195,7 +195,7 @@ expectedGet2=$(
 EOF
 )
 
-resultGet2=$(anti token | jq '.result.requests')
+resultGet2=$(anti token | jq '.requests')
 
 if [[ "$(echo "$resultGet2" | jq -S 'sort_by(.request.outputRefId)')" != "$(echo "$expectedGet2" | jq -S 'sort_by(.request.outputRefId)')" ]]; then
     emitMismatch 6 "get token requests" "$resultGet2" "$expectedGet2"
@@ -209,7 +209,7 @@ resultUnRole1=$(anti requester unregister-role \
 outputUnRoleRef1=$(getOutputRef "$resultUnRole1")
 
 log "Created role unregistration request with output reference: $outputUnRoleRef1"
-resultVal5=$(anti token | jq -r '.result.requests | [.[] | select(.validation == "validated") | {"reference": .request.outputRefId, "validation": .validation}]')
+resultVal5=$(anti token | jq -r '.requests | [.[] | select(.validation == "validated") | {"reference": .request.outputRefId, "validation": .validation}]')
 
 expectedVal5=$(
     cat <<EOF
@@ -232,7 +232,7 @@ resultUnRole2=$(anti requester unregister-role \
     --username cfhal \
     )
 
-outputUnRoleRes2=$(echo $resultUnRole2 | jq -r '.result')
+outputUnRoleRes2=$(echo $resultUnRole2 | jq)
 log "resultUnRole2: $resultUnRole2"
 
 log "Created role unregistration request with incorrect repository"
@@ -257,7 +257,7 @@ if [[ "$(echo "$outputUnRoleRes2" | jq)" != "$(echo "$expectedUnRoleRes2" | jq)"
     emitMismatch 8 "incorrect request" "$outputUnRoleRes2" "$expectedUnRoleRes2"
 fi
 
-resultVal6=$(anti token | jq -r '.result.requests | [.[] | select(.validation == "validated") | {"reference": .request.outputRefId, "validation": .validation}]')
+resultVal6=$(anti token | jq -r '.requests | [.[] | select(.validation == "validated") | {"reference": .request.outputRefId, "validation": .validation}]')
 
 expectedVal6=$(
     cat <<EOF
@@ -282,7 +282,7 @@ resultUnReg1=$(anti requester unregister-user \
 outputUnRegRef1=$(getOutputRef "$resultUnReg1")
 
 log "Created unregistration request with valid public key with output reference: $outputUnRegRef1"
-resultVal7=$(anti token | jq -r '.result.requests | [.[] | select(.validation == "validated") | {"reference": .request.outputRefId, "validation": .validation}]')
+resultVal7=$(anti token | jq -r '.requests | [.[] | select(.validation == "validated") | {"reference": .request.outputRefId, "validation": .validation}]')
 
 expectedVal7=$(
     cat <<EOF
@@ -314,7 +314,7 @@ expectedGet3=$(
 EOF
 )
 
-resultGet3=$(anti token | jq '.result.requests')
+resultGet3=$(anti token | jq '.requests')
 
 if [[ "$(echo "$resultGet3" | jq -S 'sort_by(.request.outputRefId)')" != "$(echo "$expectedGet3" | jq -S 'sort_by(.request.outputRefId)')" ]]; then
     emitMismatch 11 "get token requests" "$resultGet3" "$expectedGet3"

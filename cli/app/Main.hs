@@ -3,17 +3,24 @@ module Main (main) where
 import App (Result (..))
 import App qualified as Anti
 import Data.ByteString.Lazy.Char8 qualified as BL
+import Data.Text.Lazy.IO qualified as T
 import Lib.JSON.Canonical.Extra (object, (.=))
 import Text.JSON.Canonical (renderCanonicalJSON)
+import Text.Pretty.Simple (pString)
 
 main :: IO ()
 main = do
     clientResult <- Anti.client
     case clientResult of
-        Success e -> do
-            output <- object ["result" .= e]
-            BL.putStrLn $ renderCanonicalJSON output
-        Failure ex -> do
-            output <- object ["error" .= show ex]
-            BL.putStrLn $ renderCanonicalJSON output
+        Success pretty e -> do
+            let value = renderCanonicalJSON e
+            if pretty
+                then T.putStr $ pString $ BL.unpack value
+                else BL.putStrLn value
+        Exceptional pretty ex -> do
+            output <- object ["exception" .= show ex]
+            let value = renderCanonicalJSON output
+            if pretty
+                then T.putStr $ pString $ BL.unpack value
+                else BL.putStrLn value
         Help -> pure ()

@@ -59,18 +59,18 @@ check() {
 
 printFacts() {
     log "Current facts:"
-    anti facts | jq '.result | .[]'
+    anti facts | jq '.[]'
 }
 
 getOutputRef() {
     # shellcheck disable=SC2155
-    local txHash=$(echo "$1" | jq -r '.result.txHash')
+    local txHash=$(echo "$1" | jq -r '.txHash')
     echo "${txHash}-0"
 }
 
 fund () {
     export ANTI_WALLET_FILE=$1
-    address=$(anti wallet info | jq -r '.result.address')
+    address=$(anti wallet info | jq -r '.address')
     log "Funding address: $address"
     curl -s -X 'POST' \
         "$ANTI_TEST_YACI_ADMIN/local-cluster/api/addresses/topup" \
@@ -105,7 +105,7 @@ being_requester (){
 include_requests() {
     being_oracle
     validation=$(anti token)
-    references=$(echo "$validation" | jq -r '.result.requests | .[] | select(.validation == "validated") | .request.outputRefId')
+    references=$(echo "$validation" | jq -r '.requests | .[] | select(.validation == "validated") | .request.outputRefId')
     if [ -z "$references" ]; then
         log "No references validated: $validation"
         exit 1
@@ -116,6 +116,6 @@ include_requests() {
 
 export_agent_public_key_hash() {
     being_agent
-    agent=$(anti wallet info | jq -r '.result.owner')
+    agent=$(anti wallet info | jq -r '.owner')
     export ANTI_AGENT_PUBLIC_KEY_HASH=$agent
 }

@@ -15,7 +15,7 @@ fund_wallets
 log "Create an anti token"
 being_oracle
 result=$(anti oracle token boot)
-tokenId=$(echo "$result" | jq -r '.result.value')
+tokenId=$(echo "$result" | jq -r '.value')
 export ANTI_TOKEN_ID="$tokenId"
 log "Anti token id $tokenId"
 
@@ -39,7 +39,7 @@ being_requester
 outputRef=$(getOutputRef "$result")
 anti retract -o "$outputRef"
 
-result=$(anti token | jq '.result.requests')
+result=$(anti token | jq '.requests')
 if [[ "$result" == "[]" ]]; then
     log "Test passed: User registration successfully retracted"
 else

@@ -16,39 +16,39 @@ Be careful that there is no imperativity here, so i.e. you cannot unregister a u
 
 ### Registering a user public key
 
-To register yourself as a user, you can use the `antij requester register-user` command.
+To register yourself as a user, you can use the `anti requester register-user` command.
 
 ```bash
-antij requester register-user --platform github --username alice --pubkeyhash AAAAC3NzaC1lZDI1NTE5AAAAIO773JHqlyLm5XzOjSe+Q5yFJyLFuMLL6+n63t4t7HR8
+anti requester register-user --platform github --username alice --pubkeyhash AAAAC3NzaC1lZDI1NTE5AAAAIO773JHqlyLm5XzOjSe+Q5yFJyLFuMLL6+n63t4t7HR8
 ```
 
 As with all other requests, once submitted regularly you have to wait for the oracle to merge your request into the Antithesis token.
 
-You can use the `antij token` command to inspect your pending requests in the Antithesis token.
+You can use the `anti token` command to inspect your pending requests in the Antithesis token.
 
-You can use the `antij facts` command to query the Antithesis token and see if your user is part of the facts.
+You can use the `anti facts` command to query the Antithesis token and see if your user is part of the facts.
 
 ```bash
-antij token | jq '.result.requests' "
+anti token | jq '.requests' "
 ```
 
 Until your requests is there, you cannot proceed with the next steps.
 
-As with all requests to an mpfs you can retract your request using the `antij retract` command, anytime before the oracle merges it into the Antithesis token.
+As with all requests to an mpfs you can retract your request using the `anti retract` command, anytime before the oracle merges it into the Antithesis token.
 
 Get the `outputRefId` of your request from pending requests command output and use it to retract your request
 
 ```bash
-antij retract -o 9ec36572e01bca9f7d32d791a5a6c529ef91c10d536f662735af26311b2c8766-0
+anti retract -o 9ec36572e01bca9f7d32d791a5a6c529ef91c10d536f662735af26311b2c8766-0
 ```
-ATM the oracle is not able to justify a request rejection. But antij cli will apply the oracle validation before submitting it, so rejections will be caught before submitting the request.
+ATM the oracle is not able to justify a request rejection. But anti cli will apply the oracle validation before submitting it, so rejections will be caught before submitting the request.
 
 ### Unregistering a user public key
 
-To unregister a user, you can use the `antij requester unregister-user` command.
+To unregister a user, you can use the `anti requester unregister-user` command.
 
 ```bash
-antij requester unregister-user --platform github --username alice --pubkeyhash AAAAC3NzaC1lZDI1NTE5AAAAIO773JHqlyLm5XzOjSe+Q5yFJyLFuMLL6+n63t4t7HR8
+anti requester unregister-user --platform github --username alice --pubkeyhash AAAAC3NzaC1lZDI1NTE5AAAAIO773JHqlyLm5XzOjSe+Q5yFJyLFuMLL6+n63t4t7HR8
 ```
 
 ### Registering a role
@@ -63,10 +63,10 @@ antithesis: @your-github-username
 
 You  can have as many user as you want but registering them as test-run requesters has to be done one by one.
 
-To register a role, you can use the `antij requester register-role` command.
+To register a role, you can use the `anti requester register-role` command.
 
 ```bash
-antij requester register-role --platform github --username alice --repository yourorg/yourrepo
+anti requester register-role --platform github --username alice --repository yourorg/yourrepo
 ```
 
 > Registering a role is not enough to gain rights to request test-runs. Your repository have to be white-listed by the agent. This requires you to get in contact with the agent and ask them to white-list your repository.
@@ -74,7 +74,7 @@ antij requester register-role --platform github --username alice --repository yo
 ### Unregistering a role
 
 ```bash
-antij requester unregister-role --platform github --username alice --repository yourorg/yourrepo
+anti requester unregister-role --platform github --username alice --repository yourorg/yourrepo
 ```
 
 ## Test-runs
@@ -91,13 +91,13 @@ You can obtain a set of standard test assets by running the following command:
 If you are in your repository directory, you can run:
 
 ```bash
-antij requester generate-assets -D ./path/to/your/test/directory
+anti requester generate-assets -D ./path/to/your/test/directory
 ```
 
-Once you modified them you can try to run them locally  with the `antij requester test-run` command.
+Once you modified them you can try to run them locally  with the `anti requester test-run` command.
 
 ```bash
-antij agent test-run -D ./path/to/your/test/directory
+anti agent test-run -D ./path/to/your/test/directory
 ```
 
 Then commit and push the changes to your repository.
@@ -126,18 +126,18 @@ Or set the `ANTI_INTERACTIVE_SECRETS` environment variable to any value.
 
 > The file at ANTI_SSH_FILE path has to be the encrypted ssh private key matching the user registration [see above](#registering-a-user-public-key).
 
-To request a test-run, you can use the `antij requester create-test` command.
+To request a test-run, you can use the `anti requester create-test` command.
 
 ```bash
-antij requester create-test --platform github --username alice --repository yourorg/yourrepo --directory ./path/to/your/test/directory --commit your_commit_hash --try 1 --duration 2
+anti requester create-test --platform github --username alice --repository yourorg/yourrepo --directory ./path/to/your/test/directory --commit your_commit_hash --try 1 --duration 2
 ```
 
 You can request multiple test-runs for the same commit but you have to specify a different `--try` number for each request.
 
 ### Checking the test-run status
 
-You can check the status of your test-run requests with the `antij facts test-run` command.
+You can check the status of your test-run requests with the `anti facts test-run` command.
 
 ```bash
-antij facts test-run pending
+anti facts test-run pending
 ```

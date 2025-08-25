@@ -1,3 +1,5 @@
+{-# LANGUAGE UndecidableInstances #-}
+
 module App
     ( client
     , Result (..)
@@ -16,10 +18,8 @@ import Paths_anti (version)
 import Text.JSON.Canonical (JSValue, ToJSON (..))
 
 data Result
-    = Success
-        { result :: JSValue
-        }
-    | Failure SomeException
+    = Success Bool JSValue
+    | Exceptional Bool SomeException
     | Help
     deriving (Show)
 
@@ -29,9 +29,9 @@ client = do
     fc <- try $ parseArgs version
     case fc of
         Left (SomeException _) -> return Help
-        Right (Box (Options command)) -> do
-            let action = Success <$> (cmd command >>= toJSON)
-            action `catch` (return . Failure)
+        Right (Box (Options raw command)) -> do
+            let action = Success raw <$> (cmd command >>= toJSON)
+            action `catch` (return . Exceptional raw)
 
 _logRequests :: ManagerSettings -> ManagerSettings
 _logRequests settings =

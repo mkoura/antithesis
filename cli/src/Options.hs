@@ -74,7 +74,7 @@ githubAuthOption =
                        )
             ]
         <|> setting
-            [ env "GITHUB_PERSONAL_ACCESS_TOKEN"
+            [ env "ANTI_GITHUB_PAT"
             , metavar "PASSPHRASE"
             , help
                 "A GitHub personal access token with access to public repositories"

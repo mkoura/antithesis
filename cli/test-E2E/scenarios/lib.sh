@@ -50,8 +50,8 @@ check() {
             available in 1password vault at the same record."
         exit 1
     fi
-    if [ -z "${GITHUB_PERSONAL_ACCESS_TOKEN:-}" ]; then
-        echo "Please set GITHUB_PERSONAL_ACCESS_TOKEN environment variable, this is a valid GitHub personal access token with access to the public github API \
+    if [ -z "${ANTI_GITHUB_PAT:-}" ]; then
+        echo "Please set ANTI_GITHUB_PAT environment variable, this is a valid GitHub personal access token with access to the public github API \
             Or use the pat available in 1password vault at the same record."
         exit 1
     fi

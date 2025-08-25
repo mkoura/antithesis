@@ -34,8 +34,8 @@ outputRegRef1=$(getOutputRef "$resultReg1")
 
 log "Created registration request with valid public key with output reference: $outputRegRef1"
 
-if [ -z "$GITHUB_PERSONAL_ACCESS_TOKEN" ]; then
-    log "Error: GITHUB_PERSONAL_ACCESS_TOKEN is not set. Please refer to \"https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens\#creating-a-fine-grained-personal-access-token\""
+if [ -z "$ANTI_GITHUB_PAT" ]; then
+    log "Error: ANTI_GITHUB_PAT is not set. Please refer to \"https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens\#creating-a-fine-grained-personal-access-token\""
     exit 1
 fi
 

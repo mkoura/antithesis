@@ -21,7 +21,7 @@ main = hspec $ do
     userSpec
 
 tryGetPAT :: IO (Maybe Auth)
-tryGetPAT = fmap (OAuth . BC.pack) <$> lookupEnv "GITHUB_PERSONAL_ACCESS_TOKEN"
+tryGetPAT = fmap (OAuth . BC.pack) <$> lookupEnv "ANTI_GITHUB_PAT"
 
 getPAT :: IO Auth
 getPAT = do

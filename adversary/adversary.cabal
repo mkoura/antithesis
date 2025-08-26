@@ -44,7 +44,6 @@ library
     , base
     , bytestring
     , contra-tracer
-    , io-classes
     , strict-stm
     , network
     , network-mux

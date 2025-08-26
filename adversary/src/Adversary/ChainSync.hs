@@ -2,10 +2,10 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Adversary.ChainSync where
+module Adversary.ChainSync (clientChainSync) where
 
 import Adversary.ChainSyncOld (recentOffsets)
-import Cardano.Chain.Slotting
+import Cardano.Chain.Slotting (EpochSlots (EpochSlots))
 import Codec.Serialise qualified as CBOR
 import Control.Concurrent.Class.MonadSTM.Strict
   ( MonadSTM (atomically),
@@ -15,7 +15,7 @@ import Control.Concurrent.Class.MonadSTM.Strict
     readTVarIO,
     writeTVar,
   )
-import Control.Tracer (Contravariant (contramap), nullTracer, stdoutTracer)
+import Control.Tracer (Contravariant (contramap), stdoutTracer)
 import Data.ByteString.Lazy qualified as LBS
 import Data.Data (Proxy (Proxy))
 import Data.Functor (void)
@@ -23,7 +23,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Void (Void)
 import Network.Mux qualified as Mx
 import Network.Socket
-  ( AddrInfo (AddrInfo, addrAddress, addrFlags, addrSocketType),
+  ( AddrInfo (..),
     AddrInfoFlag (AI_PASSIVE),
     PortNumber,
     SocketType (Stream),
@@ -32,25 +32,17 @@ import Network.Socket
   )
 import Network.TypedProtocol.Codec (Codec)
 import Ouroboros.Consensus.Block.Abstract (decodeRawHash, encodeRawHash)
-import Ouroboros.Consensus.Byron.Ledger (CodecConfig (..), mkByronCodecConfig)
-import Ouroboros.Consensus.Cardano
-  ( CardanoBlock,
-    ProtVer (..),
-    ShelleyGenesis,
-  )
-import Ouroboros.Consensus.Cardano.Block (CodecConfig (CardanoCodecConfig), ConwayEra, StandardCrypto)
+import Ouroboros.Consensus.Byron.Ledger (CodecConfig (..))
+import Ouroboros.Consensus.Cardano.Block (CodecConfig (CardanoCodecConfig))
 import Ouroboros.Consensus.Cardano.Block qualified as Consensus
 import Ouroboros.Consensus.Cardano.Node (pattern CardanoNodeToNodeVersion2)
 import Ouroboros.Consensus.Node.Serialisation (decodeNodeToNode, encodeNodeToNode)
-import Ouroboros.Consensus.Protocol.Praos (Praos)
 import Ouroboros.Consensus.Protocol.Praos.Header ()
-import Ouroboros.Consensus.Shelley.Ledger (CodecConfig (ShelleyCodecConfig), ShelleyNodeToNodeVersion (ShelleyNodeToNodeVersion1), mkShelleyBlockConfig)
+import Ouroboros.Consensus.Shelley.Ledger (CodecConfig (ShelleyCodecConfig))
 import Ouroboros.Consensus.Shelley.Ledger.NetworkProtocolVersion ()
 import Ouroboros.Consensus.Shelley.Ledger.SupportsProtocol ()
 import Ouroboros.Network.Block
-  ( HasHeader,
-    HeaderHash,
-    castPoint,
+  ( castPoint,
     decodeTip,
     encodeTip,
   )
@@ -64,13 +56,7 @@ import Ouroboros.Network.Magic (NetworkMagic (..))
 import Ouroboros.Network.Mock.Chain (Chain)
 import Ouroboros.Network.Mock.Chain qualified as Chain
 import Ouroboros.Network.Mux
-  ( MiniProtocol
-      ( MiniProtocol,
-        miniProtocolLimits,
-        miniProtocolNum,
-        miniProtocolRun,
-        miniProtocolStart
-      ),
+  ( MiniProtocol (..),
     MiniProtocolLimits (..),
     MiniProtocolNum (MiniProtocolNum),
     OuroborosApplication (OuroborosApplication),
@@ -112,14 +98,7 @@ import Ouroboros.Network.Snocket
     socketSnocket,
   )
 import Ouroboros.Network.Socket
-  ( ConnectToArgs
-      ( ConnectToArgs,
-        ctaConnectTracers,
-        ctaHandshakeCallbacks,
-        ctaHandshakeCodec,
-        ctaHandshakeTimeLimits,
-        ctaVersionDataCodec
-      ),
+  ( ConnectToArgs (..),
     HandshakeCallbacks (HandshakeCallbacks),
     connectToNode,
     nullNetworkConnectTracers,
@@ -136,10 +115,8 @@ type Point = Network.Point Header
 clientChainSync ::
   String ->
   PortNumber ->
-  ProtVer ->
-  ShelleyGenesis ->
   IO ()
-clientChainSync peerName peerPort protVer shelleyGenesis = withIOManager $ \iocp -> do
+clientChainSync peerName peerPort = withIOManager $ \iocp -> do
   AddrInfo {addrAddress} <- resolve
   var <- newTVarIO (Chain.Genesis :: Chain Header)
   void $
@@ -186,7 +163,7 @@ clientChainSync peerName peerPort protVer shelleyGenesis = withIOManager $ \iocp
         mkMiniProtocolCbFromPeer $
           \_ctx ->
             ( contramap show stdoutTracer,
-              codecChainSync protVer shelleyGenesis,
+              codecChainSync,
               ChainSync.chainSyncClientPeer (client var)
             )
 
@@ -321,125 +298,14 @@ chainSyncClient chainvar client =
             Nothing -> error "out of scope rollback"
       writeTVar chainvar chain'
 
--- chainSyncClient ::
---   ControlMessageSTM IO ->
---   Maybe SlotNo ->
---   ChainSync.ChainSyncClient
---     BlockHeader
---     (Point BlockHeader)
---     (Point BlockHeader)
---     IO
---     ()
--- chainSyncClient controlMessageSTM maxSlotNo =
---   ChainSync.ChainSyncClient $ do
---     curvar <- newTVarIO genesisAnchoredFragment
---     chainvar <- newTVarIO genesisAnchoredFragment
---     case chainSyncClient' controlMessageSTM maxSlotNo nullTracer curvar chainvar of
---       ChainSync.ChainSyncClient k -> k
-
--- chainSyncClient' ::
---   ControlMessageSTM IO ->
---   Maybe SlotNo ->
---   Tracer IO (Point BlockHeader, Point BlockHeader) ->
---   StrictTVar IO (AF.AnchoredFragment BlockHeader) ->
---   StrictTVar IO (AF.AnchoredFragment BlockHeader) ->
---   ChainSync.ChainSyncClient
---     BlockHeader
---     (Point BlockHeader)
---     (Point BlockHeader)
---     IO
---     ()
--- chainSyncClient' controlMessageSTM _maxSlotNo syncTracer _currentChainVar candidateChainVar =
---   ChainSync.ChainSyncClient (return requestNext)
---   where
---     requestNext ::
---       ChainSync.ClientStIdle
---         BlockHeader
---         (Point BlockHeader)
---         (Point BlockHeader)
---         IO
---         ()
---     requestNext =
---       ChainSync.SendMsgRequestNext
---         (pure ()) -- on MsgAwaitReply; could trace
---         handleNext
-
---     terminate ::
---       ChainSync.ClientStIdle
---         BlockHeader
---         (Point BlockHeader)
---         (Point BlockHeader)
---         IO
---         ()
---     terminate = ChainSync.SendMsgDone ()
-
---     handleNext ::
---       ChainSync.ClientStNext
---         BlockHeader
---         (Point BlockHeader)
---         (Point BlockHeader)
---         IO
---         ()
---     handleNext =
---       ChainSync.ClientStNext
---         { ChainSync.recvMsgRollForward = \header _pHead ->
---             ChainSync.ChainSyncClient $ do
---               addBlock header
---               cm <- atomically controlMessageSTM
---               return $ case cm of
---                 Terminate -> terminate
---                 _ -> requestNext,
---           ChainSync.recvMsgRollBackward = \pIntersect _pHead ->
---             ChainSync.ChainSyncClient $ do
---               rollback pIntersect
---               cm <- atomically controlMessageSTM
---               return $ case cm of
---                 Terminate -> terminate
---                 _ -> requestNext
---         }
-
---     addBlock :: BlockHeader -> IO ()
---     addBlock b = do
---       chain <- atomically $ do
---         chain <- readTVar candidateChainVar
---         let !chain' = shiftAnchoredFragment 50 b chain
---         writeTVar candidateChainVar chain'
---         return chain'
---       traceWith syncTracer (AF.lastPoint chain, AF.headPoint chain)
-
---     rollback :: Point BlockHeader -> IO ()
---     rollback p = atomically $ do
---       chain <- readTVar candidateChainVar
---       -- we do not handle rollback failure in this demo
---       let (Just !chain') = AF.rollback p chain
---       writeTVar candidateChainVar chain'
-
--- {-
--- notTooFarAhead = atomically $ do
---     currentChain   <- readTVar currentChainVar
---     candidateChain <- readTVar candidateChainVar
---     check $ case (AF.headBlockNo currentChain,
---                   AF.headBlockNo candidateChain) of
---               (Just bn, Just bn') -> bn' < bn + 5
---               _                   -> True
--- -}
-
 codecChainSync ::
-  ProtVer ->
-  ShelleyGenesis ->
   Codec
     (ChainSync.ChainSync Header Point Tip)
     CBOR.DeserialiseFailure
     IO
     LBS.ByteString
-codecChainSync _protVer _shelleyGenesis =
-  ChainSync.codecChainSync
-    enc
-    dec
-    CBOR.encode
-    CBOR.decode
-    encTip
-    decTip
+codecChainSync =
+  ChainSync.codecChainSync enc dec CBOR.encode CBOR.decode encTip decTip
   where
     --    enc :: SerialiseNodeToNode blk a => a -> Encoding
     enc = encodeNodeToNode @Block ccfg version
@@ -458,15 +324,3 @@ codecChainSync _protVer _shelleyGenesis =
         ShelleyCodecConfig
 
     version = CardanoNodeToNodeVersion2 -- @Block
-
--- genesisAnchoredFragment :: AF.AnchoredFragment BlockHeader
--- genesisAnchoredFragment = AF.Empty AF.AnchorGenesis
-
--- shiftAnchoredFragment ::
---   (HasHeader block) =>
---   Int ->
---   block ->
---   AF.AnchoredFragment block ->
---   AF.AnchoredFragment block
--- shiftAnchoredFragment n b af =
---   AF.anchorNewest (fromIntegral (AF.length af - n)) af AF.:> b

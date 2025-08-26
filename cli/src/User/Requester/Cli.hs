@@ -264,7 +264,7 @@ unregisterUser
         Submission submit <- askSubmit wallet
         lift $ runValidate $ do
             void
-                $ validateUnregisterUser validation
+                $ validateUnregisterUser validation ForUser
                 $ deleteKey request
             fmap txHash
                 $ lift

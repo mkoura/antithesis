@@ -259,6 +259,7 @@ spec = do
             $ egenProperty
             $ do
                 (user, pk) <- gen genUserDBElement
+                forRole <- genForRole
                 let platform = "github"
                     pubkey = extractPublicKeyHash pk
                     registration =
@@ -270,9 +271,41 @@ spec = do
                 fact <- toJSFact registration ()
                 let validation = mkValidation [fact] [] [] [] [] [] [] []
                     test =
-                        validateUnregisterUser validation
+                        validateUnregisterUser validation forRole
                             $ unregisterUserChange (Platform platform) user pubkey
                 pure $ runValidate test `shouldReturn` ValidationSuccess Validated
+
+        it
+            "fail to validate an unregistration if the request is already pending"
+            $ egenProperty
+            $ do
+                (user, pk) <- gen genUserDBElement
+                forRole <- genForRole
+                let platform = "github"
+                    pubkey = extractPublicKeyHash pk
+                    registration =
+                        RegisterUserKey
+                            { platform = Platform platform
+                            , username = user
+                            , pubkeyhash = pubkey
+                            }
+                    change = unregisterUserChange (Platform platform) user pubkey
+                    requestAnimal =
+                        RegisterUserRequest
+                            $ Request
+                                { outputRefId = RequestRefId "animal"
+                                , owner = Owner ""
+                                , change = registerUserChange (Platform platform) user pubkey
+                                }
+                db <- genBlind $ oneof [pure [], pure [requestAnimal]]
+                let validation = mkValidation [] [] [] [] [] [] [] db
+                    test =
+                        validateUnregisterUser validation forRole change
+                pure
+                    $ when (not (null db) && forUser forRole)
+                    $ runValidate test
+                    `shouldReturn` ValidationFailure
+                        (UnregisterUserKeyChangeAlreadyPending registration)
 
         it
             "fail to validate an unregistration if there is no a given user already registered"
@@ -280,6 +313,7 @@ spec = do
             $ do
                 (user, pk) <- gen genUserDBElement
                 (userOther, _) <- gen genUserDBElement
+                forRole <- genForRole
                 let platform = "github"
                     pubkey = extractPublicKeyHash pk
                     registration =
@@ -291,7 +325,7 @@ spec = do
                 fact <- toJSFact registration ()
                 let validation = mkValidation [fact] [] [] [] [] [] [] []
                     test =
-                        validateUnregisterUser validation
+                        validateUnregisterUser validation forRole
                             $ unregisterUserChange (Platform platform) userOther pubkey
                     registrationOther =
                         RegisterUserKey
@@ -310,6 +344,7 @@ spec = do
             $ egenProperty
             $ do
                 (user, pk) <- gen genUserDBElement
+                forRole <- genForRole
                 platform <-
                     gen $ withAPresence 0.5 "github" arbitrary `suchThat` all isAscii
                 let registration =
@@ -322,7 +357,7 @@ spec = do
                 fact <- toJSFact registration ()
                 let validation = mkValidation [fact] [] [] [] [] [] [] []
                     test =
-                        validateUnregisterUser validation
+                        validateUnregisterUser validation forRole
                             $ unregisterUserChange (Platform platform) user pubkey
                 pure
                     $ when (platform /= "github")

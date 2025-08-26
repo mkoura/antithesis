@@ -53,7 +53,7 @@ validateRequest _ _ validation (RegisterUserRequest (Request _ _ change)) =
         $ validateRegisterUser validation ForOracle change
 validateRequest _ _ validation (UnregisterUserRequest (Request _ _ change)) =
     mapFailure UnregisterUserFailure
-        $ validateUnregisterUser validation change
+        $ validateUnregisterUser validation ForOracle change
 validateRequest _ _ validation (RegisterRoleRequest (Request _ _ change)) =
     mapFailure RegisterRoleFailure
         $ validateRegisterRole validation change

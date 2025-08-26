@@ -56,6 +56,19 @@ instance Monad m => ToJSON m RegisterUserFailure where
         RegisterUserKeyChangeAlreadyPending key ->
             object ["registerUserKeyChangeAlreadyPending" .= key]
 
+keyAlreadyPendingFailure
+    :: Monad m
+    => Validation m
+    -> (RegisterUserKey -> e)
+    -> RegisterUserKey
+    -> Validate e m ()
+keyAlreadyPendingFailure Validation{mpfsGetTokenRequests} e key = do
+    rqs <- lift mpfsGetTokenRequests
+    void
+        $ throwJusts
+        $ e key
+            <$ find (\r -> requestZooGetRegisterUserKey r == Just key) rqs
+
 validateRegisterUser
     :: Monad m
     => Validation m
@@ -63,16 +76,14 @@ validateRegisterUser
     -> Change RegisterUserKey (OpI ())
     -> Validate RegisterUserFailure m Validated
 validateRegisterUser
-    validation@Validation{githubUserPublicKeys, mpfsGetTokenRequests}
+    validation@Validation{githubUserPublicKeys}
     forRole
     change@(Change (Key key@(RegisterUserKey{platform, username, pubkeyhash})) _) = do
-        rqs <- lift mpfsGetTokenRequests
         when (forUser forRole)
-            $ void
-            $ throwJusts
-                ( RegisterUserKeyChangeAlreadyPending key
-                    <$ find (\r -> requestZooGetRegisterUserKey r == Just key) rqs
-                )
+            $ keyAlreadyPendingFailure
+                validation
+                RegisterUserKeyChangeAlreadyPending
+                key
         mapFailure RegisterUserKeyFailure $ insertValidation validation change
         case platform of
             Platform "github" -> do
@@ -83,7 +94,7 @@ validateRegisterUser
 data UnregisterUserFailure
     = UnregisterUserPlatformNotSupported String
     | UnregisterUserKeyFailure KeyFailure
-    | PublicKeyIsPresentOnPlatform -- issue 19300550b3b776dde1b08059780f617e182f067f
+    | UnregisterUserKeyChangeAlreadyPending RegisterUserKey
     deriving (Show, Eq)
 
 instance Monad m => ToJSON m UnregisterUserFailure where
@@ -92,20 +103,27 @@ instance Monad m => ToJSON m UnregisterUserFailure where
             object ["unregisterUserPlatformNotSupported" .= platform]
         UnregisterUserKeyFailure keyFailure ->
             object ["unregisterUserKeyFailure" .= keyFailure]
-        PublicKeyIsPresentOnPlatform ->
-            object ["publicKeyIsPresentOnPlatform" .= ()]
+        UnregisterUserKeyChangeAlreadyPending key ->
+            object ["unregisterUserKeyChangeAlreadyPending" .= key]
 
 validateUnregisterUser
     :: Monad m
     => Validation m
+    -> ForRole
     -> Change RegisterUserKey (OpD ())
     -> Validate UnregisterUserFailure m Validated
 validateUnregisterUser
     validation
-    change@(Change (Key (RegisterUserKey{platform})) _v) = do
+    forRole
+    change@(Change (Key key@(RegisterUserKey{platform})) _v) = do
+        when (forUser forRole)
+            $ keyAlreadyPendingFailure
+                validation
+                UnregisterUserKeyChangeAlreadyPending
+                key
         void
             $ mapFailure UnregisterUserKeyFailure
             $ deleteValidation validation change
         case platform of
-            Platform "github" -> pure Validated -- issue 19300550b3b776dde1b08059780f617e182f067f
+            Platform "github" -> pure Validated
             Platform other -> notValidated $ UnregisterUserPlatformNotSupported other

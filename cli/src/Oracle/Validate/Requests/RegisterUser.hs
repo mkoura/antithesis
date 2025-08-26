@@ -12,9 +12,9 @@ import Core.Types.Basic
     )
 import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Operation (Op (..))
-import Data.List (find)
 import Lib.JSON.Canonical.Extra (object, (.=))
 import Oracle.Types (requestZooGetRegisterUserKey)
+import Oracle.Validate.Requests.Lib (keyAlreadyPendingFailure)
 import Oracle.Validate.Types
     ( ForRole
     , Validate
@@ -56,19 +56,6 @@ instance Monad m => ToJSON m RegisterUserFailure where
         RegisterUserKeyChangeAlreadyPending key ->
             object ["registerUserKeyChangeAlreadyPending" .= key]
 
-keyAlreadyPendingFailure
-    :: Monad m
-    => Validation m
-    -> (RegisterUserKey -> e)
-    -> RegisterUserKey
-    -> Validate e m ()
-keyAlreadyPendingFailure Validation{mpfsGetTokenRequests} e key = do
-    rqs <- lift mpfsGetTokenRequests
-    void
-        $ throwJusts
-        $ e key
-            <$ find (\r -> requestZooGetRegisterUserKey r == Just key) rqs
-
 validateRegisterUser
     :: Monad m
     => Validation m
@@ -84,6 +71,7 @@ validateRegisterUser
                 validation
                 RegisterUserKeyChangeAlreadyPending
                 key
+                requestZooGetRegisterUserKey
         mapFailure RegisterUserKeyFailure $ insertValidation validation change
         case platform of
             Platform "github" -> do
@@ -121,6 +109,7 @@ validateUnregisterUser
                 validation
                 UnregisterUserKeyChangeAlreadyPending
                 key
+                requestZooGetRegisterUserKey
         void
             $ mapFailure UnregisterUserKeyFailure
             $ deleteValidation validation change

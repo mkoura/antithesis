@@ -125,6 +125,7 @@ library
     Oracle.Validate.Failure
     Oracle.Validate.Request
     Oracle.Validate.Requests.Config
+    Oracle.Validate.Requests.Lib
     Oracle.Validate.Requests.ManageWhiteList
     Oracle.Validate.Requests.RegisterRole
     Oracle.Validate.Requests.RegisterUser

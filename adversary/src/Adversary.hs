@@ -12,11 +12,11 @@ newtype Message = Startup {arguments :: [String]}
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 adversary :: [String] -> IO Message
-adversary args@(magicArg : host : port : _) = do
+adversary args@(magicArg : host : port : limitArg : _) = do
   let magic = NetworkMagic { unNetworkMagic = read magicArg }
-  clientChainSync magic host (read port)
+  clientChainSync magic host (read port) (read limitArg)
   pure Startup {arguments = args}
-adversary _ = error "Expected host and port arguments"
+adversary _ = error "Expected network-magic, host, port and sync-length arguments"
 
 toString :: Message -> String
 toString = Text.unpack . Text.decodeUtf8 . Aeson.encode

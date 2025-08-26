@@ -11,7 +11,7 @@ extra-doc-files: CHANGELOG.md
 
 common settings
   ghc-options:
-    -Wall -Wunused-imports -Wunused-packages -Wmissing-export-lists
+    -Wall -Wunused-imports -Wunused-packages
     -Wname-shadowing -Wdeferred-out-of-scope-variables
     -Wpartial-type-signatures -Wredundant-constraints
 
@@ -57,9 +57,10 @@ library
     , serialise
     , text
 
-  exposed-modules: Adversary
-  other-modules:
+  exposed-modules:
+    Adversary
     Adversary.ChainSync
+  other-modules:
     Adversary.ChainSyncOld
 
 executable adversary

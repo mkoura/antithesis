@@ -2,18 +2,20 @@ module AdversarySpec where
 
 import Adversary
 import Data.Aeson (decode, encode)
-import Test.Hspec (Spec, it, shouldBe, shouldReturn)
+import Test.Hspec (Spec, it, shouldBe)
 import Test.Hspec.QuickCheck (prop)
 import Test.QuickCheck (Arbitrary (arbitrary), Gen, Property, forAll)
+import Adversary.ChainSync (Limit(..))
 
 spec :: Spec
 spec = do
-    it "Returns startup message" $ do
-        adversary [] `shouldReturn` Startup{arguments = []}
 
     it "Display Message as String"
         $ toString (Startup{arguments = ["Foo"]})
         `shouldBe` "{\"arguments\":[\"Foo\"]}"
+
+    it "Reads Limit"
+        $ read "20" `shouldBe` Limit 20
 
     prop "Roundtrip messages to/from JSON" prop_roundTrip
 

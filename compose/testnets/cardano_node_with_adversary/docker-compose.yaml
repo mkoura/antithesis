@@ -37,10 +37,9 @@ services:
     environment:
       NETWORKMAGIC: 42
       PORT: 3001
+      LIMIT: 100
     hostname: adversary
     container_name: adversary
-    command:
-       - "Hello World"
 
   tracer:
     <<: *tracerbase

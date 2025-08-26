@@ -1,14 +1,15 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE GeneralisedNewtypeDeriving #-}
 
-module Adversary.ChainSync (clientChainSync) where
+module Adversary.ChainSync (clientChainSync, Limit (..)) where
 
 import Adversary.ChainSyncOld (recentOffsets)
 import Cardano.Chain.Slotting (EpochSlots (EpochSlots))
 import Codec.Serialise qualified as CBOR
 import Control.Concurrent.Class.MonadSTM.Strict
-  ( MonadSTM (atomically),
+  ( MonadSTM (atomically, STM),
     StrictTVar,
     newTVarIO,
     readTVar,
@@ -47,7 +48,6 @@ import Ouroboros.Network.Block
     encodeTip,
   )
 import Ouroboros.Network.Block qualified as Network
-import Ouroboros.Network.ControlMessage (continueForever)
 import Ouroboros.Network.Diffusion.Configuration
   ( PeerSharing (PeerSharingDisabled),
   )
@@ -103,6 +103,7 @@ import Ouroboros.Network.Socket
     connectToNode,
     nullNetworkConnectTracers,
   )
+import Data.Word (Word32)
 
 type Block = Consensus.CardanoBlock Consensus.StandardCrypto
 
@@ -112,12 +113,16 @@ type Tip = Network.Tip Block
 
 type Point = Network.Point Header
 
+newtype Limit = Limit { limit :: Word32 }
+  deriving newtype (Show, Read, Eq, Ord)
+
 clientChainSync ::
   NetworkMagic ->
   String ->
   PortNumber ->
+  Limit ->
   IO ()
-clientChainSync magic peerName peerPort = withIOManager $ \iocp -> do
+clientChainSync magic peerName peerPort limit = withIOManager $ \iocp -> do
   AddrInfo {addrAddress} <- resolve
   var <- newTVarIO (Chain.Genesis :: Chain Header)
   void $
@@ -169,7 +174,17 @@ clientChainSync magic peerName peerPort = withIOManager $ \iocp -> do
             )
 
     client :: StrictTVar IO (Chain Header) -> ChainSyncClient Header Point Tip IO ()
-    client var = chainSyncClient var (controlledClient $ continueForever (Proxy @IO))
+    client var = chainSyncClient var (controlledClient $ terminateAfterCount var)
+
+    terminateAfterCount :: StrictTVar IO (Chain Header) -> STM IO ControlMessage
+    terminateAfterCount var = do
+      chainLength <- getChainLength var
+      pure $ if chainLength < limit
+                then Continue
+                else Terminate
+
+    getChainLength :: StrictTVar IO (Chain Header) -> STM IO Limit
+    getChainLength var = Limit . fromIntegral . Chain.length <$> readTVar var
 
 -- TODO: provide sensible limits
 -- https://github.com/intersectmbo/ouroboros-network/issues/575
@@ -210,14 +225,14 @@ controlledClient ::
   (MonadSTM m) =>
   ControlMessageSTM m ->
   Client header point tip m ()
-controlledClient controlMessageSTM = go
+controlledClient controlMessageSTM = client
   where
-    go =
+    client =
       Client
         { rollbackward = \_ _ -> do
             ctrl <- atomically controlMessageSTM
             case ctrl of
-              Continue -> pure (Right go)
+              Continue -> pure (Right client)
               Quiesce ->
                 error
                   "Ouroboros.Network.Protocol.ChainSync.Examples.controlledClient: unexpected Quiesce"
@@ -225,12 +240,12 @@ controlledClient controlMessageSTM = go
           rollforward = \_ -> do
             ctrl <- atomically controlMessageSTM
             case ctrl of
-              Continue -> pure (Right go)
+              Continue -> pure (Right client)
               Quiesce ->
                 error
                   "Ouroboros.Network.Protocol.ChainSync.Examples.controlledClient: unexpected Quiesce"
               Terminate -> pure (Left ()),
-          points = \_ -> pure (Right go)
+          points = \_ -> pure (Right client)
         }
 
 chainSyncClient ::

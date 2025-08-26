@@ -14,6 +14,7 @@ set +f
 
 PORT="${PORT:-3001}"
 NETWORKMAGIC="${NETWORKMAGIC:-42}"
+LIMIT="${LIMIT:-100}"
 
 echo "Checking flaky chain sync among the following nodes"
 printf '%s\n' "${NODES[@]}"
@@ -21,4 +22,4 @@ printf '%s\n' "${NODES[@]}"
 # TODO: select randomly
 TESTED_POOL = ${NODES[0]}
 
-adversary $NETWORKMAGIC $TESTED_POOL $PORT
+adversary $NETWORKMAGIC $TESTED_POOL $PORT $LIMIT

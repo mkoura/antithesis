@@ -5,8 +5,10 @@ where
 
 import Control.Monad (when)
 import Core.Types.Basic
-    ( Platform (..)
+    ( Owner (..)
+    , Platform (..)
     , PublicKeyHash (..)
+    , RequestRefId (..)
     , Username (..)
     )
 import Core.Types.Change (Change (..), Key (..))
@@ -18,6 +20,7 @@ import Lib.SSH.Public
     , encodeSSHPublicKey
     , extractPublicKeyHash
     )
+import Oracle.Types (Request (..), RequestZoo (RegisterUserRequest))
 import Oracle.Validate.Requests.RegisterUser
     ( RegisterUserFailure (..)
     , UnregisterUserFailure (..)
@@ -29,7 +32,9 @@ import Oracle.Validate.Requests.TestRun.Lib
     )
 import Oracle.Validate.Types
     ( AValidationResult (..)
+    , ForRole (..)
     , Validated (..)
+    , forUser
     , runValidate
     )
 import Test.Hspec
@@ -38,7 +43,7 @@ import Test.Hspec
     , it
     , shouldReturn
     )
-import Test.QuickCheck (Gen, arbitrary, suchThat)
+import Test.QuickCheck (Gen, arbitrary, oneof, suchThat)
 import Test.QuickCheck.Crypton (sshGen)
 import Test.QuickCheck.EGen (EGen, egenProperty, gen, genA, genBlind)
 import Test.QuickCheck.Lib (withAPresence, withAPresenceInAList)
@@ -95,6 +100,9 @@ unregisterUserChange platform username pubkeyhash =
 newtype OtherSSHPublicKey = OtherSSHPublicKey String
     deriving (Show, Eq)
 
+genForRole :: EGen ForRole
+genForRole = gen $ oneof [pure ForOracle, pure ForUser]
+
 genDBElementOther :: Gen (Username, OtherSSHPublicKey)
 genDBElementOther = do
     user <- Username <$> arbitrary `suchThat` all isAscii
@@ -106,23 +114,55 @@ spec = do
     describe "validate requester requests" $ do
         it "validate a registered user" $ egenProperty $ do
             e@(user, pk) <- genValidDBElement
+            forRole <- genForRole
             let validation = mkValidation [] [] [] [e] [] [] [] []
                 test =
-                    validateRegisterUser validation
+                    validateRegisterUser validation forRole
                         $ registerUserChange (Platform "github") user
                         $ extractPublicKeyHash pk
             pure $ runValidate test `shouldReturn` ValidationSuccess Validated
-
+        it
+            "fail to validate a registration if the request is already pending"
+            $ egenProperty
+            $ do
+                (user, pk) <- genValidDBElement
+                forRole <- genForRole
+                let platform = "github"
+                    pubkey = extractPublicKeyHash pk
+                    registration =
+                        RegisterUserKey
+                            { platform = Platform platform
+                            , username = user
+                            , pubkeyhash = pubkey
+                            }
+                    change = registerUserChange (Platform platform) user pubkey
+                    requestAnimal =
+                        RegisterUserRequest
+                            $ Request
+                                { outputRefId = RequestRefId "animal"
+                                , owner = Owner ""
+                                , change
+                                }
+                db <- genBlind $ oneof [pure [], pure [requestAnimal]]
+                let validation = mkValidation [] [] [] [] [] [] [] db
+                    test =
+                        validateRegisterUser validation forRole change
+                pure
+                    $ when (not (null db) && forUser forRole)
+                    $ runValidate test
+                    `shouldReturn` ValidationFailure
+                        (RegisterUserKeyChangeAlreadyPending registration)
         it
             "fail to validate a registration of user for an unsupported platform"
             $ egenProperty
             $ do
                 e@(user, pk) <- gen genUserDBElement
+                forRole <- genForRole
                 db <- gen $ withAPresenceInAList 0.5 e genUserDBElement
                 platform <- gen $ withAPresence 0.5 "github" arbitrary
                 let validation = mkValidation [] [] [] db [] [] [] []
                     test =
-                        validateRegisterUser validation
+                        validateRegisterUser validation forRole
                             $ registerUserChange (Platform platform) user
                             $ extractPublicKeyHash pk
                 pure
@@ -136,6 +176,7 @@ spec = do
             $ egenProperty
             $ do
                 e@(user, pk) <- gen genUserDBElement
+                forRole <- genForRole
                 let platform = "github"
                     pubkey = extractPublicKeyHash pk
                     registration =
@@ -147,7 +188,7 @@ spec = do
                 fact <- toJSFact registration ()
                 let validation = mkValidation [fact] [] [] [e] [] [] [] []
                     test =
-                        validateRegisterUser validation
+                        validateRegisterUser validation forRole
                             $ registerUserChange (Platform platform) user pubkey
                 pure
                     $ runValidate test
@@ -159,11 +200,12 @@ spec = do
             $ egenProperty
             $ do
                 (user, pk) <- gen genUserDBElement
+                forRole <- genForRole
                 let platform = "github"
                     pubkey = extractPublicKeyHash pk
                 let validation = mkValidation [] [] [] [] [] [] [] []
                     test =
-                        validateRegisterUser validation
+                        validateRegisterUser validation forRole
                             $ registerUserChange (Platform platform) user pubkey
                 pure
                     $ runValidate test
@@ -175,6 +217,7 @@ spec = do
             $ egenProperty
             $ do
                 (user, OtherSSHPublicKey pk) <- gen genDBElementOther
+                forRole <- genForRole
                 let platform = "github"
                     extractOtherPublicKeyHash sshPk =
                         let
@@ -185,7 +228,7 @@ spec = do
                     e = (user, SSHPublicKey pk)
                 let validation = mkValidation [] [] [] [e] [] [] [] []
                     test =
-                        validateRegisterUser validation
+                        validateRegisterUser validation forRole
                             $ registerUserChange (Platform platform) user pubkey
                 pure
                     $ runValidate test
@@ -197,12 +240,13 @@ spec = do
             $ egenProperty
             $ do
                 e@(user, pk1) <- genValidDBElement
+                forRole <- genForRole
                 (_, pk2) <- genValidDBElement
                 let platform = "github"
                     pubkey = extractPublicKeyHash pk2
                 let validation = mkValidation [] [] [] [e] [] [] [] []
                     test =
-                        validateRegisterUser validation
+                        validateRegisterUser validation forRole
                             $ registerUserChange (Platform platform) user pubkey
                 pure
                     $ when (pk1 /= pk2)

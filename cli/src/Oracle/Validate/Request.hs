@@ -33,7 +33,8 @@ import Oracle.Validate.Requests.TestRun.Update
     , validateToRunningUpdate
     )
 import Oracle.Validate.Types
-    ( Validate
+    ( ForRole (..)
+    , Validate
     , Validated
     , mapFailure
     , notValidated
@@ -49,7 +50,7 @@ validateRequest
     -> Validate RequestValidationFailure m Validated
 validateRequest _ _ validation (RegisterUserRequest (Request _ _ change)) =
     mapFailure RegisterUserFailure
-        $ validateRegisterUser validation change
+        $ validateRegisterUser validation ForOracle change
 validateRequest _ _ validation (UnregisterUserRequest (Request _ _ change)) =
     mapFailure UnregisterUserFailure
         $ validateUnregisterUser validation change

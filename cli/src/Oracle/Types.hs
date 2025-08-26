@@ -9,17 +9,17 @@ module Oracle.Types
     , requestZooRefId
     , fmapToken
     , fmapMToken
+    , requestZooGetRegisterUserKey
     ) where
 
 import Control.Applicative (Alternative, (<|>))
 import Core.Types.Basic (Owner, RequestRefId)
-import Core.Types.Change (Change (..))
+import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Operation (Op (..), Operation (..))
 import Core.Types.Tx (Root)
 import Data.Functor.Identity (Identity)
 import Lib.JSON.Canonical.Extra (object, withObject, (.:), (.=))
 import Oracle.Config.Types (Config, ConfigKey)
-
 import Text.JSON.Canonical
     ( FromJSON (..)
     , JSValue
@@ -139,6 +139,13 @@ requestZooRefId (UpdateConfigRequest req) = outputRefId req
 requestZooRefId (UnknownInsertRequest req) = outputRefId req
 requestZooRefId (UnknownDeleteRequest req) = outputRefId req
 requestZooRefId (UnknownUpdateRequest req) = outputRefId req
+
+requestZooGetRegisterUserKey :: RequestZoo -> Maybe RegisterUserKey
+requestZooGetRegisterUserKey
+    (RegisterUserRequest (Request _ _ (Change (Key k) _))) = Just k
+requestZooGetRegisterUserKey
+    (UnregisterUserRequest (Request _ _ (Change (Key k) _))) = Just k
+requestZooGetRegisterUserKey _ = Nothing
 
 instance (Alternative m, ReportSchemaErrors m) => FromJSON m RequestZoo where
     fromJSON v = do

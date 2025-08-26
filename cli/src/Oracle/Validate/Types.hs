@@ -16,6 +16,8 @@ module Oracle.Validate.Types
     , throwLeft
     , liftMaybe
     , hoistValidate
+    , ForRole (..)
+    , forUser
     ) where
 
 import Control.Monad.Catch (MonadCatch, MonadMask (..), MonadThrow)
@@ -119,3 +121,10 @@ throwLeft _ (Right a) = pure a
 liftMaybe :: Monad m => e -> Maybe a -> Validate e m a
 liftMaybe e Nothing = notValidated e
 liftMaybe _ (Just a) = pure a
+
+data ForRole = ForOracle | ForUser
+    deriving (Show, Eq)
+
+forUser :: ForRole -> Bool
+forUser ForUser = True
+forUser ForOracle = False

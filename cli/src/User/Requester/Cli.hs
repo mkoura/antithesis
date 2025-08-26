@@ -61,6 +61,7 @@ import Oracle.Validate.Requests.TestRun.Create
     )
 import Oracle.Validate.Types
     ( AValidationResult
+    , ForRole (..)
     , liftMaybe
     , mapFailure
     , runValidate
@@ -237,7 +238,7 @@ registerUser
         validation <- askValidation $ Just tokenId
         lift $ runValidate $ do
             void
-                $ validateRegisterUser validation
+                $ validateRegisterUser validation ForUser
                 $ insertKey request
             fmap txHash
                 $ lift

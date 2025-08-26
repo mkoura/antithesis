@@ -5,7 +5,6 @@
 
 module Adversary.ChainSync (clientChainSync, Limit (..)) where
 
-import Adversary.ChainSyncOld (recentOffsets)
 import Cardano.Chain.Slotting (EpochSlots (EpochSlots))
 import Codec.Serialise qualified as CBOR
 import Control.Concurrent.Class.MonadSTM.Strict
@@ -295,7 +294,7 @@ chainSyncClient chainvar client =
 
     getChainPoints = do
       pts <-
-        Chain.selectPoints recentOffsets <$> readTVarIO chainvar
+        Chain.selectPoints [] <$> readTVarIO chainvar
       choice <- points client (fmap castPoint pts)
       pure $ case choice of
         Left a -> Left a

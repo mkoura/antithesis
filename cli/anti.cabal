@@ -122,6 +122,7 @@ library
     Oracle.Token.Options
     Oracle.Types
     Oracle.Validate.DownloadAssets
+    Oracle.Validate.Failure
     Oracle.Validate.Request
     Oracle.Validate.Requests.Config
     Oracle.Validate.Requests.ManageWhiteList

@@ -22,11 +22,11 @@ import MPFS.API
     )
 import Oracle.Cli (OracleCommand (..), oracleCmd)
 import Oracle.Types
-    ( RequestValidationFailure
-    , Token (..)
+    ( Token (..)
     , TokenState (..)
     , fmapMToken
     )
+import Oracle.Validate.Failure (RequestValidationFailure)
 import Oracle.Validate.Request (validateRequest)
 import Oracle.Validate.Types
     ( AValidationResult

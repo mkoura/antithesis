@@ -28,12 +28,12 @@ import MPFS.API
     , mpfsGetToken
     )
 import Oracle.Types
-    ( RequestValidationFailure
-    , RequestZoo
+    ( RequestZoo
     , Token (..)
     , TokenState (..)
     , requestZooRefId
     )
+import Oracle.Validate.Failure (RequestValidationFailure)
 import Oracle.Validate.Request
     ( validateRequest
     )

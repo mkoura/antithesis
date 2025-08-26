@@ -8,9 +8,9 @@ import Core.Types.Basic (Owner)
 import Oracle.Config.Types (Config (..))
 import Oracle.Types
     ( Request (..)
-    , RequestValidationFailure (..)
     , RequestZoo (..)
     )
+import Oracle.Validate.Failure (RequestValidationFailure (..))
 import Oracle.Validate.Requests.Config
     ( validateInsertConfig
     , validateUpdateConfig

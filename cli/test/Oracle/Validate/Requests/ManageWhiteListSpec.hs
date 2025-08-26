@@ -64,7 +64,7 @@ spec = do
         it "validates a repository insertion" $ egenProperty $ do
             repo <- gen genRepository
             agent <- gen genAscii
-            let validation = mkValidation [] [] [] [] [] [repo] []
+            let validation = mkValidation [] [] [] [] [] [repo] [] []
                 test =
                     validateAddWhiteListed
                         validation
@@ -80,7 +80,7 @@ spec = do
                 repo <- gen genRepository
                 agent <- gen genAscii
                 platform <- gen $ withAPresence 0.5 "github" genAscii
-                let validation = mkValidation [] [] [] [] [] [repo] []
+                let validation = mkValidation [] [] [] [] [] [repo] [] []
                     test =
                         validateAddWhiteListed
                             validation
@@ -100,7 +100,7 @@ spec = do
                 repo <- gen genRepository
                 agent <- gen genAscii
                 presence <- gen $ withAPresenceInAList 0.5 repo genRepository
-                let validation = mkValidation [] [] [] [] [] presence []
+                let validation = mkValidation [] [] [] [] [] presence [] []
                     test =
                         validateAddWhiteListed
                             validation
@@ -139,6 +139,7 @@ spec = do
                             []
                             presenceInGithub
                             []
+                            []
                     test =
                         validateAddWhiteListed
                             validation
@@ -162,7 +163,7 @@ spec = do
             fact <- toJSFact key ()
             presenceInGithub <-
                 gen $ withAPresenceInAList 0.5 repo genRepository
-            let validation = mkValidation [fact] [] [] [] [] presenceInGithub []
+            let validation = mkValidation [fact] [] [] [] [] presenceInGithub [] []
                 test =
                     validateRemoveWhiteListed
                         validation
@@ -186,7 +187,7 @@ spec = do
                 presenceInFacts <-
                     gen $ oneof [pure [], pure [fact]]
                 let validation =
-                        mkValidation presenceInFacts [] [] [] [] presenceInGithub []
+                        mkValidation presenceInFacts [] [] [] [] presenceInGithub [] []
                     test =
                         validateRemoveWhiteListed
                             validation
@@ -211,7 +212,7 @@ spec = do
                     key = WhiteListKey (Platform platform) repo
                 fact <- toJSFact key ()
                 presenceInGithub <- gen $ withAPresenceInAList 0.5 repo genRepository
-                let validation = mkValidation [fact] [] [] [] [] presenceInGithub []
+                let validation = mkValidation [fact] [] [] [] [] presenceInGithub [] []
                     test =
                         validateRemoveWhiteListed
                             validation
@@ -242,7 +243,7 @@ spec = do
                 presenceInFacts <-
                     gen $ oneof [pure [], pure [fact]]
                 let validation =
-                        mkValidation presenceInFacts [] [] [] [] presenceInGithub []
+                        mkValidation presenceInFacts [] [] [] [] presenceInGithub [] []
                 operation <-
                     genBlind
                         $ oneof

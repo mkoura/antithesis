@@ -63,6 +63,7 @@ import Lib.GitHub
     ( GetGithubFileFailure (..)
     )
 import Lib.SSH.Public (SSHPublicKey)
+import Oracle.Types (RequestZoo)
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig (..)
     )
@@ -129,14 +130,16 @@ mkValidation
     -> [(Username, Repository)]
     -> [Repository]
     -> [(FileName, Text)]
+    -> [RequestZoo]
     -> Validation m
-mkValidation fs rs ds upk rr reposExists files =
+mkValidation fs rs ds upk rr reposExists files pendingRequests =
     Validation
         { mpfsGetFacts = do
             db <- toJSON fs
             return $ parseFacts db
         , mpfsGetTestRuns =
             pure $ mapMaybe (\(Fact k _ :: JSFact) -> fromJSON k) fs
+        , mpfsGetTokenRequests = pure pendingRequests
         , githubCommitExists = \repository commit ->
             return $ Right $ (repository, commit) `elem` rs
         , githubDirectoryExists = \repository commit dir ->
@@ -234,7 +237,7 @@ changeTestRun l qc testRun = do
     pure $ testRun & l .~ (new ^. qc)
 
 noValidation :: Monad m => Validation m
-noValidation = mkValidation [] [] [] [] [] [] []
+noValidation = mkValidation [] [] [] [] [] [] [] []
 
 gitCommit :: TestRun -> (Repository, Commit)
 gitCommit testRun =

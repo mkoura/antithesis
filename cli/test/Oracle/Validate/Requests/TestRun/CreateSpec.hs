@@ -149,6 +149,7 @@ spec = do
                         , (FileName $ prefix "docker-compose.yaml", "version: '3.8'")
                         , (FileName $ prefix "testnet.yaml", "testnet: true")
                         ]
+                        []
             testRunState <-
                 Pending (Duration duration)
                     <$> signTestRun sign testRun
@@ -195,7 +196,7 @@ spec = do
                         , pure testRunRequest
                         ]
             role <- jsFactRole testRunFact
-            let validation = mkValidation [role] [] [] [] [] [] []
+            let validation = mkValidation [role] [] [] [] [] [] [] []
                 testRunState = Pending (Duration duration) signature
             pure $ do
                 mresult <-
@@ -259,6 +260,7 @@ spec = do
                         []
                         []
                         []
+                        []
             let testRunState = Pending (Duration duration) signature
             pure
                 $ counterexample (show testRunDB)
@@ -299,6 +301,7 @@ spec = do
                         []
                         []
                         []
+                        []
             pure $ do
                 mresult <-
                     runValidate
@@ -332,6 +335,7 @@ spec = do
             let validation =
                     mkValidation
                         whiteListed
+                        []
                         []
                         []
                         []

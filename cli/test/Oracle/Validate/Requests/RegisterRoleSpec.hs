@@ -90,7 +90,7 @@ spec = do
     describe "validate requester requests" $ do
         it "validate a registered role" $ egenProperty $ do
             e@(user, repo) <- gen genRoleDBElement
-            let validation = mkValidation [] [] [] [] [e] [] []
+            let validation = mkValidation [] [] [] [] [e] [] [] []
                 test =
                     validateRegisterRole validation
                         $ registerRoleChange (Platform "github") user repo
@@ -100,7 +100,7 @@ spec = do
             e@(user, repo) <- gen genRoleDBElement
             db <- gen $ withAPresenceInAList 0.5 e genRoleDBElement
             platform <- gen $ withAPresence 0.5 "github" arbitrary
-            let validation = mkValidation [] [] [] [] db [] []
+            let validation = mkValidation [] [] [] [] db [] [] []
                 test =
                     validateRegisterRole validation
                         $ registerRoleChange (Platform platform) user repo
@@ -123,7 +123,7 @@ spec = do
                             , repository = repo
                             }
                 fact <- toJSFact registration ()
-                let validation = mkValidation [fact] [] [] [] [e] [] []
+                let validation = mkValidation [fact] [] [] [] [e] [] [] []
                     test =
                         validateRegisterRole validation
                             $ registerRoleChange (Platform platform) user repo
@@ -138,7 +138,7 @@ spec = do
             $ do
                 (user, repo) <- gen genRoleDBElement
                 let platform = "github"
-                    validation = mkValidation [] [] [] [] [] [] []
+                    validation = mkValidation [] [] [] [] [] [] [] []
                     test =
                         validateRegisterRole validation
                             $ registerRoleChange (Platform platform) user repo
@@ -154,7 +154,7 @@ spec = do
                 e@(user, repo) <- gen genRoleDBElement
                 (_, repo1) <- gen genRoleDBElement
                 let platform = "github"
-                    validation = mkValidation [] [] [] [] [e] [] []
+                    validation = mkValidation [] [] [] [] [e] [] [] []
                     test =
                         validateRegisterRole validation
                             $ registerRoleChange (Platform platform) user repo1
@@ -171,7 +171,7 @@ spec = do
                 e@(user, repo) <- gen genRoleDBElement
                 (user1, repo1) <- gen genRoleDBElement
                 let platform = "github"
-                    validation = mkValidation [] [] [] [] [e] [] []
+                    validation = mkValidation [] [] [] [] [e] [] [] []
                     test =
                         validateRegisterRole validation
                             $ registerRoleChange (Platform platform) user1 repo1
@@ -194,7 +194,7 @@ spec = do
                             , repository = repo
                             }
                 fact <- toJSFact registration ()
-                let validation = mkValidation [fact] [] [] [] [e] [] []
+                let validation = mkValidation [fact] [] [] [] [e] [] [] []
                     test =
                         validateUnregisterRole validation
                             $ unregisterRoleChange (Platform platform) user repo
@@ -214,7 +214,7 @@ spec = do
                             , repository = repo
                             }
                 fact <- toJSFact registration ()
-                let validation = mkValidation [fact] [] [] [] [] [] []
+                let validation = mkValidation [fact] [] [] [] [] [] [] []
                     test =
                         validateUnregisterRole validation
                             $ unregisterRoleChange (Platform platform) userOther repo

@@ -44,7 +44,7 @@ spec = do
             url <- genA
             let acceptedState = Accepted $ Pending (Duration 5) signature
             testRunFact <- toJSFact testRun acceptedState
-            let validation = mkValidation [testRunFact] [] [] [] [] [] []
+            let validation = mkValidation [testRunFact] [] [] [] [] [] [] []
                 newTestRunState =
                     Finished
                         acceptedState
@@ -83,7 +83,7 @@ spec = do
                                 (Duration differentPendingDuration)
                                 differentSignature
                 testRunFact <- toJSFact testRun fact
-                let validation = mkValidation [testRunFact] [] [] [] [] [] []
+                let validation = mkValidation [testRunFact] [] [] [] [] [] [] []
                     newTestRunState =
                         Finished
                             request

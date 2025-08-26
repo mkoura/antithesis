@@ -26,12 +26,14 @@ import Core.Types.Basic
 import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Fact (Fact (..), JSFact, parseFacts)
 import Core.Types.Operation (Op (..))
+import Data.Functor.Identity (Identity (..))
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import GitHub (Auth)
 import Lib.GitHub qualified as GitHub
 import Lib.JSON.Canonical.Extra (object, (.=))
-import MPFS.API (getTokenFacts)
+import MPFS.API (getToken, getTokenFacts)
+import Oracle.Types (RequestZoo, Token (tokenRequests))
 import Oracle.Validate.Types (Validate, notValidated)
 import Servant.Client (ClientM)
 import Text.JSON.Canonical (FromJSON (..), ToJSON)
@@ -57,6 +59,7 @@ data Validation m = Validation
          . (FromJSON Maybe k, FromJSON Maybe v)
         => m [Fact k v]
     , mpfsGetTestRuns :: m [TestRun]
+    , mpfsGetTokenRequests :: m [RequestZoo]
     , githubCommitExists
         :: Repository
         -> Commit
@@ -93,6 +96,7 @@ hoistValidation
     Validation
         { mpfsGetFacts
         , mpfsGetTestRuns
+        , mpfsGetTokenRequests
         , githubCommitExists
         , githubDirectoryExists
         , githubUserPublicKeys
@@ -103,6 +107,7 @@ hoistValidation
         Validation
             { mpfsGetFacts = f mpfsGetFacts
             , mpfsGetTestRuns = f mpfsGetTestRuns
+            , mpfsGetTokenRequests = f mpfsGetTokenRequests
             , githubCommitExists =
                 \repo commit -> f $ githubCommitExists repo commit
             , githubDirectoryExists =
@@ -125,6 +130,11 @@ mkValidation auth tk = do
         { mpfsGetFacts = getFacts
         , mpfsGetTestRuns =
             mapMaybe (\(Fact k _ :: JSFact) -> fromJSON k) <$> getFacts
+        , mpfsGetTokenRequests = case tk of
+            Nothing -> pure []
+            Just tokenId -> do
+                mtoken <- fromJSON <$> getToken tokenId
+                pure $ maybe [] (fmap runIdentity . tokenRequests) mtoken
         , githubCommitExists = \repository commit ->
             liftIO $ GitHub.githubCommitExists auth repository commit
         , githubDirectoryExists = \repository commit dir ->

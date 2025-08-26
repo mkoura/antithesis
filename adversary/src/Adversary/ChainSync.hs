@@ -113,10 +113,11 @@ type Tip = Network.Tip Block
 type Point = Network.Point Header
 
 clientChainSync ::
+  NetworkMagic ->
   String ->
   PortNumber ->
   IO ()
-clientChainSync peerName peerPort = withIOManager $ \iocp -> do
+clientChainSync magic peerName peerPort = withIOManager $ \iocp -> do
   AddrInfo {addrAddress} <- resolve
   var <- newTVarIO (Chain.Genesis :: Chain Header)
   void $
@@ -135,7 +136,7 @@ clientChainSync peerName peerPort = withIOManager $ \iocp -> do
       ( simpleSingletonVersions
           NodeToNodeV_14
           ( NodeToNodeVersionData
-              { networkMagic = NetworkMagic 1,
+              { networkMagic = magic,
                 diffusionMode = InitiatorOnlyDiffusionMode,
                 peerSharing = PeerSharingDisabled,
                 query = False

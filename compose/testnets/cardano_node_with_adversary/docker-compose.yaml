@@ -34,7 +34,9 @@ services:
       dockerfile: "Dockerfile"
       args:
         CARDANO_NODE_REF: "10.5.1"
-
+    environment:
+      NETWORKMAGIC: 42
+      PORT: 3001
     hostname: adversary
     container_name: adversary
     command:

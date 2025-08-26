@@ -13,11 +13,12 @@ NODES+=( $EXTRA_NODES )
 set +f
 
 PORT="${PORT:-3001}"
+NETWORKMAGIC="${NETWORKMAGIC:-42}"
 
 echo "Checking flaky chain sync among the following nodes"
 printf '%s\n' "${NODES[@]}"
 
 # TODO: select randomly
-tested_pool = ${NODES[0]}
+TESTED_POOL = ${NODES[0]}
 
-adversary $tested_pool
+adversary $NETWORKMAGIC $TESTED_POOL $PORT

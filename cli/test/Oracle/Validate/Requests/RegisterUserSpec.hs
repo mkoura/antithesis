@@ -1,6 +1,9 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 
-module Oracle.Validate.Requests.RegisterUserSpec (spec)
+module Oracle.Validate.Requests.RegisterUserSpec
+    ( spec
+    , genForRole
+    )
 where
 
 import Control.Monad (when)
@@ -20,7 +23,7 @@ import Lib.SSH.Public
     , encodeSSHPublicKey
     , extractPublicKeyHash
     )
-import Oracle.Types (Request (..), RequestZoo (RegisterUserRequest))
+import Oracle.Types (Request (..), RequestZoo (..))
 import Oracle.Validate.Requests.RegisterUser
     ( RegisterUserFailure (..)
     , UnregisterUserFailure (..)
@@ -136,14 +139,25 @@ spec = do
                             , pubkeyhash = pubkey
                             }
                     change = registerUserChange (Platform platform) user pubkey
-                    requestAnimal =
-                        RegisterUserRequest
+                    otherChange = unregisterUserChange (Platform platform) user pubkey
+                    pendingRequest b c =
+                        b
                             $ Request
                                 { outputRefId = RequestRefId "animal"
                                 , owner = Owner ""
-                                , change
+                                , change = c
                                 }
-                db <- genBlind $ oneof [pure [], pure [requestAnimal]]
+                db <-
+                    genBlind
+                        $ oneof
+                            [ pure []
+                            , pure [pendingRequest RegisterUserRequest change]
+                            , pure [pendingRequest UnregisterUserRequest otherChange]
+                            , pure
+                                [ pendingRequest RegisterUserRequest change
+                                , pendingRequest UnregisterUserRequest otherChange
+                                ]
+                            ]
                 let validation = mkValidation [] [] [] [] [] [] [] db
                     test =
                         validateRegisterUser validation forRole change

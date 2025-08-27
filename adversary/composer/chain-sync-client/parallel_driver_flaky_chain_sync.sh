@@ -20,6 +20,6 @@ echo "Checking flaky chain sync among the following nodes"
 printf '%s\n' "${NODES[@]}"
 
 # TODO: select randomly
-TESTED_POOL = ${NODES[0]}
+TESTED_POOL="${NODES[0]}"
 
-adversary $NETWORKMAGIC $TESTED_POOL $PORT $LIMIT
+adversary "$NETWORKMAGIC" "$TESTED_POOL" "$PORT" "$LIMIT"

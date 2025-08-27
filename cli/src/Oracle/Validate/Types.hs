@@ -1,4 +1,6 @@
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Oracle.Validate.Types
     ( ValidationResult
@@ -23,6 +25,7 @@ module Oracle.Validate.Types
 import Control.Monad.Catch (MonadCatch, MonadMask (..), MonadThrow)
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Trans.Class (MonadTrans, lift)
+import Control.Monad.Trans.Control (MonadTransControl (..))
 import Control.Monad.Trans.Except
     ( ExceptT (..)
     , runExceptT
@@ -39,9 +42,14 @@ newtype Validate e m a = Validate (ExceptT e m a)
     deriving
         (Functor, Applicative, Monad, MonadMask, MonadCatch, MonadThrow)
 
+instance MonadTransControl (Validate e) where
+    type StT (Validate e) a = StT (ExceptT e) a
+    liftWith f = Validate $ liftWith $ \runInBase -> f (runInBase . (\(Validate t) -> t))
+    restoreT = Validate . restoreT
 hoistValidate
     :: (forall x. m x -> n x) -> Validate e m a -> Validate e n a
 hoistValidate f (Validate a) = Validate $ ExceptT $ f $ runExceptT a
+
 instance MonadTrans (Validate e) where
     lift = Validate . lift
 

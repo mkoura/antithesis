@@ -4,7 +4,6 @@ module Oracle.Config.Cli
     )
 where
 
-import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Trans.Class (lift)
 import Core.Context (WithContext, askMpfs, askSubmit)
 import Core.Types.Basic (TokenId)
@@ -24,7 +23,7 @@ deriving instance Show (ConfigCmd a)
 deriving instance Eq (ConfigCmd a)
 
 configCmd
-    :: MonadIO m => ConfigCmd a -> WithContext m a
+    :: Monad m => ConfigCmd a -> WithContext m a
 configCmd (SetConfig tokenId wallet config) = do
     mpfs <- askMpfs
     Submission submit <- askSubmit wallet

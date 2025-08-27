@@ -8,7 +8,6 @@ module Oracle.Validate.DownloadAssets
 where
 
 import Control.Monad (filterM, forM_)
-import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Trans.Class (lift)
 import Core.Types.Basic (Directory (..), FileName (..))
 import Core.Types.Fact
@@ -20,16 +19,14 @@ import Lib.JSON.Canonical.Extra (object, (.=))
 import Oracle.Validate.Types
     ( Validate
     , Validated (..)
+    , liftMaybe
     , mapFailure
     , notValidated
     , throwFalse
     , throwJusts
     )
 import System.Directory
-    ( doesDirectoryExist
-    , getPermissions
-    , withCurrentDirectory
-    , writable
+    ( writable
     )
 import Text.JSON.Canonical (ToJSON (..))
 import User.Agent.Types
@@ -43,13 +40,12 @@ import User.Types
     )
 import Validation
     ( Validation (..)
+    , hoistValidation
     )
 import Validation.DownloadFile
     ( DownloadedFileFailure (..)
     , renderDownloadedFileFailure
     )
-
-import Data.Text.IO qualified as T
 
 data AssetValidationFailure
     = AssetValidationSourceFailure SourceDirFailure
@@ -118,14 +114,14 @@ checkSourceDirectory
                     else Just SourceDirFailureDirAbsent
 
 downloadFileAndWriteLocally
-    :: MonadIO m
+    :: Monad m
     => Validation m
     -> TestRun
     -> Directory
     -> FileName
     -> m (Maybe AssetValidationFailure)
 downloadFileAndWriteLocally
-    Validation{githubGetFile}
+    Validation{githubGetFile, withCurrentDirectory, writeTextFile}
     testRun
     (Directory targetDir)
     (FileName filename) = do
@@ -138,25 +134,12 @@ downloadFileAndWriteLocally
         case contentE of
             Left err -> pure $ Just $ AssetValidationParseError err
             Right txt -> do
-                liftIO
-                    $ withCurrentDirectory targetDir
-                    $ T.writeFile filename txt
+                withCurrentDirectory targetDir
+                    $ writeTextFile filename txt
                 pure Nothing
 
-checkTargetDirectory
-    :: Directory
-    -> IO Bool
-checkTargetDirectory (Directory dir) =
-    doesDirectoryExist dir
-
-checkTargetDirectoryPermissions
-    :: Directory
-    -> IO Bool
-checkTargetDirectoryPermissions (Directory dir) =
-    writable <$> getPermissions dir
-
 validateDownloadAssets
-    :: MonadIO m
+    :: Monad m
     => Validation m
     -> TestRunMap
     -> TestRunId
@@ -190,7 +173,7 @@ validateDownloadAssets validation TestRunMap{pending, running, done} testid dir 
     inspectTestRunDone (StatusDone fact) = checkFact $ factKey fact
 
 validateAssets
-    :: MonadIO m
+    :: Monad m
     => Directory
     -> Validation m
     -> TestRun
@@ -201,14 +184,12 @@ validateAssets dir validation testRun = do
     _ <-
         mapFailure AssetValidationSourceFailure
             $ throwJusts sourceDirValidation
-    targetDirValidation <- liftIO $ checkTargetDirectory dir
-    _ <- throwFalse targetDirValidation DownloadAssetsTargetDirNotFound
-    targetDirWritableValidation <-
-        liftIO $ checkTargetDirectoryPermissions dir
-    _ <-
-        throwFalse
-            targetDirWritableValidation
-            DownloadAssetsTargetDirNotWritable
+    targetDirValidation <-
+        directoryExists (hoistValidation validation) dir
+    permissions <-
+        liftMaybe DownloadAssetsTargetDirNotFound targetDirValidation
+    Validated <-
+        throwFalse (writable permissions) DownloadAssetsTargetDirNotWritable
 
     forM_ ["README.md", "docker-compose.yaml", "testnet.yaml"] $ \filename -> do
         fileValidation <-

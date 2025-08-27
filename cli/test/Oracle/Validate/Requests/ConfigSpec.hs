@@ -16,7 +16,8 @@ import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig (..)
     )
 import Oracle.Validate.Requests.TestRun.Lib
-    ( noValidation
+    ( mkValidation
+    , noValidation
     )
 import Oracle.Validate.Types
     ( AValidationResult (..)
@@ -57,7 +58,11 @@ spec = do
                                     }
                             }
             let test =
-                    validateInsertConfig noValidation oracleOwner oracleOwner change
+                    validateInsertConfig
+                        (mkValidation noValidation)
+                        oracleOwner
+                        oracleOwner
+                        change
             pure $ runValidate test `shouldReturn` ValidationSuccess Validated
         it
             "fails to validate a config insertion with a minimum duration less than 1"
@@ -80,7 +85,11 @@ spec = do
                                         }
                                 }
                 let test =
-                        validateInsertConfig noValidation oracleOwner oracleOwner change
+                        validateInsertConfig
+                            (mkValidation noValidation)
+                            oracleOwner
+                            oracleOwner
+                            change
                 pure
                     $ runValidate test
                     `shouldReturn` ValidationFailure
@@ -106,7 +115,11 @@ spec = do
                                         }
                                 }
                 let test =
-                        validateInsertConfig noValidation oracleOwner oracleOwner change
+                        validateInsertConfig
+                            (mkValidation noValidation)
+                            oracleOwner
+                            oracleOwner
+                            change
                 pure
                     $ runValidate test
                     `shouldReturn` ValidationFailure
@@ -137,7 +150,11 @@ spec = do
                                         }
                                 }
                 let test =
-                        validateInsertConfig noValidation oracleOwner attacker change
+                        validateInsertConfig
+                            (mkValidation noValidation)
+                            oracleOwner
+                            attacker
+                            change
                 pure
                     $ when (attacker /= oracleOwner)
                     $ runValidate test

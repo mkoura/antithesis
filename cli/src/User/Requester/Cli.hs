@@ -6,8 +6,6 @@ module User.Requester.Cli
     ) where
 
 import Control.Monad (forM, forM_, void)
-import Control.Monad.Catch (MonadMask)
-import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Trans.Class (lift)
 import Core.Context
     ( WithContext
@@ -30,12 +28,10 @@ import Core.Types.Wallet (Wallet)
 import Data.Bifunctor (Bifunctor (..))
 import Data.ByteString.Lazy qualified as BL
 import Data.Functor (($>))
-import Data.Text.IO qualified as T
 import Lib.JSON.Canonical.Extra (object, (.=))
 import Lib.SSH.Private
     ( KeyAPI (..)
     , SSHClient (..)
-    , decodePrivateSSHFile
     )
 import MPFS.API
     ( MPFS (..)
@@ -77,7 +73,7 @@ import User.Types
     , TestRun (..)
     , TestRunState (..)
     )
-import Validation (Validation (..))
+import Validation (Validation (..), hoistValidation)
 import Validation.DownloadFile (DownloadedFileFailure)
 
 newtype GenerateAssetsFailure
@@ -138,7 +134,7 @@ deriving instance Show (RequesterCommand a)
 deriving instance Eq (RequesterCommand a)
 
 requesterCmd
-    :: (MonadIO m, MonadMask m)
+    :: Monad m
     => RequesterCommand a
     -> WithContext m a
 requesterCmd command = do
@@ -161,11 +157,11 @@ requesterCmd command = do
         GenerateAssets directory -> generateAssets directory
 
 generateAssets
-    :: MonadIO m
+    :: Monad m
     => Directory
     -> WithContext m (AValidationResult GenerateAssetsFailure ())
 generateAssets (Directory targetDirectory) = do
-    Validation{githubGetFile} <- askValidation Nothing
+    Validation{githubGetFile, writeTextFile} <- askValidation Nothing
     lift $ runValidate $ do
         downloads <- forM ["docker-compose.yaml", "README.md", "testnet.yaml"] $ \filename -> do
             fmap (bimap (FileName filename,) (filename,))
@@ -180,10 +176,10 @@ generateAssets (Directory targetDirectory) = do
                 $ fmap (throwLeft id) downloads
         forM_ contents $ \(filename, content) -> do
             let filePath = targetDirectory <> "/" <> filename
-            liftIO $ T.writeFile filePath content
+            lift $ writeTextFile filePath content
 
 createCommand
-    :: (MonadIO m, MonadMask m)
+    :: Monad m
     => TokenId
     -> Wallet
     -> SSHClient
@@ -211,7 +207,7 @@ createCommand
             key <- toJSON testRun
             KeyAPI{sign} <-
                 liftMaybe CreateTestRunInvalidSSHKey
-                    =<< lift (liftIO $ decodePrivateSSHFile sshClient)
+                    =<< decodePrivateSSHFile (hoistValidation validation) sshClient
             let signature = sign $ BL.toStrict $ renderCanonicalJSON key
             let newState = Pending duration signature
             void

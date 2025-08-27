@@ -181,6 +181,7 @@ library
     , lens
     , memory
     , mmark
+    , monad-control
     , opt-env-conf
     , plutus-tx
     , random
@@ -349,6 +350,7 @@ test-suite anti-unit-test
     , bytestring
     , canonical-json
     , crypton
+    , directory
     , hspec
     , lens
     , QuickCheck

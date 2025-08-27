@@ -15,7 +15,8 @@ import Core.Types.Operation (Operation (..))
 import Oracle.Types (Request (..), RequestZoo (FinishedRequest))
 import Oracle.Validate.Requests.RegisterUserSpec (genForRole)
 import Oracle.Validate.Requests.TestRun.Lib
-    ( mkValidation
+    ( MockValidation (..)
+    , mkValidation
     , noValidation
     , signatureGen
     , testRunEGen
@@ -58,7 +59,7 @@ spec = do
             url <- genA
             let acceptedState = Accepted $ Pending (Duration 5) signature
             testRunFact <- toJSFact testRun acceptedState
-            let validation = mkValidation [testRunFact] [] [] [] [] [] [] []
+            let validation = mkValidation $ noValidation{mockFacts = [testRunFact]}
                 newTestRunState =
                     Finished
                         acceptedState
@@ -87,7 +88,7 @@ spec = do
                         FinishedRequest
                             Request{outputRefId = RequestRefId "", owner = anOwner, change}
                 db <- genBlind $ oneof [pure [], pure [pendingRequest]]
-                let validation = mkValidation [] [] [] [] [] [] [] db
+                let validation = mkValidation $ noValidation{mockPendingRequests = db}
                     test = validateToDoneUpdate validation forRole anOwner anOwner change
                 pure
                     $ when (not (null db) && forUser forRole)
@@ -102,7 +103,11 @@ spec = do
                 duration <- genA
                 let pendingState = Pending (Duration duration) signature
                     newTestRunState = Accepted pendingState
-                    test = validateToRunningCore noValidation testRun newTestRunState
+                    test =
+                        validateToRunningCore
+                            (mkValidation noValidation)
+                            testRun
+                            newTestRunState
                 pure $ test `shouldReturn` Just PreviousStateWrong
 
         it
@@ -124,7 +129,7 @@ spec = do
                                 (Duration differentPendingDuration)
                                 differentSignature
                 testRunFact <- toJSFact testRun fact
-                let validation = mkValidation [testRunFact] [] [] [] [] [] [] []
+                let validation = mkValidation $ noValidation{mockFacts = [testRunFact]}
                     newTestRunState =
                         Finished
                             request

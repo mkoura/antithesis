@@ -25,6 +25,7 @@ module Oracle.Validate.Requests.TestRun.Lib
     , testConfigShrink
     , testConfigEGen
     , testRunEGen
+    , MockValidation (..)
     )
 where
 
@@ -62,11 +63,13 @@ import Data.Text (Text)
 import Lib.GitHub
     ( GetGithubFileFailure (..)
     )
+import Lib.SSH.Private (SSHClient (..), mkKeyAPI)
 import Lib.SSH.Public (SSHPublicKey)
 import Oracle.Types (RequestZoo)
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig (..)
     )
+import System.Directory (Permissions (..), emptyPermissions)
 import Test.QuickCheck
     ( ASCIIString (..)
     , Arbitrary (..)
@@ -121,55 +124,86 @@ jsFactUser testRun pubkeyhash =
             }
         ()
 
+data MockValidation = MockValidation
+    { mockFacts :: [JSFact]
+    , mockCommits :: [(Repository, Commit)]
+    , mockDirectories :: [(Repository, Commit, Directory)]
+    , mockUserKeys :: [(Username, SSHPublicKey)]
+    , mockRepoRoles :: [(Username, Repository)]
+    , mockReposExists :: [Repository]
+    , mockFiles :: [(FileName, Text)]
+    , mockPendingRequests :: [RequestZoo]
+    , mockPermissions :: [(Directory, Permissions)]
+    , mockSSHPrivateKey :: [(FilePath, ByteString)]
+    }
+
 mkValidation
     :: Monad m
-    => [JSFact]
-    -> [(Repository, Commit)]
-    -> [(Repository, Commit, Directory)]
-    -> [(Username, SSHPublicKey)]
-    -> [(Username, Repository)]
-    -> [Repository]
-    -> [(FileName, Text)]
-    -> [RequestZoo]
+    => MockValidation
     -> Validation m
-mkValidation fs rs ds upk rr reposExists files pendingRequests =
-    Validation
-        { mpfsGetFacts = do
-            db <- toJSON fs
-            return $ parseFacts db
-        , mpfsGetTestRuns =
-            pure $ mapMaybe (\(Fact k _ :: JSFact) -> fromJSON k) fs
-        , mpfsGetTokenRequests = pure pendingRequests
-        , githubCommitExists = \repository commit ->
-            return $ Right $ (repository, commit) `elem` rs
-        , githubDirectoryExists = \repository commit dir ->
-            return $ Right $ (repository, commit, dir) `elem` ds
-        , githubUserPublicKeys = \username publicKey ->
-            pure
-                $ analyzeKeys publicKey
-                $ map snd
-                $ filter
-                    ((== username) . fst)
-                    upk
-        , githubRepositoryExists = \repo ->
-            if repo `elem` reposExists
-                then pure $ Right True
-                else pure $ Right False
-        , githubRepositoryRole = \username repository ->
-            return
-                $ if (username, repository) `elem` rr
-                    then Nothing
-                    else Just NoRoleEntryInCodeowners
-        , githubGetFile = \_repository _commit filename@(FileName name) ->
-            case L.lookup filename files of
-                Nothing ->
-                    return
-                        $ Left
-                        $ GithubGetFileError
-                        $ GetGithubFileOtherFailure name "file not present"
-                Just filecontent ->
-                    pure $ analyzeDownloadedFile filename (Right filecontent)
-        }
+mkValidation
+    MockValidation
+        { mockFacts = fs
+        , mockCommits = rs
+        , mockDirectories = ds
+        , mockUserKeys = upk
+        , mockRepoRoles = rr
+        , mockReposExists = reposExists
+        , mockFiles = files
+        , mockPendingRequests = pendingRequests
+        , mockPermissions = mockPermissions
+        , mockSSHPrivateKey = mockSSHPrivateKey
+        } =
+        Validation
+            { mpfsGetFacts = do
+                db <- toJSON fs
+                return $ parseFacts db
+            , mpfsGetTestRuns =
+                pure $ mapMaybe (\(Fact k _ :: JSFact) -> fromJSON k) fs
+            , mpfsGetTokenRequests = pure pendingRequests
+            , githubCommitExists = \repository commit ->
+                return $ Right $ (repository, commit) `elem` rs
+            , githubDirectoryExists = \repository commit dir ->
+                return $ Right $ (repository, commit, dir) `elem` ds
+            , githubUserPublicKeys = \username publicKey ->
+                pure
+                    $ analyzeKeys publicKey
+                    $ map snd
+                    $ filter
+                        ((== username) . fst)
+                        upk
+            , githubRepositoryExists = \repo ->
+                if repo `elem` reposExists
+                    then pure $ Right True
+                    else pure $ Right False
+            , githubRepositoryRole = \username repository ->
+                return
+                    $ if (username, repository) `elem` rr
+                        then Nothing
+                        else Just NoRoleEntryInCodeowners
+            , githubGetFile = \_repository _commit filename@(FileName name) ->
+                case L.lookup filename files of
+                    Nothing ->
+                        return
+                            $ Left
+                            $ GithubGetFileError
+                            $ GetGithubFileOtherFailure name "file not present"
+                    Just filecontent ->
+                        pure $ analyzeDownloadedFile filename (Right filecontent)
+            , directoryExists = \dir ->
+                pure
+                    $ dir
+                        `lookup` ( mockPermissions
+                                    <> [(Directory "tempdir", emptyPermissions{writable = True})]
+                                 )
+            , writeTextFile = \_path _content -> pure ()
+            , withCurrentDirectory = \_dir action -> action
+            , withSystemTempDirectory = \_template action -> action "tempdir"
+            , decodePrivateSSHFile = \SSHClient{sshKeyFile, sshKeySelector, sshKeyPassphrase} ->
+                case L.lookup sshKeyFile mockSSHPrivateKey of
+                    Nothing -> pure Nothing
+                    Just content -> pure $ mkKeyAPI sshKeyPassphrase content sshKeySelector
+            }
 
 testRunGen :: Gen TestRun
 testRunGen = do
@@ -236,8 +270,20 @@ changeTestRun l qc testRun = do
     new <- arbitrary `suchThat` \new -> new ^. qc /= old
     pure $ testRun & l .~ (new ^. qc)
 
-noValidation :: Monad m => Validation m
-noValidation = mkValidation [] [] [] [] [] [] [] []
+noValidation :: MockValidation
+noValidation =
+    MockValidation
+        { mockFacts = []
+        , mockCommits = []
+        , mockDirectories = []
+        , mockUserKeys = []
+        , mockRepoRoles = []
+        , mockReposExists = []
+        , mockFiles = []
+        , mockPendingRequests = []
+        , mockPermissions = []
+        , mockSSHPrivateKey = []
+        }
 
 gitCommit :: TestRun -> (Repository, Commit)
 gitCommit testRun =

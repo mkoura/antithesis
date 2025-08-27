@@ -12,7 +12,6 @@ module User.Agent.Cli
 where
 
 import Control.Monad (void)
-import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Trans.Class (lift)
 import Core.Context
     ( WithContext
@@ -127,7 +126,7 @@ updateTestRunState tokenId key =
     runValidate . withPreviousTestRunState tokenId key
 
 agentCmd
-    :: MonadIO m
+    :: Monad m
     => AgentCommand NotReady a
     -> WithContext m a
 agentCmd = \case
@@ -305,7 +304,7 @@ queryCommand tokenId = do
             }
 
 downloadAssets
-    :: MonadIO m
+    :: Monad m
     => TokenId
     -> TestRunId
     -> Directory

@@ -16,7 +16,6 @@ module Oracle.Process
 import Cli (Command (GetToken), WithValidation (..), cmd)
 import Control.Concurrent (threadDelay)
 import Control.Monad (forM_)
-import Control.Monad.Catch (MonadMask)
 import Control.Monad.IO.Class (MonadIO (..))
 import Core.Context (WithContext, withContext)
 import Core.Options (tokenIdOption, walletOption)
@@ -126,7 +125,7 @@ oracleProcess = \case
 
 processServer
     :: forall m
-     . (MonadIO m, MonadMask m)
+     . MonadIO m
     => ProcessOptions
     -> WithContext m ()
 processServer opts@ProcessOptions{poPollIntervalSeconds} = do
@@ -188,7 +187,7 @@ batch ProcessOptions{poMaxRequestsPerBatch} = go
     go xs = take poMaxRequestsPerBatch xs : go (drop poMaxRequestsPerBatch xs)
 
 submit
-    :: (MonadIO m, MonadMask m)
+    :: Monad m
     => ProcessOptions
     -> [RequestRefId]
     -> WithContext

@@ -2,8 +2,6 @@ module Oracle.Validate.Request
     ( validateRequest
     ) where
 
-import Control.Monad.Catch (MonadMask)
-import Control.Monad.IO.Class (MonadIO (..))
 import Core.Types.Basic (Owner)
 import Oracle.Config.Types (Config (..))
 import Oracle.Types
@@ -42,7 +40,7 @@ import Oracle.Validate.Types
 import Validation (Validation (..))
 
 validateRequest
-    :: (MonadIO m, MonadMask m)
+    :: Monad m
     => Owner
     -> Maybe Config
     -> Validation m

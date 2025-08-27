@@ -14,9 +14,14 @@ module Validation
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.Control
+    ( MonadTransControl (..)
+    , control
+    , controlT
+    )
 import Core.Types.Basic
     ( Commit
-    , Directory
+    , Directory (..)
     , FileName
     , PublicKeyHash
     , Repository
@@ -29,13 +34,19 @@ import Core.Types.Operation (Op (..))
 import Data.Functor.Identity (Identity (..))
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
+import Data.Text.IO qualified as T
 import GitHub (Auth)
 import Lib.GitHub qualified as GitHub
 import Lib.JSON.Canonical.Extra (object, (.=))
+import Lib.SSH.Private (KeyAPI, SSHClient)
+import Lib.SSH.Private qualified as SSH
 import MPFS.API (getToken, getTokenFacts)
 import Oracle.Types (RequestZoo, Token (tokenRequests))
 import Oracle.Validate.Types (Validate, notValidated)
 import Servant.Client (ClientM)
+import System.Directory (Permissions)
+import System.Directory qualified as System
+import System.IO.Temp qualified as Temp
 import Text.JSON.Canonical (FromJSON (..), ToJSON)
 import Text.JSON.Canonical.Class (ToJSON (..))
 import User.Types (TestRun)
@@ -85,14 +96,22 @@ data Validation m = Validation
         -> Maybe Commit
         -> FileName
         -> m (Either DownloadedFileFailure Text)
+    , withSystemTempDirectory
+        :: forall a
+         . String
+        -> (FilePath -> m a)
+        -> m a
+    , writeTextFile :: FilePath -> Text -> m () -- Added writeFile to Validation
+    , withCurrentDirectory :: forall a. FilePath -> m a -> m a
+    , directoryExists :: Directory -> m (Maybe Permissions) -- Added directoryExists to Validation
+    , decodePrivateSSHFile :: SSHClient -> m (Maybe KeyAPI)
     }
 
 hoistValidation
-    :: (forall a. m a -> n a)
-    -> Validation m
-    -> Validation n
+    :: (MonadTransControl t, Monad m)
+    => Validation m
+    -> Validation (t m)
 hoistValidation
-    f
     Validation
         { mpfsGetFacts
         , mpfsGetTestRuns
@@ -103,6 +122,11 @@ hoistValidation
         , githubRepositoryExists
         , githubRepositoryRole
         , githubGetFile
+        , withSystemTempDirectory
+        , withCurrentDirectory
+        , writeTextFile
+        , directoryExists
+        , decodePrivateSSHFile
         } =
         Validation
             { mpfsGetFacts = f mpfsGetFacts
@@ -120,7 +144,17 @@ hoistValidation
                 \username repository -> f $ githubRepositoryRole username repository
             , githubGetFile =
                 \repository commit filename -> f $ githubGetFile repository commit filename
+            , withSystemTempDirectory =
+                \template action -> controlT
+                    $ \run -> withSystemTempDirectory template (run . action)
+            , withCurrentDirectory = \dir action -> controlT
+                $ \run -> withCurrentDirectory dir (run action)
+            , writeTextFile = \path content -> f $ writeTextFile path content
+            , directoryExists = f . directoryExists
+            , decodePrivateSSHFile = f . decodePrivateSSHFile
             }
+      where
+        f = lift
 
 mkValidation :: Auth -> Maybe TokenId -> Validation ClientM
 mkValidation auth tk = do
@@ -146,6 +180,19 @@ mkValidation auth tk = do
             liftIO $ inspectRepoRoleForUser auth username repository
         , githubGetFile = \repository commit filename ->
             liftIO $ inspectDownloadedFile auth repository commit filename
+        , withSystemTempDirectory = \template action ->
+            control
+                (\run -> Temp.withSystemTempDirectory template (run . action))
+        , withCurrentDirectory = \dir action ->
+            control
+                (\run -> System.withCurrentDirectory dir (run action))
+        , writeTextFile = \path content -> liftIO $ T.writeFile path content
+        , directoryExists = \(Directory path) -> liftIO $ do
+            exists <- System.doesDirectoryExist path
+            if exists
+                then Just <$> System.getPermissions path
+                else return Nothing
+        , decodePrivateSSHFile = liftIO . SSH.decodePrivateSSHFile
         }
 
 data KeyFailure

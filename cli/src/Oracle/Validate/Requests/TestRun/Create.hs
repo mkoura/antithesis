@@ -8,8 +8,6 @@ module Oracle.Validate.Requests.TestRun.Create
     ) where
 
 import Control.Monad (when)
-import Control.Monad.Catch (MonadMask)
-import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Trans.Class (lift)
 import Core.Types.Basic (Directory (..), Duration (..), Try (..))
 import Core.Types.Change (Change (..), Key (..))
@@ -39,7 +37,6 @@ import Oracle.Validate.Types
     , sequenceValidate
     , throwJusts
     )
-import System.IO.Temp (withSystemTempDirectory)
 import Text.JSON.Canonical
     ( ToJSON (..)
     , renderCanonicalJSON
@@ -55,6 +52,7 @@ import User.Types
 import Validation
     ( KeyFailure
     , Validation (..)
+    , hoistValidation
     , insertValidation
     )
 
@@ -79,7 +77,7 @@ instance Monad m => ToJSON m CreateTestRunFailure where
         object ["createTestRunKeyAlreadyPending" .= testRun]
 
 validateCreateTestRun
-    :: (MonadIO m, MonadMask m)
+    :: Monad m
     => TestRunValidationConfig
     -> Validation m
     -> ForRole
@@ -195,7 +193,7 @@ checkTryIndex
             else return $ Just UnacceptableTryIndex
 
 checkCommit
-    :: MonadIO m
+    :: Monad m
     => Validation m
     -> TestRun
     -> m (Maybe TestRunRejection)
@@ -234,7 +232,7 @@ checkSignature
             else return $ Just UnacceptableSignature
 
 validateCreateTestRunCore
-    :: (MonadIO m, MonadMask m)
+    :: Monad m
     => TestRunValidationConfig
     -> Validation m
     -> TestRun
@@ -245,7 +243,8 @@ validateCreateTestRunCore
     validation
     testRun
     (Pending duration signature) = do
-        withSystemTempDirectory "antithesis-test-run"
+        (withSystemTempDirectory $ hoistValidation validation)
+            "antithesis-test-run"
             $ \tmpDir -> do
                 let liftValidate f = lift (f validation testRun) >>= throwJusts
                 Validated

@@ -15,7 +15,9 @@ import Oracle.Validate.Requests.ManageWhiteList
     , validateRemoveWhiteListed
     )
 import Oracle.Validate.Requests.TestRun.Lib
-    ( mkValidation
+    ( MockValidation (..)
+    , mkValidation
+    , noValidation
     )
 import Oracle.Validate.Types
     ( AValidationResult (..)
@@ -64,7 +66,11 @@ spec = do
         it "validates a repository insertion" $ egenProperty $ do
             repo <- gen genRepository
             agent <- gen genAscii
-            let validation = mkValidation [] [] [] [] [] [repo] [] []
+            let validation =
+                    mkValidation
+                        $ noValidation
+                            { mockReposExists = [repo]
+                            }
                 test =
                     validateAddWhiteListed
                         validation
@@ -80,7 +86,11 @@ spec = do
                 repo <- gen genRepository
                 agent <- gen genAscii
                 platform <- gen $ withAPresence 0.5 "github" genAscii
-                let validation = mkValidation [] [] [] [] [] [repo] [] []
+                let validation =
+                        mkValidation
+                            $ noValidation
+                                { mockReposExists = [repo]
+                                }
                     test =
                         validateAddWhiteListed
                             validation
@@ -100,7 +110,11 @@ spec = do
                 repo <- gen genRepository
                 agent <- gen genAscii
                 presence <- gen $ withAPresenceInAList 0.5 repo genRepository
-                let validation = mkValidation [] [] [] [] [] presence [] []
+                let validation =
+                        mkValidation
+                            $ noValidation
+                                { mockReposExists = presence
+                                }
                     test =
                         validateAddWhiteListed
                             validation
@@ -132,14 +146,10 @@ spec = do
                     gen $ oneof [pure [], pure [fact]]
                 let validation =
                         mkValidation
-                            presenceInFacts
-                            []
-                            []
-                            []
-                            []
-                            presenceInGithub
-                            []
-                            []
+                            $ noValidation
+                                { mockFacts = presenceInFacts
+                                , mockReposExists = presenceInGithub
+                                }
                     test =
                         validateAddWhiteListed
                             validation
@@ -163,7 +173,12 @@ spec = do
             fact <- toJSFact key ()
             presenceInGithub <-
                 gen $ withAPresenceInAList 0.5 repo genRepository
-            let validation = mkValidation [fact] [] [] [] [] presenceInGithub [] []
+            let validation =
+                    mkValidation
+                        $ noValidation
+                            { mockFacts = [fact]
+                            , mockReposExists = presenceInGithub
+                            }
                 test =
                     validateRemoveWhiteListed
                         validation
@@ -187,7 +202,11 @@ spec = do
                 presenceInFacts <-
                     gen $ oneof [pure [], pure [fact]]
                 let validation =
-                        mkValidation presenceInFacts [] [] [] [] presenceInGithub [] []
+                        mkValidation
+                            $ noValidation
+                                { mockFacts = presenceInFacts
+                                , mockReposExists = presenceInGithub
+                                }
                     test =
                         validateRemoveWhiteListed
                             validation
@@ -212,7 +231,12 @@ spec = do
                     key = WhiteListKey (Platform platform) repo
                 fact <- toJSFact key ()
                 presenceInGithub <- gen $ withAPresenceInAList 0.5 repo genRepository
-                let validation = mkValidation [fact] [] [] [] [] presenceInGithub [] []
+                let validation =
+                        mkValidation
+                            $ noValidation
+                                { mockFacts = [fact]
+                                , mockReposExists = presenceInGithub
+                                }
                     test =
                         validateRemoveWhiteListed
                             validation
@@ -243,7 +267,11 @@ spec = do
                 presenceInFacts <-
                     gen $ oneof [pure [], pure [fact]]
                 let validation =
-                        mkValidation presenceInFacts [] [] [] [] presenceInGithub [] []
+                        mkValidation
+                            $ noValidation
+                                { mockFacts = presenceInFacts
+                                , mockReposExists = presenceInGithub
+                                }
                 operation <-
                     genBlind
                         $ oneof

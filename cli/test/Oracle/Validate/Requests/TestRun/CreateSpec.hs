@@ -35,7 +35,8 @@ import Oracle.Validate.Requests.TestRun.Create
     , validateCreateTestRunCore
     )
 import Oracle.Validate.Requests.TestRun.Lib
-    ( changeDirectory
+    ( MockValidation (..)
+    , changeDirectory
     , changeOrganization
     , changePlatform
     , changeProject
@@ -150,17 +151,17 @@ spec = do
                     Directory d -> d <> "/" <> x
                 validation =
                     mkValidation
-                        ([user, role, whiteListRepo] <> previous)
-                        [gitCommit testRun]
-                        [gitDirectory testRun]
-                        []
-                        []
-                        []
-                        [ (FileName $ prefix "README.md", "Hello, world!")
-                        , (FileName $ prefix "docker-compose.yaml", "version: '3.8'")
-                        , (FileName $ prefix "testnet.yaml", "testnet: true")
-                        ]
-                        []
+                        $ noValidation
+                            { mockFacts =
+                                [user, role, whiteListRepo] <> previous
+                            , mockCommits = [gitCommit testRun]
+                            , mockDirectories = [gitDirectory testRun]
+                            , mockFiles =
+                                [ (FileName $ prefix "README.md", "Hello, world!")
+                                , (FileName $ prefix "docker-compose.yaml", "version: '3.8'")
+                                , (FileName $ prefix "testnet.yaml", "testnet: true")
+                                ]
+                            }
             testRunState <-
                 Pending (Duration duration)
                     <$> signTestRun sign testRun
@@ -214,14 +215,9 @@ spec = do
                 db <- genBlind $ oneof [pure [], pure [pendingRequest]]
                 let validation =
                         mkValidation
-                            []
-                            []
-                            []
-                            []
-                            []
-                            []
-                            []
-                            db
+                            $ noValidation
+                                { mockPendingRequests = db
+                                }
                 pure
                     $ when (not (null db) && forUser forRole)
                     $ do
@@ -247,7 +243,7 @@ spec = do
                     runValidate
                         $ validateCreateTestRunCore
                             testConfig
-                            noValidation
+                            (mkValidation noValidation)
                             testRun
                             testRunState
                 onConditionHaveReason mresult UnacceptableDuration
@@ -269,7 +265,7 @@ spec = do
                         , pure testRunRequest
                         ]
             role <- jsFactRole testRunFact
-            let validation = mkValidation [role] [] [] [] [] [] [] []
+            let validation = mkValidation $ noValidation{mockFacts = [role]}
                 testRunState = Pending (Duration duration) signature
             pure $ do
                 mresult <-
@@ -326,14 +322,9 @@ spec = do
             testRunFact <- toJSFact testRunDB testRunStateDB
             let validation =
                     mkValidation
-                        [testRunFact | testRunDB.tryIndex > 0]
-                        []
-                        []
-                        []
-                        []
-                        []
-                        []
-                        []
+                        $ noValidation
+                            { mockFacts = [testRunFact | testRunDB.tryIndex > 0]
+                            }
             let testRunState = Pending (Duration duration) signature
             pure
                 $ counterexample (show testRunDB)
@@ -367,14 +358,10 @@ spec = do
             testRunFact <- toJSFact testRun' testRunState
             let validation =
                     mkValidation
-                        [testRunFact]
-                        []
-                        [gitDirectory testRun']
-                        []
-                        []
-                        []
-                        []
-                        []
+                        $ noValidation
+                            { mockFacts = [testRunFact]
+                            , mockDirectories = [gitDirectory testRun']
+                            }
             pure $ do
                 mresult <-
                     runValidate
@@ -406,15 +393,7 @@ spec = do
                     $ oneof
                         [pure [], pure [whiteListFact]]
             let validation =
-                    mkValidation
-                        whiteListed
-                        []
-                        []
-                        []
-                        []
-                        []
-                        []
-                        []
+                    mkValidation $ noValidation{mockFacts = whiteListed}
             pure $ do
                 mresult <-
                     runValidate

@@ -8,6 +8,7 @@ module Lib.SSH.Private
     , SSHClient (..)
     , Sign
     , KeyAPI (..)
+    , mkKeyAPI
     ) where
 
 import Control.Applicative (many, (<|>))
@@ -59,32 +60,36 @@ data KeyAPI = KeyAPI
     , publicKey :: Ed25519.PublicKey
     }
 
+mkKeyAPI :: String -> ByteString -> String -> Maybe KeyAPI
+mkKeyAPI passPhrase content sshKeySelector =
+    let
+        ks = decodePrivateKeyFile (BC.pack passPhrase) content
+        mkMap (KeyPairEd25519 pk sk, comment) =
+            Map.singleton (BC.unpack comment)
+                $ KeyAPI
+                    { sign = Ed25519.sign sk pk
+                    , publicKey = pk
+                    }
+    in
+        Map.lookup sshKeySelector $ foldMap mkMap ks
+
 decodePrivateSSHFile
     :: SSHClient
     -> IO (Maybe KeyAPI)
 decodePrivateSSHFile SSHClient{sshKeySelector, sshKeyFile, sshKeyPassphrase} = do
     content <- B.readFile sshKeyFile
-    ks <- decodePrivateKeyFile (BC.pack sshKeyPassphrase) content
-    let mkSign (KeyPairEd25519 pk sk, comment) =
-            let k = BC.unpack comment
-            in  Map.singleton k
-                    $ KeyAPI
-                        { sign = Ed25519.sign sk pk
-                        , publicKey = pk
-                        }
-    pure $ Map.lookup sshKeySelector $ foldMap mkSign ks
+    pure $ mkKeyAPI sshKeyPassphrase content sshKeySelector
 
 data KeyPair
     = KeyPairEd25519 Ed25519.PublicKey Ed25519.SecretKey
     deriving (Eq, Show)
 
 decodePrivateKeyFile
-    :: MonadFail m
-    => ByteString
+    :: ByteString
     -> ByteString
-    -> m [(KeyPair, ByteString)]
+    -> [(KeyPair, ByteString)]
 decodePrivateKeyFile passphrase =
-    pure . runGet (parsePrivateKeyFile passphrase) . BL.fromStrict
+    runGet (parsePrivateKeyFile passphrase) . BL.fromStrict
 
 parsePrivateKeyFile
     :: ByteString

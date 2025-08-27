@@ -3,6 +3,7 @@
 module User.Requester.Cli
     ( requesterCmd
     , RequesterCommand (..)
+    , signKey
     ) where
 
 import Control.Monad (forM, forM_, void)
@@ -25,6 +26,7 @@ import Core.Types.Change (Change (..), Key (..), deleteKey, insertKey)
 import Core.Types.Operation (Operation (..))
 import Core.Types.Tx (TxHash, WithTxHash (..))
 import Core.Types.Wallet (Wallet)
+import Crypto.PubKey.Ed25519 (Signature)
 import Data.Bifunctor (Bifunctor (..))
 import Data.ByteString.Lazy qualified as BL
 import Data.Functor (($>))
@@ -65,7 +67,7 @@ import Oracle.Validate.Types
     , throwLeft
     )
 import Submitting (Submission (..))
-import Text.JSON.Canonical (ToJSON (..), renderCanonicalJSON)
+import Text.JSON.Canonical (JSValue, ToJSON (..), renderCanonicalJSON)
 import User.Types
     ( Phase (PendingT)
     , RegisterRoleKey (..)
@@ -178,6 +180,12 @@ generateAssets (Directory targetDirectory) = do
             let filePath = targetDirectory <> "/" <> filename
             lift $ writeTextFile filePath content
 
+signKey
+    :: (ToJSON m key, Monad m) => KeyAPI -> key -> m (JSValue, Signature)
+signKey KeyAPI{sign} key = do
+    jkey <- toJSON key
+    pure (jkey, sign $ BL.toStrict $ renderCanonicalJSON jkey)
+
 createCommand
     :: Monad m
     => TokenId
@@ -204,11 +212,10 @@ createCommand
         lift $ runValidate $ do
             Config{configTestRun} <-
                 liftMaybe CreateTestConfigNotAvailable mconfig
-            key <- toJSON testRun
-            KeyAPI{sign} <-
+            keyAPI <-
                 liftMaybe CreateTestRunInvalidSSHKey
                     =<< decodePrivateSSHFile (hoistValidation validation) sshClient
-            let signature = sign $ BL.toStrict $ renderCanonicalJSON key
+            (key, signature) <- lift $ signKey keyAPI testRun
             let newState = Pending duration signature
             void
                 $ validateCreateTestRun configTestRun validation ForUser

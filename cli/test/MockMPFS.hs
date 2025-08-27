@@ -8,9 +8,13 @@ import Core.Types.Basic
     , TokenId
     )
 import Core.Types.Fact (JSFact)
-import Core.Types.Tx (Root (..), WithUnsignedTx)
+import Core.Types.Tx
+    ( Root (..)
+    , UnsignedTx (UnsignedTx)
+    , WithUnsignedTx (..)
+    )
 import Data.Functor.Identity (Identity (..))
-import MPFS.API (MPFS (..), RequestInsertBody)
+import MPFS.API (MPFS (..), RequestInsertBody (..))
 import Oracle.Types (RequestZoo, Token (..), TokenState (..))
 import Text.JSON.Canonical (JSValue, ToJSON (..))
 
@@ -19,7 +23,12 @@ mockMPFS =
     MPFS
         { mpfsBootToken = \_ -> error "boot token not implemented"
         , mpfsEndToken = \_ _ -> error "end token not implemented"
-        , mpfsRequestInsert = \_ _ _ -> error "request insert not implemented"
+        , mpfsRequestInsert = \_ _ RequestInsertBody{value = body} ->
+            pure
+                $ WithUnsignedTx
+                    { unsignedTransaction = UnsignedTx "mock-tx-hash"
+                    , value = Just body
+                    }
         , mpfsRequestDelete = \_ _ _ -> error "request delete not implemented"
         , mpfsRequestUpdate = \_ _ _ -> error "request update not implemented"
         , mpfsRetractChange = \_ _ -> error "retract change not implemented"

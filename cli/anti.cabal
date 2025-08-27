@@ -329,6 +329,7 @@ test-suite anti-unit-test
     Oracle.Validate.Requests.TestRun.Lib
     Oracle.Validate.Requests.TestRun.RejectSpec
     User.Agent.TypesSpec
+    User.Requester.CliSpec
     User.TypesSpec
 
   -- LANGUAGE extensions used by modules in this package.
@@ -357,6 +358,7 @@ test-suite anti-unit-test
     , lens
     , QuickCheck
     , scientific
+    , string-qq
     , text
 
   build-tool-depends: hspec-discover:hspec-discover

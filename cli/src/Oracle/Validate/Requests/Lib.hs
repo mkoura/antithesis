@@ -9,7 +9,7 @@ import Oracle.Types (RequestZoo)
 import Oracle.Validate.Types (Validate, throwJusts)
 import Validation (Validation (..))
 
-
+keyAlreadyPendingFailure
     :: (Monad m, Eq k)
     => Validation m
     -> (k -> e)

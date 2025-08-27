@@ -15,9 +15,13 @@ import Core.Types.Operation
     ( Op (..)
     )
 import Lib.JSON.Canonical.Extra (object, (.=))
+import Oracle.Types (requestZooGetRegisterRoleKey)
+import Oracle.Validate.Requests.Lib (keyAlreadyPendingFailure)
 import Oracle.Validate.Types
-    ( Validate
+    ( ForRole
+    , Validate
     , Validated (..)
+    , forUser
     , mapFailure
     , notValidated
     )
@@ -39,6 +43,7 @@ data RegisterRoleFailure
     = RoleNotPresentOnPlatform RepositoryRoleFailure
     | RegisterRolePlatformNotSupported String
     | RegisterRoleKeyFailure KeyFailure
+    | RegisterRoleKeyChangeAlreadyPending RegisterRoleKey
     deriving (Eq, Show)
 
 instance Monad m => ToJSON m RegisterRoleFailure where
@@ -50,15 +55,25 @@ instance Monad m => ToJSON m RegisterRoleFailure where
             object ["registerRolePlatformNotSupported" .= platform]
         RegisterRoleKeyFailure keyFailure ->
             object ["registerRoleKeyFailure" .= keyFailure]
+        RegisterRoleKeyChangeAlreadyPending key ->
+            object ["registerRoleKeyChangeAlreadyPending" .= key]
 
 validateRegisterRole
     :: Monad m
     => Validation m
+    -> ForRole
     -> Change RegisterRoleKey (OpI ())
     -> Validate RegisterRoleFailure m Validated
 validateRegisterRole
     validation@Validation{githubRepositoryRole}
+    forRole
     change@(Change (Key k) _) = do
+        when (forUser forRole)
+            $ keyAlreadyPendingFailure
+                validation
+                RegisterRoleKeyChangeAlreadyPending
+                k
+                requestZooGetRegisterRoleKey
         mapFailure RegisterRoleKeyFailure $ insertValidation validation change
         let RegisterRoleKey (Platform platform) repository username = k
         when (platform /= "github")
@@ -71,26 +86,32 @@ validateRegisterRole
 
 data UnregisterRoleFailure
     = UnregisterRoleKeyFailure KeyFailure
-    | RoleIsPresentOnPlatform -- issue 1b6d49bb5fc6b7e4fcd8ab22436294a118451cb3
+    | UnregisterRoleKeyChangeAlreadyPending RegisterRoleKey
     deriving (Show, Eq)
 
 instance Monad m => ToJSON m UnregisterRoleFailure where
     toJSON = \case
         UnregisterRoleKeyFailure keyFailure ->
             object ["unregisterRoleKeyFailure" .= keyFailure]
-        RoleIsPresentOnPlatform ->
-            object ["roleIsPresentOnPlatform" .= ()]
+        UnregisterRoleKeyChangeAlreadyPending key ->
+            object ["unregisterRoleKeyChangeAlreadyPending" .= key]
 
 validateUnregisterRole
     :: Monad m
     => Validation m
+    -> ForRole
     -> Change RegisterRoleKey (OpD ())
     -> Validate UnregisterRoleFailure m Validated
 validateUnregisterRole
     validation
-    change@(Change (Key _k) _) = do
+    forRole
+    change@(Change (Key k) _) = do
+        when (forUser forRole)
+            $ keyAlreadyPendingFailure
+                validation
+                UnregisterRoleKeyChangeAlreadyPending
+                k
+                requestZooGetRegisterRoleKey
         mapFailure UnregisterRoleKeyFailure
             $ deleteValidation validation change
         pure Validated
-
--- issue 1b6d49bb5fc6b7e4fcd8ab22436294a118451cb3

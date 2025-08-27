@@ -56,10 +56,10 @@ validateRequest _ _ validation (UnregisterUserRequest (Request _ _ change)) =
         $ validateUnregisterUser validation ForOracle change
 validateRequest _ _ validation (RegisterRoleRequest (Request _ _ change)) =
     mapFailure RegisterRoleFailure
-        $ validateRegisterRole validation change
+        $ validateRegisterRole validation ForOracle change
 validateRequest _ _ validation (UnregisterRoleRequest (Request _ _ change)) =
     mapFailure UnregisterRoleFailure
-        $ validateUnregisterRole validation change
+        $ validateUnregisterRole validation ForOracle change
 validateRequest _ (Just Config{configTestRun}) validation (CreateTestRequest (Request _ _ change)) =
     mapFailure CreateTestRunFailure
         $ validateCreateTestRun configTestRun validation change

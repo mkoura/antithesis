@@ -290,7 +290,7 @@ registerRole
         Submission submit <- askSubmit wallet
         lift $ runValidate $ do
             void
-                $ validateRegisterRole validation
+                $ validateRegisterRole validation ForUser
                 $ insertKey request
             fmap txHash
                 $ lift
@@ -316,7 +316,7 @@ unregisterRole
         Submission submit <- askSubmit wallet
         lift $ runValidate $ do
             void
-                $ validateUnregisterRole validation
+                $ validateUnregisterRole validation ForUser
                 $ deleteKey request
             fmap txHash
                 $ lift

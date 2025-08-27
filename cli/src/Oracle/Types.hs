@@ -10,6 +10,7 @@ module Oracle.Types
     , fmapToken
     , fmapMToken
     , requestZooGetRegisterUserKey
+    , requestZooGetRegisterRoleKey
     ) where
 
 import Control.Applicative (Alternative, (<|>))
@@ -147,6 +148,12 @@ requestZooGetRegisterUserKey
     (UnregisterUserRequest (Request _ _ (Change (Key k) _))) = Just k
 requestZooGetRegisterUserKey _ = Nothing
 
+requestZooGetRegisterRoleKey :: RequestZoo -> Maybe RegisterRoleKey
+requestZooGetRegisterRoleKey
+    (RegisterRoleRequest (Request _ _ (Change (Key k) _))) = Just k
+requestZooGetRegisterRoleKey
+    (UnregisterRoleRequest (Request _ _ (Change (Key k) _))) = Just k
+requestZooGetRegisterRoleKey _ = Nothing
 instance (Alternative m, ReportSchemaErrors m) => FromJSON m RequestZoo where
     fromJSON v = do
         (RegisterUserRequest <$> fromJSON v)

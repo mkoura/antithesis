@@ -215,7 +215,7 @@ createCommand
             let signature = sign $ BL.toStrict $ renderCanonicalJSON key
             let newState = Pending duration signature
             void
-                $ validateCreateTestRun configTestRun validation
+                $ validateCreateTestRun configTestRun validation ForUser
                 $ Change (Key testRun) (Insert newState)
             value <- toJSON newState
             wtx <- lift $ submit $ \address -> do

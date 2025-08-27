@@ -62,7 +62,7 @@ validateRequest _ _ validation (UnregisterRoleRequest (Request _ _ change)) =
         $ validateUnregisterRole validation ForOracle change
 validateRequest _ (Just Config{configTestRun}) validation (CreateTestRequest (Request _ _ change)) =
     mapFailure CreateTestRunFailure
-        $ validateCreateTestRun configTestRun validation change
+        $ validateCreateTestRun configTestRun validation ForOracle change
 validateRequest _ Nothing _ CreateTestRequest{} =
     notValidated RequestValidationConfigNotAvailable
 validateRequest _ (Just Config{configAgent}) validation (RejectRequest (Request _ requester change)) =

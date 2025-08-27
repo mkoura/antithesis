@@ -7,6 +7,7 @@ module Oracle.Validate.Requests.TestRun.Create
     , CreateTestRunFailure (..)
     ) where
 
+import Control.Monad (when)
 import Control.Monad.Catch (MonadMask)
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Trans.Class (lift)
@@ -20,16 +21,20 @@ import Data.Maybe (mapMaybe)
 import Lib.GitHub (GithubResponseError, GithubResponseStatusCodeError)
 import Lib.JSON.Canonical.Extra (object, stringJSON, (.=))
 import Lib.SSH.Public (decodePublicKey)
+import Oracle.Types (requestZooCreateTestKey)
 import Oracle.Validate.DownloadAssets
     ( AssetValidationFailure
     , validateAssets
     )
+import Oracle.Validate.Requests.Lib (keyAlreadyPendingFailure)
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig (..)
     )
 import Oracle.Validate.Types
-    ( Validate
+    ( ForRole
+    , Validate
     , Validated (..)
+    , forUser
     , mapFailure
     , sequenceValidate
     , throwJusts
@@ -58,6 +63,7 @@ data CreateTestRunFailure
     | CreateTestRunKeyFailure KeyFailure
     | CreateTestConfigNotAvailable
     | CreateTestRunInvalidSSHKey
+    | CreateTestRunKeyAlreadyPending TestRun
     deriving (Eq, Show)
 
 instance Monad m => ToJSON m CreateTestRunFailure where
@@ -69,17 +75,27 @@ instance Monad m => ToJSON m CreateTestRunFailure where
         stringJSON "Token configuration is not available yet"
     toJSON CreateTestRunInvalidSSHKey =
         stringJSON "Invalid SSH key"
+    toJSON (CreateTestRunKeyAlreadyPending testRun) =
+        object ["createTestRunKeyAlreadyPending" .= testRun]
 
 validateCreateTestRun
     :: (MonadIO m, MonadMask m)
     => TestRunValidationConfig
     -> Validation m
+    -> ForRole
     -> Change TestRun (OpI (TestRunState PendingT))
     -> Validate CreateTestRunFailure m Validated
 validateCreateTestRun
     testRunConfig
     validation
+    forRole
     change@(Change (Key testRun) (Insert testRunState)) = do
+        when (forUser forRole)
+            $ keyAlreadyPendingFailure
+                validation
+                CreateTestRunKeyAlreadyPending
+                testRun
+                requestZooCreateTestKey
         mapFailure CreateTestRunKeyFailure
             $ insertValidation validation change
         mapFailure CreateTestRunRejections
@@ -88,6 +104,7 @@ validateCreateTestRun
                 validation
                 testRun
                 testRunState
+
 data TestRunRejection
     = UnacceptableDuration
     | UnacceptableCommit

@@ -5,24 +5,33 @@ module Oracle.Validate.Requests.TestRun.CreateSpec (spec)
 where
 
 import Control.Lens ((%~), (.~))
+import Control.Monad (when)
 import Core.Types.Basic
     ( Directory (..)
     , Duration (..)
     , FileName (..)
+    , Owner (..)
+    , RequestRefId (RequestRefId)
     , organization
     , project
     )
+import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Fact (JSFact, toJSFact)
+import Core.Types.Operation (Operation (..))
 import Lib.SSH.Public (encodePublicKey)
+import Oracle.Types (Request (..), RequestZoo (..))
 import Oracle.Validate.DownloadAssets
     ( AssetValidationFailure (..)
     , SourceDirFailure (..)
     )
+import Oracle.Validate.Requests.RegisterUserSpec (genForRole)
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig (..)
     )
 import Oracle.Validate.Requests.TestRun.Create
-    ( TestRunRejection (..)
+    ( CreateTestRunFailure (..)
+    , TestRunRejection (..)
+    , validateCreateTestRun
     , validateCreateTestRunCore
     )
 import Oracle.Validate.Requests.TestRun.Lib
@@ -47,6 +56,7 @@ import Oracle.Validate.Types
     ( AValidationResult (ValidationFailure, ValidationSuccess)
     , Validated (..)
     , ValidationResult
+    , forUser
     , runValidate
     )
 import Test.Hspec
@@ -56,6 +66,7 @@ import Test.Hspec
     , shouldBe
     , shouldContain
     , shouldNotContain
+    , shouldReturn
     )
 import Test.QuickCheck
     ( Arbitrary (..)
@@ -105,7 +116,7 @@ onConditionHaveReason result reason = \case
 
 spec :: Spec
 spec = do
-    describe "validateRequest" $ do
+    describe "validate create-test request" $ do
         it "accepts valid test run" $ egenProperty $ do
             testRun <- testRunEGen
             testConfig <- testConfigEGen
@@ -162,8 +173,70 @@ spec = do
                             testRun
                             testRunState
                 mresult `shouldBe` ValidationSuccess Validated
-
-        it "reports unaccaptable duration" $ egenProperty $ do
+        it
+            "fail to validate a create-test-run if the test-run key is already pending"
+            $ egenProperty
+            $ do
+                testRun <- testRunEGen
+                testConfig <- testConfigEGen
+                Positive duration <-
+                    gen
+                        $ arbitrary
+                            `suchThat` \(Positive d) ->
+                                d >= testConfig.minDuration
+                                    && d <= testConfig.maxDuration
+                Positive otherDuration <-
+                    gen
+                        $ arbitrary
+                            `suchThat` \(Positive d) ->
+                                d >= testConfig.minDuration
+                                    && d <= testConfig.maxDuration
+                                    && d /= duration
+                (sign, _pk) <- genBlind sshGen
+                forRole <- genForRole
+                testRunState <-
+                    Pending (Duration duration)
+                        <$> signTestRun sign testRun
+                otherTestRunState <-
+                    Pending (Duration otherDuration)
+                        <$> signTestRun sign testRun
+                let pendingRequest =
+                        CreateTestRequest
+                            Request
+                                { outputRefId = RequestRefId ""
+                                , owner = Owner ""
+                                , change =
+                                    Change
+                                        { key = Key testRun
+                                        , operation = Insert otherTestRunState
+                                        }
+                                }
+                db <- genBlind $ oneof [pure [], pure [pendingRequest]]
+                let validation =
+                        mkValidation
+                            []
+                            []
+                            []
+                            []
+                            []
+                            []
+                            []
+                            db
+                pure
+                    $ when (not (null db) && forUser forRole)
+                    $ do
+                        runValidate
+                            $ validateCreateTestRun
+                                testConfig
+                                validation
+                                forRole
+                                Change
+                                    { key = Key testRun
+                                    , operation = Insert testRunState
+                                    }
+                    `shouldReturn` ValidationFailure
+                        (CreateTestRunKeyAlreadyPending testRun)
+        it "reports unacceptable duration" $ egenProperty $ do
             duration <- genShrinkA
             testRun <- testRunEGen
             testConfig <- testConfigEGen

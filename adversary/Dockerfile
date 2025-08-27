@@ -120,6 +120,9 @@ ENV TZ="UTC"
 RUN ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime && \
     echo ${TZ} > /etc/timezone
 
+# lmdb library
+RUN apt update && apt install -y --no-install-recommends liblmdb-dev
+
 # Copy libsodium library
 COPY --from=build --chown=root:root /usr/local/lib/libsodium.so /usr/local/lib
 RUN ln -snf /usr/local/lib/libsodium.so /usr/local/lib/libsodium.so.23 && \

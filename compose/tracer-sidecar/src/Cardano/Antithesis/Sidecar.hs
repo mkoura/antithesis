@@ -43,7 +43,9 @@ import Control.Monad.Trans.Writer.Strict
     )
 import Data.Aeson
     ( Value
+    , encode
     )
+import qualified Data.ByteString.Lazy as BL
 import Data.Foldable
     ( foldl'
     )
@@ -52,6 +54,7 @@ import Data.List
     )
 import Data.Maybe
     ( fromJust
+    , fromMaybe
     , mapMaybe
     )
 import Data.Set
@@ -60,6 +63,8 @@ import Data.Set
 import Data.Text
     ( Text
     )
+import System.Environment (lookupEnv)
+import System.IO (IOMode (AppendMode), withFile)
 
 -- spec ------------------------------------------------------------------------
 
@@ -80,7 +85,17 @@ mkSpec nPools = do
         justANodeKill msg || sev < Critical
 
     observe forwardAddedToCurrentChain
+    observe recordAllChainPoints
   where
+    recordAllChainPoints :: State -> LogMessage -> [Output]
+    recordAllChainPoints
+        _s
+        LogMessage
+            { details = AddedToCurrentChain{newtip}
+            } =
+            pure $ RecordChainPoint $ T.unpack newtip
+    recordAllChainPoints _ _ = []
+
     forwardAddedToCurrentChain :: State -> LogMessage -> [Output]
     forwardAddedToCurrentChain
         _s
@@ -135,6 +150,7 @@ data Rule = Rule
 data Output
     = StdOut String
     | AntithesisSdk Value
+    | RecordChainPoint String
 
 -- Properties ------------------------------------------------------------------
 
@@ -225,7 +241,15 @@ hoistToIO (s, vals) = do
     forM_ vals $ \case
         AntithesisSdk v -> writeSdkJsonl v
         StdOut t -> putStrLn t
+        RecordChainPoint p -> writeChainPoint p
     return s
+  where
+    writeChainPoint :: String -> IO ()
+    writeChainPoint v = do
+        file <-
+            fromMaybe "/tmp/chainPoints.log" <$> lookupEnv "CHAINPOINT_FILEPATH"
+        withFile file AppendMode $ \h ->
+            BL.hPutStr h (encode v <> "\n")
 
 initialStateIO :: Spec -> IO State
 initialStateIO spec = hoistToIO $ initialState spec

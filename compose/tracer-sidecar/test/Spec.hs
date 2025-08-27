@@ -59,6 +59,7 @@ spec = do
 jsonifyOutput :: Output -> Value
 jsonifyOutput (StdOut msg) = toJSON $ "### STDOUT: " <> msg
 jsonifyOutput (AntithesisSdk v) = v
+jsonifyOutput (RecordChainPoint msg) = toJSON $ "### chainPoints.log: " <> msg
 
 myGoldenTest :: [Value] -> Golden [Value]
 myGoldenTest actualOutput =

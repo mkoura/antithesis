@@ -3,10 +3,17 @@
 module Oracle.Validate.Requests.TestRun.RejectSpec (spec)
 where
 
+import Control.Monad (when)
 import Core.Types.Basic
     ( Duration (..)
+    , Owner (..)
+    , RequestRefId (..)
     )
+import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Fact (toJSFact)
+import Core.Types.Operation (Operation (..))
+import Oracle.Types (Request (..), RequestZoo (..))
+import Oracle.Validate.Requests.RegisterUserSpec (genForRole)
 import Oracle.Validate.Requests.TestRun.Lib
     ( mkValidation
     , noValidation
@@ -15,7 +22,14 @@ import Oracle.Validate.Requests.TestRun.Lib
     )
 import Oracle.Validate.Requests.TestRun.Update
     ( AgentRejection (..)
+    , UpdateTestRunFailure (..)
     , validateToDoneCore
+    , validateToDoneUpdate
+    )
+import Oracle.Validate.Types
+    ( AValidationResult (..)
+    , forUser
+    , runValidate
     )
 import Test.Hspec
     ( Spec
@@ -29,7 +43,7 @@ import Test.QuickCheck
     , counterexample
     , oneof
     )
-import Test.QuickCheck.EGen (egenProperty, gen, genA)
+import Test.QuickCheck.EGen (egenProperty, gen, genA, genBlind)
 import Test.QuickCheck.Property (cover)
 import User.Types
     ( TestRunRejection (BrokenInstructions)
@@ -48,7 +62,34 @@ spec = do
                 newTestRunState = Rejected pendingState [BrokenInstructions]
                 test = validateToDoneCore validation testRun newTestRunState
             pure $ test `shouldReturn` Nothing
-
+        it
+            "fail to validate a rejected test-run request if a test-run key is already pending"
+            $ egenProperty
+            $ do
+                testRun <- testRunEGen
+                signature <- gen signatureGen
+                forRole <- genForRole
+                anOwner <- Owner <$> gen arbitrary
+                let pendingState = Pending (Duration 5) signature
+                    change =
+                        Change
+                            { key = Key testRun
+                            , operation =
+                                Update
+                                    pendingState
+                                    (Rejected pendingState [])
+                            }
+                    pendingRequest =
+                        RejectRequest
+                            Request{outputRefId = RequestRefId "", owner = anOwner, change}
+                db <- genBlind $ oneof [pure [], pure [pendingRequest]]
+                let validation = mkValidation [] [] [] [] [] [] [] db
+                    test = validateToDoneUpdate validation forRole anOwner anOwner change
+                pure
+                    $ when (not (null db) && forUser forRole)
+                    $ runValidate test
+                    `shouldReturn` ValidationFailure
+                        (UpdateTestRunKeyAlreadyPending testRun)
         it "fail to validate a reject for a non-existing test run"
             $ egenProperty
             $ do

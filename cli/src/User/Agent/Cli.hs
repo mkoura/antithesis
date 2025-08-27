@@ -60,6 +60,7 @@ import Oracle.Validate.Requests.TestRun.Update
     )
 import Oracle.Validate.Types
     ( AValidationResult (..)
+    , ForRole (..)
     , Validate
     , Validated
     , hoistValidate
@@ -361,7 +362,7 @@ reportCommand
         (WithTxHash (TestRunState DoneT))
 reportCommand tokenId wallet fact duration url =
     signAndSubmitAnUpdate
-        validateToDoneUpdate
+        (`validateToDoneUpdate` ForUser)
         tokenId
         wallet
         fact
@@ -378,7 +379,7 @@ rejectCommand
         (WithTxHash (TestRunState DoneT))
 rejectCommand tokenId wallet fact reason =
     signAndSubmitAnUpdate
-        validateToDoneUpdate
+        (`validateToDoneUpdate` ForUser)
         tokenId
         wallet
         fact
@@ -394,7 +395,7 @@ acceptCommand
         (WithTxHash (TestRunState RunningT))
 acceptCommand tokenId wallet fact =
     signAndSubmitAnUpdate
-        validateToRunningUpdate
+        (`validateToRunningUpdate` ForUser)
         tokenId
         wallet
         fact

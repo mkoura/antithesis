@@ -67,17 +67,22 @@ validateRequest _ Nothing _ CreateTestRequest{} =
     notValidated RequestValidationConfigNotAvailable
 validateRequest _ (Just Config{configAgent}) validation (RejectRequest (Request _ requester change)) =
     mapFailure UpdateTestRunFailure
-        $ validateToDoneUpdate validation configAgent requester change
+        $ validateToDoneUpdate validation ForOracle configAgent requester change
 validateRequest _ Nothing _ RejectRequest{} =
     notValidated RequestValidationConfigNotAvailable
 validateRequest _ (Just Config{configAgent}) validation (AcceptRequest (Request _ requester change)) =
     mapFailure UpdateTestRunFailure
-        $ validateToRunningUpdate validation configAgent requester change
+        $ validateToRunningUpdate
+            validation
+            ForOracle
+            configAgent
+            requester
+            change
 validateRequest _ Nothing _ AcceptRequest{} =
     notValidated RequestValidationConfigNotAvailable
 validateRequest _ (Just Config{configAgent}) validation (FinishedRequest (Request _ requester change)) =
     mapFailure UpdateTestRunFailure
-        $ validateToDoneUpdate validation configAgent requester change
+        $ validateToDoneUpdate validation ForOracle configAgent requester change
 validateRequest _ Nothing _ FinishedRequest{} =
     notValidated RequestValidationConfigNotAvailable
 validateRequest _ (Just Config{configAgent}) validation (WhiteListRequest (Request _ requester change)) =

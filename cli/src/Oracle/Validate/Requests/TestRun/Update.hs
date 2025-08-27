@@ -15,9 +15,13 @@ import Core.Types.Fact (Fact (..))
 import Core.Types.Operation (Op (..), Operation (..))
 import Data.Foldable (for_)
 import Lib.JSON.Canonical.Extra
+import Oracle.Types (requestZooGetTestRunKey)
+import Oracle.Validate.Requests.Lib (keyAlreadyPendingFailure)
 import Oracle.Validate.Types
-    ( Validate
+    ( ForRole
+    , Validate
     , Validated (..)
+    , forUser
     , mapFailure
     , notValidated
     )
@@ -44,6 +48,7 @@ data UpdateTestRunFailure
     | UpdateTestRunPreviousStateNotFound
     | UpdateTestRunTestRunIdNotResolved
     | UpdateTestRunWrongPreviousState
+    | UpdateTestRunKeyAlreadyPending TestRun
     deriving (Show, Eq)
 
 instance Monad m => ToJSON m UpdateTestRunFailure where
@@ -62,6 +67,8 @@ instance Monad m => ToJSON m UpdateTestRunFailure where
             toJSON ("Test run ID is not resolved" :: String)
         UpdateTestRunWrongPreviousState ->
             toJSON ("Wrong previous state for test run" :: String)
+        UpdateTestRunKeyAlreadyPending testRun ->
+            object ["updateTestRunKeyAlreadyPending" .= testRun]
 
 checkingOwner
     :: Monad m
@@ -87,15 +94,23 @@ checkingUpdates operation f = case operation of
 validateToDoneUpdate
     :: (Monad m, FromJSON Maybe x)
     => Validation m
+    -> ForRole
     -> Owner
     -> Owner
     -> Change TestRun (OpU x (TestRunState DoneT))
     -> Validate UpdateTestRunFailure m Validated
 validateToDoneUpdate
     validation
+    forRole
     agentPKH
     requester
     change@(Change (Key testRun) operation) = do
+        when (forUser forRole)
+            $ keyAlreadyPendingFailure
+                validation
+                UpdateTestRunKeyAlreadyPending
+                testRun
+                requestZooGetTestRunKey
         mapFailure UpdateTestRunKeyFailure
             $ updateValidation validation change
         checkingOwner requester agentPKH
@@ -129,15 +144,23 @@ checkPastState Validation{mpfsGetFacts} testRun accepted = do
 validateToRunningUpdate
     :: Monad m
     => Validation m
+    -> ForRole
     -> Owner
     -> Owner
     -> Change TestRun (OpU (TestRunState PendingT) (TestRunState RunningT))
     -> Validate UpdateTestRunFailure m Validated
 validateToRunningUpdate
     validation
+    forRole
     agentPKH
     requester
     change@(Change (Key testRun) operation) = do
+        when (forUser forRole)
+            $ keyAlreadyPendingFailure
+                validation
+                UpdateTestRunKeyAlreadyPending
+                testRun
+                requestZooGetTestRunKey
         mapFailure UpdateTestRunKeyFailure
             $ updateValidation validation change
         checkingOwner requester agentPKH

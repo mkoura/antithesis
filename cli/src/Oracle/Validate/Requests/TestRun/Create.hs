@@ -21,7 +21,7 @@ import Data.Maybe (mapMaybe)
 import Lib.GitHub (GithubResponseError, GithubResponseStatusCodeError)
 import Lib.JSON.Canonical.Extra (object, stringJSON, (.=))
 import Lib.SSH.Public (decodePublicKey)
-import Oracle.Types (requestZooCreateTestKey)
+import Oracle.Types (requestZooGetTestRunKey)
 import Oracle.Validate.DownloadAssets
     ( AssetValidationFailure
     , validateAssets
@@ -95,7 +95,7 @@ validateCreateTestRun
                 validation
                 CreateTestRunKeyAlreadyPending
                 testRun
-                requestZooCreateTestKey
+                requestZooGetTestRunKey
         mapFailure CreateTestRunKeyFailure
             $ insertValidation validation change
         mapFailure CreateTestRunRejections

@@ -21,14 +21,22 @@ let
       echo "Entering shell for adversary development"
     '';
   };
-
+  fix-libs = ({ lib, pkgs, ... }: {
+    # Use the VRF fork of libsodium
+    packages.cardano-crypto-praos.components.library.pkgconfig =
+      lib.mkForce [ [ pkgs.libsodium-vrf ] ];
+    packages.cardano-crypto-class.components.library.pkgconfig =
+      lib.mkForce [[ pkgs.libsodium-vrf pkgs.secp256k1 pkgs.libblst ]];
+  });
   mkProject = ctx@{ lib, pkgs, ... }: {
     name = "adversary";
     src = ./..;
     compiler-nix-name = "ghc984";
     shell = shell { inherit pkgs; };
 
-    modules = [ ];
+    modules = [
+      fix-libs
+    ];
     inputMap = { "https://chap.intersectmbo.org/" = CHaP; };
   };
   project = pkgs.haskell-nix.cabalProject' mkProject;

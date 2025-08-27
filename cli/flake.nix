@@ -72,12 +72,19 @@
             inherit pkgs project node-project version;
             rewrite-libs = rewrite-libs.packages.default;
           };
+          anti-oracle-docker-image = import ./nix/anti-oracle-docker.nix {
+            inherit pkgs;
+            linux-package = linux-artifacts.packages.linux64.tarball;
+            inherit version;
+          };
+          docker.packages = { inherit anti-oracle-docker-image; };
           info.packages = { inherit version; };
           fullPackages = lib.mergeAttrsList [
             project.packages
             linux-artifacts.packages
             macos-artifacts.packages
             info.packages
+            docker.packages
           ];
 
         in {

@@ -2,6 +2,32 @@
 
 This is the role of the user that wants to run a service to control access to the Antithesis platform. There will be only one token and so there will be only one oracle service running at a time, but we document it here for completeness.
 
+## Running the oracle service
+
+You can build an executable that will continuously check for pending requests and include them in the Antithesis token.
+
+### Build
+
+You can build the oracle service via nix:
+
+```bash
+nix build .#anti-oracle
+```
+
+On a linux machine you can build a docker container
+
+```bash
+nix build .#anti-oracle-docker-image
+docker load < result
+```
+
+Then you can run the docker container
+
+```bash
+version=$(nix eval .#version --raw)
+docker run cardano-foundation/anti-oracle:$version
+```
+
 ## Creating the anti token (only once)
 
 Oracle operations needs a wallet. Given the role aside setting the `ANTI_WALLET_FILE` environment variable to point to the wallet file, you also wanto to set th `ANTI_WALLET_PASSPHRASE` environment variable to encrypt it.

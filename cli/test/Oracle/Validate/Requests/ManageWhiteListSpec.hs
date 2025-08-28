@@ -9,6 +9,7 @@ import Core.Types.Basic (Owner (..), Platform (..), Repository (..))
 import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Fact (toJSFact)
 import Core.Types.Operation (Op (OpD, OpI), Operation (..))
+import MockMPFS (mockMPFS, withFacts)
 import Oracle.Validate.Requests.ManageWhiteList
     ( UpdateWhiteListFailure (..)
     , validateAddWhiteListed
@@ -67,7 +68,7 @@ spec = do
             repo <- gen genRepository
             agent <- gen genAscii
             let validation =
-                    mkValidation
+                    mkValidation mockMPFS
                         $ noValidation
                             { mockReposExists = [repo]
                             }
@@ -87,7 +88,7 @@ spec = do
                 agent <- gen genAscii
                 platform <- gen $ withAPresence 0.5 "github" genAscii
                 let validation =
-                        mkValidation
+                        mkValidation mockMPFS
                             $ noValidation
                                 { mockReposExists = [repo]
                                 }
@@ -111,7 +112,7 @@ spec = do
                 agent <- gen genAscii
                 presence <- gen $ withAPresenceInAList 0.5 repo genRepository
                 let validation =
-                        mkValidation
+                        mkValidation mockMPFS
                             $ noValidation
                                 { mockReposExists = presence
                                 }
@@ -145,10 +146,9 @@ spec = do
                 presenceInFacts <-
                     gen $ oneof [pure [], pure [fact]]
                 let validation =
-                        mkValidation
+                        mkValidation (withFacts presenceInFacts mockMPFS)
                             $ noValidation
-                                { mockFacts = presenceInFacts
-                                , mockReposExists = presenceInGithub
+                                { mockReposExists = presenceInGithub
                                 }
                     test =
                         validateAddWhiteListed
@@ -174,10 +174,9 @@ spec = do
             presenceInGithub <-
                 gen $ withAPresenceInAList 0.5 repo genRepository
             let validation =
-                    mkValidation
+                    mkValidation (withFacts [fact] mockMPFS)
                         $ noValidation
-                            { mockFacts = [fact]
-                            , mockReposExists = presenceInGithub
+                            { mockReposExists = presenceInGithub
                             }
                 test =
                     validateRemoveWhiteListed
@@ -202,10 +201,9 @@ spec = do
                 presenceInFacts <-
                     gen $ oneof [pure [], pure [fact]]
                 let validation =
-                        mkValidation
+                        mkValidation (withFacts presenceInFacts mockMPFS)
                             $ noValidation
-                                { mockFacts = presenceInFacts
-                                , mockReposExists = presenceInGithub
+                                { mockReposExists = presenceInGithub
                                 }
                     test =
                         validateRemoveWhiteListed
@@ -232,10 +230,9 @@ spec = do
                 fact <- toJSFact key ()
                 presenceInGithub <- gen $ withAPresenceInAList 0.5 repo genRepository
                 let validation =
-                        mkValidation
+                        mkValidation (withFacts [fact] mockMPFS)
                             $ noValidation
-                                { mockFacts = [fact]
-                                , mockReposExists = presenceInGithub
+                                { mockReposExists = presenceInGithub
                                 }
                     test =
                         validateRemoveWhiteListed
@@ -267,10 +264,9 @@ spec = do
                 presenceInFacts <-
                     gen $ oneof [pure [], pure [fact]]
                 let validation =
-                        mkValidation
+                        mkValidation (withFacts presenceInFacts mockMPFS)
                             $ noValidation
-                                { mockFacts = presenceInFacts
-                                , mockReposExists = presenceInGithub
+                                { mockReposExists = presenceInGithub
                                 }
                 operation <-
                     genBlind

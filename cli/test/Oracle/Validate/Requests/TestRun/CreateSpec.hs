@@ -19,6 +19,7 @@ import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Fact (JSFact, toJSFact)
 import Core.Types.Operation (Operation (..))
 import Lib.SSH.Public (encodePublicKey)
+import MockMPFS (mockMPFS, withFacts, withRequests)
 import Oracle.Types (Request (..), RequestZoo (..))
 import Oracle.Validate.DownloadAssets
     ( AssetValidationFailure (..)
@@ -149,12 +150,11 @@ spec = do
                         toJSFact previousTestRun previousState
                 prefix x = case testRun.directory of
                     Directory d -> d <> "/" <> x
+                facts = [user, role, whiteListRepo] <> previous
                 validation =
-                    mkValidation
+                    mkValidation (withFacts facts mockMPFS)
                         $ noValidation
-                            { mockFacts =
-                                [user, role, whiteListRepo] <> previous
-                            , mockCommits = [gitCommit testRun]
+                            { mockCommits = [gitCommit testRun]
                             , mockDirectories = [gitDirectory testRun]
                             , mockFiles =
                                 [ (FileName $ prefix "README.md", "Hello, world!")
@@ -192,7 +192,6 @@ spec = do
                             `suchThat` \(Positive d) ->
                                 d >= testConfig.minDuration
                                     && d <= testConfig.maxDuration
-                                    && d /= duration
                 (sign, _pk) <- genBlind sshGen
                 forRole <- genForRole
                 testRunState <-
@@ -214,10 +213,7 @@ spec = do
                                 }
                 db <- genBlind $ oneof [pure [], pure [pendingRequest]]
                 let validation =
-                        mkValidation
-                            $ noValidation
-                                { mockPendingRequests = db
-                                }
+                        mkValidation (withRequests db mockMPFS) noValidation
                 pure
                     $ when (not (null db) && forUser forRole)
                     $ do
@@ -243,7 +239,7 @@ spec = do
                     runValidate
                         $ validateCreateTestRunCore
                             testConfig
-                            (mkValidation noValidation)
+                            (mkValidation mockMPFS noValidation)
                             testRun
                             testRunState
                 onConditionHaveReason mresult UnacceptableDuration
@@ -265,7 +261,10 @@ spec = do
                         , pure testRunRequest
                         ]
             role <- jsFactRole testRunFact
-            let validation = mkValidation $ noValidation{mockFacts = [role]}
+            let validation =
+                    mkValidation
+                        (withFacts [role] mockMPFS)
+                        noValidation
                 testRunState = Pending (Duration duration) signature
             pure $ do
                 mresult <-
@@ -322,9 +321,8 @@ spec = do
             testRunFact <- toJSFact testRunDB testRunStateDB
             let validation =
                     mkValidation
-                        $ noValidation
-                            { mockFacts = [testRunFact | testRunDB.tryIndex > 0]
-                            }
+                        (withFacts [testRunFact | testRunDB.tryIndex > 0] mockMPFS)
+                        noValidation
             let testRunState = Pending (Duration duration) signature
             pure
                 $ counterexample (show testRunDB)
@@ -357,10 +355,9 @@ spec = do
             let testRunState = Pending (Duration duration) signature
             testRunFact <- toJSFact testRun' testRunState
             let validation =
-                    mkValidation
+                    mkValidation (withFacts [testRunFact] mockMPFS)
                         $ noValidation
-                            { mockFacts = [testRunFact]
-                            , mockDirectories = [gitDirectory testRun']
+                            { mockDirectories = [gitDirectory testRun']
                             }
             pure $ do
                 mresult <-
@@ -393,7 +390,7 @@ spec = do
                     $ oneof
                         [pure [], pure [whiteListFact]]
             let validation =
-                    mkValidation $ noValidation{mockFacts = whiteListed}
+                    mkValidation (withFacts whiteListed mockMPFS) noValidation
             pure $ do
                 mresult <-
                     runValidate

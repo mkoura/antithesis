@@ -316,6 +316,7 @@ test-suite anti-unit-test
     Lib.JSON.Canonical.AesonSpec
     Lib.JSON.Canonical.ExtraSpec
     Lib.SSH.KeySpec
+    MockMPFS
     Oracle.Config.TypesSpec
     Oracle.TypesSpec
     Oracle.Validate.Requests.ConfigSpec

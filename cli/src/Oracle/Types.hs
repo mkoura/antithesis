@@ -19,7 +19,7 @@ import Core.Types.Basic (Owner, RequestRefId)
 import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Operation (Op (..), Operation (..))
 import Core.Types.Tx (Root)
-import Data.Functor.Identity (Identity)
+import Data.Functor.Identity (Identity (..))
 import Lib.JSON.Canonical.Extra (object, withObject, (.:), (.=))
 import Oracle.Config.Types (Config, ConfigKey)
 import Text.JSON.Canonical
@@ -76,6 +76,7 @@ data TokenState = TokenState
     { tokenRoot :: Root
     , tokenOwner :: Owner
     }
+    deriving (Eq, Show)
 
 instance Monad m => ToJSON m TokenState where
     toJSON (TokenState root owner) =
@@ -124,6 +125,7 @@ data RequestZoo where
         :: Request JSValue (OpD JSValue) -> RequestZoo
     UnknownUpdateRequest
         :: Request JSValue (OpU JSValue JSValue) -> RequestZoo
+    deriving (Show, Eq)
 
 requestZooRefId :: RequestZoo -> RequestRefId
 requestZooRefId (RegisterUserRequest req) = outputRefId req
@@ -208,6 +210,9 @@ data Token r = Token
     , tokenRequests :: [r RequestZoo]
     }
 
+deriving instance Show (Token Identity)
+deriving instance Eq (Token Identity)
+
 fmapToken :: (r RequestZoo -> r' RequestZoo) -> Token r -> Token r'
 fmapToken f (Token refId state requests) =
     Token
@@ -229,6 +234,7 @@ fmapMToken f (Token refId state requests) = do
             , tokenState = state
             , tokenRequests = requests'
             }
+
 instance (Monad m, ToJSON m (r RequestZoo)) => ToJSON m (Token r) where
     toJSON (Token refId state requests) =
         object

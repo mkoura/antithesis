@@ -12,11 +12,11 @@ import Core.Types.Basic
 import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Fact (toJSFact)
 import Core.Types.Operation (Operation (..))
+import MockMPFS (mockMPFS, withFacts, withRequests)
 import Oracle.Types (Request (..), RequestZoo (AcceptRequest))
 import Oracle.Validate.Requests.RegisterUserSpec (genForRole)
 import Oracle.Validate.Requests.TestRun.Lib
-    ( MockValidation (..)
-    , mkValidation
+    ( mkValidation
     , noValidation
     , signatureGen
     , testRunEGen
@@ -45,6 +45,7 @@ import Test.QuickCheck
     , oneof
     )
 import Test.QuickCheck.EGen (egenProperty, gen, genA, genBlind)
+import Test.QuickCheck.JSString (genAscii)
 import Test.QuickCheck.Property (cover)
 import User.Types
     ( TestRunState (..)
@@ -59,8 +60,7 @@ spec = do
             let pendingState = Pending (Duration 5) signature
             testRunFact <- toJSFact testRun pendingState
             let validation =
-                    mkValidation
-                        noValidation{mockFacts = [testRunFact]}
+                    mkValidation (withFacts [testRunFact] mockMPFS) noValidation
                 newTestRunState = Accepted pendingState
                 test = validateToRunningCore validation testRun newTestRunState
             pure $ test `shouldReturn` Nothing
@@ -71,7 +71,7 @@ spec = do
                 testRun <- testRunEGen
                 signature <- gen signatureGen
                 forRole <- genForRole
-                anOwner <- Owner <$> gen arbitrary
+                anOwner <- gen $ Owner <$> genAscii
                 let pendingState = Pending (Duration 5) signature
                     change = Change (Key testRun) (Update pendingState (Accepted pendingState))
                     pendingRequest =
@@ -79,11 +79,7 @@ spec = do
                             (Request{outputRefId = RequestRefId "", owner = anOwner, change})
                 db <- genBlind $ oneof [pure [], pure [pendingRequest]]
                 let validation =
-                        mkValidation
-                            $ noValidation
-                                { mockFacts = []
-                                , mockPendingRequests = db
-                                }
+                        mkValidation (withRequests db mockMPFS) noValidation
                     test = validateToRunningUpdate validation forRole anOwner anOwner change
                 pure
                     $ when (not (null db) && forUser forRole)
@@ -100,7 +96,7 @@ spec = do
                     newTestRunState = Accepted pendingState
                     test =
                         validateToRunningCore
-                            (mkValidation noValidation)
+                            (mkValidation mockMPFS noValidation)
                             testRun
                             newTestRunState
                 pure $ test `shouldReturn` Just PreviousStateWrong
@@ -119,10 +115,7 @@ spec = do
                         Pending (Duration differentDuration) differentSignature
                 testRunFact <- toJSFact testRun fact
                 let validation =
-                        mkValidation
-                            $ noValidation
-                                { mockFacts = [testRunFact]
-                                }
+                        mkValidation (withFacts [testRunFact] mockMPFS) noValidation
                     newTestRunState = Accepted request
                     test = validateToRunningCore validation testRun newTestRunState
                 pure

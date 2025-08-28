@@ -87,7 +87,7 @@ askSubmit w = flip ctxSubmit w <$> WithContext ask
 
 withContext
     :: MPFS m
-    -> (Maybe TokenId -> Validation m)
+    -> (MPFS m -> Maybe TokenId -> Validation m)
     -> (Wallet -> Submission m)
     -> WithContext m a
     -> m a
@@ -96,6 +96,6 @@ withContext mpfs mkValidation submit (WithContext action) =
         action
         Context
             { ctxMPFS = mpfs
-            , ctxMkValidation = mkValidation
+            , ctxMkValidation = mkValidation mpfs
             , ctxSubmit = submit
             }

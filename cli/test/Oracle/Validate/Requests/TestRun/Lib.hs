@@ -26,6 +26,7 @@ module Oracle.Validate.Requests.TestRun.Lib
     , testConfigEGen
     , testRunEGen
     , MockValidation (..)
+    , aToken
     )
 where
 
@@ -43,29 +44,27 @@ import Core.Types.Basic
     , Platform (Platform)
     , PublicKeyHash
     , Repository (..)
+    , TokenId
     , Try (Try)
     , Username (Username)
     , organizationL
     , projectL
     )
 import Core.Types.Fact
-    ( Fact (Fact)
-    , JSFact
-    , parseFacts
+    ( JSFact
     , toJSFact
     )
 import Crypto.PubKey.Ed25519 qualified as Ed25519
 import Data.ByteString (ByteString)
 import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.List qualified as L
-import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import Lib.GitHub
     ( GetGithubFileFailure (..)
     )
 import Lib.SSH.Private (SSHClient (..), mkKeyAPI)
 import Lib.SSH.Public (SSHPublicKey)
-import Oracle.Types (RequestZoo)
+import MPFS.API (MPFS)
 import Oracle.Validate.Requests.TestRun.Config
     ( TestRunValidationConfig (..)
     )
@@ -81,8 +80,7 @@ import Test.QuickCheck.Commit (CommitValue (..))
 import Test.QuickCheck.Crypton ()
 import Test.QuickCheck.EGen (EGen, gen, genShrink)
 import Text.JSON.Canonical
-    ( FromJSON (fromJSON)
-    , ToJSON (toJSON)
+    ( ToJSON (toJSON)
     , renderCanonicalJSON
     )
 import User.Types
@@ -96,7 +94,12 @@ import User.Types
     , requesterL
     , tryIndexL
     )
-import Validation (Validation (..))
+import Validation
+    ( Validation (..)
+    , getFacts
+    , getTestRuns
+    , getTokenRequests
+    )
 import Validation.DownloadFile
     ( DownloadedFileFailure (..)
     , analyzeDownloadedFile
@@ -125,42 +128,40 @@ jsFactUser testRun pubkeyhash =
         ()
 
 data MockValidation = MockValidation
-    { mockFacts :: [JSFact]
-    , mockCommits :: [(Repository, Commit)]
+    { mockCommits :: [(Repository, Commit)]
     , mockDirectories :: [(Repository, Commit, Directory)]
     , mockUserKeys :: [(Username, SSHPublicKey)]
     , mockRepoRoles :: [(Username, Repository)]
     , mockReposExists :: [Repository]
     , mockFiles :: [(FileName, Text)]
-    , mockPendingRequests :: [RequestZoo]
     , mockPermissions :: [(Directory, Permissions)]
     , mockSSHPrivateKey :: [(FilePath, ByteString)]
     }
 
+aToken :: Maybe TokenId
+aToken = Just $ error "TokenId not needed for tests"
+
 mkValidation
     :: Monad m
-    => MockValidation
+    => MPFS m
+    -> MockValidation
     -> Validation m
 mkValidation
+    mpfs
     MockValidation
-        { mockFacts = fs
-        , mockCommits = rs
+        { mockCommits = rs
         , mockDirectories = ds
         , mockUserKeys = upk
         , mockRepoRoles = rr
         , mockReposExists = reposExists
         , mockFiles = files
-        , mockPendingRequests = pendingRequests
         , mockPermissions = mockPermissions
         , mockSSHPrivateKey = mockSSHPrivateKey
         } =
         Validation
-            { mpfsGetFacts = do
-                db <- toJSON fs
-                return $ parseFacts db
-            , mpfsGetTestRuns =
-                pure $ mapMaybe (\(Fact k _ :: JSFact) -> fromJSON k) fs
-            , mpfsGetTokenRequests = pure pendingRequests
+            { mpfsGetFacts = getFacts mpfs aToken
+            , mpfsGetTestRuns = getTestRuns mpfs aToken
+            , mpfsGetTokenRequests = getTokenRequests mpfs aToken
             , githubCommitExists = \repository commit ->
                 return $ Right $ (repository, commit) `elem` rs
             , githubDirectoryExists = \repository commit dir ->
@@ -273,14 +274,12 @@ changeTestRun l qc testRun = do
 noValidation :: MockValidation
 noValidation =
     MockValidation
-        { mockFacts = []
-        , mockCommits = []
+        { mockCommits = []
         , mockDirectories = []
         , mockUserKeys = []
         , mockRepoRoles = []
         , mockReposExists = []
         , mockFiles = []
-        , mockPendingRequests = []
         , mockPermissions = []
         , mockSSHPrivateKey = []
         }

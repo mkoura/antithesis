@@ -7,6 +7,7 @@ import Control.Monad (when)
 import Core.Types.Basic (Owner (..))
 import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Operation (Operation (..))
+import MockMPFS (mockMPFS)
 import Oracle.Config.Types (Config (..), ConfigKey (..))
 import Oracle.Validate.Requests.Config
     ( ConfigFailure (..)
@@ -34,7 +35,8 @@ import Test.QuickCheck
     ( Arbitrary (arbitrary)
     , suchThat
     )
-import Test.QuickCheck.EGen (egenProperty, gen, genA)
+import Test.QuickCheck.EGen (egenProperty, gen)
+import Test.QuickCheck.JSString (genAscii)
 import Test.QuickCheck.Lib (withAPresence)
 
 spec :: Spec
@@ -43,7 +45,7 @@ spec = do
         it "validates a config insertion" $ egenProperty $ do
             minDuration <- gen $ arbitrary `suchThat` (> 0)
             maxDuration <- gen $ arbitrary `suchThat` (> minDuration)
-            oracleOwner <- Owner <$> genA
+            oracleOwner <- gen $ Owner <$> genAscii
             let
                 agentOwner = Owner "agent"
                 change =
@@ -59,7 +61,7 @@ spec = do
                             }
             let test =
                     validateInsertConfig
-                        (mkValidation noValidation)
+                        (mkValidation mockMPFS noValidation)
                         oracleOwner
                         oracleOwner
                         change
@@ -70,7 +72,7 @@ spec = do
             $ do
                 minDuration <- gen $ arbitrary `suchThat` (<= 0)
                 maxDuration <- gen $ arbitrary `suchThat` (> minDuration)
-                oracleOwner <- Owner <$> genA
+                oracleOwner <- gen $ Owner <$> genAscii
                 let
                     agentOwner = Owner "agent"
                     change =
@@ -86,7 +88,7 @@ spec = do
                                 }
                 let test =
                         validateInsertConfig
-                            (mkValidation noValidation)
+                            (mkValidation mockMPFS noValidation)
                             oracleOwner
                             oracleOwner
                             change
@@ -100,7 +102,7 @@ spec = do
             $ do
                 minDuration <- gen $ arbitrary `suchThat` (> 0)
                 maxDuration <- gen $ arbitrary `suchThat` (< minDuration)
-                oracleOwner <- Owner <$> genA
+                oracleOwner <- gen $ Owner <$> genAscii
                 let
                     agentOwner = Owner "agent"
                     change =
@@ -116,7 +118,7 @@ spec = do
                                 }
                 let test =
                         validateInsertConfig
-                            (mkValidation noValidation)
+                            (mkValidation mockMPFS noValidation)
                             oracleOwner
                             oracleOwner
                             change
@@ -130,7 +132,7 @@ spec = do
             $ do
                 minDuration <- gen $ arbitrary `suchThat` (> 0)
                 maxDuration <- gen $ arbitrary `suchThat` (> minDuration)
-                oracleOwner <- Owner <$> genA
+                oracleOwner <- gen $ Owner <$> genAscii
                 attacker <-
                     gen
                         $ withAPresence
@@ -151,7 +153,7 @@ spec = do
                                 }
                 let test =
                         validateInsertConfig
-                            (mkValidation noValidation)
+                            (mkValidation mockMPFS noValidation)
                             oracleOwner
                             attacker
                             change

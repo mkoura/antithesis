@@ -9,6 +9,9 @@ module Validation
     , deleteValidation
     , updateValidation
     , hoistValidation
+    , getFacts
+    , getTestRuns
+    , getTokenRequests
     ) where
 
 import Control.Monad (when)
@@ -40,7 +43,7 @@ import Lib.GitHub qualified as GitHub
 import Lib.JSON.Canonical.Extra (object, (.=))
 import Lib.SSH.Private (KeyAPI, SSHClient)
 import Lib.SSH.Private qualified as SSH
-import MPFS.API (getToken, getTokenFacts)
+import MPFS.API (MPFS (..))
 import Oracle.Types (RequestZoo, Token (tokenRequests))
 import Oracle.Validate.Types (Validate, notValidated)
 import Servant.Client (ClientM)
@@ -156,19 +159,32 @@ hoistValidation
       where
         f = lift
 
-mkValidation :: Auth -> Maybe TokenId -> Validation ClientM
-mkValidation auth tk = do
-    let getFacts :: (FromJSON Maybe k, FromJSON Maybe v) => ClientM [Fact k v]
-        getFacts = maybe (pure []) (fmap parseFacts . getTokenFacts) tk
+getFacts
+    :: Applicative m
+    => MPFS m
+    -> (FromJSON Maybe k, FromJSON Maybe v)
+    => Maybe TokenId
+    -> m [Fact k v]
+getFacts mpfs = maybe (pure []) (fmap parseFacts . mpfsGetTokenFacts mpfs)
+
+getTestRuns :: Applicative m => MPFS m -> Maybe TokenId -> m [TestRun]
+getTestRuns mpfs tk = mapMaybe (\(Fact k _ :: JSFact) -> fromJSON k) <$> getFacts mpfs tk
+
+getTokenRequests
+    :: Monad m => MPFS m -> Maybe TokenId -> m [RequestZoo]
+getTokenRequests mpfs tk = case tk of
+    Nothing -> pure []
+    Just tokenId -> do
+        mtoken <- fromJSON <$> mpfsGetToken mpfs tokenId
+        pure $ maybe [] (fmap runIdentity . tokenRequests) mtoken
+
+mkValidation
+    :: Auth -> MPFS ClientM -> Maybe TokenId -> Validation ClientM
+mkValidation auth mpfs tk = do
     Validation
-        { mpfsGetFacts = getFacts
-        , mpfsGetTestRuns =
-            mapMaybe (\(Fact k _ :: JSFact) -> fromJSON k) <$> getFacts
-        , mpfsGetTokenRequests = case tk of
-            Nothing -> pure []
-            Just tokenId -> do
-                mtoken <- fromJSON <$> getToken tokenId
-                pure $ maybe [] (fmap runIdentity . tokenRequests) mtoken
+        { mpfsGetFacts = getFacts mpfs tk
+        , mpfsGetTestRuns = getTestRuns mpfs tk
+        , mpfsGetTokenRequests = getTokenRequests mpfs tk
         , githubCommitExists = \repository commit ->
             liftIO $ GitHub.githubCommitExists auth repository commit
         , githubDirectoryExists = \repository commit dir ->

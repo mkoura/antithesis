@@ -28,6 +28,7 @@ module Lib.JSON.Canonical.Extra
     , parseJSValue
     , byteStringToJSON
     , byteStringFromJSON
+    , mergeObject
     )
 where
 
@@ -97,6 +98,10 @@ getStringMapField key mapping = getField key mapping >>= fromJSON
 
 object :: (Monad m, ToJSON m a) => [(String, m a)] -> m JSValue
 object xs = toJSON <=< sequence $ Map.fromList xs
+
+mergeObject :: JSValue -> JSValue -> JSValue
+mergeObject (JSObject a) (JSObject b) = JSObject (a ++ b)
+mergeObject _ _ = error "Can only merge two JSObjects"
 
 intJSON :: (Monad m, Integral a) => a -> m JSValue
 intJSON = toJSON @_ @Int54 . fromIntegral

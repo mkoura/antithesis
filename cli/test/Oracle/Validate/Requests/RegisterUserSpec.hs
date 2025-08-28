@@ -23,6 +23,7 @@ import Lib.SSH.Public
     , encodeSSHPublicKey
     , extractPublicKeyHash
     )
+import MockMPFS (mockMPFS, withFacts, withRequests)
 import Oracle.Types (Request (..), RequestZoo (..))
 import Oracle.Validate.Requests.RegisterUser
     ( RegisterUserFailure (..)
@@ -50,7 +51,8 @@ import Test.Hspec
     )
 import Test.QuickCheck (Gen, arbitrary, oneof, suchThat)
 import Test.QuickCheck.Crypton (sshGen)
-import Test.QuickCheck.EGen (EGen, egenProperty, gen, genA, genBlind)
+import Test.QuickCheck.EGen (EGen, egenProperty, gen, genBlind)
+import Test.QuickCheck.JSString (genAscii)
 import Test.QuickCheck.Lib (withAPresence, withAPresenceInAList)
 import User.Types (RegisterUserKey (..))
 import Validation (KeyFailure (..))
@@ -58,13 +60,13 @@ import Validation.RegisterUser (PublicKeyFailure (..))
 
 genUserDBElement :: Gen (Username, SSHPublicKey)
 genUserDBElement = do
-    user <- Username <$> arbitrary `suchThat` all isAscii
-    pk <- SSHPublicKey <$> arbitrary `suchThat` all isAscii
+    user <- Username <$> genAscii
+    pk <- SSHPublicKey <$> genAscii
     pure (user, pk)
 
 genValidDBElement :: EGen (Username, SSHPublicKey)
 genValidDBElement = do
-    user <- Username <$> genA
+    user <- gen $ Username <$> genAscii
     (_sign, pk) <- genBlind sshGen
     pure (user, encodeSSHPublicKey pk)
 
@@ -121,7 +123,7 @@ spec = do
             e@(user, pk) <- genValidDBElement
             forRole <- genForRole
             let validation =
-                    mkValidation
+                    mkValidation mockMPFS
                         $ noValidation
                             { mockUserKeys = [e]
                             }
@@ -150,7 +152,7 @@ spec = do
                         b
                             $ Request
                                 { outputRefId = RequestRefId "animal"
-                                , owner = Owner ""
+                                , owner = Owner "owner"
                                 , change = c
                                 }
                 db <-
@@ -164,7 +166,10 @@ spec = do
                                 , pendingRequest UnregisterUserRequest otherChange
                                 ]
                             ]
-                let validation = mkValidation $ noValidation{mockPendingRequests = db}
+                let validation =
+                        mkValidation
+                            (withRequests db mockMPFS)
+                            noValidation
                     test =
                         validateRegisterUser validation forRole change
                 pure
@@ -180,7 +185,9 @@ spec = do
                 forRole <- genForRole
                 db <- gen $ withAPresenceInAList 0.5 e genUserDBElement
                 platform <- gen $ withAPresence 0.5 "github" arbitrary
-                let validation = mkValidation $ noValidation{mockUserKeys = db}
+                let validation =
+                        mkValidation mockMPFS
+                            $ noValidation{mockUserKeys = db}
                     test =
                         validateRegisterUser validation forRole
                             $ registerUserChange (Platform platform) user
@@ -207,7 +214,8 @@ spec = do
                             }
                 fact <- toJSFact registration ()
                 let validation =
-                        mkValidation $ noValidation{mockFacts = [fact], mockUserKeys = [e]}
+                        mkValidation (withFacts [fact] mockMPFS)
+                            $ noValidation{mockUserKeys = [e]}
                     test =
                         validateRegisterUser validation forRole
                             $ registerUserChange (Platform platform) user pubkey
@@ -224,7 +232,7 @@ spec = do
                 forRole <- genForRole
                 let platform = "github"
                     pubkey = extractPublicKeyHash pk
-                let validation = mkValidation noValidation
+                let validation = mkValidation mockMPFS noValidation
                     test =
                         validateRegisterUser validation forRole
                             $ registerUserChange (Platform platform) user pubkey
@@ -247,7 +255,7 @@ spec = do
                             PublicKeyHash $ drop (length expectedPrefix) sshPk
                     pubkey = extractOtherPublicKeyHash pk
                     e = (user, SSHPublicKey pk)
-                let validation = mkValidation $ noValidation{mockUserKeys = [e]}
+                let validation = mkValidation mockMPFS $ noValidation{mockUserKeys = [e]}
                     test =
                         validateRegisterUser validation forRole
                             $ registerUserChange (Platform platform) user pubkey
@@ -265,7 +273,7 @@ spec = do
                 (_, pk2) <- genValidDBElement
                 let platform = "github"
                     pubkey = extractPublicKeyHash pk2
-                let validation = mkValidation $ noValidation{mockUserKeys = [e]}
+                let validation = mkValidation mockMPFS $ noValidation{mockUserKeys = [e]}
                     test =
                         validateRegisterUser validation forRole
                             $ registerUserChange (Platform platform) user pubkey
@@ -290,7 +298,10 @@ spec = do
                             , pubkeyhash = pubkey
                             }
                 fact <- toJSFact registration ()
-                let validation = mkValidation $ noValidation{mockFacts = [fact]}
+                let validation =
+                        mkValidation
+                            (withFacts [fact] mockMPFS)
+                            noValidation
                     test =
                         validateUnregisterUser validation forRole
                             $ unregisterUserChange (Platform platform) user pubkey
@@ -319,7 +330,8 @@ spec = do
                                 , change = registerUserChange (Platform platform) user pubkey
                                 }
                 db <- genBlind $ oneof [pure [], pure [requestAnimal]]
-                let validation = mkValidation $ noValidation{mockPendingRequests = db}
+                let validation =
+                        mkValidation (withRequests db mockMPFS) noValidation
                     test =
                         validateUnregisterUser validation forRole change
                 pure
@@ -344,7 +356,10 @@ spec = do
                             , pubkeyhash = pubkey
                             }
                 fact <- toJSFact registration ()
-                let validation = mkValidation $ noValidation{mockFacts = [fact]}
+                let validation =
+                        mkValidation
+                            (withFacts [fact] mockMPFS)
+                            noValidation
                     test =
                         validateUnregisterUser validation forRole
                             $ unregisterUserChange (Platform platform) userOther pubkey
@@ -376,7 +391,7 @@ spec = do
                             }
                     pubkey = extractPublicKeyHash pk
                 fact <- toJSFact registration ()
-                let validation = mkValidation $ noValidation{mockFacts = [fact]}
+                let validation = mkValidation (withFacts [fact] mockMPFS) noValidation
                     test =
                         validateUnregisterUser validation forRole
                             $ unregisterUserChange (Platform platform) user pubkey

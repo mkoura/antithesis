@@ -1,34 +1,103 @@
----
-
-x-base: &base
-  image: ${registry}/${testnet}:latest
-  restart: on-failure
-  build:
-    context: "../../"
-    dockerfile: "Dockerfile.compiled"
-    args:
-      CARDANO_NODE_VERSION: "10.4.1"
-
-x-tracer-base: &tracerbase
-  image: ${registry}/${testnet}_tracer:latest
-  restart: on-failure
-  build:
-    context: "../../tracer/"
-    # ideally we would like to use a precompiled version of the tracer
-    # but unfortunately it's not yet packaged in archives
-    # https://github.com/IntersectMBO/cardano-node/issues/6228
-    dockerfile: "Dockerfile.compiled"
-    args:
-      CARDANO_NODE_REF: "10.4.1"
-
-x-env: &env
-  POOL_ID: "0" # Placeholder required for override
-  UTXO_HD_WITH: "mem"
+x-cardano-node: &cardano-node
+  image: ghcr.io/intersectmbo/cardano-node:latest
+  environment:
+    CARDANO_BLOCK_PRODUCER: true
+  command: >
+    run --topology /configs/configs/topology.json
+      --config /configs/configs/config.json
+      --database-path /state
+      --socket-path /state/node.socket
+      --tracer-socket-path-connect /tracer/tracer.socket
+      --shelley-operational-certificate /configs/keys/opcert.cert
+      --shelley-kes-key /configs/keys/kes.skey
+      --shelley-vrf-key /configs/keys/vrf.skey
+      --port 3001
+      --host-addr 0.0.0.0
+      +RTS -N -A16m -qg -qb -RTS
+  restart:
+    always
+  depends_on:
+      configurator:
+        condition: service_completed_successfully
 
 services:
+  configurator:
+    image: ghcr.io/cardano-foundation/antithesis/configurator:latest
+    container_name: configurator
+    volumes:
+      - ./testnet.yaml:/testnet.yaml #  source of configurations
+      - p1-configs:/configs/1 # configs for p1
+      - p2-configs:/configs/2 # configs for p2
+      - p3-configs:/configs/3 # configs for p3
+      - p4-configs:/configs/4 # configs for p4
+      - p5-configs:/configs/5 # configs for p5
+
+  tracer:
+    image: ghcr.io/cardano-foundation/antithesis/tracer:latest
+    hostname: tracer.example
+    container_name: tracer
+    volumes:
+      - tracer:/opt/cardano-tracer
+    command:
+       - "--config"
+       - "tracer-config.yaml"
+
+  p1:
+    <<: *cardano-node
+    container_name: p1
+    hostname: p1.example
+    volumes:
+      - p1-configs:/configs
+      - tracer:/tracer
+  p2:
+    <<: *cardano-node
+    container_name: p2
+    hostname: p2.example
+    volumes:
+      - p2-configs:/configs
+      - tracer:/tracer
+  p3:
+    <<: *cardano-node
+    container_name: p3
+    hostname: p3.example
+    volumes:
+      - p3-configs:/configs
+      - tracer:/tracer
+
+  p4:
+    <<: *cardano-node
+    container_name: p4
+    hostname: p4.example
+    volumes:
+      - p4-configs:/configs
+      - tracer:/tracer
+
+  p5:
+    <<: *cardano-node
+    container_name: p5
+    hostname: p5.example
+    volumes:
+      - p5-configs:/configs
+      - tracer:/tracer
+
+  sidecar:
+    image: ghcr.io/cardano-foundation/antithesis/sidecar:latest
+    container_name: sidecar
+    hostname: sidecar.example
+    environment:
+      POOLS: "5" # FIXME: could remove
+
+  tracer-sidecar:
+    image: ghcr.io/cardano-foundation/antithesis/tracer-sidecar:latest
+    container_name: tracer-sidecar
+    hostname: tracer-sidecar.example
+    environment:
+      POOLS: "5"
+    volumes:
+      - tracer:/opt/cardano-tracer
 
   adversary:
-    image: ${registry}/${testnet}_adversary:latest
+    image: ghcr.io/cardano-foundation/antithesis/adversary:latest
     build:
       context: "../../../adversary/"
       dockerfile: "Dockerfile"
@@ -42,98 +111,16 @@ services:
     hostname: adversary
     container_name: adversary
 
-  tracer:
-    <<: *tracerbase
-    hostname: tracer.example
-    container_name: tracer
-    volumes:
-      - tracer:/opt/cardano-tracer
-    ports:
-      - "4000:4000"
-    command:
-       - "--config"
-       - "tracer-config.yaml"
-
-  p1:
-    <<: *base
-    container_name: p1
-    hostname: p1.example
-    volumes:
-      - p1:/opt/cardano-node/data
-      - tracer:/opt/cardano-tracer
-    ports:
-      - "3001:3001"
-    environment:
-      <<: *env
-      POOL_ID: "1"
-      UTXO_HD_WITH: "hd"
-
-  p2:
-    <<: *base
-    container_name: p2
-    hostname: p2.example
-    volumes:
-      - p2:/opt/cardano-node/data
-      - tracer:/opt/cardano-tracer
-    ports:
-      - "3002:3001"
-    environment:
-      <<: *env
-      POOL_ID: "2"
-
-  p3:
-    <<: *base
-    container_name: p3
-    hostname: p3.example
-    volumes:
-      - p3:/opt/cardano-node/data
-      - tracer:/opt/cardano-tracer
-    ports:
-      - "3003:3001"
-    environment:
-      <<: *env
-      POOL_ID: "3"
-
-  p4:
-    <<: *base
-    container_name: p4
-    hostname: p4.example
-    volumes:
-      - p4:/opt/cardano-node/data
-      - tracer:/opt/cardano-tracer
-    ports:
-      - "3004:3001"
-    environment:
-      <<: *env
-      POOL_ID: "4"
-      UTXO_HD_WITH: "hd"
-
-
-  p5:
-    <<: *base
-    container_name: p5
-    hostname: p5.example
-    volumes:
-      - p5:/opt/cardano-node/data
-      - tracer:/opt/cardano-tracer
-    ports:
-      - "3005:3001"
-    environment:
-      <<: *env
-      POOL_ID: "5"
-
-  s1:
-    image: ${registry}/sidecar:latest
-    restart: on-failure
-    container_name: s1
-    hostname: s1.example
-    environment:
-      POOLS: "5"
-
 volumes:
   tracer:
-  p1:
-  p2:
-  p3:
-  p4:
-  p5:
+  p1-configs:
+  p2-configs:
+  p3-configs:
+  p4-configs:
+  p5-configs:
+
+networks:
+  default:
+    name: cardano-node-testnet
+    driver: bridge
+    internal: ${INTERNAL_NETWORK}

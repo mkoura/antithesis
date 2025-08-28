@@ -66,12 +66,17 @@ build-shared:
 	    --label "org.opencontainers.image.source=https://github.com/cardano-foundation/antithesis" \
 		-f configurator/Dockerfile \
 		-t ${registry}/configurator:latest configurator
+	docker build \
+	    --label "org.opencontainers.image.source=https://github.com/cardano-foundation/antithesis" \
+		-f ../adversary/Dockerfile \
+		-t ${registry}/adversary:latest ../adversary
 
 push-shared:
 	docker push ${registry}/sidecar:latest
 	docker push ${registry}/tracer:latest
 	docker push ${registry}/tracer-sidecar:latest
 	docker push ${registry}/configurator:latest
+	docker push ${registry}/adversary:latest
 
 build-and-push-shared: build-shared
 	$(MAKE) push-shared

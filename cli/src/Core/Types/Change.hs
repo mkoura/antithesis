@@ -12,7 +12,8 @@ import Core.Types.Operation (Op (..), Operation (..))
 import Data.ByteString.Char8 qualified as B
 import Data.ByteString.Lazy.Char8 qualified as BL
 import Lib.JSON.Canonical.Extra
-    ( object
+    ( mergeObject
+    , object
     , parseJSValue
     , withObject
     , (.:)
@@ -71,11 +72,13 @@ instance
     (Monad m, ToJSON m k, ToJSON m (Operation op))
     => ToJSON m (Change k op)
     where
-    toJSON (Change key operation) =
-        object
-            [ "key" .= key
-            , "operation" .= operation
-            ]
+    toJSON (Change key operation) = do
+        operationJ <- toJSON operation
+        keyJ <-
+            object
+                [ "key" .= key
+                ]
+        pure $ keyJ `mergeObject` operationJ
 
 insertKey :: a -> Change a (OpI ())
 insertKey key = Change{key = Key key, operation = Insert ()}

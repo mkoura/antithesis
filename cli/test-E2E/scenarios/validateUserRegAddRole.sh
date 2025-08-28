@@ -147,11 +147,9 @@ expectedGet1=$(
     "request": {
         "change": {
             "key": "{\"platform\":\"github\",\"repository\":{\"organization\":\"cardano-foundation\",\"project\":\"hal-fixture-sin\"},\"type\":\"register-role\",\"user\":\"cfhal\"}",
-            "operation": {
-                "type": "insert",
-                "value": "null"
-            }
-        },
+            "type": "insert",
+            "value": "null"
+            },
         "outputRefId": "$outputRoleRef1",
         "owner": "8da87507ba0a8a3c67eaeb8ec768dee132ad8ecac6f526ac526f0c9f"
         },

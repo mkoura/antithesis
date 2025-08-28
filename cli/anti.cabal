@@ -317,6 +317,7 @@ test-suite anti-unit-test
     Lib.JSON.Canonical.ExtraSpec
     Lib.SSH.KeySpec
     Oracle.Config.TypesSpec
+    Oracle.TypesSpec
     Oracle.Validate.Requests.ConfigSpec
     Oracle.Validate.Requests.ManageWhiteListSpec
     Oracle.Validate.Requests.RegisterRoleSpec

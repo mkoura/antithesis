@@ -194,3 +194,7 @@ Depending on your role you can access the different manuals.
 - [Agent manual](docs/antithesis-agent-role.md). This is a special role that holds the key to the Antithesis platform. It is responsible  for
   whitelisting repository and managing test-runs, from pending state to running and completed.
 - [Oracle manual](docs/oracle-role.md). The oracle is the owner of the Antithesis token. It is almost mechanically responsible for merging change requests from the agent and the requester.
+
+Finally, the [Real-world scenario manual][realWorld] provides a realistic overall use case involving all three roles.
+
+[realWorld]: docs/real-world.md

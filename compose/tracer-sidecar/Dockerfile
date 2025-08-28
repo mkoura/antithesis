@@ -14,7 +14,7 @@ RUN cabal build --only-dependencies -j4
 
 # Add and Install Application Code
 COPY . /opt/tracer-sidecar
-RUN cabal install
+RUN cabal update && cabal install
 
 FROM docker.io/debian:stable-slim AS main
 

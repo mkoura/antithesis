@@ -3,6 +3,7 @@
 
 module User.Agent.Options
     ( agentCommandParser
+    , testRunIdOption
     ) where
 
 import Core.Options
@@ -82,7 +83,7 @@ downloadAssetsOptions
 downloadAssetsOptions =
     DownloadAssets
         <$> tokenIdOption
-        <*> testRunIdOption
+        <*> testRunIdOption "download assets from"
         <*> downloadAssetsDirectoryOption
 
 whitelistRepositoryOptions
@@ -122,14 +123,14 @@ queryOptions
 queryOptions = Query <$> tokenIdOption
 
 testRunIdOption
-    :: Parser TestRunId
-testRunIdOption =
+    :: String -> Parser TestRunId
+testRunIdOption what =
     TestRunId
         <$> setting
             [ long "test-run-id"
             , short 'i'
             , metavar "TEST_RUN_ID"
-            , help "The ID of the test run to accept/reject/report"
+            , help $ "An ID of a test-run to " ++ what
             , option
             , reader str
             ]
@@ -147,7 +148,7 @@ acceptTestOptions =
     Accept
         <$> tokenIdOption
         <*> walletOption
-        <*> testRunIdOption
+        <*> testRunIdOption "accept"
         <*> pure ()
 
 testRejectionParser :: Parser TestRunRejection
@@ -176,7 +177,7 @@ rejectTestOptions
             )
         )
 rejectTestOptions = do
-    testRunId <- testRunIdOption
+    testRunId <- testRunIdOption "reject"
     reason <- many testRejectionParser
     tokenId <- tokenIdOption
     wallet <- walletOption
@@ -193,7 +194,7 @@ reportTestOptions
         )
 reportTestOptions = do
     tokenId <- tokenIdOption
-    testRunId <- testRunIdOption
+    testRunId <- testRunIdOption "report"
     wallet <- walletOption
     duration <-
         Duration

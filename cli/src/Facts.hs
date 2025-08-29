@@ -5,12 +5,15 @@ module Facts
     )
 where
 
+import Control.Monad (filterM)
 import Core.Types.Basic (TokenId)
-import Core.Types.Fact (Fact (..), parseFacts)
+import Core.Types.Fact (Fact (..), keyHash, parseFacts)
+import Data.Functor ((<&>))
+import Data.Functor.Identity (Identity (..))
 import MPFS.API (MPFS, mpfsGetTokenFacts)
 import Oracle.Config.Types (Config, ConfigKey)
 import Text.JSON.Canonical
-import User.Agent.Types (WhiteListKey)
+import User.Agent.Types (TestRunId (..), WhiteListKey)
 import User.Types
     ( Phase (..)
     , RegisterUserKey
@@ -20,12 +23,17 @@ import User.Types
 
 data TestRunSelection a where
     TestRunPending
-        :: TestRunSelection [Fact TestRun (TestRunState 'PendingT)]
+        :: [TestRunId]
+        -> TestRunSelection [Fact TestRun (TestRunState 'PendingT)]
     TestRunRunning
-        :: TestRunSelection [Fact TestRun (TestRunState 'RunningT)]
-    TestRunDone :: TestRunSelection [Fact TestRun (TestRunState 'DoneT)]
+        :: [TestRunId]
+        -> TestRunSelection [Fact TestRun (TestRunState 'RunningT)]
+    TestRunDone
+        :: [TestRunId]
+        -> TestRunSelection [Fact TestRun (TestRunState 'DoneT)]
     TestRunRejected
-        :: TestRunSelection [Fact TestRun (TestRunState 'DoneT)]
+        :: [TestRunId]
+        -> TestRunSelection [Fact TestRun (TestRunState 'DoneT)]
 data FactsSelection a where
     UserFacts :: FactsSelection [Fact RegisterUserKey ()]
     RoleFacts :: FactsSelection [Fact RegisterUserKey ()]
@@ -41,13 +49,26 @@ retrieveAnyFacts
     -> m [Fact k v]
 retrieveAnyFacts mpfs tokenId = parseFacts <$> mpfsGetTokenFacts mpfs tokenId
 
+filterFacts
+    :: (Foldable t, ToJSON Identity k)
+    => t TestRunId
+    -> [Fact k v]
+    -> [Fact k v]
+filterFacts ids
+    | null ids = id
+    | otherwise =
+        runIdentity
+            . filterM (\v -> (`elem` ids) . TestRunId <$> keyHash (factKey v))
+
 factsCmd :: Monad m => MPFS m -> TokenId -> FactsSelection a -> m a
 factsCmd mpfs tokenId UserFacts = retrieveAnyFacts mpfs tokenId
 factsCmd mpfs tokenId RoleFacts = retrieveAnyFacts mpfs tokenId
-factsCmd mpfs tokenId (TestRunFacts TestRunPending) = retrieveAnyFacts mpfs tokenId
-factsCmd mpfs tokenId (TestRunFacts TestRunRunning) = retrieveAnyFacts mpfs tokenId
-factsCmd mpfs tokenId (TestRunFacts TestRunDone) = do
-    facts <- retrieveAnyFacts mpfs tokenId
+factsCmd mpfs tokenId (TestRunFacts (TestRunPending ids)) = do
+    retrieveAnyFacts mpfs tokenId <&> filterFacts ids
+factsCmd mpfs tokenId (TestRunFacts (TestRunRunning ids)) =
+    retrieveAnyFacts mpfs tokenId <&> filterFacts ids
+factsCmd mpfs tokenId (TestRunFacts (TestRunDone ids)) = do
+    facts <- retrieveAnyFacts mpfs tokenId <&> filterFacts ids
     pure
         $ filter
             ( \v -> case factValue v of
@@ -55,8 +76,8 @@ factsCmd mpfs tokenId (TestRunFacts TestRunDone) = do
                 _ -> False
             )
             facts
-factsCmd mpfs tokenId (TestRunFacts TestRunRejected) = do
-    facts <- retrieveAnyFacts mpfs tokenId
+factsCmd mpfs tokenId (TestRunFacts (TestRunRejected ids)) = do
+    facts <- retrieveAnyFacts mpfs tokenId <&> filterFacts ids
     pure
         $ filter
             ( \v -> case factValue v of

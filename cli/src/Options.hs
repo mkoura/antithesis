@@ -31,7 +31,8 @@ import Facts (FactsSelection (..), TestRunSelection (..))
 import GitHub (Auth (..))
 import Lib.Box (Box (..), fmapBox)
 import OptEnvConf
-    ( Parser
+    ( Alternative (..)
+    , Parser
     , command
     , commands
     , env
@@ -48,7 +49,8 @@ import OptEnvConf
     , (<|>)
     )
 import Oracle.Options (oracleCommandParser)
-import User.Agent.Options (agentCommandParser)
+import User.Agent.Options (agentCommandParser, testRunIdOption)
+import User.Agent.Types (TestRunId)
 import User.Requester.Options (requesterCommandParser)
 import Wallet.Options (walletCommandParser)
 
@@ -145,14 +147,26 @@ factsSelectionParser =
 testRunSelectionParser :: Parser (Box TestRunSelection)
 testRunSelectionParser =
     commands
-        [ command "pending" "Get pending test runs" (pure $ Box TestRunPending)
-        , command "running" "Get running test runs" (pure $ Box TestRunRunning)
-        , command "done" "Get done test runs" (pure $ Box TestRunDone)
+        [ command
+            "pending"
+            "Get pending test runs"
+            (fmap Box $ TestRunPending <$> includedTestRuns)
+        , command
+            "running"
+            "Get running test runs"
+            (fmap Box $ TestRunRunning <$> includedTestRuns)
+        , command
+            "done"
+            "Get done test runs"
+            (fmap Box $ TestRunDone <$> includedTestRuns)
         , command
             "rejected"
             "Get rejected test runs"
-            (pure $ Box TestRunRejected)
+            (fmap Box $ TestRunRejected <$> includedTestRuns)
         ]
+
+includedTestRuns :: Parser [TestRunId]
+includedTestRuns = many $ testRunIdOption "include"
 
 prettyOption :: Parser Bool
 prettyOption =

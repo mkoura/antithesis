@@ -88,7 +88,7 @@ import Submitting
     , readWallet
     , signAndSubmitMPFS
     )
-import System.Environment (lookupEnv)
+import System.Environment (getEnv, lookupEnv)
 import Test.Hspec
     ( ActionWith
     , SpecWith
@@ -156,7 +156,7 @@ loadAgentWallet :: IO Wallet
 loadAgentWallet = loadEnvWallet "ANTI_TEST_AGENT_WALLET"
 
 getHostFromEnv :: IO String
-getHostFromEnv = pure "https://mpfs.plutimus.com"
+getHostFromEnv = getEnv "ANTI_MPFS_HOST"
 
 newtype Call = Call {calling :: forall a. ClientM a -> IO a}
 

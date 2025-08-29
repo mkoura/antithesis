@@ -131,6 +131,7 @@ To request a test-run, you can use the `anti requester create-test` command.
 ```bash
 anti requester create-test --platform github --username alice --repository yourorg/yourrepo --directory ./path/to/your/test/directory --commit your_commit_hash --try 1 --duration 2
 ```
+> This command  will spit out the test-run-id (just a hash of the key) that you can use later to query the status of your test-run state.
 
 You can request multiple test-runs for the same commit but you have to specify a different `--try` number for each request.
 
@@ -139,5 +140,5 @@ You can request multiple test-runs for the same commit but you have to specify a
 You can check the status of your test-run requests with the `anti facts test-run` command.
 
 ```bash
-anti facts test-run pending
+anti facts test-run -i <your_test_run_id>
 ```

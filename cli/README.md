@@ -172,9 +172,26 @@ will report the GitHub registered users.
 Or
 
 ```bash
+anti facts test-run
+```
+will report all the test runs.
+
+
+```bash
 anti facts test-run pending
 ```
 will report the pending test runs.
+
+You can also query facts for a specific test-run id:
+
+```bash
+anti facts test-run -i id1 -i id2 ..
+```
+
+This is useful if you stored the test-run id when you created the test-run.
+Test-run ids are facts ids so you can also look them up via `anti facts`
+
+Finally
 
 ```bash
 anti facts --help

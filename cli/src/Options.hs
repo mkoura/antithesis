@@ -164,6 +164,7 @@ testRunSelectionParser =
             "Get rejected test runs"
             (fmap Box $ TestRunRejected <$> includedTestRuns)
         ]
+        <|> fmap Box (AnyTestRuns <$> includedTestRuns)
 
 includedTestRuns :: Parser [TestRunId]
 includedTestRuns = many $ testRunIdOption "include"

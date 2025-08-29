@@ -34,6 +34,9 @@ data TestRunSelection a where
     TestRunRejected
         :: [TestRunId]
         -> TestRunSelection [Fact TestRun (TestRunState 'DoneT)]
+    AnyTestRuns
+        :: [TestRunId]
+        -> TestRunSelection [Fact TestRun JSValue]
 data FactsSelection a where
     UserFacts :: FactsSelection [Fact RegisterUserKey ()]
     RoleFacts :: FactsSelection [Fact RegisterUserKey ()]
@@ -85,6 +88,8 @@ factsCmd mpfs tokenId (TestRunFacts (TestRunRejected ids)) = do
                 _ -> False
             )
             facts
+factsCmd mpfs tokenId (TestRunFacts (AnyTestRuns ids)) =
+    retrieveAnyFacts mpfs tokenId <&> filterFacts ids
 factsCmd mpfs tokenId ConfigFact = retrieveAnyFacts mpfs tokenId
 factsCmd mpfs tokenId WhiteListedFacts = retrieveAnyFacts mpfs tokenId
 factsCmd mpfs tokenId AllFacts = retrieveAnyFacts mpfs tokenId

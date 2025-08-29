@@ -27,6 +27,7 @@ module Oracle.Validate.Requests.TestRun.Lib
     , testRunEGen
     , MockValidation (..)
     , aToken
+    , gitAsset
     )
 where
 
@@ -133,7 +134,7 @@ data MockValidation = MockValidation
     , mockUserKeys :: [(Username, SSHPublicKey)]
     , mockRepoRoles :: [(Username, Repository)]
     , mockReposExists :: [Repository]
-    , mockFiles :: [(FileName, Text)]
+    , mockAssets :: [((Repository, Maybe Commit, FileName), Text)]
     , mockPermissions :: [(Directory, Permissions)]
     , mockSSHPrivateKey :: [(FilePath, ByteString)]
     }
@@ -149,41 +150,41 @@ mkValidation
 mkValidation
     mpfs
     MockValidation
-        { mockCommits = rs
-        , mockDirectories = ds
-        , mockUserKeys = upk
-        , mockRepoRoles = rr
-        , mockReposExists = reposExists
-        , mockFiles = files
-        , mockPermissions = mockPermissions
-        , mockSSHPrivateKey = mockSSHPrivateKey
+        { mockCommits
+        , mockDirectories
+        , mockUserKeys
+        , mockRepoRoles
+        , mockReposExists
+        , mockAssets
+        , mockPermissions
+        , mockSSHPrivateKey
         } =
         Validation
             { mpfsGetFacts = getFacts mpfs aToken
             , mpfsGetTestRuns = getTestRuns mpfs aToken
             , mpfsGetTokenRequests = getTokenRequests mpfs aToken
             , githubCommitExists = \repository commit ->
-                return $ Right $ (repository, commit) `elem` rs
+                return $ Right $ (repository, commit) `elem` mockCommits
             , githubDirectoryExists = \repository commit dir ->
-                return $ Right $ (repository, commit, dir) `elem` ds
+                return $ Right $ (repository, commit, dir) `elem` mockDirectories
             , githubUserPublicKeys = \username publicKey ->
                 pure
                     $ analyzeKeys publicKey
                     $ map snd
                     $ filter
                         ((== username) . fst)
-                        upk
+                        mockUserKeys
             , githubRepositoryExists = \repo ->
-                if repo `elem` reposExists
+                if repo `elem` mockReposExists
                     then pure $ Right True
                     else pure $ Right False
             , githubRepositoryRole = \username repository ->
                 return
-                    $ if (username, repository) `elem` rr
+                    $ if (username, repository) `elem` mockRepoRoles
                         then Nothing
                         else Just NoRoleEntryInCodeowners
-            , githubGetFile = \_repository _commit filename@(FileName name) ->
-                case L.lookup filename files of
+            , githubGetFile = \repository commit filename@(FileName name) ->
+                case L.lookup (repository, commit, filename) mockAssets of
                     Nothing ->
                         return
                             $ Left
@@ -279,7 +280,7 @@ noValidation =
         , mockUserKeys = []
         , mockRepoRoles = []
         , mockReposExists = []
-        , mockFiles = []
+        , mockAssets = []
         , mockPermissions = []
         , mockSSHPrivateKey = []
         }
@@ -296,6 +297,23 @@ gitDirectory testRun =
     , testRun.commitId
     , testRun.directory
     )
+
+prefixed :: TestRun -> FileName -> FileName
+prefixed testRun (FileName name) =
+    let Directory prefix = directory testRun
+    in  FileName $ prefix ++ "/" ++ name
+
+gitAsset
+    :: TestRun
+    -> FileName
+    -> Text
+    -> [((Repository, Maybe Commit, FileName), Text)]
+gitAsset testRun filename content =
+    [
+        ( (testRun.repository, Just testRun.commitId, prefixed testRun filename)
+        , content
+        )
+    ]
 
 signTestRun :: (Monad m, ToJSON m a) => (String -> b) -> a -> m b
 signTestRun sign testRun = do

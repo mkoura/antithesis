@@ -7,8 +7,7 @@ where
 import Control.Lens ((%~), (.~))
 import Control.Monad (when)
 import Core.Types.Basic
-    ( Directory (..)
-    , Duration (..)
+    ( Duration (..)
     , FileName (..)
     , Owner (..)
     , RequestRefId (RequestRefId)
@@ -43,6 +42,7 @@ import Oracle.Validate.Requests.TestRun.Lib
     , changeProject
     , changeRequester
     , changeTry
+    , gitAsset
     , gitCommit
     , gitDirectory
     , jsFactRole
@@ -148,19 +148,26 @@ spec = do
                                     sign
                                     previousTestRun
                         toJSFact previousTestRun previousState
-                prefix x = case testRun.directory of
-                    Directory d -> d <> "/" <> x
                 facts = [user, role, whiteListRepo] <> previous
+                commit = gitCommit testRun
+                directory = gitDirectory testRun
+                files =
+                    gitAsset testRun (FileName "README.md") "Test file"
+                        <> gitAsset
+                            testRun
+                            (FileName "docker-compose.yaml")
+                            "version: '3'"
+                        <> gitAsset
+                            testRun
+                            (FileName "testnet.yaml")
+                            "testnet: true"
+
                 validation =
                     mkValidation (withFacts facts mockMPFS)
                         $ noValidation
-                            { mockCommits = [gitCommit testRun]
-                            , mockDirectories = [gitDirectory testRun]
-                            , mockFiles =
-                                [ (FileName $ prefix "README.md", "Hello, world!")
-                                , (FileName $ prefix "docker-compose.yaml", "version: '3.8'")
-                                , (FileName $ prefix "testnet.yaml", "testnet: true")
-                                ]
+                            { mockCommits = [commit]
+                            , mockDirectories = [directory]
+                            , mockAssets = files
                             }
             testRunState <-
                 Pending (Duration duration)

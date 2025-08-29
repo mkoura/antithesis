@@ -19,7 +19,7 @@ import Core.Types.Basic
     , TokenId (..)
     , Username (..)
     )
-import Core.Types.Fact (JSFact, toJSFact)
+import Core.Types.Fact (JSFact, keyHash, toJSFact)
 import Core.Types.Mnemonics
     ( Mnemonics (ClearText)
     , MnemonicsPhase (..)
@@ -51,9 +51,10 @@ import Oracle.Validate.Types (AValidationResult (..))
 import Submitting (Submission (Submission), readWallet)
 import Test.Hspec (Spec, describe, it, shouldBe)
 import Text.JSON.Canonical (ToJSON (..))
-import User.Agent.Types (WhiteListKey (..))
+import User.Agent.Types (TestRunId (TestRunId), WhiteListKey (..))
 import User.Requester.Cli
-    ( RequesterCommand (..)
+    ( NewTestRunCreated (NewTestRunCreated)
+    , RequesterCommand (..)
     , requesterCmd
     , signKey
     )
@@ -107,6 +108,11 @@ testRun =
         , tryIndex = 1
         , requester = Username "alice"
         }
+
+testRunId :: TestRunId
+testRunId = TestRunId $ case keyHash testRun of
+    Nothing -> error "Failed to compute testRunId"
+    Just h -> h
 
 testPlatform :: Platform
 testPlatform = Platform "github"
@@ -205,7 +211,9 @@ spec = describe "User.Requester.Cli" $ do
             (requesterCmd command)
             `shouldBe` Identity
                 ( ValidationSuccess
-                    (WithTxHash mockTxHash $ Just pendingState)
+                    ( WithTxHash mockTxHash
+                        $ Just (NewTestRunCreated pendingState testRunId)
+                    )
                 )
 
 mockTxHash :: TxHash

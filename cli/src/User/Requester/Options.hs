@@ -50,13 +50,11 @@ import Oracle.Validate.Requests.RegisterUser
     )
 import Oracle.Validate.Requests.TestRun.Create (CreateTestRunFailure)
 import Oracle.Validate.Types (AValidationResult)
-import User.Requester.Cli (RequesterCommand (..))
+import User.Requester.Cli (NewTestRunCreated, RequesterCommand (..))
 import User.Types
-    ( Phase (PendingT)
-    , RegisterRoleKey (..)
+    ( RegisterRoleKey (..)
     , RegisterUserKey (..)
     , TestRun (..)
-    , TestRunState
     )
 
 addPublicKeyOptions
@@ -188,7 +186,7 @@ requestTestOptions
         ( RequesterCommand
             ( AValidationResult
                 CreateTestRunFailure
-                (WithTxHash (TestRunState PendingT))
+                (WithTxHash NewTestRunCreated)
             )
         )
 requestTestOptions =

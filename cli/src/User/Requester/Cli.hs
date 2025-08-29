@@ -4,6 +4,7 @@ module User.Requester.Cli
     ( requesterCmd
     , RequesterCommand (..)
     , signKey
+    , NewTestRunCreated (..)
     ) where
 
 import Control.Monad (forM, forM_, void)
@@ -23,6 +24,7 @@ import Core.Types.Basic
     , TokenId
     )
 import Core.Types.Change (Change (..), Key (..), deleteKey, insertKey)
+import Core.Types.Fact (keyHash)
 import Core.Types.Operation (Operation (..))
 import Core.Types.Tx (TxHash, WithTxHash (..))
 import Core.Types.Wallet (Wallet)
@@ -68,6 +70,7 @@ import Oracle.Validate.Types
     )
 import Submitting (Submission (..))
 import Text.JSON.Canonical (JSValue, ToJSON (..), renderCanonicalJSON)
+import User.Agent.Cli (TestRunId (..))
 import User.Types
     ( Phase (PendingT)
     , RegisterRoleKey (..)
@@ -122,7 +125,7 @@ data RequesterCommand a where
         -> RequesterCommand
             ( AValidationResult
                 CreateTestRunFailure
-                (WithTxHash (TestRunState PendingT))
+                (WithTxHash NewTestRunCreated)
             )
     GenerateAssets
         :: Directory
@@ -186,6 +189,19 @@ signKey KeyAPI{sign} key = do
     jkey <- toJSON key
     pure (jkey, sign $ BL.toStrict $ renderCanonicalJSON jkey)
 
+data NewTestRunCreated = NewTestRunCreated
+    { newTestRunState :: TestRunState PendingT
+    , newTestRunId :: TestRunId
+    }
+    deriving (Show, Eq)
+
+instance Monad m => ToJSON m NewTestRunCreated where
+    toJSON (NewTestRunCreated state (TestRunId hash)) =
+        object
+            [ "state" .= state
+            , "testRunId" .= hash
+            ]
+
 createCommand
     :: Monad m
     => TokenId
@@ -197,7 +213,7 @@ createCommand
         m
         ( AValidationResult
             CreateTestRunFailure
-            (WithTxHash (TestRunState PendingT))
+            (WithTxHash NewTestRunCreated)
         )
 createCommand
     tokenId
@@ -224,7 +240,13 @@ createCommand
             wtx <- lift $ submit $ \address -> do
                 mpfsRequestInsert mpfs address tokenId
                     $ RequestInsertBody{key, value}
-            pure $ wtx $> newState
+            hash <- keyHash testRun
+            pure
+                $ wtx
+                    $> NewTestRunCreated
+                        { newTestRunState = newState
+                        , newTestRunId = TestRunId hash
+                        }
 
 registerUser
     :: Monad m

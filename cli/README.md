@@ -165,27 +165,27 @@ Will query all facts
 But you can also query specific facts, for example:
 
 ```bash
-anti facts user
+anti facts users
 ```
 will report the GitHub registered users.
 
 Or
 
 ```bash
-anti facts test-run
+anti facts test-runs
 ```
 will report all the test runs.
 
 
 ```bash
-anti facts test-run pending
+anti facts test-runs pending
 ```
 will report the pending test runs.
 
 You can also query facts for a specific test-run id:
 
 ```bash
-anti facts test-run -i id1 -i id2 ..
+anti facts test-runs -i id1 -i id2 ..
 ```
 
 This is useful if you stored the test-run id when you created the test-run.

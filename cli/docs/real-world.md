@@ -54,7 +54,7 @@ anti requester register-user \
 If the username and pubkeyhash are valid, this request will be added to a queue, which the oracle can then include by updating the token. When this has been done the user should appear when requesting facts:
 
 ```
-anti facts user
+anti facts users
 ```
 
 This process (where requests must get validated by the oracle before they become facts) applies to all requests, and for the sake of conciseness we will omit to make this explicit in what follows.
@@ -68,7 +68,7 @@ anti requester register-role \
     --repository myghname/myghrepo
 ```
 
-When the oracle includes this new request on the token, the last step is for the requester to ask the agent to whitelist this repository. This would be the result of an informal discussion over on our [Discord][Discord] channel, or by sending an email to <hal@cardanofoundation.org>. When the agent has decided to whitelist the repository, they invoke: 
+When the oracle includes this new request on the token, the last step is for the requester to ask the agent to whitelist this repository. This would be the result of an informal discussion over on our [Discord][Discord] channel, or by sending an email to <hal@cardanofoundation.org>. When the agent has decided to whitelist the repository, they invoke:
 
 ```
 anti agent white-list \
@@ -79,9 +79,9 @@ anti agent white-list \
 The result of the above set up can be verified with:
 
 ```
-anti facts user
-anti facts role
-anti facts white-listed
+anti facts users
+anti facts roles
+anti facts white-list
 ```
 
 The system is now ready to accept test run requests. The above only needs to be set up once (for a given requester and a given test repository). Then, the following commands (to run tests) can be performed repeatedly.

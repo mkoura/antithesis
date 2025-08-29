@@ -137,8 +137,8 @@ You can request multiple test-runs for the same commit but you have to specify a
 
 ### Checking the test-run status
 
-You can check the status of your test-run requests with the `anti facts test-run` command.
+You can check the status of your test-run requests with the `anti facts test-runs` command.
 
 ```bash
-anti facts test-run -i <your_test_run_id>
+anti facts test-runs -i <your_test_run_id>
 ```

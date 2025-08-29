@@ -127,10 +127,10 @@ commandParser =
 factsSelectionParser :: Parser (Box FactsSelection)
 factsSelectionParser =
     commands
-        [ command "user" "Get registered users" (pure $ Box UserFacts)
-        , command "role" "Get registered roles" (pure $ Box RoleFacts)
+        [ command "users" "Get registered users" (pure $ Box UserFacts)
+        , command "roles" "Get registered roles" (pure $ Box RoleFacts)
         , command
-            "test-run"
+            "test-runs"
             "Get test runs"
             (fmapBox TestRunFacts <$> testRunSelectionParser)
         , command
@@ -138,7 +138,7 @@ factsSelectionParser =
             "Get the oracle configuration"
             (pure $ Box ConfigFact)
         , command
-            "white-listed"
+            "white-list"
             "Get white-listed repositories"
             (pure $ Box WhiteListedFacts)
         ]

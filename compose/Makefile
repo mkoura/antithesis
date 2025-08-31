@@ -6,6 +6,7 @@ description:="${testnet} run"
 duration:=1
 recipients:=antithesis@cardanofoundation.org
 registry:=ghcr.io/cardano-foundation/antithesis
+antithesis_registry:=us-central1-docker.pkg.dev/molten-verve-216720/cardano-repository
 testnet:=cardano_node_master
 url:=https://cardano.antithesis.com/api/v1/launch/cardano
 username:=cardano
@@ -79,14 +80,14 @@ build-config: TESTNET ## Build config container image
 	docker build \
 		--label "org.opencontainers.image.source=https://github.com/cardano-foundation/antithesis" \
 		-f config/Dockerfile \
-		-t ${registry}/config:latest testnets/${testnet}
+		-t ${antithesis_registry}/config:latest testnets/${testnet}
 
 publish-test-config-image: TESTNET build-config push-config ## Publish config container image
 
 push: TESTNET push-config
 
 push-config: TESTNET ## Push config container image
-	docker push ${registry}/config:latest
+	docker push ${antithesis_registry}/config:latest
 
 up: TESTNET ## Start Run local Docker Compose
 	export INTERNAL_NETWORK=true ; \
@@ -107,8 +108,8 @@ anti: TESTNET ## Run Antithesis job
 	curl --fail -u "${username}:${password}" -X POST ${url} -H "Content-Type: application/json" -d "$$(jq -n \
 	--arg description   '${description}' \
 	--arg duration      '${duration}' \
-	--arg config_image  '${registry}/config:latest' \
-	--arg images        'ghcr.io/intersectmbo/cardano-node:latest;${registry}/sidecar:latest;${registry}/tracer:latest;${registry}/tracer-sidecar:latest;${registry}/configurator:latest' \
+	--arg config_image  '${antithesis_registry}/config:latest' \
+	--arg images        'ghcr.io/intersectmbo/cardano-node:latest;${antithesis_antithesis_registry}/sidecar:latest;${antithesis_registry}/tracer:latest;${antithesis_registry}/tracer-sidecar:latest;${antithesis_registry}/configurator:latest' \
 	--arg recipients    '${recipients}' \
 	'{params: {"antithesis.description": $$description,"custom.duration": $$duration,"antithesis.config_image": $$config_image,"antithesis.images": $$images,"antithesis.report.recipients": $$recipients}}')"
 

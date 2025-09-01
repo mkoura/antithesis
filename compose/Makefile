@@ -114,7 +114,7 @@ anti: TESTNET ## Run Antithesis job
 	--arg description   '${description}' \
 	--arg duration      '${duration}' \
 	--arg config_image  '${antithesis_registry}/config:latest' \
-	--arg images        'ghcr.io/intersectmbo/cardano-node:latest;${antithesis_antithesis_registry}/sidecar:latest;${antithesis_registry}/tracer:latest;${antithesis_registry}/tracer-sidecar:latest;${antithesis_registry}/configurator:latest' \
+	--arg images        'ghcr.io/intersectmbo/cardano-node:latest;${registry}/sidecar:latest;${registry}/tracer:latest;${registry}/tracer-sidecar:latest;${registry}/configurator:latest' \
 	--arg recipients    '${recipients}' \
 	'{params: {"antithesis.description": $$description,"custom.duration": $$duration,"antithesis.config_image": $$config_image,"antithesis.images": $$images,"antithesis.report.recipients": $$recipients}}')"
 

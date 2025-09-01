@@ -108,7 +108,8 @@ data TestRunRejection
     | UnacceptableCommit
     | UnacceptableTryIndex
     | UnacceptableRole
-    | UnacceptableSignature
+    | NoRegisteredKeyVerifiesTheSignature
+    | UserHasNoRegisteredSSHKeys
     | GithubResponseError GithubResponseError
     | GithubResponseStatusCodeError GithubResponseStatusCodeError
     | RepositoryNotWhitelisted
@@ -124,8 +125,10 @@ instance Monad m => ToJSON m TestRunRejection where
         stringJSON "unacceptable try index"
     toJSON UnacceptableRole =
         stringJSON "unacceptable role"
-    toJSON UnacceptableSignature =
-        stringJSON "unacceptable signature"
+    toJSON NoRegisteredKeyVerifiesTheSignature =
+        stringJSON "no registered key verifies the signature"
+    toJSON UserHasNoRegisteredSSHKeys =
+        stringJSON "user has no Ed25519 registered SSH keys"
     toJSON (GithubResponseError err) =
         object ["githubResponseError" .= err]
     toJSON (GithubResponseStatusCodeError err) =
@@ -218,7 +221,7 @@ checkSignature
     Validation{mpfsGetFacts}
     testRun
     signature = do
-        registeredUsers :: [Fact RegisterUserKey ()] <- mpfsGetFacts
+        registeredUsers <- mpfsGetFacts @_ @()
         testRunJ <- toJSON testRun
         let
             userKeys =
@@ -227,9 +230,12 @@ checkSignature
                     . filter (\(RegisterUserKey _ u _) -> u == requester testRun)
                     $ factKey <$> registeredUsers
             load = BL.toStrict $ renderCanonicalJSON testRunJ
-        if any (\verify -> verify signature load) userKeys
-            then return Nothing
-            else return $ Just UnacceptableSignature
+        if null userKeys
+            then return $ Just UserHasNoRegisteredSSHKeys
+            else
+                if any (\verify -> verify signature load) userKeys
+                    then return Nothing
+                    else return $ Just NoRegisteredKeyVerifiesTheSignature
 
 validateCreateTestRunCore
     :: Monad m

@@ -14,7 +14,10 @@ import Core.Options
     , walletOption
     )
 import Core.Types.Basic (Duration (..))
+import Core.Types.Mnemonics.Options (queryConsole)
 import Core.Types.Tx (WithTxHash)
+import Data.Functor (($>))
+import Data.Text qualified as T
 import Lib.Box (Box (..))
 import OptEnvConf
     ( Alternative (..)
@@ -23,14 +26,19 @@ import OptEnvConf
     , command
     , commands
     , eitherReader
+    , env
     , help
     , long
+    , mapIO
     , metavar
     , option
     , reader
     , setting
     , short
     , str
+    , strOption
+    , switch
+    , value
     )
 import Oracle.Validate.DownloadAssets (DownloadAssetsFailure)
 import Oracle.Validate.Requests.ManageWhiteList
@@ -43,7 +51,11 @@ import User.Agent.Cli
     , IsReady (NotReady)
     , TestRunId (..)
     )
-import User.Agent.PushTest (PushFailure)
+import User.Agent.PushTest
+    ( AntithesisAuth (..)
+    , PushFailure
+    , Registry (..)
+    )
 import User.Agent.Types (TestRunMap)
 import User.Types
     ( Phase (..)
@@ -83,11 +95,49 @@ pushTestOptions
 pushTestOptions =
     PushTest
         <$> tokenIdOption
-        <*> error "not implemented"
-        <*> error "not implemented"
+        <*> registryOption
+        <*> antithesisAuthOption
         <*> walletOption
         <*> downloadAssetsDirectoryOption
         <*> testRunIdOption "push assets from"
+
+registryOption :: Parser Registry
+registryOption =
+    Registry
+        <$> strOption
+            [ help "URL of the registry where to push the config image"
+            , metavar "REGISTRY_URL"
+            , long "registry"
+            , value
+                "us-central1-docker.pkg.dev/molten-verve-216720/cardano-repository"
+            ]
+
+antithesisAuthOption :: Parser AntithesisAuth
+antithesisAuthOption =
+    fmap cardanoWithPwd
+        $ mapIO id
+        $ setting
+            [ help "Prompt for the passphrase for the encrypted mnemonics"
+            , env "ANTI_INTERACTIVE_SECRETS"
+            , metavar "NONE"
+            , reader (str @String $> (T.unpack <$> queryConsole prompt))
+            ]
+        <|> setting
+            [ help "Prompt for the passphrase for the encrypted mnemonics"
+            , metavar "NONE"
+            , long "ask-antithesis-password"
+            , switch $ T.unpack <$> queryConsole prompt
+            ]
+        <|> setting
+            [ env "ANTI_ANTITHESIS_PASSWORD"
+            , metavar "ANTITHESIS_PASSWORD"
+            , help prompt
+            , reader $ fmap pure str
+            ]
+  where
+    prompt = "The password for the 'cardano' user in Antithesis"
+    cardanoWithPwd pwd =
+        AntithesisAuth{username = "cardano", password = pwd}
 
 downloadAssetsOptions
     :: Parser

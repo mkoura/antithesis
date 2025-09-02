@@ -190,7 +190,7 @@ renderPostToAntithesis (AntithesisAuth username password) request =
     in  (curlArgs :: (String, [String]))
 
 curl :: (String, [String]) -> IO String
-curl (command, args) = readProcess command args ""
+curl (command, args) = runCommandAndShowErrorOnExitFailure [] command args
 
 newtype Tag = Tag {tagString :: String}
     deriving (Show, Eq)

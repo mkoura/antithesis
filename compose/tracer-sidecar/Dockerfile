@@ -2,19 +2,18 @@ FROM haskell:9.6 AS build
 
 WORKDIR /opt/tracer-sidecar
 
-RUN cabal update
-
-# Add just the .cabal file to capture dependencies
-COPY ./tracer-sidecar.cabal /opt/tracer-sidecar/tracer-sidecar.cabal
+# Add just the .cabal and .project files to capture dependencies
+COPY ./tracer-sidecar.cabal .
+COPY ./cabal.project .
 
 # Docker will cache this command as a layer, freeing us up to
 # modify source code without re-installing dependencies
 # (unless the .cabal file changes!)
-RUN cabal build all --only-dependencies -j4
+RUN cabal update && cabal build --only-dependencies -j4
 
 # Add and Install Application Code
-COPY . /opt/tracer-sidecar
-RUN cabal update && cabal install
+COPY . .
+RUN cabal install
 
 FROM docker.io/debian:stable-slim AS main
 

@@ -43,7 +43,6 @@ import Control.Monad.Trans.Writer.Strict
     )
 import Data.Aeson
     ( Value
-    , encode
     )
 import qualified Data.ByteString.Lazy as BL
 import Data.Foldable
@@ -63,6 +62,8 @@ import Data.Set
 import Data.Text
     ( Text
     )
+import qualified Data.Text.Lazy as TL
+import qualified Data.Text.Lazy.Encoding as TL
 import System.Environment (lookupEnv)
 import System.IO (IOMode (AppendMode), withFile)
 
@@ -249,7 +250,7 @@ hoistToIO (s, vals) = do
         file <-
             fromMaybe "/tmp/chainPoints.log" <$> lookupEnv "CHAINPOINT_FILEPATH"
         withFile file AppendMode $ \h ->
-            BL.hPutStr h (encode v <> "\n")
+            BL.hPutStr h (TL.encodeUtf8 (TL.pack v) <> "\n")
 
 initialStateIO :: Spec -> IO State
 initialStateIO spec = hoistToIO $ initialState spec

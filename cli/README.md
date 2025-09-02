@@ -100,7 +100,7 @@ anti wallet create
 A more secure way is to let the CLI prompt you for the passphrase when needed.
 
 ```bash
-anti wallet create --ask-passphrase
+anti wallet create --ask-wallet-passphrase
 ```
 
 If you set the `ANTI_INTERACTIVE_SECRETS` environment variable to any value, the CLI will prompt you for the passphrase every time it needs it.

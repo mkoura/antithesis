@@ -109,8 +109,8 @@ RUN --mount=type=cache,target=/root/.local/state/cabal/store \
     --mount=type=cache,target=/root/.cache/cabal \
     --mount=type=cache,target=./dist-newstyle \
     cabal update && \
-    cabal build all
-RUN ln -s "$(cabal list-bin adversary)" /usr/local/bin/adversary
+    cabal install --install-method=copy
+RUN cp /root/.cabal/bin/adversary /usr/local/bin/
 
 #---------------------------------------------------------------------
 

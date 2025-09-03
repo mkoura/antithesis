@@ -3,7 +3,12 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 
-module Adversary.ChainSync (clientChainSync, Limit (..)) where
+module Adversary.ChainSync
+    ( clientChainSync
+    , Limit (..)
+    , Point
+    , HeaderHash
+    ) where
 
 import Cardano.Chain.Slotting (EpochSlots (EpochSlots))
 import Codec.Serialise qualified as CBOR
@@ -111,6 +116,8 @@ type Header = Consensus.Header Block
 type Tip = Network.Tip Block
 
 type Point = Network.Point Header
+
+type HeaderHash = Network.HeaderHash Block
 
 newtype Limit = Limit { limit :: Word32 }
   deriving newtype (Show, Read, Eq, Ord)

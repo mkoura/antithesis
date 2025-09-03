@@ -22,4 +22,7 @@ printf '%s\n' "${NODES[@]}"
 # TODO: select randomly
 TESTED_POOL="${NODES[0]}"
 
-adversary "$NETWORKMAGIC" "$TESTED_POOL" "$PORT" "$LIMIT"
+# We may want to move this logic to the haskell code
+POINT=$(cat $CHAINPOINT_FILEPATH | sort | uniq | shuf | head -1)
+
+adversary "$NETWORKMAGIC" "$TESTED_POOL" "$PORT" "$LIMIT" "$POINT"

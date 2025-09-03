@@ -93,6 +93,7 @@ services:
     hostname: tracer-sidecar.example
     environment:
       POOLS: "5"
+      CHAINPOINT_FILEPATH: "/opt/cardano-tracer/chainPoints.log"
     volumes:
       - tracer:/opt/cardano-tracer
 
@@ -108,8 +109,11 @@ services:
       PORT: 3001
       LIMIT: 100
       POOLS: "5"
+      CHAINPOINT_FILEPATH: "/opt/cardano-tracer/chainPoints.log"
     hostname: adversary
     container_name: adversary
+    volumes:
+      - tracer:/opt/cardano-tracer
 
 volumes:
   tracer:

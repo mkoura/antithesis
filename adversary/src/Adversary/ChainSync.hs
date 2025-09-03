@@ -17,7 +17,6 @@ import Control.Concurrent.Class.MonadSTM.Strict
     StrictTVar,
     newTVarIO,
     readTVar,
-    readTVarIO,
     writeTVar,
   )
 import Control.Tracer (Contravariant (contramap), stdoutTracer)
@@ -126,11 +125,12 @@ clientChainSync ::
   NetworkMagic ->
   String ->
   PortNumber ->
+  Point ->
   Limit ->
   IO ()
-clientChainSync magic peerName peerPort limit = withIOManager $ \iocp -> do
+clientChainSync magic peerName peerPort startingPoint limit = withIOManager $ \iocp -> do
   AddrInfo {addrAddress} <- resolve
-  var <- newTVarIO (Chain.Genesis :: Chain Header)
+  chainvar <- newTVarIO (Chain.Genesis :: Chain Header)
   void $
     connectToNode
       (socketSnocket iocp)
@@ -153,7 +153,7 @@ clientChainSync magic peerName peerPort limit = withIOManager $ \iocp -> do
                 query = False
               }
           )
-          (\_ -> app var)
+          (\_ -> app chainvar)
       )
       Nothing
       addrAddress
@@ -170,27 +170,27 @@ clientChainSync magic peerName peerPort limit = withIOManager $ \iocp -> do
     app ::
       StrictTVar IO (Chain Header) ->
       OuroborosApplicationWithMinimalCtx Mx.InitiatorMode addr LBS.ByteString IO () Void
-    app var = demoProtocol2 $
+    app chainvar = demoProtocol2 $
       InitiatorProtocolOnly $
         mkMiniProtocolCbFromPeer $
           \_ctx ->
             ( contramap show stdoutTracer,
               codecChainSync,
-              ChainSync.chainSyncClientPeer (client var)
+              ChainSync.chainSyncClientPeer (client chainvar)
             )
 
     client :: StrictTVar IO (Chain Header) -> ChainSyncClient Header Point Tip IO ()
-    client var = chainSyncClient var (controlledClient $ terminateAfterCount var)
+    client chainvar = chainSyncClient chainvar startingPoint (controlledClient $ terminateAfterCount chainvar)
 
     terminateAfterCount :: StrictTVar IO (Chain Header) -> STM IO ControlMessage
-    terminateAfterCount var = do
-      chainLength <- getChainLength var
+    terminateAfterCount chainvar = do
+      chainLength <- getChainLength chainvar
       pure $ if chainLength < limit
                 then Continue
                 else Terminate
 
     getChainLength :: StrictTVar IO (Chain Header) -> STM IO Limit
-    getChainLength var = Limit . fromIntegral . Chain.length <$> readTVar var
+    getChainLength chainvar = Limit . fromIntegral . Chain.length <$> readTVar chainvar
 
 -- TODO: provide sensible limits
 -- https://github.com/intersectmbo/ouroboros-network/issues/575
@@ -219,11 +219,11 @@ demoProtocol2 chainSync =
     ]
 
 data Client header point tip m t = Client
-  { rollbackward ::
+  { onRollBackward ::
       point ->
       tip ->
       m (Either t (Client header point tip m t)),
-    rollforward :: header -> m (Either t (Client header point tip m t)),
+    onRollForward :: header -> m (Either t (Client header point tip m t)),
     points :: [point] -> m (Either t (Client header point tip m t))
   }
 
@@ -235,7 +235,7 @@ controlledClient controlMessageSTM = client
   where
     client =
       Client
-        { rollbackward = \_ _ -> do
+        { onRollBackward = \_ _ -> do
             ctrl <- atomically controlMessageSTM
             case ctrl of
               Continue -> pure (Right client)
@@ -243,7 +243,7 @@ controlledClient controlMessageSTM = client
                 error
                   "Ouroboros.Network.Protocol.ChainSync.Examples.controlledClient: unexpected Quiesce"
               Terminate -> pure (Left ()),
-          rollforward = \_ -> do
+          onRollForward = \_ -> do
             ctrl <- atomically controlMessageSTM
             case ctrl of
               Continue -> pure (Right client)
@@ -256,14 +256,15 @@ controlledClient controlMessageSTM = client
 
 chainSyncClient ::
   StrictTVar IO (Chain Header) ->
+  Point ->
   Client Header Point Tip IO a ->
   ChainSyncClient Header Point Tip IO a
-chainSyncClient chainvar client =
+chainSyncClient chainvar startingPoint client =
   ChainSyncClient $
     either SendMsgDone initialise <$> getChainPoints
   where
-    initialise (points, client') =
-      SendMsgFindIntersect points $
+    initialise client' =
+      SendMsgFindIntersect [startingPoint] $
         -- In this consumer example, we do not care about whether the server
         -- found an intersection or not. If not, we'll just sync from genesis.
         --
@@ -286,33 +287,31 @@ chainSyncClient chainvar client =
     handleNext client' =
       ClientStNext
         { recvMsgRollForward = \header _tip -> ChainSyncClient $ do
-            addBlock header
-            choice <- rollforward client' header
+            rollForward header
+            choice <- onRollForward client' header
             pure $ case choice of
               Left a -> SendMsgDone a
               Right client'' -> requestNext client'',
           recvMsgRollBackward = \pIntersect tip -> ChainSyncClient $ do
-            rollback pIntersect
-            choice <- rollbackward client' pIntersect tip
+            rollBackward pIntersect
+            choice <- onRollBackward client' pIntersect tip
             pure $ case choice of
               Left a -> SendMsgDone a
               Right client'' -> requestNext client''
         }
 
     getChainPoints = do
-      pts <-
-        Chain.selectPoints [] <$> readTVarIO chainvar
-      choice <- points client (fmap castPoint pts)
+      choice <- points client []
       pure $ case choice of
         Left a -> Left a
-        Right client' -> Right (fmap castPoint pts, client')
+        Right client' -> Right client'
 
-    addBlock b = atomically $ do
+    rollForward b = atomically $ do
       chain <- readTVar chainvar
       let !chain' = Chain.addBlock b chain
       writeTVar chainvar chain'
 
-    rollback p = atomically $ do
+    rollBackward p = atomically $ do
       chain <- readTVar chainvar
       -- TODO: handle rollback failure
       let !chain' = case Chain.rollback (castPoint p) chain of

@@ -27,8 +27,8 @@ newtype Message = Startup {arguments :: [String]}
 adversary :: [String] -> IO Message
 adversary args@(magicArg : host : port : limitArg : startPointArg : _) = do
   let magic = NetworkMagic { unNetworkMagic = read magicArg }
-  let (_startPoint :: Point) = fromMaybe (error "invalid chain point") $ readChainPoint startPointArg
-  clientChainSync magic host (read port) (read limitArg)
+  let (startPoint :: Point) = fromMaybe (error "invalid chain point") $ readChainPoint startPointArg
+  clientChainSync magic host (read port) startPoint (read limitArg)
   pure Startup {arguments = args}
 adversary _ = error "Expected network-magic, host, port, sync-length and startPoint arguments"
 

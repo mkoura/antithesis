@@ -23,6 +23,10 @@ printf '%s\n' "${NODES[@]}"
 TESTED_POOL="${NODES[0]}"
 
 # We may want to move this logic to the haskell code
-POINT=$(cat $CHAINPOINT_FILEPATH | sort | uniq | shuf | head -1)
+if [[ -f "$CHAINPOINT_FILEPATH" ]]; then
+  POINT=$(cat $CHAINPOINT_FILEPATH | sort | uniq | shuf | head -1)
+else
+  POINT="origin"
+fi
 
 adversary "$NETWORKMAGIC" "$TESTED_POOL" "$PORT" "$LIMIT" "$POINT"

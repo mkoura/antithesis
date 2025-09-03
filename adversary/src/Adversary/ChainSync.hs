@@ -17,7 +17,7 @@ import Control.Concurrent.Class.MonadSTM.Strict
     StrictTVar,
     newTVarIO,
     readTVar,
-    writeTVar,
+    writeTVar, readTVarIO,
   )
 import Control.Tracer (Contravariant (contramap), stdoutTracer)
 import Data.ByteString.Lazy qualified as LBS
@@ -107,6 +107,7 @@ import Ouroboros.Network.Socket
     nullNetworkConnectTracers,
   )
 import Data.Word (Word32)
+import Control.Exception (try, SomeException (SomeException))
 
 type Block = Consensus.CardanoBlock Consensus.StandardCrypto
 
@@ -127,12 +128,12 @@ clientChainSync ::
   PortNumber ->
   Point ->
   Limit ->
-  IO ()
+  IO (Either SomeException Point)
 clientChainSync magic peerName peerPort startingPoint limit = withIOManager $ \iocp -> do
   AddrInfo {addrAddress} <- resolve
   chainvar <- newTVarIO (Chain.Genesis :: Chain Header)
-  void $
-    connectToNode
+  -- FIXME: Narrow down the exact error type to catch
+  res <- connectToNode
       (socketSnocket iocp)
       makeSocketBearer
       ConnectToArgs
@@ -157,6 +158,9 @@ clientChainSync magic peerName peerPort startingPoint limit = withIOManager $ \i
       )
       Nothing
       addrAddress
+  case res of
+    Left e -> return $ Left e
+    Right _ -> pure . Chain.headPoint <$> readTVarIO chainvar
   where
     resolve = do
       let hints =

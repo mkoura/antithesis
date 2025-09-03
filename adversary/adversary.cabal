@@ -40,6 +40,7 @@ library
     , cardano-ledger-byron
     , ouroboros-consensus-protocol
     , ouroboros-consensus
+    , base16-bytestring
     , aeson
     , base
     , bytestring

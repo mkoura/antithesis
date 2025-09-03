@@ -6,13 +6,15 @@ import Test.Hspec (Spec, it, shouldBe, shouldNotBe)
 import Test.Hspec.QuickCheck (prop)
 import Test.QuickCheck (Arbitrary (arbitrary), Gen, Property, forAll)
 import Adversary.ChainSync (Limit(..))
+import Data.Aeson qualified as Aeson
+import Data.Maybe (fromMaybe)
 
 spec :: Spec
 spec = do
 
     it "Display Message as String"
         $ toString (Startup{arguments = ["Foo"]})
-        `shouldBe` "{\"arguments\":[\"Foo\"]}"
+        `shouldBe` "{\"arguments\":[\"Foo\"],\"tag\":\"Startup\"}"
 
     it "Reads Limit"
         $ read "20" `shouldBe` Limit 20
@@ -27,6 +29,11 @@ spec = do
         readChainPoint
             "origin"
             `shouldBe` Just originPoint
+
+    it "Point aeson instances roundtrips" $ do
+        let str = "74b9b4c63f1af41cd51d74d950cc323a9c159eb76fe52cbd8272dde041c4bdbe@40"
+        let p = fromMaybe (error "failed reading point") $ readChainPoint str
+        Aeson.decode (Aeson.encode p) `shouldBe` Just p
 
 prop_roundTrip :: Property
 prop_roundTrip = forAll genMessage $ \msg ->

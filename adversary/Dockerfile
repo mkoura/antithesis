@@ -104,11 +104,12 @@ ENV LD_LIBRARY_PATH="/usr/local/lib:$LD_LIBRARY_PATH" \
 
 # Clone cardano-node.git repository
 WORKDIR /usr/local/src
-COPY cabal.project .
-COPY adversary.cabal .
-RUN cabal update && cabal build --only-dependencies
 COPY . .
-RUN cabal build all
+RUN --mount=type=cache,target=/root/.local/state/cabal/store \
+    --mount=type=cache,target=/root/.cache/cabal \
+    --mount=type=cache,target=./dist-newstyle \
+    cabal update && \
+    cabal build all
 RUN ln -s "$(cabal list-bin adversary)" /usr/local/bin/adversary
 
 #---------------------------------------------------------------------

@@ -16,7 +16,13 @@ data Wallet = Wallet
 
 instance Show Wallet where
     show (Wallet addr owner _ encrypted) =
-        "Wallet { address: " ++ show addr ++ ", owner: " ++ show owner ++ ", encrypted: " ++ show encrypted ++"}"
+        "Wallet { address: "
+            ++ show addr
+            ++ ", owner: "
+            ++ show owner
+            ++ ", encrypted: "
+            ++ show encrypted
+            ++ "}"
 
 instance Eq Wallet where
     (Wallet addr1 owner1 _ _) == (Wallet addr2 owner2 _ _) =

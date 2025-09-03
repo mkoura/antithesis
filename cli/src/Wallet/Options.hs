@@ -6,8 +6,8 @@ module Wallet.Options
 
 import Core.Options (walletOption)
 import Core.Types.Mnemonics.Options
-    ( walletFileOption
-    , walletFileArgOption
+    ( walletFileArgOption
+    , walletFileOption
     , walletPassphraseCommon
     )
 import Data.Text (Text)

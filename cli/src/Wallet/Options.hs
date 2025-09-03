@@ -31,13 +31,13 @@ walletCommandParser =
                 <$> walletOption
         , command
             "decrypt"
-            "Decrypt the wallet's secrets, write it to the specified file and set it as ANTI_WALLET_FILE"
+            "Decrypt the wallet's secrets and write it to the specified file"
             $ fmap Box . Decrypt
                 <$> walletOption
                 <*> walletFileArgOption
         , command
             "encrypt"
-            "Encrypt the wallet's secrets, write it to the specified file and set it as ANTI_WALLET_FILE"
+            "Encrypt the wallet's secrets and write it to the specified file"
             $ fmap Box . Encrypt
                 <$> walletOption
                 <*> walletFileArgOption

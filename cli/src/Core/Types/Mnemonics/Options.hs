@@ -102,8 +102,6 @@ walletFileArgOption :: Parser FilePath
 walletFileArgOption =
     setting
         [ help "The new file path to the wallet secret mnemonics"
-        , long "wallet"
-        , short 'w'
         , metavar "FILEPATH"
         , reader str
         , argument

@@ -118,18 +118,16 @@ anti wallet info
 You can encrypt the wallet's secret (if previously you chose to store it in unencrypted way, ie., you used `anti wallet create`) using
 
 ``` bash
-anti wallet encrypt path/to/encrypted/secret
+anti wallet encrypt path/to/encrypted/secret/file
 ```
-
-As a consequence `ANTI_WALLET_FILE` is set to `path/to/encrypted/secret`.
 
 Also, you can decrypt previously encrypted wallet's secret (if previously you chose to store it in encrypted way, ie., you used `anti wallet create --ask-wallet-passphrase`) using
 
 ``` bash
-anti wallet decrypt path/to/decrypted/secret
+anti wallet decrypt path/to/decrypted/secret/file
 ```
 
-As a consequence `ANTI_WALLET_FILE` is set to `path/to/decrypted/secret`.
+For the both cases `ANTI_WALLET_FILE` is set as before.
 
 
 >  Store a copy of your encrypted/plaintext wallet file in a password manager. Think twice before storing a plaintext wallet file. Store your passphrase in a password manager too. ATM we do not support hardware wallets like Ledger or Trezor.

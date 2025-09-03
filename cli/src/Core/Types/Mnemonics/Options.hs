@@ -2,6 +2,7 @@ module Core.Types.Mnemonics.Options
     ( mnemonicsParser
     , walletPassphraseCommon
     , walletFileOption
+    , walletFileArgOption
     , queryConsole
     ) where
 
@@ -19,6 +20,7 @@ import Data.Text qualified as T
 import OptEnvConf
     ( Alternative ((<|>))
     , Parser
+    , argument
     , checkEither
     , checkMapIO
     , conf
@@ -94,6 +96,17 @@ walletFileOption =
         , short 'w'
         , reader str
         , option
+        ]
+
+walletFileArgOption :: Parser FilePath
+walletFileArgOption =
+    setting
+        [ help "The new file path to the wallet secret mnemonics"
+        , long "wallet"
+        , short 'w'
+        , metavar "FILEPATH"
+        , reader str
+        , argument
         ]
 
 coreMnemonicsParser :: Parser (Bool, Mnemonics 'DecryptedS)

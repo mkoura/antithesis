@@ -7,6 +7,7 @@ module Wallet.Options
 import Core.Options (walletOption)
 import Core.Types.Mnemonics.Options
     ( walletFileOption
+    , walletFileArgOption
     , walletPassphraseCommon
     )
 import Data.Text (Text)
@@ -28,6 +29,18 @@ walletCommandParser =
             "Get the wallet information"
             $ Box . Info
                 <$> walletOption
+        , command
+            "decrypt"
+            "Decrypt the wallet's secrets, write it to the specified file and set it as ANTI_WALLET_FILE"
+            $ fmap Box . Decrypt
+                <$> walletOption
+                <*> walletFileArgOption
+        , command
+            "encrypt"
+            "Encrypt the wallet's secrets, write it to the specified file and set it as ANTI_WALLET_FILE"
+            $ fmap Box . Encrypt
+                <$> walletOption
+                <*> walletFileArgOption
         ]
 
 passphraseOption :: Parser (Maybe Text)

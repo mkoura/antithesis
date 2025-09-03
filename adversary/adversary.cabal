@@ -11,9 +11,9 @@ extra-doc-files: CHANGELOG.md
 
 common settings
   ghc-options:
-    -Wall -Wunused-imports -Wunused-packages
-    -Wname-shadowing -Wdeferred-out-of-scope-variables
-    -Wpartial-type-signatures -Wredundant-constraints
+    -Wall -Wunused-imports -Wunused-packages -Wname-shadowing
+    -Wdeferred-out-of-scope-variables -Wpartial-type-signatures
+    -Wredundant-constraints
 
   default-extensions:
     BangPatterns
@@ -37,26 +37,26 @@ library
   import:          settings
   hs-source-dirs:  src
   build-depends:
-    , cardano-ledger-byron
-    , ouroboros-consensus-protocol
-    , ouroboros-consensus
-    , base16-bytestring
     , aeson
     , base
+    , base16-bytestring
     , bytestring
+    , cardano-ledger-byron
     , contra-tracer
-    , strict-stm
     , network
     , network-mux
-    , ouroboros-network-mock
-    , ouroboros-network-api
+    , ouroboros-consensus
+    , ouroboros-consensus-cardano   ^>=0.25
+    , ouroboros-consensus-protocol
     , ouroboros-network
+    , ouroboros-network-api
     , ouroboros-network-framework
+    , ouroboros-network-mock
     , ouroboros-network-protocols
-    , ouroboros-consensus-cardano ^>= 0.25
-    , typed-protocols
     , serialise
+    , strict-stm
     , text
+    , typed-protocols
 
   exposed-modules:
     Adversary

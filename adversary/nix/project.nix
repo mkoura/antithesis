@@ -34,9 +34,7 @@ let
     compiler-nix-name = "ghc984";
     shell = shell { inherit pkgs; };
 
-    modules = [
-      fix-libs
-    ];
+    modules = [ fix-libs ];
     inputMap = { "https://chap.intersectmbo.org/" = CHaP; };
   };
   project = pkgs.haskell-nix.cabalProject' mkProject;

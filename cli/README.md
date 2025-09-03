@@ -115,9 +115,26 @@ You can review this wallet info anytime with
 anti wallet info
 ```
 
+You can encrypt the wallet's secret (if previously you chose to store it in unencrypted way, ie., you used `anti wallet create`) using
+
+``` bash
+anti wallet encrypt path/to/encrypted/secret
+```
+
+As a consequence `ANTI_WALLET_FILE` is set to `path/to/encrypted/secret`.
+
+Also, you can decrypt previously encrypted wallet's secret (if previously you chose to store it in encrypted way, ie., you used `anti wallet create --ask-wallet-passphrase`) using
+
+``` bash
+anti wallet decrypt path/to/decrypted/secret
+```
+
+As a consequence `ANTI_WALLET_FILE` is set to `path/to/decrypted/secret`.
+
+
 >  Store a copy of your encrypted/plaintext wallet file in a password manager. Think twice before storing a plaintext wallet file. Store your passphrase in a password manager too. ATM we do not support hardware wallets like Ledger or Trezor.
 
-> Fund your wallet with some tAda tokens on preprod, for example using the [Cardano Testnet Faucet](https://docs.cardano.org/cardano-testnets/tools/faucet/).
+`> Fund your wallet with some tAda tokens on preprod, for example using the [Cardano Testnet Faucet](https://docs.cardano.org/cardano-testnets/tools/faucet/).
 
 
 ### Antithesis token

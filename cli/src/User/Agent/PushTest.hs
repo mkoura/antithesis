@@ -132,7 +132,7 @@ pushTestToAntithesisIO
         let body =
                 PostTestRunRequest
                     { description = "Test run " ++ trId
-                    , duration = realToFrac duration
+                    , duration = realToFrac duration * 60
                     , config_image = tagString tag
                     , images
                     , recipients = []

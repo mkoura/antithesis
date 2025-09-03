@@ -72,7 +72,7 @@ mnemonics =
         "coin april solid purity wish slight acquire kitchen dragon faculty clutch picnic"
 
 wallet :: Wallet
-wallet = case readWallet mnemonics of
+wallet = case readWallet (True, mnemonics) of
     Left err -> error (show err)
     Right w -> w
 

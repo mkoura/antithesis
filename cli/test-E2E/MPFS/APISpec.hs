@@ -122,7 +122,7 @@ loadEnvWallet envVar = do
         Just file -> do
             content <- B.readFile file
             case Aeson.decodeStrict content of
-                Just (UnencryptedWallet mnemonics) -> case readWallet $ ClearText mnemonics of
+                Just (UnencryptedWallet mnemonics) -> case readWallet (True, ClearText mnemonics) of
                     Left err ->
                         error
                             $ "Failed to read wallet from file "

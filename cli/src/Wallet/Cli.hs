@@ -46,6 +46,10 @@ data WalletCommand a where
         :: FilePath
         -> Maybe Text
         -> WalletCommand (Either WalletError WalletInfo)
+    Decrypt
+        :: Wallet
+        -> FilePath
+        -> WalletCommand (Either WalletError WalletInfo)
 
 deriving instance Show (WalletCommand a)
 deriving instance Eq (WalletCommand a)
@@ -60,7 +64,7 @@ walletCmd (Info wallet) =
             }
 walletCmd (Create walletFile passphrase) = do
     w12 <- replicateM 12 $ element englishWords
-    case walletFromMnemonic w12 of
+    case walletFromMnemonic True w12 of
         Left _e -> walletCmd (Create walletFile passphrase)
         Right wallet -> do
             writeWallet walletFile w12 passphrase
@@ -70,6 +74,7 @@ walletCmd (Create walletFile passphrase) = do
                     { address = wallet.address
                     , owner = wallet.owner
                     }
+walletCmd (Decrypt _wallet _walletFile) = undefined
 
 element :: [a] -> IO a
 element xs = do

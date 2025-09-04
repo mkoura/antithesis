@@ -6,15 +6,14 @@ module Wallet.Cli
     ) where
 
 import Control.Monad (replicateM)
-import Core.Encryption (decryptText)
 import Core.Types.Basic (Address, Owner)
 import Core.Types.Mnemonics
     ( Mnemonics (..)
     , readDecryptedMnemonicFile
-    , readEncryptedMnemonicFile
     )
 import Core.Types.Wallet (Wallet (..))
 import Data.Text (Text)
+import Data.Text qualified as T
 import Lib.JSON.Canonical.Extra (object, (.=))
 import Submitting (walletFromMnemonic, writeWallet)
 import System.Environment (lookupEnv)
@@ -25,11 +24,6 @@ import Text.JSON.Canonical
     , toJSString
     )
 import Words (englishWords)
-
-import Data.Text qualified as T
-import Data.Text.IO qualified as T
-
-import Debug.Trace qualified as TR
 
 data WalletError
     = WalletPresent
@@ -93,10 +87,11 @@ walletCmd (Info wallet) =
             }
 walletCmd (Create walletFile passphrase) = do
     w12 <- replicateM 12 $ element englishWords
-    case walletFromMnemonic True w12 of
+    let mnemonics = ClearText $ T.unwords w12
+    case walletFromMnemonic True mnemonics of
         Left _e -> walletCmd (Create walletFile passphrase)
         Right wallet -> do
-            writeWallet walletFile w12 passphrase
+            writeWallet walletFile mnemonics passphrase
             return
                 $ Right
                 $ WalletInfo
@@ -106,42 +101,13 @@ walletCmd (Create walletFile passphrase) = do
 walletCmd (Decrypt wallet walletFileDecr) =
     if encrypted wallet
         then do
-            lookupEnv "ANTI_WALLET_PASSPHRASE" >>= \case
-                Nothing ->
-                    pure
-                        $ Left
-                        $ WalletUnexpectedErrror
-                            "passphrase should be written in 'ANTI_WALLET_PASSPHRASE' environment variable"
-                Just passphrase ->
-                    lookupEnv "ANTI_WALLET_FILE" >>= \case
-                        Nothing ->
-                            pure
-                                $ Left
-                                $ WalletUnexpectedErrror
-                                    "file path should be written in 'ANTI_WALLET_FILE' environment variable"
-                        Just filepath -> do
-                            readEncryptedMnemonicFile filepath >>= \case
-                                Left err ->
-                                    pure
-                                        $ Left
-                                        $ WalletUnexpectedErrror
-                                        $ "wrong mnemonic format in 'ANTI_WALLET_FILE'. Details: " <> err
-                                Right (Encrypted txt) -> do
-                                    case decryptText (T.pack passphrase) txt of
-                                        Left err ->
-                                            pure
-                                                $ Left
-                                                $ WalletUnexpectedErrror
-                                                $ "mnemonic decryption error. In detail, " ++ err
-                                        Right mnemonicsRaw -> do
-                                            let mnemonics = T.words mnemonicsRaw
-                                            writeWallet walletFileDecr mnemonics Nothing
-                                            return
-                                                $ Right
-                                                $ WalletInfo
-                                                    { address = wallet.address
-                                                    , owner = wallet.owner
-                                                    }
+            writeWallet walletFileDecr (mnemonics wallet) Nothing
+            return
+                $ Right
+                $ WalletInfo
+                    { address = wallet.address
+                    , owner = wallet.owner
+                    }
         else
             pure $ Left WalletAlreadyDecrypted
 walletCmd (Encrypt wallet walletFileDecr) =
@@ -170,7 +136,7 @@ walletCmd (Encrypt wallet walletFileDecr) =
                                         $ WalletUnexpectedErrror
                                         $ "wrong mnemonic format in 'ANTI_WALLET_FILE'. Details: " <> err
                                 Right (ClearText txt) -> do
-                                    let mnemonics = T.words txt
+                                    let mnemonics = ClearText txt
                                     writeWallet walletFileDecr mnemonics (Just $ T.pack passphrase)
                                     return
                                         $ Right

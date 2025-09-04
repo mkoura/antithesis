@@ -161,11 +161,12 @@ instance Exception WalletError
 readWallet
     :: (Bool, Mnemonics 'DecryptedS)
     -> Either WalletError Wallet
-readWallet (encrypted, ClearText mnemonics) = do
-    walletFromMnemonic encrypted $ T.words mnemonics
+readWallet = uncurry walletFromMnemonic
 
-writeWallet :: FilePath -> [Text] -> Maybe Text -> IO ()
-writeWallet walletFile mnemonicWords passphrase = do
+writeWallet
+    :: FilePath -> Mnemonics 'DecryptedS -> Maybe Text -> IO ()
+writeWallet walletFile (ClearText mnemonicsText) passphrase = do
+    let mnemonicWords = T.words mnemonicsText
     case passphrase of
         Just p -> do
             encrypted <- encryptText p 10 $ T.unwords mnemonicWords
@@ -176,11 +177,13 @@ writeWallet walletFile mnemonicWords passphrase = do
                 $ ClearText
                 $ T.unwords mnemonicWords
 
-walletFromMnemonic :: Bool -> [Text] -> Either WalletError Wallet
-walletFromMnemonic encrypted mnemonicWords = do
+walletFromMnemonic
+    :: Bool -> Mnemonics 'DecryptedS -> Either WalletError Wallet
+walletFromMnemonic encrypted mnemonics@(ClearText mnemonicsText) = do
     mnemonic <-
         either (Left . InvalidMnemonic . show) Right
-            $ mkSomeMnemonic @'[9, 12, 15, 18, 24] mnemonicWords
+            $ mkSomeMnemonic @'[9, 12, 15, 18, 24]
+            $ T.words mnemonicsText
 
     let
         rootXPrv96 :: Shelley 'RootK XPrv
@@ -210,6 +213,7 @@ walletFromMnemonic encrypted mnemonicWords = do
                     $ Base16.encode
                     $ digest (Proxy @Blake2b_224) pubBytes32
             , encrypted
+            , mnemonics
             }
 
 signTx :: XPrv -> UnsignedTx -> Either SignTxError SignedTx

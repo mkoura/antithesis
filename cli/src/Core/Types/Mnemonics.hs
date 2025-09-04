@@ -49,7 +49,7 @@ instance FromJSON (Mnemonics 'EncryptedS) where
             _ -> error "expecting 'encryptedMnemonics' field"
 
 readDecryptedMnemonicFile
-    :: FilePath -> IO (Either String ((Mnemonics 'DecryptedS)))
+    :: FilePath -> IO (Either String (Mnemonics 'DecryptedS))
 readDecryptedMnemonicFile fp = do
     econtent <- try $ BL.readFile fp
     case econtent of
@@ -57,7 +57,7 @@ readDecryptedMnemonicFile fp = do
         Right content -> return $ Aeson.eitherDecode content
 
 readEncryptedMnemonicFile
-    :: FilePath -> IO (Either String ((Mnemonics 'EncryptedS)))
+    :: FilePath -> IO (Either String (Mnemonics 'EncryptedS))
 readEncryptedMnemonicFile fp = do
     econtent <- try $ BL.readFile fp
     case econtent of

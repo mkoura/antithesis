@@ -118,7 +118,7 @@ anti wallet info
 You can encrypt the wallet's secret (if previously you chose to store it in unencrypted way, ie., you used `anti wallet create`) using
 
 ``` bash
-anti wallet encrypt path/to/encrypted/secret/file
+anti wallet encrypt path/to/encrypted/secret/file --ask-wallet-passphrase
 ```
 
 Also, you can decrypt previously encrypted wallet's secret (if previously you chose to store it in encrypted way, ie., you used `anti wallet create --ask-wallet-passphrase`) using

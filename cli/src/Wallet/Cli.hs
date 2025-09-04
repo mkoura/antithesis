@@ -11,6 +11,7 @@ import Core.Types.Mnemonics
     ( Mnemonics (..)
     )
 import Core.Types.Wallet (Wallet (..))
+import Data.Maybe (isJust)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Lib.JSON.Canonical.Extra (object, (.=))
@@ -41,13 +42,18 @@ instance (ToJSON m a, Monad m) => ToJSON m (Either WalletError a) where
 data WalletInfo = WalletInfo
     { address :: Address
     , owner :: Owner
+    , encryptedInfo :: Bool
     }
 
 instance Monad m => ToJSON m WalletInfo where
-    toJSON WalletInfo{address, owner} =
+    toJSON WalletInfo{address, owner, encryptedInfo} =
         object
             [ "address" .= address
             , "owner" .= owner
+            , "encrypted"
+                .= if encryptedInfo
+                    then JSString "yes"
+                    else JSString "no"
             ]
 
 data WalletCommand a where
@@ -77,6 +83,7 @@ walletCmd (Info wallet) =
         $ WalletInfo
             { address = wallet.address
             , owner = wallet.owner
+            , encryptedInfo = wallet.encrypted
             }
 walletCmd (Create walletFile passphrase) = do
     w12 <- replicateM 12 $ element englishWords
@@ -90,6 +97,7 @@ walletCmd (Create walletFile passphrase) = do
                 $ WalletInfo
                     { address = wallet.address
                     , owner = wallet.owner
+                    , encryptedInfo = isJust passphrase
                     }
 walletCmd (Decrypt wallet walletFileDecr) =
     if encrypted wallet
@@ -100,6 +108,7 @@ walletCmd (Decrypt wallet walletFileDecr) =
                 $ WalletInfo
                     { address = wallet.address
                     , owner = wallet.owner
+                    , encryptedInfo = False
                     }
         else
             pure $ Left WalletAlreadyDecrypted
@@ -114,6 +123,7 @@ walletCmd (Encrypt wallet passphrase walletFileDecr) =
                 $ WalletInfo
                     { address = wallet.address
                     , owner = wallet.owner
+                    , encryptedInfo = True
                     }
 
 element :: [a] -> IO a

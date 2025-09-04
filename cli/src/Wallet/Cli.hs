@@ -9,19 +9,16 @@ import Control.Monad (replicateM)
 import Core.Types.Basic (Address, Owner)
 import Core.Types.Mnemonics
     ( Mnemonics (..)
-    , readDecryptedMnemonicFile
     )
 import Core.Types.Wallet (Wallet (..))
 import Data.Text (Text)
 import Data.Text qualified as T
 import Lib.JSON.Canonical.Extra (object, (.=))
 import Submitting (walletFromMnemonic, writeWallet)
-import System.Environment (lookupEnv)
 import System.Random (randomRIO)
 import Text.JSON.Canonical
     ( JSValue (JSString)
     , ToJSON (..)
-    , toJSString
     )
 import Words (englishWords)
 
@@ -30,17 +27,12 @@ data WalletError
     | WalletMissing
     | WalletAlreadyDecrypted
     | WalletAlreadyEncrypted
-    | WalletUnexpectedErrror String
 
 instance Applicative m => ToJSON m WalletError where
     toJSON WalletPresent = pure $ JSString "Wallet is present"
     toJSON WalletMissing = pure $ JSString "Wallet is missing"
     toJSON WalletAlreadyDecrypted = pure $ JSString "Wallet's file is already decrypted"
     toJSON WalletAlreadyEncrypted = pure $ JSString "Wallet's file is already encrypted"
-    toJSON (WalletUnexpectedErrror err) =
-        pure
-            $ JSString
-            $ "Wallet cmd encountered unexpected situation: " <> toJSString err
 
 instance (ToJSON m a, Monad m) => ToJSON m (Either WalletError a) where
     toJSON (Right a) = toJSON a
@@ -71,6 +63,7 @@ data WalletCommand a where
         -> WalletCommand (Either WalletError WalletInfo)
     Encrypt
         :: Wallet
+        -> Text -- passphrase
         -> FilePath
         -> WalletCommand (Either WalletError WalletInfo)
 
@@ -110,40 +103,18 @@ walletCmd (Decrypt wallet walletFileDecr) =
                     }
         else
             pure $ Left WalletAlreadyDecrypted
-walletCmd (Encrypt wallet walletFileDecr) =
+walletCmd (Encrypt wallet passphrase walletFileDecr) =
     if encrypted wallet
         then do
             pure $ Left WalletAlreadyEncrypted
-        else
-            lookupEnv "ANTI_WALLET_PASSPHRASE" >>= \case
-                Nothing ->
-                    pure
-                        $ Left
-                        $ WalletUnexpectedErrror
-                            "passphrase should be written in 'ANTI_WALLET_PASSPHRASE' environment variable"
-                Just passphrase ->
-                    lookupEnv "ANTI_WALLET_FILE" >>= \case
-                        Nothing ->
-                            pure
-                                $ Left
-                                $ WalletUnexpectedErrror
-                                    "file path should be written in 'ANTI_WALLET_FILE' environment variable"
-                        Just filepath ->
-                            readDecryptedMnemonicFile filepath >>= \case
-                                Left err ->
-                                    pure
-                                        $ Left
-                                        $ WalletUnexpectedErrror
-                                        $ "wrong mnemonic format in 'ANTI_WALLET_FILE'. Details: " <> err
-                                Right (ClearText txt) -> do
-                                    let mnemonics = ClearText txt
-                                    writeWallet walletFileDecr mnemonics (Just $ T.pack passphrase)
-                                    return
-                                        $ Right
-                                        $ WalletInfo
-                                            { address = wallet.address
-                                            , owner = wallet.owner
-                                            }
+        else do
+            writeWallet walletFileDecr (mnemonics wallet) (Just passphrase)
+            pure
+                $ Right
+                $ WalletInfo
+                    { address = wallet.address
+                    , owner = wallet.owner
+                    }
 
 element :: [a] -> IO a
 element xs = do

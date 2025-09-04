@@ -12,7 +12,7 @@ import Core.Types.Mnemonics.Options
     )
 import Data.Text (Text)
 import Lib.Box (Box (..))
-import OptEnvConf
+import OptEnvConf (Parser, command, commands, optional)
 import Wallet.Cli (WalletCommand (..))
 
 walletCommandParser :: Parser (Box WalletCommand)
@@ -38,8 +38,9 @@ walletCommandParser =
         , command
             "encrypt"
             "Encrypt the wallet's secrets and write it to the specified file"
-            $ fmap Box . Encrypt
+            $ (\w p -> Box . Encrypt w p)
                 <$> walletOption
+                <*> walletPassphraseCommon
                 <*> walletFileArgOption
         ]
 

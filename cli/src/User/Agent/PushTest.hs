@@ -29,6 +29,7 @@ import Core.Types.Fact (Fact (..))
 import Core.Types.Wallet (Wallet (..))
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy.Char8 qualified as BL
+import Data.Functor.Identity (Identity (..))
 import Data.List (intercalate, nub, sort)
 import Data.String.QQ (s)
 import Lib.JSON.Canonical.Extra (object, (.=))
@@ -45,12 +46,13 @@ import System.Process
     )
 import Text.JSON.Canonical
     ( ToJSON (..)
+    , renderCanonicalJSON
     )
 import User.Agent.Lib (resolveTestRunId)
 import User.Agent.Types
     ( TestRunId (..)
     )
-import User.Types (Phase (..), TestRunState (..))
+import User.Types (Phase (..), TestRun (..), TestRunState (..))
 
 dockerfile :: String
 dockerfile =
@@ -128,19 +130,23 @@ pushTestToAntithesisIO
         tag <- liftIO $ buildConfigImage registry dir testRunId
         liftIO $ pushConfigImage tag
         images <- liftIO $ collectImagesFromAssets dir
-        Duration duration <- getDuration tk testRunId
+        (tr, Duration duration) <- getTestRun tk testRunId
         let body =
                 PostTestRunRequest
-                    { description = "Test run " ++ trId
+                    { description = renderTestRun tr
                     , duration = realToFrac duration * 60
                     , config_image = tagString tag
                     , images
-                    , recipients = []
+                    , recipients = ["antithesis@cardanofoundation.org"]
                     , source = trId
                     }
-        void $ liftIO $ curl $ renderPostToAntithesis auth body
+            post = renderPostToAntithesis auth body
+        void $ liftIO $ curl post
         publishAcceptanceToCardano wallet testRunId
         return $ ValidationSuccess ()
+
+renderTestRun :: TestRun -> String
+renderTestRun = BL.unpack . renderCanonicalJSON . runIdentity . toJSON
 
 collectImagesFromAssets :: Directory -> IO [String]
 collectImagesFromAssets (Directory dirname) = do
@@ -152,13 +158,18 @@ collectImagesFromAssets (Directory dirname) = do
     let images = nub $ sort $ filter (not . null) $ lines output
     return images
 
-getDuration
-    :: Monad m => TokenId -> TestRunId -> WithContext m Duration
-getDuration tk testRunId = do
+getTestRun
+    :: Monad m
+    => TokenId
+    -> TestRunId
+    -> WithContext
+        m
+        (TestRun, Duration)
+getTestRun tk testRunId = do
     mts <- resolveTestRunId @'PendingT tk testRunId
     case mts of
         Nothing -> error "TestRunId could not be resolved"
-        Just (Fact _ (Pending d _)) -> pure d
+        Just (Fact tr (Pending dur _)) -> return (tr, dur)
 
 publishAcceptanceToCardano
     :: Monad m => Wallet -> TestRunId -> WithContext m ()
@@ -235,7 +246,9 @@ buildConfigImage (Registry registry) (Directory context) (TestRunId trId) =
         "anti-cli-test"
         $ \tmpDir -> do
             let dockerfilePath = tmpDir ++ "/Dockerfile"
-                tag = registry ++ "/" ++ take 10 trId
+                imageName = "cardano-anti-cli-config"
+                imageTag = take 10 trId
+                tag = registry ++ "/" ++ imageName ++ ":" ++ imageTag
             writeFile dockerfilePath dockerfile
             void
                 $ runCommandAndShowErrorOnExitFailure

@@ -134,7 +134,7 @@ pushTestToAntithesisIO
         let body =
                 PostTestRunRequest
                     { description = renderTestRun tr
-                    , duration = realToFrac duration * 60
+                    , duration = realToFrac duration
                     , config_image = tagString tag
                     , images
                     , recipients = ["antithesis@cardanofoundation.org"]

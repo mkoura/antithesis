@@ -21,6 +21,7 @@ import Core.Types.Basic
     , Duration
     , FileName (..)
     , Repository (..)
+    , Success (..)
     , TokenId
     )
 import Core.Types.Change (Change (..), Key (..), deleteKey, insertKey)
@@ -132,7 +133,7 @@ data RequesterCommand a where
         -> RequesterCommand
             ( AValidationResult
                 GenerateAssetsFailure
-                ()
+                Success
             )
 
 deriving instance Show (RequesterCommand a)
@@ -164,7 +165,7 @@ requesterCmd command = do
 generateAssets
     :: Monad m
     => Directory
-    -> WithContext m (AValidationResult GenerateAssetsFailure ())
+    -> WithContext m (AValidationResult GenerateAssetsFailure Success)
 generateAssets (Directory targetDirectory) = do
     Validation{githubGetFile, writeTextFile} <- askValidation Nothing
     lift $ runValidate $ do
@@ -182,6 +183,7 @@ generateAssets (Directory targetDirectory) = do
         forM_ contents $ \(filename, content) -> do
             let filePath = targetDirectory <> "/" <> filename
             lift $ writeTextFile filePath content
+        pure Success
 
 signKey
     :: (ToJSON m key, Monad m) => KeyAPI -> key -> m (JSValue, Signature)

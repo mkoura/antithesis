@@ -111,6 +111,7 @@ library
     Lib.JSON.Canonical.Extra
     Lib.SSH.Private
     Lib.SSH.Public
+    Lib.System
     MPFS.API
     Options
     Oracle.Cli

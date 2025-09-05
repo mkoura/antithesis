@@ -33,6 +33,7 @@ import Data.Functor.Identity (Identity (..))
 import Data.List (intercalate, nub, sort)
 import Data.String.QQ (s)
 import Lib.JSON.Canonical.Extra (object, (.=))
+import Lib.System (runSystemCommandThrows)
 import Oracle.Validate.Types
     ( AValidationResult (..)
     )
@@ -151,7 +152,7 @@ renderTestRun = BL.unpack . renderCanonicalJSON . runIdentity . toJSON
 collectImagesFromAssets :: Directory -> IO [String]
 collectImagesFromAssets (Directory dirname) = do
     output <-
-        runCommandAndShowErrorOnExitFailure
+        runSystemCommandThrows
             [("INTERNAL_NETWORK", "true")]
             "docker"
             ["compose", "--project-directory", dirname, "config", "--images"]
@@ -201,7 +202,7 @@ renderPostToAntithesis (AntithesisAuth username password) request =
     in  (curlArgs :: (String, [String]))
 
 curl :: (String, [String]) -> IO String
-curl (command, args) = runCommandAndShowErrorOnExitFailure [] command args
+curl (command, args) = runSystemCommandThrows [] command args
 
 newtype Tag = Tag {tagString :: String}
     deriving (Show, Eq)
@@ -219,27 +220,6 @@ pushConfigImage (Tag tag) =
 newtype Registry = Registry {unRegistry :: String}
     deriving (Show, Eq)
 
-runCommandAndShowErrorOnExitFailure
-    :: [(String, String)]
-    -> String
-    -> [String]
-    -> IO String
-runCommandAndShowErrorOnExitFailure envs command args = do
-    let createProcess = (proc command args){env = Just envs}
-    (exitCode, output, stderr) <-
-        readCreateProcessWithExitCode createProcess ""
-    case exitCode of
-        ExitFailure _ ->
-            error
-                $ command
-                    ++ " "
-                    ++ unwords args
-                    ++ " failed: "
-                    ++ stderr
-                    ++ "\n"
-                    ++ output
-        ExitSuccess -> pure output
-
 buildConfigImage :: Registry -> Directory -> TestRunId -> IO Tag
 buildConfigImage (Registry registry) (Directory context) (TestRunId trId) =
     withSystemTempDirectory
@@ -251,7 +231,7 @@ buildConfigImage (Registry registry) (Directory context) (TestRunId trId) =
                 tag = registry ++ "/" ++ imageName ++ ":" ++ imageTag
             writeFile dockerfilePath dockerfile
             void
-                $ runCommandAndShowErrorOnExitFailure
+                $ runSystemCommandThrows
                     []
                     "docker"
                     [ "build"

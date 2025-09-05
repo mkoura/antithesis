@@ -98,7 +98,7 @@ instance Aeson.ToJSON PostTestRunRequest where
                         , "custom.duration" Aeson..= duration
                         , "antithesis.config_image" Aeson..= config_image
                         , "antithesis.images" Aeson..= intercalate ";" images
-                        , "antithesis.report.recipient"
+                        , "antithesis.report.recipients"
                             Aeson..= intercalate ";" recipients
                         , "antithesis.source" Aeson..= source
                         ]
@@ -177,7 +177,7 @@ getTestRun tk testRunId = do
 
 publishAcceptanceToCardano
     :: Monad m => Wallet -> TestRunId -> WithContext m ()
-publishAcceptanceToCardano _ _ = return ()
+publishAcceptanceToCardano 
 
 data AntithesisAuth = AntithesisAuth
     { username :: String

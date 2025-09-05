@@ -336,6 +336,7 @@ test-suite anti-unit-test
     User.Agent.TypesSpec
     User.Requester.CliSpec
     User.TypesSpec
+    Wallet.CliSpec
 
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:
@@ -364,6 +365,7 @@ test-suite anti-unit-test
     , QuickCheck
     , scientific
     , string-qq
+    , temporary
     , text
 
   build-tool-depends: hspec-discover:hspec-discover

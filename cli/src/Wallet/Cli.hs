@@ -3,6 +3,7 @@
 module Wallet.Cli
     ( walletCmd
     , WalletCommand (..)
+    , WalletError (..)
     ) where
 
 import Control.Monad (replicateM)
@@ -28,6 +29,7 @@ data WalletError
     | WalletMissing
     | WalletAlreadyDecrypted
     | WalletAlreadyEncrypted
+    deriving (Show, Eq)
 
 instance Applicative m => ToJSON m WalletError where
     toJSON WalletPresent = pure $ JSString "Wallet is present"
@@ -44,6 +46,7 @@ data WalletInfo = WalletInfo
     , owner :: Owner
     , encryptedInfo :: Bool
     }
+    deriving (Show, Eq)
 
 instance Monad m => ToJSON m WalletInfo where
     toJSON WalletInfo{address, owner, encryptedInfo} =
@@ -76,6 +79,13 @@ data WalletCommand a where
 deriving instance Show (WalletCommand a)
 deriving instance Eq (WalletCommand a)
 
+failIfWalletExists :: IO Bool -> a -> IO (Either WalletError a)
+failIfWalletExists check result = do
+    exists <- check
+    if exists
+        then return $ Left WalletPresent
+        else return $ Right result
+
 walletCmd :: WalletCommand a -> IO a
 walletCmd (Info wallet) =
     pure
@@ -91,9 +101,7 @@ walletCmd (Create walletFile passphrase) = do
     case walletFromMnemonic True mnemonics of
         Left _e -> walletCmd (Create walletFile passphrase)
         Right wallet -> do
-            writeWallet walletFile mnemonics passphrase
-            return
-                $ Right
+            failIfWalletExists (writeWallet walletFile mnemonics passphrase)
                 $ WalletInfo
                     { address = wallet.address
                     , owner = wallet.owner
@@ -102,9 +110,8 @@ walletCmd (Create walletFile passphrase) = do
 walletCmd (Decrypt wallet walletFileDecr) =
     if encrypted wallet
         then do
-            writeWallet walletFileDecr (mnemonics wallet) Nothing
-            return
-                $ Right
+            failIfWalletExists
+                (writeWallet walletFileDecr (mnemonics wallet) Nothing)
                 $ WalletInfo
                     { address = wallet.address
                     , owner = wallet.owner
@@ -117,9 +124,8 @@ walletCmd (Encrypt wallet passphrase walletFileDecr) =
         then do
             pure $ Left WalletAlreadyEncrypted
         else do
-            writeWallet walletFileDecr (mnemonics wallet) (Just passphrase)
-            pure
-                $ Right
+            failIfWalletExists
+                (writeWallet walletFileDecr (mnemonics wallet) (Just passphrase))
                 $ WalletInfo
                     { address = wallet.address
                     , owner = wallet.owner

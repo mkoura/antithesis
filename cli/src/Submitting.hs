@@ -109,6 +109,7 @@ import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import MPFS.API (getTransaction, submitTransaction)
 import Servant.Client (ClientM)
+import System.Directory (doesFileExist)
 import Text.JSON.Canonical (JSValue (..))
 
 data IfToWait = Wait Int | NoWait
@@ -164,18 +165,23 @@ readWallet
 readWallet = uncurry walletFromMnemonic
 
 writeWallet
-    :: FilePath -> Mnemonics 'DecryptedS -> Maybe Text -> IO ()
+    :: FilePath -> Mnemonics 'DecryptedS -> Maybe Text -> IO Bool
 writeWallet walletFile (ClearText mnemonicsText) passphrase = do
     let mnemonicWords = T.words mnemonicsText
-    case passphrase of
-        Just p -> do
-            encrypted <- encryptText p 10 $ T.unwords mnemonicWords
-            BL.writeFile walletFile $ encode $ Encrypted encrypted
-        Nothing ->
-            BL.writeFile walletFile
-                $ encode
-                $ ClearText
-                $ T.unwords mnemonicWords
+    exists <- doesFileExist walletFile
+    if exists
+        then pure True
+        else do
+            case passphrase of
+                Just p -> do
+                    encrypted <- encryptText p 10 $ T.unwords mnemonicWords
+                    BL.writeFile walletFile $ encode $ Encrypted encrypted
+                Nothing ->
+                    BL.writeFile walletFile
+                        $ encode
+                        $ ClearText
+                        $ T.unwords mnemonicWords
+            pure False
 
 walletFromMnemonic
     :: Bool -> Mnemonics 'DecryptedS -> Either WalletError Wallet

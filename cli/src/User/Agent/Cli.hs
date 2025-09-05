@@ -28,6 +28,7 @@ import Core.Types.Basic
     , Owner
     , Platform
     , Repository
+    , Success (..)
     , TokenId
     )
 import Core.Types.Change (Change (..), Key (..))
@@ -142,7 +143,8 @@ agentCmd = \case
         whiteList tokenId wallet platform repo
     BlackList tokenId wallet platform repo ->
         blackList tokenId wallet platform repo
-    DownloadAssets tokenId key dir -> downloadAssets tokenId key dir
+    DownloadAssets tokenId key dir ->
+        ($> Success) <$> downloadAssets tokenId key dir
     Accept tokenId wallet key () ->
         updateTestRunState tokenId key $ \fact ->
             acceptCommand tokenId wallet fact
@@ -153,13 +155,14 @@ agentCmd = \case
         updateTestRunState tokenId key $ \fact ->
             reportCommand tokenId wallet fact duration url
     PushTest tokenId registry auth wallet dir key ->
-        pushTestToAntithesisIO
-            tokenId
-            registry
-            auth
-            wallet
-            dir
-            key
+        ($> Success)
+            <$> pushTestToAntithesisIO
+                tokenId
+                registry
+                auth
+                wallet
+                dir
+                key
 
 data IsReady = NotReady | Ready
     deriving (Show, Eq)
@@ -220,7 +223,7 @@ data AgentCommand (phase :: IsReady) result where
         -> Repository
         -> AgentCommand
             phase
-            (AValidationResult UpdateWhiteListFailure (WithTxHash ()))
+            (AValidationResult UpdateWhiteListFailure (WithTxHash Success))
     BlackList
         :: TokenId
         -> Wallet
@@ -228,14 +231,14 @@ data AgentCommand (phase :: IsReady) result where
         -> Repository
         -> AgentCommand
             phase
-            (AValidationResult UpdateWhiteListFailure (WithTxHash ()))
+            (AValidationResult UpdateWhiteListFailure (WithTxHash Success))
     DownloadAssets
         :: TokenId
         -> TestRunId
         -> Directory
         -> AgentCommand
             phase
-            (AValidationResult DownloadAssetsFailure ())
+            (AValidationResult DownloadAssetsFailure Success)
     PushTest
         :: TokenId
         -> Registry
@@ -243,7 +246,7 @@ data AgentCommand (phase :: IsReady) result where
         -> Wallet
         -> Directory
         -> TestRunId
-        -> AgentCommand phase (AValidationResult PushFailure ())
+        -> AgentCommand phase (AValidationResult PushFailure Success)
 
 deriving instance Show (AgentCommand NotReady result)
 deriving instance Eq (AgentCommand NotReady result)
@@ -260,7 +263,7 @@ whiteList
         m
         ( AValidationResult
             UpdateWhiteListFailure
-            (WithTxHash ())
+            (WithTxHash Success)
         )
 whiteList tokenId wallet platform repo = do
     let key = WhiteListKey platform repo
@@ -281,7 +284,7 @@ whiteList tokenId wallet platform repo = do
             jkey <- toJSON key
             mpfsRequestInsert mpfs address tokenId
                 $ RequestInsertBody{key = jkey, value = JSNull}
-        pure $ wtx $> ()
+        pure $ wtx $> Success
 
 blackList
     :: Monad m
@@ -293,7 +296,7 @@ blackList
         m
         ( AValidationResult
             UpdateWhiteListFailure
-            (WithTxHash ())
+            (WithTxHash Success)
         )
 blackList tokenId wallet platform repo = do
     let key = WhiteListKey platform repo
@@ -311,7 +314,7 @@ blackList tokenId wallet platform repo = do
             jkey <- toJSON key
             mpfsRequestDelete mpfs address tokenId
                 $ RequestDeleteBody{key = jkey, value = JSNull}
-        pure $ wtx $> ()
+        pure $ wtx $> Success
 
 queryCommand :: Monad m => TokenId -> WithContext m TestRunMap
 queryCommand tokenId = do

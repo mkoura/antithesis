@@ -13,7 +13,7 @@ import Core.Options
     , tokenIdOption
     , walletOption
     )
-import Core.Types.Basic (Duration (..))
+import Core.Types.Basic (Duration (..), Success)
 import Core.Types.Mnemonics.Options (queryConsole)
 import Core.Types.Tx (WithTxHash)
 import Data.Functor (($>))
@@ -90,7 +90,7 @@ pushTestOptions
     :: Parser
         ( AgentCommand
             NotReady
-            (AValidationResult PushFailure ())
+            (AValidationResult PushFailure Success)
         )
 pushTestOptions =
     PushTest
@@ -145,7 +145,7 @@ downloadAssetsOptions
             NotReady
             ( AValidationResult
                 DownloadAssetsFailure
-                ()
+                Success
             )
         )
 downloadAssetsOptions =
@@ -160,7 +160,7 @@ whitelistRepositoryOptions
             phase
             ( AValidationResult
                 UpdateWhiteListFailure
-                (WithTxHash ())
+                (WithTxHash Success)
             )
         )
 whitelistRepositoryOptions =
@@ -176,7 +176,7 @@ blacklistRepositoryOptions
             phase
             ( AValidationResult
                 UpdateWhiteListFailure
-                (WithTxHash ())
+                (WithTxHash Success)
             )
         )
 blacklistRepositoryOptions =

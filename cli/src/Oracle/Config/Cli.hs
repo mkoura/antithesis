@@ -6,18 +6,23 @@ where
 
 import Control.Monad.Trans.Class (lift)
 import Core.Context (WithContext, askMpfs, askSubmit)
-import Core.Types.Basic (TokenId)
+import Core.Types.Basic (Success (..), TokenId)
 import Core.Types.Tx (WithTxHash (..))
 import Core.Types.Wallet (Wallet)
-import Data.Functor (void)
+import Data.Functor (($>))
 import Facts (FactsSelection (..), factsCmd)
 import MPFS.API
-import Oracle.Config.Types
+    ( MPFS (mpfsRequestInsert, mpfsRequestUpdate)
+    , RequestInsertBody (RequestInsertBody, key, value)
+    , RequestUpdateBody (RequestUpdateBody, key, newValue, oldValue)
+    )
+import Oracle.Config.Types (Config, ConfigKey (ConfigKey))
 import Submitting (Submission (..))
-import Text.JSON.Canonical
+import Text.JSON.Canonical (ToJSON (toJSON))
 
 data ConfigCmd a where
-    SetConfig :: TokenId -> Wallet -> Config -> ConfigCmd (WithTxHash ())
+    SetConfig
+        :: TokenId -> Wallet -> Config -> ConfigCmd (WithTxHash Success)
 
 deriving instance Show (ConfigCmd a)
 deriving instance Eq (ConfigCmd a)
@@ -33,7 +38,7 @@ configCmd (SetConfig tokenId wallet config) = do
     case present of
         [oldConfig] -> do
             oldValue <- toJSON oldConfig
-            lift $ fmap void $ submit $ \address ->
+            lift $ fmap ($> Success) $ submit $ \address ->
                 mpfsRequestUpdate mpfs address tokenId
                     $ RequestUpdateBody
                         { key = jkey
@@ -41,6 +46,6 @@ configCmd (SetConfig tokenId wallet config) = do
                         , oldValue
                         }
         _ -> do
-            lift $ fmap void $ submit $ \address ->
+            lift $ fmap ($> Success) $ submit $ \address ->
                 mpfsRequestInsert mpfs address tokenId
                     $ RequestInsertBody{key = jkey, value = jvalue}

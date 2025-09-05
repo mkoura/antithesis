@@ -17,6 +17,7 @@ module Core.Types.Basic
     , TokenId (..)
     , Try (..)
     , Username (..)
+    , Success (..)
     , organizationL
     , projectL
     )
@@ -203,3 +204,9 @@ newtype Try = Try Int
     deriving (Eq, Show, Ord, Enum, Num, Generic)
 
 instance Wrapped Try
+
+data Success = Success
+    deriving (Eq, Show)
+
+instance Monad m => ToJSON m Success where
+    toJSON Success = pure $ JSString "OK"

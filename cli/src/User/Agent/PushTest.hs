@@ -263,9 +263,32 @@ buildConfigImage (Registry registry) (Directory context) (TestRunId trId) =
                     ]
             return $ Tag tag
 
-data PushFailure = AntithesisNotResponding | PushFailed String
+data PushFailure
+    = DockerBuildFailure String
+    | DockerPushFailure String
+    | DockerComposeFailure String
+    | Couldn'tResolveTestRunId TestRunId
+    | PublishAccepanceFailure String
     deriving (Show, Eq)
 
 instance Monad m => ToJSON m PushFailure where
-    toJSON AntithesisNotResponding = object ["AntithesisNotResponding" .= ()]
-    toJSON (PushFailed msg) = object ["PushFailed" .= msg]
+    toJSON (DockerBuildFailure msg) =
+        object
+            [ "dockerBuildFailure" .= msg
+            ]
+    toJSON (DockerPushFailure msg) =
+        object
+            [ "dockerPushFailure" .= msg
+            ]
+    toJSON (DockerComposeFailure msg) =
+        object
+            [ "dockerComposeFailure" .= msg
+            ]
+    toJSON (Couldn'tResolveTestRunId (TestRunId trId)) =
+        object
+            [ "couldntResolveTestRunId" .= trId
+            ]
+    toJSON (PublishAccepanceFailure msg) =
+        object
+            [ "publishAcceptanceFailure" .= msg
+            ]

@@ -17,6 +17,7 @@ where
 
 import Control.Monad (void)
 import Control.Monad.IO.Class (MonadIO (..))
+import Control.Monad.Trans.Class (MonadTrans (..))
 import Core.Context
     ( WithContext
     )
@@ -29,22 +30,20 @@ import Core.Types.Fact (Fact (..))
 import Core.Types.Wallet (Wallet (..))
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy.Char8 qualified as BL
+import Data.Functor (($>), (<&>))
 import Data.Functor.Identity (Identity (..))
 import Data.List (intercalate, nub, sort)
 import Data.String.QQ (s)
 import Lib.JSON.Canonical.Extra (object, (.=))
-import Lib.System (runSystemCommandThrows)
+import Lib.System (runSystemCommand, runSystemCommandThrows)
 import Oracle.Validate.Types
     ( AValidationResult (..)
+    , Validate
+    , liftMaybe
+    , runValidate
+    , throwLeft
     )
-import System.Exit (ExitCode (..))
 import System.IO.Temp (withSystemTempDirectory)
-import System.Process
-    ( CreateProcess (..)
-    , proc
-    , readCreateProcessWithExitCode
-    , readProcess
-    )
 import Text.JSON.Canonical
     ( ToJSON (..)
     , renderCanonicalJSON
@@ -127,10 +126,13 @@ pushTestToAntithesisIO
     auth
     wallet
     dir
-    testRunId@(TestRunId trId) = do
-        tag <- liftIO $ buildConfigImage registry dir testRunId
-        liftIO $ pushConfigImage tag
-        images <- liftIO $ collectImagesFromAssets dir
+    testRunId@(TestRunId trId) = runValidate $ do
+        etag <- liftIO $ buildConfigImage registry dir testRunId
+        tag <- throwLeft DockerBuildFailure etag
+        epush <- liftIO $ pushConfigImage tag
+        void $ throwLeft DockerPushFailure epush
+        eimages <- liftIO $ collectImagesFromAssets dir
+        images <- throwLeft DockerComposeFailure eimages
         (tr, Duration duration) <- getTestRun tk testRunId
         let body =
                 PostTestRunRequest
@@ -143,34 +145,34 @@ pushTestToAntithesisIO
                     }
             post = renderPostToAntithesis auth body
         void $ liftIO $ curl post
-        publishAcceptanceToCardano wallet testRunId
-        return $ ValidationSuccess ()
+        lift $ publishAcceptanceToCardano wallet testRunId
 
 renderTestRun :: TestRun -> String
 renderTestRun = BL.unpack . renderCanonicalJSON . runIdentity . toJSON
 
-collectImagesFromAssets :: Directory -> IO [String]
+collectImagesFromAssets :: Directory -> IO (Either String [String])
 collectImagesFromAssets (Directory dirname) = do
     output <-
-        runSystemCommandThrows
+        runSystemCommand
             [("INTERNAL_NETWORK", "true")]
             "docker"
             ["compose", "--project-directory", dirname, "config", "--images"]
-    let images = nub $ sort $ filter (not . null) $ lines output
-    return images
+    let images = nub . sort . filter (not . null) . lines
+    return $ output <&> images
 
 getTestRun
     :: Monad m
     => TokenId
     -> TestRunId
-    -> WithContext
-        m
+    -> Validate
+        PushFailure
+        (WithContext m)
         (TestRun, Duration)
 getTestRun tk testRunId = do
-    mts <- resolveTestRunId @'PendingT tk testRunId
-    case mts of
-        Nothing -> error "TestRunId could not be resolved"
-        Just (Fact tr (Pending dur _)) -> return (tr, dur)
+    mts <- lift $ resolveTestRunId @'PendingT tk testRunId
+    r <- liftMaybe (Couldn'tResolveTestRunId testRunId) mts
+    case r of
+        Fact tr (Pending dur _) -> return (tr, dur)
 
 publishAcceptanceToCardano
     :: Monad m => Wallet -> TestRunId -> WithContext m ()
@@ -207,20 +209,20 @@ curl (command, args) = runSystemCommandThrows [] command args
 newtype Tag = Tag {tagString :: String}
     deriving (Show, Eq)
 
-pushConfigImage :: Tag -> IO ()
+pushConfigImage :: Tag -> IO (Either String String)
 pushConfigImage (Tag tag) =
-    void
-        $ readProcess
-            "docker"
-            [ "push"
-            , tag
-            ]
-            ""
+    runSystemCommand
+        []
+        "docker"
+        [ "push"
+        , tag
+        ]
 
 newtype Registry = Registry {unRegistry :: String}
     deriving (Show, Eq)
 
-buildConfigImage :: Registry -> Directory -> TestRunId -> IO Tag
+buildConfigImage
+    :: Registry -> Directory -> TestRunId -> IO (Either String Tag)
 buildConfigImage (Registry registry) (Directory context) (TestRunId trId) =
     withSystemTempDirectory
         "anti-cli-test"
@@ -230,18 +232,17 @@ buildConfigImage (Registry registry) (Directory context) (TestRunId trId) =
                 imageTag = take 10 trId
                 tag = registry ++ "/" ++ imageName ++ ":" ++ imageTag
             writeFile dockerfilePath dockerfile
-            void
-                $ runSystemCommandThrows
-                    []
-                    "docker"
-                    [ "build"
-                    , "-f"
-                    , dockerfilePath
-                    , "-t"
-                    , tag
-                    , context
-                    ]
-            return $ Tag tag
+            runSystemCommand
+                []
+                "docker"
+                [ "build"
+                , "-f"
+                , dockerfilePath
+                , "-t"
+                , tag
+                , context
+                ]
+                <&> ($> Tag tag)
 
 data PushFailure
     = DockerBuildFailure String

@@ -22,24 +22,26 @@ spec = do
         it "should collect images from a docker-compose file" $ do
             -- Here you would write tests for the collectImagesFromAssets function
             collectImagesFromAssets (Directory "test/data")
-                `shouldReturn` [ "ghcr.io/cardano-foundation/antithesis/configurator:latest"
-                               , "ghcr.io/cardano-foundation/antithesis/sidecar:latest"
-                               , "ghcr.io/cardano-foundation/antithesis/tracer-sidecar:latest"
-                               , "ghcr.io/cardano-foundation/antithesis/tracer:latest"
-                               , "ghcr.io/intersectmbo/cardano-node:latest"
-                               ]
+                `shouldReturn` Right
+                    [ "ghcr.io/cardano-foundation/antithesis/configurator:latest"
+                    , "ghcr.io/cardano-foundation/antithesis/sidecar:latest"
+                    , "ghcr.io/cardano-foundation/antithesis/tracer-sidecar:latest"
+                    , "ghcr.io/cardano-foundation/antithesis/tracer:latest"
+                    , "ghcr.io/intersectmbo/cardano-node:latest"
+                    ]
     describe "buildConfigImage" $ do
         it "should build the Dockerfile for the cardano_node_master" $ do
             buildConfigImage
                 (Registry "registry")
                 (Directory "test/data")
                 (TestRunId "dummy")
-                `shouldReturn` Tag "registry/cardano-anti-cli-config:dummy"
+                `shouldReturn` Right
+                    (Tag "registry/cardano-anti-cli-config:dummy")
     describe "renderPostToAntithesis" $ do
         it "should render the curl command for pushing to Antithesis" $ do
-            images <-
+            Right images <-
                 collectImagesFromAssets (Directory "test/data")
-            configTag <-
+            Right configTag <-
                 buildConfigImage
                     (Registry "registry")
                     (Directory "test/data")

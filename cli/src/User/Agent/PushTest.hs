@@ -35,7 +35,7 @@ import Data.Functor.Identity (Identity (..))
 import Data.List (intercalate, nub, sort)
 import Data.String.QQ (s)
 import Lib.JSON.Canonical.Extra (object, (.=))
-import Lib.System (runSystemCommand, runSystemCommandThrows)
+import Lib.System (runSystemCommand)
 import Oracle.Validate.Types
     ( AValidationResult (..)
     , Validate
@@ -144,7 +144,8 @@ pushTestToAntithesisIO
                     , source = trId
                     }
             post = renderPostToAntithesis auth body
-        void $ liftIO $ curl post
+        epost <- liftIO $ curl post
+        void $ throwLeft PostToAntithesisFailure epost
         lift $ publishAcceptanceToCardano wallet testRunId
 
 renderTestRun :: TestRun -> String
@@ -203,8 +204,8 @@ renderPostToAntithesis (AntithesisAuth username password) request =
             ]
     in  (curlArgs :: (String, [String]))
 
-curl :: (String, [String]) -> IO String
-curl (command, args) = runSystemCommandThrows [] command args
+curl :: (String, [String]) -> IO (Either String String)
+curl (command, args) = runSystemCommand [] command args
 
 newtype Tag = Tag {tagString :: String}
     deriving (Show, Eq)
@@ -249,6 +250,7 @@ data PushFailure
     | DockerPushFailure String
     | DockerComposeFailure String
     | Couldn'tResolveTestRunId TestRunId
+    | PostToAntithesisFailure String
     | PublishAccepanceFailure String
     deriving (Show, Eq)
 
@@ -268,6 +270,10 @@ instance Monad m => ToJSON m PushFailure where
     toJSON (Couldn'tResolveTestRunId (TestRunId trId)) =
         object
             [ "couldntResolveTestRunId" .= trId
+            ]
+    toJSON (PostToAntithesisFailure msg) =
+        object
+            [ "postToAntithesisFailure" .= msg
             ]
     toJSON (PublishAccepanceFailure msg) =
         object

@@ -66,6 +66,7 @@ import Oracle.Validate.Types
     , Validated
     , hoistValidate
     , liftMaybe
+    , mapFailure
     , runValidate
     )
 import Submitting (Submission (..))
@@ -76,7 +77,7 @@ import Text.JSON.Canonical
     )
 import User.Agent.PushTest
     ( AntithesisAuth
-    , PushFailure
+    , PushFailure (PublishAcceptanceFailure)
     , Registry
     , pushTestToAntithesisIO
     )
@@ -129,9 +130,8 @@ updateTestRunState
     -> ( Fact TestRun (TestRunState phase)
          -> ValidateWithContext m a
        )
-    -> WithContext m (AValidationResult UpdateTestRunFailure a)
-updateTestRunState tokenId key =
-    runValidate . withPreviousTestRunState tokenId key
+    -> Validate UpdateTestRunFailure (WithContext m) a
+updateTestRunState = withPreviousTestRunState
 
 agentCmd
     :: MonadIO m
@@ -145,24 +145,29 @@ agentCmd = \case
         blackList tokenId wallet platform repo
     DownloadAssets tokenId key dir ->
         ($> Success) <$> downloadAssets tokenId key dir
-    Accept tokenId wallet key () ->
-        updateTestRunState tokenId key $ \fact ->
+    Accept tokenId wallet key () -> runValidate
+        $ updateTestRunState tokenId key
+        $ \fact ->
             acceptCommand tokenId wallet fact
-    Reject tokenId wallet key () reason ->
-        updateTestRunState tokenId key $ \fact ->
+    Reject tokenId wallet key () reason -> runValidate
+        $ updateTestRunState tokenId key
+        $ \fact ->
             rejectCommand tokenId wallet fact reason
-    Report tokenId wallet key () duration url ->
-        updateTestRunState tokenId key $ \fact ->
+    Report tokenId wallet key () duration url -> runValidate
+        $ updateTestRunState tokenId key
+        $ \fact ->
             reportCommand tokenId wallet fact duration url
-    PushTest tokenId registry auth wallet dir key ->
-        ($> Success)
-            <$> pushTestToAntithesisIO
-                tokenId
-                registry
-                auth
-                wallet
-                dir
-                key
+    PushTest tokenId registry auth wallet dir key -> runValidate $ do
+        pushTestToAntithesisIO
+            tokenId
+            registry
+            auth
+            dir
+            key
+        mapFailure PublishAcceptanceFailure
+            $ updateTestRunState tokenId key
+            $ \fact ->
+                acceptCommand tokenId wallet fact
 
 data IsReady = NotReady | Ready
     deriving (Show, Eq)
@@ -246,7 +251,9 @@ data AgentCommand (phase :: IsReady) result where
         -> Wallet
         -> Directory
         -> TestRunId
-        -> AgentCommand phase (AValidationResult PushFailure Success)
+        -> AgentCommand
+            phase
+            (AValidationResult PushFailure (WithTxHash (TestRunState RunningT)))
 
 deriving instance Show (AgentCommand NotReady result)
 deriving instance Eq (AgentCommand NotReady result)
@@ -346,7 +353,7 @@ signAndSubmitAnUpdate
     => ( Validation m
          -> Owner
          -> Owner
-         -> Change key (OpU old new)
+         -> Change key ('OpU old new)
          -> Validate UpdateTestRunFailure m Validated
        )
     -> TokenId

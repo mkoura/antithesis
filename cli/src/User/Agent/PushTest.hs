@@ -36,11 +36,11 @@ import Data.List (intercalate, nub, sort)
 import Data.String.QQ (s)
 import Lib.JSON.Canonical.Extra (object, (.=))
 import Lib.System (runSystemCommand)
+import Oracle.Validate.Requests.TestRun.Update (UpdateTestRunFailure)
 import Oracle.Validate.Types
     ( AValidationResult (..)
     , Validate
     , liftMaybe
-    , runValidate
     , throwLeft
     )
 import System.IO.Temp (withSystemTempDirectory)
@@ -116,17 +116,15 @@ pushTestToAntithesisIO
     => TokenId
     -> Registry
     -> AntithesisAuth
-    -> Wallet
     -> Directory
     -> TestRunId
-    -> WithContext m (AValidationResult PushFailure ())
+    -> Validate PushFailure (WithContext m) ()
 pushTestToAntithesisIO
     tk
     registry
     auth
-    wallet
     dir
-    testRunId@(TestRunId trId) = runValidate $ do
+    testRunId@(TestRunId trId) = do
         etag <- liftIO $ buildConfigImage registry dir testRunId
         tag <- throwLeft DockerBuildFailure etag
         epush <- liftIO $ pushConfigImage tag
@@ -146,7 +144,6 @@ pushTestToAntithesisIO
             post = renderPostToAntithesis auth body
         epost <- liftIO $ curl post
         void $ throwLeft PostToAntithesisFailure epost
-        lift $ publishAcceptanceToCardano wallet testRunId
 
 renderTestRun :: TestRun -> String
 renderTestRun = BL.unpack . renderCanonicalJSON . runIdentity . toJSON
@@ -174,10 +171,6 @@ getTestRun tk testRunId = do
     r <- liftMaybe (Couldn'tResolveTestRunId testRunId) mts
     case r of
         Fact tr (Pending dur _) -> return (tr, dur)
-
-publishAcceptanceToCardano
-    :: Monad m => Wallet -> TestRunId -> WithContext m ()
-publishAcceptanceToCardano 
 
 data AntithesisAuth = AntithesisAuth
     { username :: String
@@ -251,7 +244,7 @@ data PushFailure
     | DockerComposeFailure String
     | Couldn'tResolveTestRunId TestRunId
     | PostToAntithesisFailure String
-    | PublishAccepanceFailure String
+    | PublishAcceptanceFailure UpdateTestRunFailure
     deriving (Show, Eq)
 
 instance Monad m => ToJSON m PushFailure where
@@ -275,7 +268,7 @@ instance Monad m => ToJSON m PushFailure where
         object
             [ "postToAntithesisFailure" .= msg
             ]
-    toJSON (PublishAccepanceFailure msg) =
+    toJSON (PublishAcceptanceFailure msg) =
         object
             [ "publishAcceptanceFailure" .= msg
             ]

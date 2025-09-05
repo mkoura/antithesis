@@ -90,7 +90,7 @@ pushTestOptions
     :: Parser
         ( AgentCommand
             NotReady
-            (AValidationResult PushFailure Success)
+            (AValidationResult PushFailure (WithTxHash (TestRunState RunningT)))
         )
 pushTestOptions =
     PushTest

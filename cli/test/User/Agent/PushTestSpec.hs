@@ -34,7 +34,7 @@ spec = do
                 (Registry "registry")
                 (Directory "test/data")
                 (TestRunId "dummy")
-                `shouldReturn` Tag "registry/dummy"
+                `shouldReturn` Tag "registry/cardano-anti-cli-config:dummy"
     describe "renderPostToAntithesis" $ do
         it "should render the curl command for pushing to Antithesis" $ do
             images <-
@@ -66,5 +66,5 @@ spec = do
                            , "-H"
                            , "Content-Type: application/json"
                            , "-d"
-                           , "{\"params\":{\"antithesis.config_image\":\"registry/dummy\",\"antithesis.description\":\"Test Run\",\"antithesis.images\":\"ghcr.io/cardano-foundation/antithesis/configurator:latest;ghcr.io/cardano-foundation/antithesis/sidecar:latest;ghcr.io/cardano-foundation/antithesis/tracer-sidecar:latest;ghcr.io/cardano-foundation/antithesis/tracer:latest;ghcr.io/intersectmbo/cardano-node:latest\",\"antithesis.report.recipient\":\"hal@cardanofoundation.org\",\"antithesis.source\":\"dummy\",\"custom.duration\":3600}}"
+                           , "{\"params\":{\"antithesis.config_image\":\"registry/cardano-anti-cli-config:dummy\",\"antithesis.description\":\"Test Run\",\"antithesis.images\":\"ghcr.io/cardano-foundation/antithesis/configurator:latest;ghcr.io/cardano-foundation/antithesis/sidecar:latest;ghcr.io/cardano-foundation/antithesis/tracer-sidecar:latest;ghcr.io/cardano-foundation/antithesis/tracer:latest;ghcr.io/intersectmbo/cardano-node:latest\",\"antithesis.report.recipient\":\"hal@cardanofoundation.org\",\"antithesis.source\":\"dummy\",\"custom.duration\":3600}}"
                            ]

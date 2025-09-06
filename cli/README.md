@@ -140,7 +140,7 @@ For the both cases `ANTI_WALLET_FILE` is set as before.
 This is the unique token that identifies the Antithesis access interface. You need to refer to it setting the `ANTI_TOKEN_ID` environment variable.
 
 ```bash
-export ANTI_TOKEN_ID=865ebcf5e1d6bafcc121030a6e167474a426271d965b78e36d90485adf540575
+export ANTI_TOKEN_ID=21c523c3b4565f1fc1ad7e54e82ca976f60997d8e7e9946826813fabf341069b
 ```
 
 ### Set the timeout for the `anti` command

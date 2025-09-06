@@ -3,9 +3,15 @@ module User.Agent.PushTestSpec
     )
 where
 
-import Core.Types.Basic (Directory (..))
-import Test.Hspec
-import User.Agent.Cli (TestRunId (..))
+import Core.Types.Basic
+    ( Commit (..)
+    , Directory (..)
+    , Platform (..)
+    , Repository (..)
+    , Try (..)
+    , Username (..)
+    )
+import Test.Hspec (Spec, describe, it, shouldBe, shouldReturn)
 import User.Agent.PushTest
     ( AntithesisAuth (..)
     , PostTestRunRequest (..)
@@ -14,7 +20,10 @@ import User.Agent.PushTest
     , buildConfigImage
     , collectImagesFromAssets
     , renderPostToAntithesis
+    , renderTestRun
     )
+import User.Agent.Types (TestRunId (..))
+import User.Types (TestRun (..))
 
 spec :: Spec
 spec = do
@@ -46,10 +55,21 @@ spec = do
                     (Registry "registry")
                     (Directory "test/data")
                     (TestRunId "dummy")
-            let auth = AntithesisAuth "user" "pass"
+            let
+                testRun =
+                    TestRun
+                        { platform = Platform "github"
+                        , repository = Repository "cardano-foundation" "antithesis"
+                        , directory = Directory "tests"
+                        , commitId = Commit "abcdef1234567890"
+                        , tryIndex = Try 1
+                        , requester = Username "alice"
+                        }
+                testRunId = TestRunId "test-run-001"
+                auth = AntithesisAuth "user" "pass"
                 body =
                     PostTestRunRequest
-                        { description = "Test Run"
+                        { description = renderTestRun testRunId testRun
                         , duration = 3600
                         , config_image = tagString configTag
                         , images = images
@@ -68,5 +88,5 @@ spec = do
                            , "-H"
                            , "Content-Type: application/json"
                            , "-d"
-                           , "{\"params\":{\"antithesis.config_image\":\"registry/cardano-anti-cli-config:dummy\",\"antithesis.description\":\"Test Run\",\"antithesis.images\":\"ghcr.io/cardano-foundation/antithesis/configurator:latest;ghcr.io/cardano-foundation/antithesis/sidecar:latest;ghcr.io/cardano-foundation/antithesis/tracer-sidecar:latest;ghcr.io/cardano-foundation/antithesis/tracer:latest;ghcr.io/intersectmbo/cardano-node:latest\",\"antithesis.report.recipients\":\"hal@cardanofoundation.org\",\"antithesis.source\":\"dummy\",\"custom.duration\":3600}}"
+                           , "{\"params\":{\"antithesis.config_image\":\"registry/cardano-anti-cli-config:dummy\",\"antithesis.description\":\"{\\\"id\\\":\\\"test-run-001\\\",\\\"key\\\":{\\\"commitId\\\":\\\"abcdef1234567890\\\",\\\"directory\\\":\\\"tests\\\",\\\"platform\\\":\\\"github\\\",\\\"repository\\\":{\\\"organization\\\":\\\"cardano-foundation\\\",\\\"repo\\\":\\\"antithesis\\\"},\\\"requester\\\":\\\"alice\\\",\\\"try\\\":1,\\\"type\\\":\\\"test-run\\\"}}\",\"antithesis.images\":\"ghcr.io/cardano-foundation/antithesis/configurator:latest;ghcr.io/cardano-foundation/antithesis/sidecar:latest;ghcr.io/cardano-foundation/antithesis/tracer-sidecar:latest;ghcr.io/cardano-foundation/antithesis/tracer:latest;ghcr.io/intersectmbo/cardano-node:latest\",\"antithesis.report.recipients\":\"hal@cardanofoundation.org\",\"antithesis.source\":\"dummy\",\"custom.duration\":3600}}"
                            ]

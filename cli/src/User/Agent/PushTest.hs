@@ -12,6 +12,7 @@ module User.Agent.PushTest
     , Tag (..)
     , AntithesisAuth (..)
     , renderPostToAntithesis
+    , renderTestRun
     )
 where
 
@@ -45,7 +46,8 @@ import Oracle.Validate.Types
     )
 import System.IO.Temp (withSystemTempDirectory)
 import Text.JSON.Canonical
-    ( ToJSON (..)
+    ( JSValue
+    , ToJSON (..)
     , renderCanonicalJSON
     )
 import User.Agent.Lib (resolveTestRunId)
@@ -134,7 +136,7 @@ pushTestToAntithesisIO
         (tr, Duration duration) <- getTestRun tk testRunId
         let body =
                 PostTestRunRequest
-                    { description = renderTestRun tr
+                    { description = renderTestRun testRunId tr
                     , duration = realToFrac duration
                     , config_image = tagString tag
                     , images
@@ -145,8 +147,17 @@ pushTestToAntithesisIO
         epost <- liftIO $ curl post
         void $ throwLeft PostToAntithesisFailure epost
 
-renderTestRun :: TestRun -> String
-renderTestRun = BL.unpack . renderCanonicalJSON . runIdentity . toJSON
+renderTestRun :: TestRunId -> TestRun -> String
+renderTestRun trId tr =
+    BL.unpack . renderCanonicalJSON . runIdentity
+        $ jsonPatchedTestRun trId tr
+
+jsonPatchedTestRun :: Monad m => TestRunId -> TestRun -> m JSValue
+jsonPatchedTestRun (TestRunId trId) tr =
+    object
+        [ "id" .= trId
+        , "key" .= tr
+        ]
 
 collectImagesFromAssets :: Directory -> IO (Either String [String])
 collectImagesFromAssets (Directory dirname) = do

@@ -79,6 +79,7 @@ import User.Agent.PushTest
     ( AntithesisAuth
     , PushFailure (PublishAcceptanceFailure)
     , Registry
+    , SlackWebhook
     , pushTestToAntithesisIO
     )
 import User.Agent.Types
@@ -157,13 +158,14 @@ agentCmd = \case
         $ updateTestRunState tokenId key
         $ \fact ->
             reportCommand tokenId wallet fact duration url
-    PushTest tokenId registry auth wallet dir key -> runValidate $ do
+    PushTest tokenId registry auth wallet dir key slack -> runValidate $ do
         pushTestToAntithesisIO
             tokenId
             registry
             auth
             dir
             key
+            slack
         mapFailure PublishAcceptanceFailure
             $ updateTestRunState tokenId key
             $ \fact ->
@@ -251,6 +253,7 @@ data AgentCommand (phase :: IsReady) result where
         -> Wallet
         -> Directory
         -> TestRunId
+        -> Maybe SlackWebhook
         -> AgentCommand
             phase
             (AValidationResult PushFailure (WithTxHash (TestRunState RunningT)))

@@ -75,6 +75,7 @@ spec = do
                         , images = images
                         , recipients = ["hal@cardanofoundation.org"]
                         , source = "dummy"
+                        , slack = Nothing
                         }
                 (cmd, args) = renderPostToAntithesis auth body
             cmd `shouldBe` "curl"

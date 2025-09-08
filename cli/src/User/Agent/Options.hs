@@ -28,6 +28,7 @@ import OptEnvConf
     , long
     , metavar
     , option
+    , optional
     , reader
     , setting
     , short
@@ -50,6 +51,7 @@ import User.Agent.PushTest
     ( AntithesisAuth (..)
     , PushFailure
     , Registry (..)
+    , SlackWebhook (..)
     )
 import User.Agent.Types (TestRunMap)
 import User.Types
@@ -95,6 +97,18 @@ pushTestOptions =
         <*> walletOption
         <*> downloadAssetsDirectoryOption
         <*> testRunIdOption "push assets from"
+        <*> slackOption
+
+slackOption :: Parser (Maybe SlackWebhook)
+slackOption =
+    optional
+        $ SlackWebhook
+            <$> secretsParser
+                "Enter the Slack webhook URL for notifications"
+                "The Slack webhook URL for notifications"
+                "ANTI_SLACK_WEBHOOK"
+                "SLACK_WEBHOOK"
+                "ask-slack-webhook"
 
 registryOption :: Parser Registry
 registryOption =

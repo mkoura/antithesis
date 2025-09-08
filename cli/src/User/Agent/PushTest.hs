@@ -13,6 +13,7 @@ module User.Agent.PushTest
     , AntithesisAuth (..)
     , renderPostToAntithesis
     , renderTestRun
+    , SlackWebhook (..)
     )
 where
 
@@ -79,6 +80,7 @@ data PostTestRunRequest = PostTestRunRequest
     , images :: [String]
     , recipients :: [String]
     , source :: String
+    , slack :: Maybe String
     }
     deriving (Show, Eq)
 
@@ -92,20 +94,28 @@ instance Aeson.ToJSON PostTestRunRequest where
             , images
             , recipients
             , source
+            , slack
             } =
             Aeson.object
                 [ "params"
-                    Aeson..= Aeson.object
-                        [ "antithesis.description" Aeson..= description
-                        , "custom.duration" Aeson..= duration
-                        , "antithesis.config_image" Aeson..= config_image
-                        , "antithesis.images" Aeson..= intercalate ";" images
-                        , "antithesis.report.recipients"
-                            Aeson..= intercalate ";" recipients
-                        , "antithesis.source" Aeson..= source
-                        ]
+                    Aeson..= Aeson.object fields
                 ]
-
+          where
+            fields =
+                [ "antithesis.description" Aeson..= description
+                , "custom.duration" Aeson..= duration
+                , "antithesis.config_image" Aeson..= config_image
+                , "antithesis.images" Aeson..= intercalate ";" images
+                , "antithesis.report.recipients"
+                    Aeson..= intercalate ";" recipients
+                , "antithesis.source" Aeson..= source
+                ]
+                    <> maybe
+                        []
+                        ( \wh ->
+                            ["antithesis.integrations.slack.callback_url" Aeson..= wh]
+                        )
+                        slack
 pushTestToAntithesis
     :: Wallet
     -> Directory
@@ -120,13 +130,15 @@ pushTestToAntithesisIO
     -> AntithesisAuth
     -> Directory
     -> TestRunId
+    -> Maybe SlackWebhook
     -> Validate PushFailure (WithContext m) ()
 pushTestToAntithesisIO
     tk
     registry
     auth
     dir
-    testRunId@(TestRunId trId) = do
+    testRunId@(TestRunId trId)
+    slack = do
         etag <- liftIO $ buildConfigImage registry dir testRunId
         tag <- throwLeft DockerBuildFailure etag
         epush <- liftIO $ pushConfigImage tag
@@ -142,6 +154,7 @@ pushTestToAntithesisIO
                     , images
                     , recipients = ["antithesis@cardanofoundation.org"]
                     , source = trId
+                    , slack = fmap unSlackWebhook slack
                     }
             post = renderPostToAntithesis auth body
         epost <- liftIO $ curl post
@@ -283,3 +296,6 @@ instance Monad m => ToJSON m PushFailure where
         object
             [ "publishAcceptanceFailure" .= msg
             ]
+
+newtype SlackWebhook = SlackWebhook {unSlackWebhook :: String}
+    deriving (Show, Eq)

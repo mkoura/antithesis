@@ -150,31 +150,32 @@ clientChainSync magic peerName peerPort startingPoint limit = withIOManager $ \i
         -- To gracefully handle the node getting killed it seems we need
         -- the outer 'try', even if connectToNode already returns 'Either
         -- SomeException'.
-        try $ connectToNode
-            (socketSnocket iocp)
-            makeSocketBearer
-            ConnectToArgs
-                { ctaHandshakeCodec = nodeToNodeHandshakeCodec
-                , ctaHandshakeTimeLimits = noTimeLimitsHandshake
-                , ctaVersionDataCodec = cborTermVersionDataCodec nodeToNodeCodecCBORTerm
-                , ctaConnectTracers = nullNetworkConnectTracers
-                , ctaHandshakeCallbacks =
-                    HandshakeCallbacks acceptableVersion queryVersion
-                }
-            mempty
-            ( simpleSingletonVersions
-                NodeToNodeV_14
-                ( NodeToNodeVersionData
-                    { networkMagic = magic
-                    , diffusionMode = InitiatorOnlyDiffusionMode
-                    , peerSharing = PeerSharingDisabled
-                    , query = False
+        try
+            $ connectToNode
+                (socketSnocket iocp)
+                makeSocketBearer
+                ConnectToArgs
+                    { ctaHandshakeCodec = nodeToNodeHandshakeCodec
+                    , ctaHandshakeTimeLimits = noTimeLimitsHandshake
+                    , ctaVersionDataCodec = cborTermVersionDataCodec nodeToNodeCodecCBORTerm
+                    , ctaConnectTracers = nullNetworkConnectTracers
+                    , ctaHandshakeCallbacks =
+                        HandshakeCallbacks acceptableVersion queryVersion
                     }
+                mempty
+                ( simpleSingletonVersions
+                    NodeToNodeV_14
+                    ( NodeToNodeVersionData
+                        { networkMagic = magic
+                        , diffusionMode = InitiatorOnlyDiffusionMode
+                        , peerSharing = PeerSharingDisabled
+                        , query = False
+                        }
+                    )
+                    (\_ -> app chainvar)
                 )
-                (\_ -> app chainvar)
-            )
-            Nothing
-            addrAddress
+                Nothing
+                addrAddress
     case res of
         Left e -> return $ Left e
         Right _ -> pure . Chain.headPoint <$> readTVarIO chainvar

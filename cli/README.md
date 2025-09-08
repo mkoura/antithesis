@@ -216,7 +216,7 @@ will show you all the available facts you can query.
 ## Design
 
 [Interface Design document](docs/antithesis-interface.md)
-[Code Design Decisions](docs/code-design-decisions.md)
+[Code Design](docs/code-design.md)
 
 ## Manuals
 

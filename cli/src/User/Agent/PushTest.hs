@@ -103,7 +103,7 @@ instance Aeson.ToJSON PostTestRunRequest where
           where
             fields =
                 [ "antithesis.description" Aeson..= description
-                , "custom.duration" Aeson..= duration
+                , "antithesis.duration" Aeson..= duration
                 , "antithesis.config_image" Aeson..= config_image
                 , "antithesis.images" Aeson..= intercalate ";" images
                 , "antithesis.report.recipients"
@@ -149,7 +149,7 @@ pushTestToAntithesisIO
         let body =
                 PostTestRunRequest
                     { description = renderTestRun testRunId tr
-                    , duration = realToFrac duration
+                    , duration = realToFrac duration * 60
                     , config_image = tagString tag
                     , images
                     , recipients = ["antithesis@cardanofoundation.org"]

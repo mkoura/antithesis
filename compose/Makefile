@@ -3,7 +3,7 @@ SHELL:=/usr/bin/env bash
 .SILENT: build build-image build-config push push-image push-config up down query validate
 
 description:="${testnet} run"
-duration:=1
+duration:=60
 recipients:=antithesis@cardanofoundation.org
 registry:=ghcr.io/cardano-foundation/antithesis
 testnet:=cardano_node_master
@@ -115,7 +115,7 @@ anti: TESTNET ## Run Antithesis job
 	--arg config_image  '${registry}/config:latest' \
 	--arg images        'ghcr.io/intersectmbo/cardano-node:latest;${registry}/sidecar:latest;${registry}/tracer:latest;${registry}/tracer-sidecar:latest;${registry}/configurator:latest;${registry}/adversary:latest' \
 	--arg recipients    '${recipients}' \
-	'{params: {"antithesis.description": $$description,"custom.duration": $$duration,"antithesis.config_image": $$config_image \
+	'{params: {"antithesis.description": $$description,"antithesis.duration": $$duration,"antithesis.config_image": $$config_image \
 		,"antithesis.images": $$images,"antithesis.report.recipients": $$recipients}}')"
 
 anti-debug: ## Request debugger session

@@ -3,7 +3,7 @@ env:
   TESTNET: "cardano_node_master"
   REGISTRY: ghcr.io/cardano-foundation/antithesis
   EMAILS: 'antithesis@cardanofoundation.org'
-  DURATION: 5 # in hours
+  DURATION: 300 # in minutes
 on:
   # can be dispatched manually
   workflow_dispatch:
@@ -70,4 +70,4 @@ jobs:
         email_recipients: ${{ env.EMAILS }}
         test_name: "${{ inputs.test || env.TESTNET }}"
         additional_parameters: |-
-          custom.duration=${{ inputs.duration || env.DURATION }}
+          antithesis.duration=${{ inputs.duration || env.DURATION }}

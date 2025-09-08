@@ -21,15 +21,14 @@ import Core.Options
     , walletOption
     )
 import Core.Types.MPFS (mpfsClientOption)
-import Core.Types.Mnemonics.Options (queryConsole)
 import Data.ByteString.Char8 qualified as B
 import Data.Functor (($>))
 import Data.String.QQ (s)
-import Data.Text.Encoding qualified as T
 import Data.Version (Version)
 import Facts (FactsSelection (..), TestRunSelection (..))
 import GitHub (Auth (..))
 import Lib.Box (Box (..), fmapBox)
+import Lib.Options.Secrets (secretsParser)
 import OptEnvConf
     ( Alternative (..)
     , Parser
@@ -38,7 +37,6 @@ import OptEnvConf
     , env
     , help
     , long
-    , mapIO
     , metavar
     , reader
     , runParser
@@ -59,34 +57,13 @@ data Options a where
 
 githubAuthOption :: Parser Auth
 githubAuthOption =
-    fmap OAuth
-        $ mapIO id
-        $ setting
-            [ help "Prompt for the passphrase for the encrypted mnemonics"
-            , env "ANTI_INTERACTIVE_SECRETS"
-            , metavar "NONE"
-            , reader
-                ( str @String
-                    $> ( T.encodeUtf8
-                            <$> queryConsole "Enter your GitHub personal access token"
-                       )
-                )
-            ]
-        <|> setting
-            [ help "Prompt for the passphrase for the encrypted mnemonics"
-            , metavar "NONE"
-            , long "ask-github-pat"
-            , switch
-                $ T.encodeUtf8
-                    <$> queryConsole "Enter your GitHub personal access token"
-            ]
-        <|> setting
-            [ env "ANTI_GITHUB_PAT"
-            , metavar "PASSPHRASE"
-            , help
-                "A GitHub personal access token with access to public repositories"
-            , reader $ fmap (pure . B.pack) str
-            ]
+    OAuth . B.pack
+        <$> secretsParser
+            "Enter your GitHub token"
+            "The GitHub token"
+            "ANTI_GITHUB_PAT"
+            "GITHUB_PAT"
+            "ask-github-pat"
 
 commandParser :: Parser (Box Command)
 commandParser =

@@ -109,6 +109,7 @@ library
     Lib.GitHub
     Lib.JSON.Canonical.Aeson
     Lib.JSON.Canonical.Extra
+    Lib.Options.Secrets
     Lib.SSH.Private
     Lib.SSH.Public
     Lib.System

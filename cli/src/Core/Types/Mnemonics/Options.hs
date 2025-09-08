@@ -3,7 +3,6 @@ module Core.Types.Mnemonics.Options
     , walletPassphraseCommon
     , walletFileOption
     , walletFileArgOption
-    , queryConsole
     ) where
 
 import Control.Exception (try)
@@ -14,9 +13,9 @@ import Data.Aeson
     )
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
-import Data.Functor (($>))
 import Data.Text (Text)
 import Data.Text qualified as T
+import Lib.Options.Secrets (secretsParser)
 import OptEnvConf
     ( Alternative ((<|>))
     , Parser
@@ -27,17 +26,14 @@ import OptEnvConf
     , env
     , help
     , long
-    , mapIO
     , metavar
     , option
     , reader
     , setting
     , short
     , str
-    , switch
     , withConfig
     )
-import System.Console.Haskeline
 
 mnemonicsClearTextOption :: Parser Text
 mnemonicsClearTextOption =
@@ -57,34 +53,13 @@ mnemonicsEncryptedOption =
 
 walletPassphraseCommon :: Parser Text
 walletPassphraseCommon =
-    mapIO id
-        $ setting
-            [ help "Prompt for the passphrase for the encrypted mnemonics"
-            , env "ANTI_INTERACTIVE_SECRETS"
-            , metavar "NONE"
-            , reader
-                $ str @String $> queryConsole "Enter passphrase for encrypted mnemonics"
-            ]
-        <|> setting
-            [ help "Prompt for the passphrase for the encrypted mnemonics"
-            , metavar "NONE"
-            , long "ask-wallet-passphrase"
-            , switch
-                $ queryConsole "Enter passphrase for encrypted mnemonics"
-            ]
-        <|> setting
-            [ env "ANTI_WALLET_PASSPHRASE"
-            , metavar "PASSPHRASE"
-            , help "The passphrase for the encrypted mnemonics"
-            , reader $ fmap (pure . T.pack) str
-            ]
-
-queryConsole :: String -> IO Text
-queryConsole prompt = runInputT defaultSettings $ do
-    pw <- getPassword (Just '*') (prompt <> ": ")
-    case pw of
-        Nothing -> pure ""
-        Just pw' -> pure $ T.pack pw'
+    T.pack
+        <$> secretsParser
+            "Enter the passphrase to decrypt the mnemonics"
+            "The passphrase to decrypt the mnemonics"
+            "ANTI_WALLET_PASSPHRASE"
+            "PASSPHRASE"
+            "ask-wallet-passphrase"
 
 walletFileOption :: Parser FilePath
 walletFileOption =

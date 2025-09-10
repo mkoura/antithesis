@@ -106,6 +106,7 @@ library
     Docker
     Facts
     Lib.Box
+    Lib.CryptoBox
     Lib.EdToCurve
     Lib.GitHub
     Lib.JSON.Canonical.Aeson
@@ -177,6 +178,7 @@ library
     , cardano-ledger-core    ^>=1.17.0.0
     , containers             ^>=0.6.8
     , crypton
+    , crypton-box
     , directory
     , exceptions
     , github
@@ -320,6 +322,7 @@ test-suite anti-unit-test
   -- Modules included in this executable, other than Main.
   other-modules:
     Core.EncryptionSpec
+    Lib.CryptoBoxSpec
     Lib.EdToCurveSpec
     Lib.JSON.Canonical.AesonSpec
     Lib.JSON.Canonical.ExtraSpec
@@ -366,6 +369,7 @@ test-suite anti-unit-test
     , directory
     , hspec
     , lens
+    , memory
     , QuickCheck
     , scientific
     , string-qq

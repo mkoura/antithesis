@@ -4,28 +4,44 @@ import Crypto.Error (CryptoFailable (..))
 import Crypto.PubKey.Curve25519 qualified as Curve25519
 import Crypto.PubKey.Ed25519 qualified as Ed25519
 import Data.ByteString qualified as B
-import Lib.EdToCurve (ed25519ToCurve25519PublicKey)
+import Lib.EdToCurve
+    ( convertPublicKey
+    , convertSecretKey
+    )
 import Test.Hspec (Spec, describe, it, shouldBe)
 
 spec :: Spec
 spec = do
-    describe "EdToCurve golden" $ do
+    describe "EdToCurve public golden" $ do
         it "should convert edward1pk to curve1pk" $ do
-            ed25519ToCurve25519PublicKey edward1pk
+            convertPublicKey edward1pk
                 `shouldBe` Right curve1pk
         it "should convert edward2p to curve2pk" $ do
-            ed25519ToCurve25519PublicKey edward2pk
+            convertPublicKey edward2pk
                 `shouldBe` Right curve2pk
         it "should convert edward3pk to curve3pk" $ do
-            ed25519ToCurve25519PublicKey edward3pk
+            convertPublicKey edward3pk
                 `shouldBe` Right curve3pk
         it "should convert edward4pk to curve4pk" $ do
-            ed25519ToCurve25519PublicKey edward4pk
+            convertPublicKey edward4pk
                 `shouldBe` Right curve4pk
+    describe "EdToCurve secret golden" $ do
+        it "should convert edward1sk to curve1sk" $ do
+            convertSecretKey edward1sk
+                `shouldBe` Right curve1sk
+        it "should convert edward2sk to curve2sk" $ do
+            convertSecretKey edward2sk
+                `shouldBe` Right curve2sk
+        it "should convert edward3sk to curve3sk" $ do
+            convertSecretKey edward3sk
+                `shouldBe` Right curve3sk
+        it "should convert edward4sk to curve4sk" $ do
+            convertSecretKey edward4sk
+                `shouldBe` Right curve4sk
 
 failCrypto :: CryptoFailable a -> a
-failCrypto ((CryptoFailed err)) = error (show err)
-failCrypto ((CryptoPassed a)) = a
+failCrypto (CryptoFailed err) = error (show err)
+failCrypto (CryptoPassed a) = a
 
 edward1pk :: Ed25519.PublicKey
 edward1pk =

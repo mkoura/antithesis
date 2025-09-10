@@ -106,6 +106,7 @@ library
     Docker
     Facts
     Lib.Box
+    Lib.EdToCurve
     Lib.GitHub
     Lib.JSON.Canonical.Aeson
     Lib.JSON.Canonical.Extra
@@ -319,6 +320,7 @@ test-suite anti-unit-test
   -- Modules included in this executable, other than Main.
   other-modules:
     Core.EncryptionSpec
+    Lib.EdToCurveSpec
     Lib.JSON.Canonical.AesonSpec
     Lib.JSON.Canonical.ExtraSpec
     Lib.SSH.KeySpec

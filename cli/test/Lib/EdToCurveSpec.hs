@@ -10,25 +10,25 @@ import Test.Hspec (Spec, describe, it, shouldBe)
 spec :: Spec
 spec = do
     describe "EdToCurve golden" $ do
-        it "should convert edward1 to curve1" $ do
-            ed25519ToCurve25519PublicKey edward1
-                `shouldBe` Right curve1
-        it "should convert edward2 to curve2" $ do
-            ed25519ToCurve25519PublicKey edward2
-                `shouldBe` Right curve2
-        it "should convert edward3 to curve3" $ do
-            ed25519ToCurve25519PublicKey edward3
-                `shouldBe` Right curve3
-        it "should convert edward4 to curve4" $ do
-            ed25519ToCurve25519PublicKey edward4
-                `shouldBe` Right curve4
+        it "should convert edward1pk to curve1pk" $ do
+            ed25519ToCurve25519PublicKey edward1pk
+                `shouldBe` Right curve1pk
+        it "should convert edward2p to curve2pk" $ do
+            ed25519ToCurve25519PublicKey edward2pk
+                `shouldBe` Right curve2pk
+        it "should convert edward3pk to curve3pk" $ do
+            ed25519ToCurve25519PublicKey edward3pk
+                `shouldBe` Right curve3pk
+        it "should convert edward4pk to curve4pk" $ do
+            ed25519ToCurve25519PublicKey edward4pk
+                `shouldBe` Right curve4pk
 
 failCrypto :: CryptoFailable a -> a
 failCrypto ((CryptoFailed err)) = error (show err)
 failCrypto ((CryptoPassed a)) = a
 
-edward1 :: Ed25519.PublicKey
-edward1 =
+edward1pk :: Ed25519.PublicKey
+edward1pk =
     failCrypto
         $ Ed25519.publicKey
         $ B.pack
@@ -65,8 +65,8 @@ edward1 =
             , 0
             , 0
             ]
-curve1 :: Curve25519.PublicKey
-curve1 =
+curve1pk :: Curve25519.PublicKey
+curve1pk =
     failCrypto
         $ Curve25519.publicKey
         $ B.pack
@@ -104,8 +104,8 @@ curve1 =
             , 0
             ]
 
-edward2 :: Ed25519.PublicKey
-edward2 =
+edward2pk :: Ed25519.PublicKey
+edward2pk =
     failCrypto
         $ Ed25519.publicKey
         $ B.pack
@@ -142,8 +142,8 @@ edward2 =
             , 218
             , 41
             ]
-curve2 :: Curve25519.PublicKey
-curve2 =
+curve2pk :: Curve25519.PublicKey
+curve2pk =
     failCrypto
         $ Curve25519.publicKey
         $ B.pack
@@ -181,8 +181,8 @@ curve2 =
             , 125
             ]
 
-edward3 :: Ed25519.PublicKey
-edward3 =
+edward3pk :: Ed25519.PublicKey
+edward3pk =
     failCrypto
         $ Ed25519.publicKey
         $ B.pack
@@ -220,8 +220,8 @@ edward3 =
             , 255
             ]
 
-curve3 :: Curve25519.PublicKey
-curve3 =
+curve3pk :: Curve25519.PublicKey
+curve3pk =
     failCrypto
         $ Curve25519.publicKey
         $ B.pack
@@ -259,8 +259,8 @@ curve3 =
             , 75
             ]
 
-edward4 :: Ed25519.PublicKey
-edward4 =
+edward4pk :: Ed25519.PublicKey
+edward4pk =
     failCrypto
         $ Ed25519.publicKey
         $ B.pack
@@ -297,8 +297,8 @@ edward4 =
             , 1
             , 0
             ]
-curve4 :: Curve25519.PublicKey
-curve4 =
+curve4pk :: Curve25519.PublicKey
+curve4pk =
     failCrypto
         $ Curve25519.publicKey
         $ B.pack

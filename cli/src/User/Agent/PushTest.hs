@@ -14,6 +14,7 @@ module User.Agent.PushTest
     , renderPostToAntithesis
     , renderTestRun
     , SlackWebhook (..)
+    , TestRunWithId (..)
     )
 where
 
@@ -36,7 +37,7 @@ import Data.Functor (($>), (<&>))
 import Data.Functor.Identity (Identity (..))
 import Data.List (intercalate, nub, sort)
 import Data.String.QQ (s)
-import Lib.JSON.Canonical.Extra (object, (.=))
+import Lib.JSON.Canonical.Extra (object, withObject, (.:), (.=))
 import Lib.System (runSystemCommand)
 import Oracle.Validate.Requests.TestRun.Update (UpdateTestRunFailure)
 import Oracle.Validate.Types
@@ -47,7 +48,8 @@ import Oracle.Validate.Types
     )
 import System.IO.Temp (withSystemTempDirectory)
 import Text.JSON.Canonical
-    ( JSValue
+    ( FromJSON (..)
+    , ReportSchemaErrors
     , ToJSON (..)
     , renderCanonicalJSON
     )
@@ -163,14 +165,26 @@ pushTestToAntithesisIO
 renderTestRun :: TestRunId -> TestRun -> String
 renderTestRun trId tr =
     BL.unpack . renderCanonicalJSON . runIdentity
-        $ jsonPatchedTestRun trId tr
+        $ toJSON
+        $ TestRunWithId trId tr
 
-jsonPatchedTestRun :: Monad m => TestRunId -> TestRun -> m JSValue
-jsonPatchedTestRun (TestRunId trId) tr =
-    object
-        [ "id" .= trId
-        , "key" .= tr
-        ]
+data TestRunWithId = TestRunWithId
+    { testRunId :: TestRunId
+    , testRun :: TestRun
+    }
+
+instance Monad m => ToJSON m TestRunWithId where
+    toJSON (TestRunWithId (TestRunId trId) tr) =
+        object
+            [ "testRunId" .= trId
+            , "testRun" .= tr
+            ]
+
+instance ReportSchemaErrors m => FromJSON m TestRunWithId where
+    fromJSON = withObject "Repository" $ \v -> do
+        trId <- v .: "testRunId"
+        tr <- v .: "testRun"
+        return $ TestRunWithId trId tr
 
 collectImagesFromAssets :: Directory -> IO (Either String [String])
 collectImagesFromAssets (Directory dirname) = do

@@ -142,6 +142,7 @@ library
     User.Agent.Cli
     User.Agent.Lib
     User.Agent.Options
+    User.Agent.PublishResults.Email
     User.Agent.PushTest
     User.Agent.Types
     User.Requester.Cli
@@ -164,6 +165,7 @@ library
   -- Other library packages from which modules are imported.
   build-depends:
     , aeson
+    , attoparsec
     , base
     , base16-bytestring      ^>=1.0.2.0
     , base64-bytestring
@@ -183,6 +185,9 @@ library
     , exceptions
     , github
     , haskeline
+    , HaskellNet
+    , HaskellNet-SSL
+    , html-parse
     , http-client
     , http-client-tls
     , http-types
@@ -190,16 +195,20 @@ library
     , memory
     , mmark
     , monad-control
+    , old-time
     , opt-env-conf
     , plutus-tx
     , process
+    , purebred-email
     , random
     , scientific
     , servant
     , servant-client
+    , streaming
     , string-qq
     , temporary
     , text
+    , time
     , transformers
     , vector
     , yaml

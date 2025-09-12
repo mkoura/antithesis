@@ -5,6 +5,13 @@ module User.Agent.PublishResults.Email
     ( readEmails
     , readEmail
     , printEmails
+    , clockTimeToUTCTime
+    , utcTimeToClockTime
+    , Result (..)
+    , Parameters (..)
+    , EmailException (..)
+    , ParsingError (..)
+    , WithDateError (..)
     )
 where
 
@@ -43,8 +50,11 @@ import Data.Time
     , getCurrentTime
     , getCurrentTimeZone
     , secondsToNominalDiffTime
-    , toGregorian
     , utcToLocalTime
+    )
+import Data.Time.Clock.POSIX
+    ( posixSecondsToUTCTime
+    , utcTimeToPOSIXSeconds
     )
 import Data.Typeable (Typeable)
 import Network.HaskellNet.IMAP
@@ -67,15 +77,12 @@ import Streaming.Prelude (each)
 import Streaming.Prelude qualified as S
 import System.Directory.Internal.Prelude (Exception, try)
 import System.Time
-    ( CalendarTime (..)
-    , ClockTime
-    , Day (..)
+    ( ClockTime (..)
     , TimeDiff (..)
     , addToClockTime
     , getClockTime
     , noTimeDiff
     , toCalendarTime
-    , toClockTime
     )
 import Text.HTML.Parser (Attr (..), Token (..), parseTokens)
 import Text.JSON.Canonical (FromJSON (..), parseCanonicalJSON)
@@ -105,9 +112,15 @@ instance Exception EmailException
 data Result = Result
     { description :: TestRun
     , date :: ZonedTime
-    , links :: T.Text
+    , link :: T.Text
     }
     deriving (Show)
+
+instance Eq Result where
+    a == b =
+        description a == description b
+            && zonedTimeToLocalTime (date a) == zonedTimeToLocalTime (date b)
+            && link a == link b
 
 compareResults
     :: Either ParsingError Result -> Either ParsingError Result -> Ordering
@@ -178,9 +191,10 @@ readEmails (Username username) (Password password) past = do
     now <- liftIO getCurrentTime
     let limit =
             addUTCTime
-                (negate $ secondsToNominalDiffTime $ fromIntegral $ past * 24 * 60 * 60)
+                ( negate $ secondsToNominalDiffTime $ fromIntegral $ past * 24 * 60 * 60
+                )
                 now
-    let clockLimit = toClockTime $ utcTimeToCalendarTime limit
+    let clockLimit = utcTimeToClockTime limit
     tz <- liftIO getCurrentTimeZone -- wrong, should be the email server's timezone
     let localTimeLimit = utcToLocalTime tz limit
     let go from
@@ -231,7 +245,7 @@ readEmail
 readEmail input =
     case parse (message (const $ RequiredBody takeByteString)) input of
         Left errMsg -> Left $ ParsingError errMsg input
-        Right msg -> parseBody msg
+        Right msg -> parseEmail msg
 
 toTokens :: B.ByteString -> [Token]
 toTokens = parseTokens . T.decodeUtf8
@@ -239,8 +253,8 @@ toTokens = parseTokens . T.decodeUtf8
 nothingLeft :: a -> Maybe b -> Either a b
 nothingLeft = flip maybe Right . Left
 
-parseBody :: Message ctx B.ByteString -> Either ParsingError Result
-parseBody content =
+parseEmail :: Message ctx B.ByteString -> Either ParsingError Result
+parseEmail content =
     view headerDate content & \mdate -> do
         date <- nothingLeft NoDate mdate
         toTokens (view body content) & \ts ->
@@ -272,28 +286,17 @@ findLinks = mapMaybe f
     f (TagOpen "a" [Attr "href" l]) = Just l
     f _ = Nothing
 
--- UTCTime -> CalendarTime (UTC-based)
-utcTimeToCalendarTime :: UTCTime -> CalendarTime
-utcTimeToCalendarTime utc =
-    let day = utctDay utc
-        diffTime = utctDayTime utc
-        (seconds :: Int, picos) = properFraction (realToFrac diffTime :: Double) -- Seconds and fractional part
-        (year, month, dayOfMonth) = toGregorian day
-        -- Note: For full accuracy, use Data.Time.Calendar.Private helpers or adjust
-        -- This is a basic mapping; test with known dates
-        calTime =
-            CalendarTime
-                { ctYear = fromIntegral year
-                , ctMonth = toEnum $ month `mod` 12 - 1
-                , ctDay = fromIntegral dayOfMonth
-                , ctHour = seconds `div` 3600 `mod` 24
-                , ctMin = seconds `div` 60 `mod` 60
-                , ctSec = seconds `mod` 60
-                , ctPicosec = floor picos
-                , ctWDay = Sunday
-                , ctYDay = 0
-                , ctTZName = "UTC"
-                , ctTZ = 0 -- UTC offset
-                , ctIsDST = False
-                }
-    in  calTime -- Refine fields with accurate Gregorian breakdown if needed
+utcTimeToClockTime :: UTCTime -> ClockTime
+utcTimeToClockTime utc =
+    let
+        (seconds, picos) = properFraction $ utcTimeToPOSIXSeconds utc
+    in
+        TOD seconds $ fromIntegral $ fromEnum picos
+
+clockTimeToUTCTime :: ClockTime -> UTCTime
+clockTimeToUTCTime ct =
+    let TOD sec pico = ct
+        posix =
+            secondsToNominalDiffTime (fromIntegral sec)
+                + toEnum (fromIntegral pico)
+    in  posixSecondsToUTCTime posix

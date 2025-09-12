@@ -348,6 +348,7 @@ test-suite anti-unit-test
     Oracle.Validate.Requests.TestRun.FinishSpec
     Oracle.Validate.Requests.TestRun.Lib
     Oracle.Validate.Requests.TestRun.RejectSpec
+    User.Agent.PublishResults.EmailSpec
     User.Agent.PushTestSpec
     User.Agent.TypesSpec
     User.Requester.CliSpec
@@ -384,6 +385,7 @@ test-suite anti-unit-test
     , string-qq
     , temporary
     , text
+    , time
 
   build-tool-depends: hspec-discover:hspec-discover
 

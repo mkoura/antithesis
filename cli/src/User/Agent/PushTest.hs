@@ -39,7 +39,6 @@ import Data.List (intercalate, nub, sort)
 import Data.String.QQ (s)
 import Lib.JSON.Canonical.Extra (object, withObject, (.:), (.=))
 import Lib.System (runSystemCommand)
-import Oracle.Validate.Requests.TestRun.Update (UpdateTestRunFailure)
 import Oracle.Validate.Types
     ( AValidationResult (..)
     , Validate
@@ -282,7 +281,6 @@ data PushFailure
     | DockerComposeFailure String
     | Couldn'tResolveTestRunId TestRunId
     | PostToAntithesisFailure String
-    | PublishAcceptanceFailure UpdateTestRunFailure
     deriving (Show, Eq)
 
 instance Monad m => ToJSON m PushFailure where
@@ -305,10 +303,6 @@ instance Monad m => ToJSON m PushFailure where
     toJSON (PostToAntithesisFailure msg) =
         object
             [ "postToAntithesisFailure" .= msg
-            ]
-    toJSON (PublishAcceptanceFailure msg) =
-        object
-            [ "publishAcceptanceFailure" .= msg
             ]
 
 newtype SlackWebhook = SlackWebhook {unSlackWebhook :: String}

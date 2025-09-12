@@ -131,14 +131,13 @@ pushTestOptions
     :: Parser
         ( AgentCommand
             NotReady
-            (AValidationResult PushFailure (WithTxHash (TestRunState RunningT)))
+            (AValidationResult PushFailure Success)
         )
 pushTestOptions =
     PushTest
         <$> tokenIdOption
         <*> registryOption
         <*> antithesisAuthOption
-        <*> walletOption
         <*> downloadAssetsDirectoryOption
         <*> testRunIdOption "push assets from"
         <*> slackOption

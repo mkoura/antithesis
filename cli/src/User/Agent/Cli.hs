@@ -70,7 +70,6 @@ import Oracle.Validate.Types
     , Validated
     , hoistValidate
     , liftMaybe
-    , mapFailure
     , notValidated
     , runValidate
     )
@@ -90,7 +89,7 @@ import User.Agent.PublishResults.Email
     )
 import User.Agent.PushTest
     ( AntithesisAuth
-    , PushFailure (PublishAcceptanceFailure)
+    , PushFailure
     , Registry
     , SlackWebhook
     , pushTestToAntithesisIO
@@ -201,7 +200,7 @@ agentCmd = \case
         $ updateTestRunState tokenId key
         $ \fact ->
             reportCommand tokenId wallet fact duration url
-    PushTest tokenId registry auth wallet dir key slack -> runValidate $ do
+    PushTest tokenId registry auth dir key slack -> runValidate $ do
         pushTestToAntithesisIO
             tokenId
             registry
@@ -209,10 +208,7 @@ agentCmd = \case
             dir
             key
             slack
-        mapFailure PublishAcceptanceFailure
-            $ updateTestRunState tokenId key
-            $ \fact ->
-                acceptCommand tokenId wallet fact
+            $> Success
     CheckResults tk emailUser emailPassword key days -> runValidate $ do
         mfact <- lift $ findFact tk key
         Fact testRun' _ <-
@@ -318,13 +314,12 @@ data AgentCommand (phase :: IsReady) result where
         :: TokenId
         -> Registry
         -> AntithesisAuth
-        -> Wallet
         -> Directory
         -> TestRunId
         -> Maybe SlackWebhook
         -> AgentCommand
             phase
-            (AValidationResult PushFailure (WithTxHash (TestRunState RunningT)))
+            (AValidationResult PushFailure Success)
 
 deriving instance Show (AgentCommand NotReady result)
 deriving instance Eq (AgentCommand NotReady result)

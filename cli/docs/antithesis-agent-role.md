@@ -54,7 +54,7 @@ If the agent decides a test-run is not acceptable it can reject it.
 anti agent reject-test -i <test-run-id> --reason <reason>
 ```
 
-## Push a test-run to antithesis platform and report acceptance on-chain.
+## Push a test-run to antithesis platform
 
 Once decided a test-run is acceptable the agent can push the test-run to the antithesis platform.
 
@@ -62,9 +62,9 @@ Once decided a test-run is acceptable the agent can push the test-run to the ant
 anti agent push-test -i <test-run-id> -D <directory>
 ```
 
-This will push the test-run with id `<test-run-id>` to the antithesis platform and report the acceptance of the test-run on-chain (see below).
+This will push the test-run with id `<test-run-id>` to the antithesis platform
 
-## Report the acceptance of a test-run on-chain (included above)
+## Report the acceptance of a test-run on-chain
 
 Once a test-run is pushed to the antithesis platform the agent has to report the acceptance of the test-run on-chain.
 
@@ -106,3 +106,5 @@ Once the result URL is retrieved the agent has to report the completion of the t
 ```bash
 anti agent report-test -i <test-run-id> --url <result-url>  --duration <duration-in-hours>
 ```
+
+The URL is encrypted automatically with the requester's public key.

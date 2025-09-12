@@ -47,6 +47,7 @@ import User.Agent.Cli
     ( AgentCommand (..)
     , CheckResultsFailure
     , IsReady (NotReady)
+    , ReportFailure
     , TestRunId (..)
     )
 import User.Agent.PublishResults.Email
@@ -294,7 +295,7 @@ reportTestOptions
         ( AgentCommand
             NotReady
             ( AValidationResult
-                UpdateTestRunFailure
+                ReportFailure
                 (WithTxHash (TestRunState DoneT))
             )
         )

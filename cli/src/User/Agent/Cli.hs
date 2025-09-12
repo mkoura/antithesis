@@ -8,10 +8,12 @@ module User.Agent.Cli
     , TestRunId (..)
     , IsReady (..)
     , CheckResultsFailure (..)
+    , ReportFailure (..)
     , agentCmd
     )
 where
 
+import Control.Applicative (asum)
 import Control.Monad (void, when)
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Trans.Class (lift)
@@ -32,16 +34,26 @@ import Core.Types.Basic
     , Repository
     , Success (..)
     , TokenId
+    , Username (..)
     )
 import Core.Types.Change (Change (..), Key (..))
-import Core.Types.Fact (Fact (..), keyHash, parseFacts)
+import Core.Types.Fact
+    ( Fact (..)
+    , keyHash
+    , parseFacts
+    )
 import Core.Types.Operation (Op (..), Operation (..))
 import Core.Types.Tx (WithTxHash (..))
 import Core.Types.Wallet (Wallet (..))
+import Data.ByteString.Base64 qualified as Base64
+import Data.ByteString.Char8 qualified as B8
 import Data.Function ((&))
 import Data.Functor (($>), (<&>))
+import Data.Functor.Identity (Identity (..))
 import Data.List (find)
-import Lib.JSON.Canonical.Extra (object, (.=))
+import Lib.CryptoBox qualified as CB
+import Lib.JSON.Canonical.Extra (blakeHashOfJSON, object, (.=))
+import Lib.SSH.Public (decodePublicKey)
 import MPFS.API
     ( MPFS (..)
     , RequestDeleteBody (..)
@@ -70,8 +82,10 @@ import Oracle.Validate.Types
     , Validated
     , hoistValidate
     , liftMaybe
+    , mapFailure
     , notValidated
     , runValidate
+    , throwLeft
     )
 import Streaming.Prelude qualified as S
 import Submitting (Submission (..))
@@ -89,7 +103,7 @@ import User.Agent.PublishResults.Email
     )
 import User.Agent.PushTest
     ( AntithesisAuth
-    , PushFailure
+    , PushFailure (..)
     , Registry
     , SlackWebhook
     , pushTestToAntithesisIO
@@ -102,10 +116,12 @@ import User.Agent.Types
     )
 import User.Types
     ( Phase (..)
+    , RegisterUserKey (..)
     , TestRun (..)
     , TestRunRejection
     , TestRunState (..)
     , URL (..)
+    , disclosedSKey
     )
 import Validation (Validation)
 
@@ -196,10 +212,8 @@ agentCmd = \case
         $ updateTestRunState tokenId key
         $ \fact ->
             rejectCommand tokenId wallet fact reason
-    Report tokenId wallet key () duration url -> runValidate
-        $ updateTestRunState tokenId key
-        $ \fact ->
-            reportCommand tokenId wallet fact duration url
+    Report tokenId wallet key () duration (URL urlText) -> runValidate $ do
+        reportCommand tokenId wallet key duration urlText
     PushTest tokenId registry auth dir key slack -> runValidate $ do
         pushTestToAntithesisIO
             tokenId
@@ -241,6 +255,40 @@ type family ResolveId phase where
     ResolveId NotReady = TestRunId
     ResolveId Ready = TestRun
 
+data ReportFailure
+    = ReportFailureUserKeyNotFound Username
+    | ReportFailureUserKeyUnparsable Username
+    | ReportFailureFactNotFound TestRunId
+    | ReportFailureUpdate UpdateTestRunFailure
+    | ReportFailureFailToEncrypt String
+    | ReportFailureNonceCreationFailed
+    deriving (Show, Eq)
+
+instance Monad m => ToJSON m ReportFailure where
+    toJSON (ReportFailureUserKeyNotFound (Username user)) =
+        object
+            [ "userKeyNotFound" .= user
+            ]
+    toJSON (ReportFailureUserKeyUnparsable (Username user)) =
+        object
+            [ "userKeyUnparsable" .= user
+            ]
+    toJSON (ReportFailureFactNotFound (TestRunId trId)) =
+        object
+            [ "factNotFound" .= trId
+            ]
+    toJSON (ReportFailureUpdate err) =
+        object
+            [ "updateError" .= err
+            ]
+    toJSON (ReportFailureFailToEncrypt err) =
+        object
+            [ "failToEncrypt" .= err
+            ]
+    toJSON ReportFailureNonceCreationFailed =
+        pure
+            $ JSString "nonceCreationFailed"
+
 data AgentCommand (phase :: IsReady) result where
     Accept
         :: TokenId
@@ -275,7 +323,7 @@ data AgentCommand (phase :: IsReady) result where
         -> AgentCommand
             phase
             ( AValidationResult
-                UpdateTestRunFailure
+                ReportFailure
                 (WithTxHash (TestRunState DoneT))
             )
     Query :: TokenId -> AgentCommand phase TestRunMap
@@ -448,7 +496,7 @@ signAndSubmitAnUpdate validate tokenId wallet (Fact testRun oldState) newState =
             $ RequestUpdateBody{key, oldValue, newValue}
     pure $ wtx $> newState
 
-reportCommand
+reportTxCommand
     :: Monad m
     => TokenId
     -> Wallet
@@ -458,7 +506,7 @@ reportCommand
     -> ValidateWithContext
         m
         (WithTxHash (TestRunState DoneT))
-reportCommand tokenId wallet fact duration url =
+reportTxCommand tokenId wallet fact duration url =
     signAndSubmitAnUpdate
         (`validateToDoneUpdate` ForUser)
         tokenId
@@ -498,3 +546,57 @@ acceptCommand tokenId wallet fact =
         wallet
         fact
         $ Accepted (factValue fact)
+
+reportCommand
+    :: Monad m
+    => TokenId
+    -> Wallet
+    -> TestRunId
+    -> Duration
+    -> String
+    -> Validate
+        ReportFailure
+        (WithContext m)
+        (WithTxHash (TestRunState DoneT))
+reportCommand tokenId wallet key duration urlText = do
+    encryptedUrl <- encryptForRequester tokenId key urlText
+    mapFailure ReportFailureUpdate
+        $ updateTestRunState tokenId key
+        $ \fact ->
+            reportTxCommand tokenId wallet fact duration
+                $ URL
+                $ B8.unpack . Base64.encode
+                $ encryptedUrl
+
+encryptForRequester
+    :: Monad m
+    => TokenId
+    -> TestRunId
+    -> String
+    -> Validate ReportFailure (WithContext m) B8.ByteString
+encryptForRequester tokenId key urlText = do
+    mfact <- lift $ findFact tokenId key
+    Fact testRun _ <-
+        liftMaybe (ReportFailureFactNotFound key) mfact
+    let user = requester testRun
+    users <- lift
+        $ fmap (fmap factKey . parseFacts @_ @())
+        $ withMPFS
+        $ \mpfs -> mpfsGetTokenFacts mpfs tokenId
+    let match (RegisterUserKey _ u k)
+            | u == user = Just k
+            | otherwise = Nothing
+    userKey <-
+        liftMaybe (ReportFailureUserKeyNotFound user)
+            $ asum
+            $ fmap match users
+    (_, pk) <-
+        liftMaybe (ReportFailureUserKeyUnparsable user)
+            $ decodePublicKey userKey
+    nonce <-
+        liftMaybe ReportFailureNonceCreationFailed
+            $ CB.mkNonce
+            $ runIdentity
+            $ blakeHashOfJSON testRun
+    throwLeft ReportFailureFailToEncrypt
+        $ CB.encrypt pk disclosedSKey (B8.pack urlText) nonce

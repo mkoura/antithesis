@@ -9,15 +9,12 @@ module Core.Types.Fact
     , fromJSFact
     ) where
 
-import Crypto.Hash (Blake2b_256, Digest)
-import Crypto.Hash qualified as Hash
-import Data.ByteArray qualified as BA
 import Data.ByteString.Base16 qualified as Base16
 import Data.ByteString.Char8 qualified as B
-import Data.ByteString.Lazy qualified as BL
 import Data.Maybe (fromMaybe, mapMaybe)
 import Lib.JSON.Canonical.Extra
-    ( object
+    ( blakeHashOfJSON
+    , object
     , withObject
     , (.:)
     , (.=)
@@ -27,7 +24,6 @@ import Text.JSON.Canonical
     , JSValue (..)
     , ReportSchemaErrors (..)
     , ToJSON (..)
-    , renderCanonicalJSON
     )
 
 data Fact k v = Fact
@@ -38,14 +34,9 @@ data Fact k v = Fact
 
 keyHash :: (ToJSON m k, Monad m) => k -> m String
 keyHash key = do
-    keyJ <- toJSON key
-    pure
-        $ B.unpack
-        $ Base16.encode
-        $ BA.convert @(Digest Blake2b_256)
-        $ Hash.hash
-        $ BL.toStrict
-        $ renderCanonicalJSON keyJ
+    B.unpack
+        . Base16.encode
+        <$> blakeHashOfJSON key
 instance
     ( ReportSchemaErrors m
     , FromJSON m k

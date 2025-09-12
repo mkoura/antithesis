@@ -29,14 +29,18 @@ module Lib.JSON.Canonical.Extra
     , byteStringToJSON
     , byteStringFromJSON
     , mergeObject
+    , blakeHashOfJSON
     )
 where
 
 import Control.Monad ((<=<))
+import Crypto.Hash (Blake2b_256, Digest)
+import Crypto.Hash qualified as Hash
 import Data.Aeson (Value)
 import Data.Aeson qualified as Aeson
 import Data.Aeson.Types qualified as AesonInternal
 import Data.Bifunctor (first)
+import Data.ByteArray qualified as BA
 import Data.ByteString
 import Data.ByteString.Base16 qualified as Base16
 import Data.ByteString.Char8 qualified as B
@@ -248,3 +252,13 @@ instance (Monad m, ToJSON m a) => ToJSON m (Identity a) where
 
 instance (ReportSchemaErrors m, FromJSON m a) => FromJSON m (Identity a) where
     fromJSON v = Identity <$> fromJSON v
+
+blakeHashOfJSON
+    :: (ToJSON m a, Monad m) => a -> m B.ByteString
+blakeHashOfJSON a = do
+    aJ <- toJSON a
+    pure
+        $ BA.convert @(Digest Blake2b_256)
+        $ Hash.hash
+        $ BL.toStrict
+        $ renderCanonicalJSON aJ

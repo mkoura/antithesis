@@ -7,13 +7,15 @@ module User.Agent.Cli
     ( AgentCommand (..)
     , TestRunId (..)
     , IsReady (..)
+    , CheckResultsFailure (..)
     , agentCmd
     )
 where
 
-import Control.Monad (void)
-import Control.Monad.IO.Class (MonadIO)
+import Control.Monad (void, when)
+import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.Except (runExceptT)
 import Core.Context
     ( WithContext
     , askConfig
@@ -36,8 +38,10 @@ import Core.Types.Fact (Fact (..), keyHash, parseFacts)
 import Core.Types.Operation (Op (..), Operation (..))
 import Core.Types.Tx (WithTxHash (..))
 import Core.Types.Wallet (Wallet (..))
+import Data.Function ((&))
 import Data.Functor (($>), (<&>))
 import Data.List (find)
+import Lib.JSON.Canonical.Extra (object, (.=))
 import MPFS.API
     ( MPFS (..)
     , RequestDeleteBody (..)
@@ -67,13 +71,22 @@ import Oracle.Validate.Types
     , hoistValidate
     , liftMaybe
     , mapFailure
+    , notValidated
     , runValidate
     )
+import Streaming.Prelude qualified as S
 import Submitting (Submission (..))
 import Text.JSON.Canonical
     ( FromJSON (..)
     , JSValue (..)
     , ToJSON (..)
+    )
+import User.Agent.PublishResults.Email
+    ( EmailException
+    , EmailPassword
+    , EmailUser
+    , Result (..)
+    , readEmails
     )
 import User.Agent.PushTest
     ( AntithesisAuth
@@ -100,24 +113,54 @@ import Validation (Validation)
 type ValidateWithContext m a =
     Validate UpdateTestRunFailure (WithContext m) a
 
-withPreviousTestRunState
-    :: (Monad m, FromJSON Maybe (TestRunState phase))
+findFact
+    :: Monad m
     => TokenId
     -> TestRunId
-    -> (Fact TestRun (TestRunState phase) -> ValidateWithContext m a)
-    -> ValidateWithContext m a
-withPreviousTestRunState tk (TestRunId testRunId) cont = do
-    facts <- lift
-        $ fmap parseFacts
+    -> WithContext m (Maybe (Fact TestRun JSValue))
+findFact tk (TestRunId testRunId) = do
+    facts <- fmap parseFacts
         $ withMPFS
         $ \mpfs -> mpfsGetTokenFacts mpfs tk
     let match :: Fact TestRun JSValue -> Bool
         match (Fact key _) = case keyHash key of
             Nothing -> False
             Just keyId -> keyId == testRunId
+    pure $ find match facts
+
+data CheckResultsFailure
+    = CheckResultsNoTestRunFor TestRunId
+    | CheckResultsEmail EmailException
+    | CheckResultsNoEmailsFor TestRunId
+    deriving (Show, Eq)
+
+instance Monad m => ToJSON m CheckResultsFailure where
+    toJSON (CheckResultsNoTestRunFor (TestRunId trId)) =
+        object
+            [ "error" .= ("No test run for given id" :: String)
+            , "testRunId" .= trId
+            ]
+    toJSON (CheckResultsEmail err) =
+        object
+            [ "error" .= ("Email error" :: String)
+            , "details" .= show err
+            ]
+    toJSON (CheckResultsNoEmailsFor (TestRunId trId)) =
+        object
+            [ "error" .= ("No emails found for given test run id" :: String)
+            , "testRunId" .= trId
+            ]
+
+withPreviousTestRunState
+    :: (Monad m, FromJSON Maybe (TestRunState phase))
+    => TokenId
+    -> TestRunId
+    -> (Fact TestRun (TestRunState phase) -> ValidateWithContext m a)
+    -> ValidateWithContext m a
+withPreviousTestRunState tk testRunId cont = do
+    mfact <- lift $ findFact tk testRunId
     fact <-
-        liftMaybe UpdateTestRunTestRunIdNotResolved
-            $ find match facts
+        liftMaybe UpdateTestRunTestRunIdNotResolved mfact
     value <-
         liftMaybe UpdateTestRunWrongPreviousState
             $ fromJSON
@@ -170,6 +213,23 @@ agentCmd = \case
             $ updateTestRunState tokenId key
             $ \fact ->
                 acceptCommand tokenId wallet fact
+    CheckResults tk emailUser emailPassword key days -> runValidate $ do
+        mfact <- lift $ findFact tk key
+        Fact testRun' _ <-
+            liftMaybe (CheckResultsNoTestRunFor key) mfact
+        r <- liftIO $ do
+            let onlyResults (Right r@Result{description}) = do
+                    when (description == testRun') $ S.yield r
+                onlyResults (Left _) = pure ()
+            runExceptT
+                $ readEmails emailUser emailPassword days
+                & flip S.for onlyResults
+                & S.head_
+
+        case r of
+            Left err -> notValidated $ CheckResultsEmail err
+            Right Nothing -> notValidated $ CheckResultsNoEmailsFor key
+            Right (Just result) -> pure result
 
 data IsReady = NotReady | Ready
     deriving (Show, Eq)
@@ -246,6 +306,14 @@ data AgentCommand (phase :: IsReady) result where
         -> AgentCommand
             phase
             (AValidationResult DownloadAssetsFailure Success)
+    CheckResults
+        :: TokenId
+        -> EmailUser
+        -> EmailPassword
+        -> TestRunId
+        -> Int
+        -- ^ limit to last N days
+        -> AgentCommand phase (AValidationResult CheckResultsFailure Result)
     PushTest
         :: TokenId
         -> Registry

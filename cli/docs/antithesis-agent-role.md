@@ -76,7 +76,28 @@ This will move it from `pending` to `running` state in the facts.
 
 ## Check for the completion of a test-run
 
-> TBD (soon)
+ATM we can only collect results via email.
+The email is passed in the post request when the test-run on the recipients list.
+
+
+```bash
+export ANTI_AGENT_EMAIL="<your-email>"
+```
+
+Then you can check for the completion of a test-run via
+
+```bash
+anti agent collect-email-results --days <n> --ask-agent-email-password
+```
+
+> HAL Team
+>
+> To use your CF email you have to use an app password. If you use your password you  will get an error like
+>
+> `LoginFailed user error (NO: Application-specific password required: https://support.google.com/accounts/answer/185833 (Failure))`
+>
+> Just go to https://myaccount.google.com/apppasswords and create an app password.
+>
 
 ## Report the completion of a test-run on-chain
 

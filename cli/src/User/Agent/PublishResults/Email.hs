@@ -12,6 +12,8 @@ module User.Agent.PublishResults.Email
     , EmailException (..)
     , ParsingError (..)
     , WithDateError (..)
+    , EmailUser (..)
+    , EmailPassword (..)
     )
 where
 
@@ -26,7 +28,6 @@ import Control.Monad.Trans.Except
     , runExceptT
     , withExceptT
     )
-import Core.Types.Basic (Username (..))
 import Data.Attoparsec.ByteString.Char8 (takeByteString)
 import Data.ByteString qualified as B
 import Data.ByteString.Lazy qualified as BL
@@ -57,6 +58,7 @@ import Data.Time.Clock.POSIX
     , utcTimeToPOSIXSeconds
     )
 import Data.Typeable (Typeable)
+import Lib.JSON.Canonical.Extra (object, (.=))
 import Network.HaskellNet.IMAP
     ( SearchQuery
     , fetch
@@ -86,10 +88,14 @@ import System.Time
     )
 import Text.HTML.Parser (Attr (..), Token (..), parseTokens)
 import Text.JSON.Canonical (FromJSON (..), parseCanonicalJSON)
+import Text.JSON.Canonical.Class (ToJSON (..))
 import User.Agent.PushTest (TestRunWithId (..))
 import User.Types (TestRun)
 
-newtype Password = Password String
+newtype EmailUser = EmailUser String
+    deriving (Show, Eq)
+
+newtype EmailPassword = EmailPassword String
     deriving (Show, Eq)
 
 newtype Hours = Hours Int
@@ -115,6 +121,14 @@ data Result = Result
     , link :: T.Text
     }
     deriving (Show)
+
+instance Monad m => ToJSON m Result where
+    toJSON (Result desc d l) =
+        object
+            [ "description" .= desc
+            , "date" .= show d
+            , "link" .= l
+            ]
 
 instance Eq Result where
     a == b =
@@ -175,8 +189,8 @@ printEmails
 printEmails emails = runExceptT $ S.mapM_ (liftIO . print) emails
 
 readEmails
-    :: Username
-    -> Password
+    :: EmailUser
+    -> EmailPassword
     -> Int
     -- ^ days
     -- ^ limit to emails since this time
@@ -184,15 +198,14 @@ readEmails
         (Of (Either ParsingError Result))
         (ExceptT EmailException IO)
         ()
-readEmails (Username username) (Password password) past = do
+readEmails (EmailUser username) (EmailPassword password) past = do
     conn <- lift $ tryX ConnectionFailed $ connectIMAPSSL "imap.gmail.com"
     _ <- lift $ tryX LoginFailed $ login conn username password
     _ <- lift $ tryX SelectFailed $ select conn allMail
     now <- liftIO getCurrentTime
     let limit =
             addUTCTime
-                ( negate $ secondsToNominalDiffTime $ fromIntegral $ past * 24 * 60 * 60
-                )
+                (negate $ secondsToNominalDiffTime $ fromIntegral $ past * 24 * 60 * 60)
                 now
     let clockLimit = utcTimeToClockTime limit
     tz <- liftIO getCurrentTimeZone -- wrong, should be the email server's timezone

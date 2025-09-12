@@ -24,6 +24,7 @@ import OptEnvConf
     , command
     , commands
     , eitherReader
+    , env
     , help
     , long
     , metavar
@@ -44,8 +45,14 @@ import Oracle.Validate.Requests.TestRun.Update (UpdateTestRunFailure)
 import Oracle.Validate.Types (AValidationResult)
 import User.Agent.Cli
     ( AgentCommand (..)
+    , CheckResultsFailure
     , IsReady (NotReady)
     , TestRunId (..)
+    )
+import User.Agent.PublishResults.Email
+    ( EmailPassword (..)
+    , EmailUser (..)
+    , Result
     )
 import User.Agent.PushTest
     ( AntithesisAuth (..)
@@ -81,7 +88,44 @@ agentCommandParser =
             $ Box <$> downloadAssetsOptions
         , command "push-test" "Push a test run to Antithesis"
             $ Box <$> pushTestOptions
+        , command "collect-email-results" "Collect test results from email"
+            $ Box <$> emailResultsOptions
         ]
+
+emailResultsOptions
+    :: Parser
+        (AgentCommand NotReady (AValidationResult CheckResultsFailure Result))
+emailResultsOptions =
+    CheckResults
+        <$> tokenIdOption
+        <*> ( EmailUser
+                <$> setting
+                    [ env "ANTI_AGENT_EMAIL"
+                    , metavar "EMAIL"
+                    , help "The agent email to access the results mailbox"
+                    , reader str
+                    , long "email-user"
+                    , option
+                    ]
+            )
+        <*> ( EmailPassword
+                <$> secretsParser
+                    "Enter the agent email password to access the mailbox"
+                    "The agent email password to access the mailbox"
+                    "ANTI_AGENT_EMAIL_PASSWORD"
+                    "EMAIL_PASSWORD"
+                    "ask-agent-email-password"
+            )
+        <*> testRunIdOption "check results for"
+        <*> setting
+            [ long "days"
+            , help
+                "Number of days in the past to check for test results (default: 7)"
+            , metavar "DAYS"
+            , reader auto
+            , value 7
+            , option
+            ]
 
 pushTestOptions
     :: Parser

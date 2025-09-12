@@ -54,10 +54,13 @@ You can enable bash completion for the `anti` command by adding the following li
 source <(anti --bash-completion-script "$(which anti)")
 ```
 
-You can have a pretty output (not valid JSON,  but easier to read) by passing --pretty switch or setting the `ANTI_PRETTY` environment variable to any value:
+You can have a pretty output (not valid JSON,  but easier to read) by passing `--pretty` switch or setting the `ANTI_PRETTY` environment variable to any value:
 ```bash
 export ANTI_PRETTY=1
 ```
+
+For scripting purposes you can disable the pretty effect of the env-var by passing `--no-pretty` switch.
+
 
 ### Environment variables
 

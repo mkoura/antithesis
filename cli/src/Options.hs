@@ -148,14 +148,26 @@ includedTestRuns = many $ testRunIdOption "include"
 
 prettyOption :: Parser Bool
 prettyOption =
+    ((&&) . not <$> noPrettyOption)
+        <*> setting
+            [ env "ANTI_PRETTY"
+            , help "Pretty print JSON output"
+            , metavar "NONE"
+            , long "pretty"
+            , switch True
+            , value False
+            , reader (str @String $> True)
+            ]
+
+noPrettyOption :: Parser Bool
+noPrettyOption =
     setting
-        [ env "ANTI_PRETTY"
-        , help "Pretty print JSON output"
-        , metavar "NONE"
-        , long "pretty"
+        [ help
+            "Do not pretty print JSON output (overrides --pretty / ANTI_PRETTY)"
+        , long "no-pretty"
         , switch True
         , value False
-        , reader (str @String $> True)
+        , reader (str @String $> False)
         ]
 
 optionsParser :: Parser (Box Options)

@@ -27,6 +27,7 @@ import Cardano.Address.Derivation
     , deriveAddressPrivateKey
     , genMasterKeyFromMnemonic
     , pubToBytes
+    , xprvToBytes
     , xpubToPub
     )
 import Cardano.Address.Style.Shelley
@@ -89,11 +90,14 @@ import Core.Types.Tx
 import Core.Types.Wallet
     ( Wallet (..)
     )
+import Crypto.Error (CryptoFailable (..))
+import Crypto.PubKey.Ed25519 qualified as Ed25519
 import Data.Aeson
     ( encode
     )
 import Data.Bifunctor (first)
 import Data.ByteString (ByteString)
+import Data.ByteString qualified as B
 import Data.ByteString.Base16 qualified as Base16
 import Data.ByteString.Char8 qualified as BS
 import Data.ByteString.Lazy.Char8 qualified as BL
@@ -203,12 +207,17 @@ walletFromMnemonic encrypted mnemonics@(ClearText mnemonicsText) = do
         addrXPub64 = Crypto.HD.toXPub <$> addrXPrv96
 
         pubBytes32 = pubToBytes $ xpubToPub $ getKey addrXPub64
+        privBytes32 = B.take 32 $ xprvToBytes $ getKey addrXPrv96
         tag = either (error . show) id $ mkNetworkDiscriminant 0
         addr =
             Address
                 $ bech32
                 $ paymentAddress tag
                 $ PaymentFromExtendedKey addrXPub64
+        privateKey = case Ed25519.secretKey privBytes32 of
+            CryptoFailed err ->
+                error $ "Failed to create Ed25519 secret key: " ++ show err
+            CryptoPassed sk -> sk
     pure
         $ Wallet
             { address = addr
@@ -220,6 +229,7 @@ walletFromMnemonic encrypted mnemonics@(ClearText mnemonicsText) = do
                     $ digest (Proxy @Blake2b_224) pubBytes32
             , encrypted
             , mnemonics
+            , privateKey
             }
 
 signTx :: XPrv -> UnsignedTx -> Either SignTxError SignedTx

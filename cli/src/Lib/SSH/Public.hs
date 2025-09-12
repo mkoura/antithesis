@@ -40,15 +40,18 @@ renderEd25519Key key = do
 type Verify = Ed25519.Signature -> B.ByteString -> Bool
 
 decodePublicKey
-    :: PublicKeyHash -> Maybe Verify
+    :: PublicKeyHash -> Maybe (Verify, Ed25519.PublicKey)
 decodePublicKey (PublicKeyHash pk) =
     let
         base64Decoded = BL.fromStrict $ Base64.decodeLenient $ BC.pack pk
         keyBytes = runGet parseEd25519Key base64Decoded
     in
         case Ed25519.publicKey keyBytes of
-            CryptoPassed pubKey -> Just $ \sig msg ->
-                Ed25519.verify pubKey msg sig
+            CryptoPassed pubKey ->
+                Just
+                    ( flip (Ed25519.verify pubKey)
+                    , pubKey
+                    )
             CryptoFailed _ -> Nothing
 
 encodePublicKey

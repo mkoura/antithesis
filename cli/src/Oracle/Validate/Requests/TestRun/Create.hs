@@ -233,7 +233,7 @@ checkSignature
         if null userKeys
             then return $ Just UserHasNoRegisteredSSHKeys
             else
-                if any (\verify -> verify signature load) userKeys
+                if any ((\verify -> verify signature load) . fst) userKeys
                     then return Nothing
                     else return $ Just NoRegisteredKeyVerifiesTheSignature
 

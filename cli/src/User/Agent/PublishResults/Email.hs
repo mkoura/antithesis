@@ -18,7 +18,8 @@ module User.Agent.PublishResults.Email
 where
 
 import Control.Applicative (asum, (<|>))
-import Control.Lens (view, (&))
+import Control.Arrow (left)
+import Control.Lens (view, (&), (^.), (^..))
 import Control.Monad (forM)
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Trans.Class (MonadTrans (..))
@@ -28,18 +29,21 @@ import Control.Monad.Trans.Except
     , runExceptT
     , withExceptT
     )
-import Data.Attoparsec.ByteString.Char8 (takeByteString)
 import Data.ByteString qualified as B
 import Data.ByteString.Lazy qualified as BL
 import Data.IMF
-    ( BodyHandler (RequiredBody)
-    , Message
+    ( Message
     , body
     , headerDate
     , message
     , parse
     )
 import Data.List (sortBy)
+import Data.MIME (EncStateWire, MIME (..), entities, mime)
+import Data.MIME.TransferEncoding
+    ( HasTransferEncoding (..)
+    , transferDecoded'
+    )
 import Data.Maybe (catMaybes, listToMaybe, mapMaybe)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
@@ -205,7 +209,8 @@ readEmails (EmailUser username) (EmailPassword password) past = do
     now <- liftIO getCurrentTime
     let limit =
             addUTCTime
-                (negate $ secondsToNominalDiffTime $ fromIntegral $ past * 24 * 60 * 60)
+                ( negate $ secondsToNominalDiffTime $ fromIntegral $ past * 24 * 60 * 60
+                )
                 now
     let clockLimit = utcTimeToClockTime limit
     tz <- liftIO getCurrentTimeZone -- wrong, should be the email server's timezone
@@ -226,7 +231,7 @@ readEmails (EmailUser username) (EmailPassword password) past = do
                         else pure $ Just $ readEmail content
                 each $ keepInLimit localTimeLimit $ sortResults $ catMaybes results
                 go to
-    liftIO getClockTime >>= go
+    liftIO getClockTime >>= go . addToClockTime noTimeDiff{tdDay = 1}
 
 nextSlot :: ClockTime -> Hours -> IO ([SearchQuery], ClockTime)
 nextSlot now (Hours hours) = do
@@ -256,7 +261,7 @@ data WithDateError
 readEmail
     :: B.ByteString -> Either ParsingError Result
 readEmail input =
-    case parse (message (const $ RequiredBody takeByteString)) input of
+    case parse (message mime) input of
         Left errMsg -> Left $ ParsingError errMsg input
         Right msg -> parseEmail msg
 
@@ -266,20 +271,30 @@ toTokens = parseTokens . T.decodeUtf8
 nothingLeft :: a -> Maybe b -> Either a b
 nothingLeft = flip maybe Right . Left
 
-parseEmail :: Message ctx B.ByteString -> Either ParsingError Result
-parseEmail content =
-    view headerDate content & \mdate -> do
-        date <- nothingLeft NoDate mdate
-        toTokens (view body content) & \ts ->
-            Result
-                <$> nothingLeft
-                    (WithDate date DescriptionMissingOrUnusable)
-                    (findDescription ts)
-                <*> pure date
-                <*> nothingLeft
-                    (WithDate date LinkMissing)
-                    (listToMaybe (findLinks ts))
-
+parseEmail :: Message EncStateWire MIME -> Either ParsingError Result
+parseEmail content = do
+    content ^.. entities & \es -> case es of
+        [entity] ->
+            view headerDate content & \mdate -> do
+                date <- nothingLeft NoDate mdate
+                let pe err =
+                        ParsingError
+                            ("Transfer decoding error: " ++ show err)
+                            ""
+                decoded <- left pe $ entity ^. transferDecoded'
+                toTokens (decoded ^. body)
+                    & \ts ->
+                        Result
+                            <$> nothingLeft
+                                (WithDate date DescriptionMissingOrUnusable)
+                                (findDescription ts)
+                            <*> pure date
+                            <*> nothingLeft
+                                (WithDate date LinkMissing)
+                                (listToMaybe (findLinks ts))
+        __ ->
+            Left
+                $ ParsingError ("Expected one entity, got " ++ show (length es)) ""
 findDescription :: [Token] -> Maybe TestRun
 findDescription = asum . fmap f
   where

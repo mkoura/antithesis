@@ -77,8 +77,8 @@ spec = do
                                     $ parseTimeM
                                         True
                                         defaultTimeLocale
-                                        "%d %m %Y %H:%M:%S"
-                                        "05 09 2025 17:27:03"
+                                        "%Y-%m-%d %H:%M:%S"
+                                        "2025-09-05 17:27:03"
                             , link = T.strip expectedLink
                             }
         it "rejects email with no date"
@@ -96,6 +96,36 @@ spec = do
                 Left (WithDate _ LinkMissing) -> return ()
                 Left _ -> expectationFailure "wrong error"
                 Right _ -> expectationFailure "should not parse"
+        it "parses quoted-printable email"
+            $ case readEmail quotedPrintableGood of
+                Left err -> expectationFailure $ "should parse: " <> show err
+                Right r ->
+                    r
+                        `shouldBe` Result
+                            { description =
+                                TestRun
+                                    { commitId = Commit "a7741a44dfddfe05822e1a49862ceea43ecd657d"
+                                    , directory = Directory "antithesis-test"
+                                    , platform = Platform "github"
+                                    , repository =
+                                        Repository
+                                            { organization = "cardano-foundation"
+                                            , project = "hal-fixture-sin"
+                                            }
+                                    , requester = Username "cfhal"
+                                    , tryIndex = 2
+                                    }
+                            , date =
+                                fromJust
+                                    $ parseTimeM
+                                        True
+                                        defaultTimeLocale
+                                        "%Y-%m-%d %H:%M:%S"
+                                        "2025-09-05 17:27:03"
+                            , link =
+                                T.strip
+                                    [s|https://cardano.antithesis.com/report/nDSj3YOUtIvcco1HRmK7iz2w/YudEq2ITbl0xxDqYNgdrT2gHUMtQDXYkNtDMyRwT61A.html?auth=v2.public.eyJuYmYiOiIyMDI1LTA5LTEzVDExOjAyOjM2LjIwNzY1ODk2NFoiLCJzY29wZSI6eyJSZXBvcnRTY29wZVYxIjp7ImFzc2V0IjoiWXVkRXEySVRibDB4eERxWU5nZHJUMmdIVU10UURYWWtOdERNeVJ3VDYxQS5odG1sIiwicmVwb3J0X2lkIjoibkRTajNZT1V0SXZjY28xSFJtSzdpejJ3In19fUQUQv8zIXJj1FqNehObRCWcj22nLkUqxHJCTuO5FN4TK_xN4P9o8luQnFgbwPKH1eAmwrFtC7qMUzlp3kqpoQI|]
+                            }
 
 genTime :: Gen UTCTime
 genTime = do
@@ -179,4 +209,39 @@ Date: Fri, 5 Sep 2025 17:27:03 +0000
 
 
 
+|]
+quotedPrintableGood :: B.ByteString
+quotedPrintableGood =
+    [s|
+From: "'Antithesis Reports' via list_antithesis_external" <antithesis@cardanofoundation.org>
+MIME-Version: 1.0
+Content-Type: text/html; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
+Date: Fri, 5 Sep 2025 17:27:03 +0000
+
+<br>Run by cardano on 2025-09-13 09:36 UTC<br> Description: {"testRun":{"co=
+mmitId":"a7741a44dfddfe05822e1a49862ceea43ecd657d","directory":"antithesis-=
+test","platform":"github","repository":{"organization":"cardano-foundation"=
+,"repo":"hal-fixture-sin"},"requester":"cfhal","try":2,"type":"test-run"},"=
+testRunId":"0f84dc8e2abf5eefc93c016192225db8482a99bbdac3b114cf32c6832a23e63=
+6"}<br><span style=3D"font-size:larger;font-weight:bold"><a href=3Dhttps://=
+cardano.antithesis.com/report/nDSj3YOUtIvcco1HRmK7iz2w/YudEq2ITbl0xxDqYNgdr=
+T2gHUMtQDXYkNtDMyRwT61A.html?auth=3Dv2.public.eyJuYmYiOiIyMDI1LTA5LTEzVDExO=
+jAyOjM2LjIwNzY1ODk2NFoiLCJzY29wZSI6eyJSZXBvcnRTY29wZVYxIjp7ImFzc2V0IjoiWXVk=
+RXEySVRibDB4eERxWU5nZHJUMmdIVU10UURYWWtOdERNeVJ3VDYxQS5odG1sIiwicmVwb3J0X2l=
+kIjoibkRTajNZT1V0SXZjY28xSFJtSzdpejJ3In19fUQUQv8zIXJj1FqNehObRCWcj22nLkUqxH=
+JCTuO5FN4TK_xN4P9o8luQnFgbwPKH1eAmwrFtC7qMUzlp3kqpoQI>View report - 8f54a38=
+2decd75c13766bcde08c5750a-37-4</a></span><br><h3>No findings introduced thi=
+s run.<br><font style=3D"color:orange">1 ongoing</font> issue.</h3>
+   =20
+   =20
+   =20
+    <a href=3D"https://cardano.antithesis.com/report/nDSj3YOUtIvcco1HRmK7iz=
+2w/YudEq2ITbl0xxDqYNgdrT2gHUMtQDXYkNtDMyRwT61A.html?auth=3Dv2.public.eyJuYm=
+YiOiIyMDI1LTA5LTEzVDExOjAyOjM2LjIwNzY1ODk2NFoiLCJzY29wZSI6eyJSZXBvcnRTY29wZ=
+VYxIjp7ImFzc2V0IjoiWXVkRXEySVRibDB4eERxWU5nZHJUMmdIVU10UURYWWtOdERNeVJ3VDYx=
+QS5odG1sIiwicmVwb3J0X2lkIjoibkRTajNZT1V0SXZjY28xSFJtSzdpejJ3In19fUQUQv8zIXJ=
+j1FqNehObRCWcj22nLkUqxHJCTuO5FN4TK_xN4P9o8luQnFgbwPKH1eAmwrFtC7qMUzlp3kqpoQ=
+I#/run/8f54a382decd75c13766bcde08c5750a-37-4/finding/2f95173b159955ee457c5f=
+52cbb711791c742ef1">Look into 1 ongoing finding.</a>
 |]

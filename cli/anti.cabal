@@ -165,7 +165,6 @@ library
   -- Other library packages from which modules are imported.
   build-depends:
     , aeson
-    , attoparsec
     , base
     , base16-bytestring      ^>=1.0.2.0
     , base64-bytestring

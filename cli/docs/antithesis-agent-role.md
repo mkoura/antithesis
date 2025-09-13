@@ -44,7 +44,14 @@ This will download the assets for the test-run with id `<test-run-id>` into the 
 
 ## Start a test-run locally
 
-> TBD (soon)
+At the moment there is no anti-cli command to start a test-run locally. But a minimal check could be done via docker compose.
+
+```bash
+cd <directory>
+INTERNAL_NETWORK=true docker compose up --build
+```
+
+Obviously you should do all kind of analysis you deem necessary on the assets before deciding the next step.
 
 ## Reject a test-run
 

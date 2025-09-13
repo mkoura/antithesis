@@ -209,8 +209,7 @@ readEmails (EmailUser username) (EmailPassword password) past = do
     now <- liftIO getCurrentTime
     let limit =
             addUTCTime
-                ( negate $ secondsToNominalDiffTime $ fromIntegral $ past * 24 * 60 * 60
-                )
+                (negate $ secondsToNominalDiffTime $ fromIntegral $ past * 24 * 60 * 60)
                 now
     let clockLimit = utcTimeToClockTime limit
     tz <- liftIO getCurrentTimeZone -- wrong, should be the email server's timezone

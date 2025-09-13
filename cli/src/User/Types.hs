@@ -21,8 +21,6 @@ module User.Types
     , RegisterRoleKey (..)
     , roleOfATestRun
     , AgentValidation (..)
-    , disclosedSKey
-    , disclosedPKey
     )
 where
 
@@ -40,13 +38,9 @@ import Core.Types.Basic
     , Username (..)
     )
 import Crypto.Error (CryptoFailable (..))
-import Crypto.PubKey.Ed25519 (generateSecretKey)
 import Crypto.PubKey.Ed25519 qualified as Ed25519
-import Crypto.Random (MonadRandom)
-import Crypto.Random.Types (MonadRandom (..))
 import Data.ByteArray qualified as BA
 import Data.Map.Strict qualified as Map
-import Data.Word (Word8)
 import Lib.JSON.Canonical.Extra
     ( byteStringFromJSON
     , byteStringToJSON
@@ -415,31 +409,3 @@ instance (ReportSchemaErrors m) => FromJSON m AgentValidation where
         expectedButGotValue
             "an object representing an agent validation"
             r
-
-{-
-  i.e.
- As the agent already has to prove to the oracle his identity and the oracle
- is in charge of deciding/distributing his identity, there is no need for the agent
- to authenticate his messages to the requester as the oracle can already forge them
- and noone else can impersonate the agent without being detected by the oracle.
-
- This is one case where we can use this key pair as it is not a security issue
- if someone else knows it.
- -}
-
-newtype ConstantSeed a = ConstantSeed ([Word8] -> a)
-    deriving (Functor, Applicative, Monad)
-
-runConstantSeed :: ConstantSeed a -> [Word8] -> a
-runConstantSeed (ConstantSeed f) = f
-
-instance MonadRandom ConstantSeed where
-    getRandomBytes n = ConstantSeed $ \bytes ->
-        let (h, _) = splitAt n bytes
-        in  BA.pack h
-
-disclosedSKey :: Ed25519.SecretKey
-disclosedSKey = runConstantSeed generateSecretKey [0 ..]
-
-disclosedPKey :: Ed25519.PublicKey
-disclosedPKey = Ed25519.toPublic disclosedSKey

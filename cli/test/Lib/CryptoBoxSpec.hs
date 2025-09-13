@@ -17,7 +17,13 @@ import Data.ByteString (ByteString)
 import Data.ByteString qualified as B
 import Data.Functor ((<&>))
 import Data.Word (Word8)
-import Lib.CryptoBox (Nonce192 (..), decrypt, encrypt)
+import Lib.CryptoBox
+    ( Nonce192 (..)
+    , decryptOnly
+    , encryptAndSign
+    , encryptOnly
+    , verifiyAndDecrypt
+    )
 import Test.Hspec (Spec, describe, expectationFailure, shouldBe)
 import Test.Hspec.QuickCheck (prop)
 import Test.QuickCheck
@@ -54,13 +60,24 @@ generateParams = do
 
 spec :: Spec
 spec = describe "CryptoBox"
-    $ prop "can create and open"
-    $ withMaxSuccess 10000
-    $ forAllBlind generateParams
-    $ \Params{agentSk, agentPk, userPk, userSk, msg, nonce} ->
-        case encrypt userPk agentSk msg nonce of
-            Left err -> expectationFailure err
-            Right encrypted ->
-                case decrypt agentPk userSk encrypted nonce of
+    $ do
+        prop "can create and open"
+            $ withMaxSuccess 10000
+            $ forAllBlind generateParams
+            $ \Params{agentSk, agentPk, userPk, userSk, msg, nonce} ->
+                case encryptAndSign userPk agentSk msg nonce of
                     Left err -> expectationFailure err
-                    Right decrypted -> decrypted `shouldBe` Just msg
+                    Right closed ->
+                        case verifiyAndDecrypt agentPk userSk closed nonce of
+                            Left err -> expectationFailure err
+                            Right opened -> opened `shouldBe` Just msg
+        prop "can encrypt and decrypt only"
+            $ withMaxSuccess 10000
+            $ forAllBlind generateParams
+            $ \Params{userPk, userSk, msg, nonce} ->
+                case encryptOnly userPk msg nonce of
+                    Left err -> expectationFailure err
+                    Right encrypted ->
+                        case decryptOnly userSk encrypted nonce of
+                            Left err -> expectationFailure err
+                            Right decrypted -> decrypted `shouldBe` Just msg

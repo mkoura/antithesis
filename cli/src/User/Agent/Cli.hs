@@ -121,7 +121,6 @@ import User.Types
     , TestRunRejection
     , TestRunState (..)
     , URL (..)
-    , disclosedSKey
     )
 import Validation (Validation)
 
@@ -599,4 +598,4 @@ encryptForRequester tokenId key urlText = do
             $ runIdentity
             $ blakeHashOfJSON testRun
     throwLeft ReportFailureFailToEncrypt
-        $ CB.encrypt pk disclosedSKey (B8.pack urlText) nonce
+        $ CB.encryptOnly pk (B8.pack urlText) nonce

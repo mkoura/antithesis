@@ -171,7 +171,7 @@ antithesisAuthOption =
         <$> secretsParser
             "Enter the password to access Antithesis"
             "The password to access Antithesis"
-            "ANTI_ANTHESIS_PASSWORD"
+            "ANTI_ANTITHESIS_PASSWORD"
             "PASSWORD"
             "ask-antithesis-password"
   where

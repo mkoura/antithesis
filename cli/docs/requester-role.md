@@ -142,3 +142,9 @@ You can check the status of your test-run requests with the `anti facts test-run
 ```bash
 anti facts test-runs -i <your_test_run_id>
 ```
+
+You can find all running test-runs for a user with
+
+```bash
+anti facts test-runs running --whose cfhal 
+```

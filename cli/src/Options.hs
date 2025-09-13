@@ -20,12 +20,13 @@ import Core.Options
     , tokenIdOption
     , walletOption
     )
+import Core.Types.Basic (Username (..))
 import Core.Types.MPFS (mpfsClientOption)
 import Data.ByteString.Char8 qualified as B
 import Data.Functor (($>))
 import Data.String.QQ (s)
 import Data.Version (Version)
-import Facts (FactsSelection (..), TestRunSelection (..))
+import Facts (All (..), FactsSelection (..), TestRunSelection (..))
 import GitHub (Auth (..))
 import Lib.Box (Box (..), fmapBox)
 import Lib.Options.Secrets (secretsParser)
@@ -38,6 +39,7 @@ import OptEnvConf
     , help
     , long
     , metavar
+    , option
     , reader
     , runParser
     , setting
@@ -127,21 +129,32 @@ testRunSelectionParser =
         [ command
             "pending"
             "Get pending test runs"
-            (fmap Box $ TestRunPending <$> includedTestRuns)
+            (fmap Box $ TestRunPending <$> includedTestRuns <*> whoseOption)
         , command
             "running"
             "Get running test runs"
-            (fmap Box $ TestRunRunning <$> includedTestRuns)
+            (fmap Box $ TestRunRunning <$> includedTestRuns <*> whoseOption)
         , command
             "done"
             "Get done test runs"
-            (fmap Box $ TestRunDone <$> includedTestRuns)
+            (fmap Box $ TestRunDone <$> includedTestRuns <*> whoseOption)
         , command
             "rejected"
             "Get rejected test runs"
-            (fmap Box $ TestRunRejected <$> includedTestRuns)
+            (fmap Box $ TestRunRejected <$> includedTestRuns <*> whoseOption)
         ]
-        <|> fmap Box (AnyTestRuns <$> includedTestRuns)
+        <|> fmap Box (AnyTestRuns <$> includedTestRuns <*> whoseOption)
+
+whoseOption :: Parser All
+whoseOption =
+    setting
+        [ help "Filter test runs by requester username"
+        , metavar "USERNAME|ALL"
+        , long "whose"
+        , option
+        , reader $ Requester . Username <$> str
+        , value All
+        ]
 
 includedTestRuns :: Parser [TestRunId]
 includedTestRuns = many $ testRunIdOption "include"

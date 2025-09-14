@@ -58,6 +58,7 @@ type Sign = BC.ByteString -> Ed25519.Signature
 data KeyAPI = KeyAPI
     { sign :: Sign
     , publicKey :: Ed25519.PublicKey
+    , privateKey :: Ed25519.SecretKey
     }
 
 mkKeyAPI :: String -> ByteString -> String -> Maybe KeyAPI
@@ -69,6 +70,7 @@ mkKeyAPI passPhrase content sshKeySelector =
                 $ KeyAPI
                     { sign = Ed25519.sign sk pk
                     , publicKey = pk
+                    , privateKey = sk
                     }
     in
         Map.lookup sshKeySelector $ foldMap mkMap ks

@@ -1,25 +1,40 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
+{-# HLINT ignore "Use fewer imports" #-}
 module Facts
     ( FactsSelection (..)
     , TestRunSelection (..)
     , factsCmd
     , All (..)
+    , tryDecryption
+    , URLDecryptionIssue (..)
     )
 where
 
-import Control.Monad (filterM)
+import Control.Arrow (left)
+import Control.Monad (filterM, when)
 import Core.Types.Basic (TokenId, Username)
 import Core.Types.Fact (Fact (..), keyHash, parseFacts)
+import Data.ByteString.Base64 qualified as Base64
+import Data.ByteString.Char8 qualified as B8
+import Data.Foldable (find)
 import Data.Functor ((<&>))
 import Data.Functor.Identity (Identity (..))
+import Lib.CryptoBox (decryptOnly)
+import Lib.CryptoBox qualified as CB
+import Lib.JSON.Canonical.Extra (blakeHashOfJSON)
+import Lib.SSH.Private (KeyAPI (..))
+import Lib.SSH.Public (decodePublicKey)
 import MPFS.API (MPFS, mpfsGetTokenFacts)
 import Oracle.Config.Types (Config, ConfigKey)
-import Text.JSON.Canonical
+import Text.JSON.Canonical (FromJSON, JSValue, ToJSON)
 import User.Agent.Types (TestRunId (..), WhiteListKey)
 import User.Types
     ( Phase (..)
-    , RegisterUserKey
+    , RegisterUserKey (..)
     , TestRun (..)
     , TestRunState (..)
+    , URL (..)
     )
 
 data All = All | Requester Username
@@ -113,3 +128,56 @@ factsCmd mpfs tokenId AllFacts = retrieveAnyFacts mpfs tokenId
 
 filterOn :: [a] -> (a -> b) -> (b -> Bool) -> [a]
 filterOn xs f p = filter (p . f) xs
+
+data URLDecryptionIssue
+    = StateIsNotFinished
+    | SSHKeyDoesNotApply
+    | PublicKeyNotDecodable
+    | URLNotBase64 String
+    | NonceNotCreatable
+    | KeyConversionsFailed String
+    | URLDecryptionFailed
+    | UsersNotRegistered Username
+
+nothingLeft :: e -> Maybe a -> Either e a
+nothingLeft e = maybe (Left e) Right
+
+tryDecryption
+    :: [RegisterUserKey]
+    -> Maybe KeyAPI
+    -> Fact TestRun (TestRunState 'DoneT)
+    -> Fact TestRun (TestRunState 'DoneT)
+tryDecryption _ Nothing f = f
+tryDecryption registeredUsers (Just kapi) f@(Fact tr ts) =
+    case decryptURL registeredUsers tr ts kapi of
+        Left _ -> f
+        Right ts' -> Fact{factKey = tr, factValue = ts'}
+
+decryptURL
+    :: [RegisterUserKey]
+    -> TestRun
+    -> TestRunState DoneT
+    -> KeyAPI
+    -> Either URLDecryptionIssue (TestRunState DoneT)
+decryptURL _ _ Rejected{} _ = Left StateIsNotFinished
+decryptURL
+    users
+    testRun@TestRun{requester}
+    (Finished old dur (URL enc))
+    KeyAPI{privateKey, publicKey = sshPublicKey} = do
+        RegisterUserKey{pubkeyhash} <-
+            nothingLeft (UsersNotRegistered requester)
+                $ find ((== requester) . username) users
+        (_, publicKey) <-
+            nothingLeft PublicKeyNotDecodable $ decodePublicKey pubkeyhash
+        when (publicKey /= sshPublicKey) $ Left SSHKeyDoesNotApply
+        decodedURL <- left URLNotBase64 $ Base64.decode $ B8.pack enc
+        nonce <-
+            nothingLeft NonceNotCreatable
+                $ CB.mkNonce
+                $ runIdentity
+                $ blakeHashOfJSON testRun
+        murl <-
+            left KeyConversionsFailed $ decryptOnly privateKey decodedURL nonce
+        url <- nothingLeft URLDecryptionFailed murl
+        pure $ Finished old dur $ URL $ B8.unpack url

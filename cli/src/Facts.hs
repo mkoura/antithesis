@@ -23,7 +23,7 @@ import Data.Functor.Identity (Identity (..))
 import Lib.CryptoBox (decryptOnly)
 import Lib.CryptoBox qualified as CB
 import Lib.JSON.Canonical.Extra (blakeHashOfJSON)
-import Lib.SSH.Private (KeyAPI (..))
+import Lib.SSH.Private (KeyAPI (..), SSHClient)
 import Lib.SSH.Public (decodePublicKey)
 import MPFS.API (MPFS, mpfsGetTokenFacts)
 import Oracle.Config.Types (Config, ConfigKey)
@@ -36,6 +36,7 @@ import User.Types
     , TestRunState (..)
     , URL (..)
     )
+import Validation (Validation)
 
 data All = All | Requester Username
     deriving (Eq, Show)
@@ -93,14 +94,21 @@ whoseFilter whose facts = filterOn facts factKey
             All -> True
             Requester u -> requester == u
 
-factsCmd :: Monad m => MPFS m -> TokenId -> FactsSelection a -> m a
-factsCmd mpfs tokenId UserFacts = retrieveAnyFacts mpfs tokenId
-factsCmd mpfs tokenId RoleFacts = retrieveAnyFacts mpfs tokenId
-factsCmd mpfs tokenId (TestRunFacts (TestRunPending ids whose)) = do
+factsCmd
+    :: forall m a
+     . Monad m
+    => Maybe (SSHClient, Validation m)
+    -> MPFS m
+    -> TokenId
+    -> FactsSelection a
+    -> m a
+factsCmd _ mpfs tokenId UserFacts = retrieveAnyFacts mpfs tokenId
+factsCmd _ mpfs tokenId RoleFacts = retrieveAnyFacts mpfs tokenId
+factsCmd _ mpfs tokenId (TestRunFacts (TestRunPending ids whose)) = do
     retrieveAnyFacts mpfs tokenId <&> filterFacts ids . whoseFilter whose
-factsCmd mpfs tokenId (TestRunFacts (TestRunRunning ids whose)) = do
+factsCmd _ mpfs tokenId (TestRunFacts (TestRunRunning ids whose)) = do
     retrieveAnyFacts mpfs tokenId <&> filterFacts ids . whoseFilter whose
-factsCmd mpfs tokenId (TestRunFacts (TestRunDone ids whose)) = do
+factsCmd _ mpfs tokenId (TestRunFacts (TestRunDone ids whose)) = do
     facts <-
         retrieveAnyFacts mpfs tokenId <&> filterFacts ids . whoseFilter whose
     pure
@@ -110,7 +118,7 @@ factsCmd mpfs tokenId (TestRunFacts (TestRunDone ids whose)) = do
                 _ -> False
             )
             facts
-factsCmd mpfs tokenId (TestRunFacts (TestRunRejected ids whose)) = do
+factsCmd _ mpfs tokenId (TestRunFacts (TestRunRejected ids whose)) = do
     facts <-
         retrieveAnyFacts mpfs tokenId <&> filterFacts ids . whoseFilter whose
     pure
@@ -120,11 +128,11 @@ factsCmd mpfs tokenId (TestRunFacts (TestRunRejected ids whose)) = do
                 _ -> False
             )
             facts
-factsCmd mpfs tokenId (TestRunFacts (AnyTestRuns ids whose)) =
+factsCmd _ mpfs tokenId (TestRunFacts (AnyTestRuns ids whose)) =
     retrieveAnyFacts mpfs tokenId <&> filterFacts ids . whoseFilter whose
-factsCmd mpfs tokenId ConfigFact = retrieveAnyFacts mpfs tokenId
-factsCmd mpfs tokenId WhiteListedFacts = retrieveAnyFacts mpfs tokenId
-factsCmd mpfs tokenId AllFacts = retrieveAnyFacts mpfs tokenId
+factsCmd _ mpfs tokenId ConfigFact = retrieveAnyFacts mpfs tokenId
+factsCmd _ mpfs tokenId WhiteListedFacts = retrieveAnyFacts mpfs tokenId
+factsCmd _ mpfs tokenId AllFacts = retrieveAnyFacts mpfs tokenId
 
 filterOn :: [a] -> (a -> b) -> (b -> Bool) -> [a]
 filterOn xs f p = filter (p . f) xs

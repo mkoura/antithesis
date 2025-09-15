@@ -15,6 +15,7 @@ module Options
     ) where
 
 import Cli (Command (..))
+import Control.Applicative (optional)
 import Core.Options
     ( outputReferenceParser
     , tokenIdOption
@@ -51,7 +52,10 @@ import OptEnvConf
 import Oracle.Options (oracleCommandParser)
 import User.Agent.Options (agentCommandParser, testRunIdOption)
 import User.Agent.Types (TestRunId)
-import User.Requester.Options (requesterCommandParser)
+import User.Requester.Options
+    ( requesterCommandParser
+    , sshClientOption
+    )
 import Wallet.Options (walletCommandParser)
 
 data Options a where
@@ -92,8 +96,9 @@ commandParser =
             "Retract a request"
             retractRequestOptions
         , command "facts" "Get token facts"
-            $ (\c tk -> fmapBox (GetFacts c tk))
-                <$> mpfsClientOption
+            $ (\ssh c tk -> fmapBox (GetFacts ssh c tk))
+                <$> optional sshClientOption
+                <*> mpfsClientOption
                 <*> tokenIdOption
                 <*> factsSelectionParser
         , command "token" "Get the token content"

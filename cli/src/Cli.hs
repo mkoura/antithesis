@@ -15,6 +15,7 @@ import Data.Functor.Identity (Identity (..))
 import Facts (FactsSelection, factsCmd)
 import GitHub (Auth)
 import Lib.JSON.Canonical.Extra
+import Lib.SSH.Private (SSHClient)
 import MPFS.API
     ( MPFS (..)
     , mpfsClient
@@ -56,7 +57,12 @@ data Command a where
         :: Auth -> MPFSClient -> AgentCommand NotReady a -> Command a
     RetractRequest
         :: MPFSClient -> Wallet -> RequestRefId -> Command TxHash
-    GetFacts :: MPFSClient -> TokenId -> FactsSelection a -> Command a
+    GetFacts
+        :: Maybe SSHClient
+        -> MPFSClient
+        -> TokenId
+        -> FactsSelection a
+        -> Command a
     Wallet :: WalletCommand a -> Command a
     GetToken
         :: Auth
@@ -110,8 +116,18 @@ cmd = \case
                 $ submit
                 $ \address ->
                     retractChange address refId
-    GetFacts MPFSClient{runMPFS} tokenId factsCommand ->
-        runMPFS $ factsCmd mpfsClient tokenId factsCommand
+    GetFacts ssh MPFSClient{runMPFS} tokenId factsCommand -> do
+        let validation =
+                mkValidation
+                    (error "shouldn't need this...")
+                    mpfsClient
+                    $ Just tokenId
+        runMPFS
+            $ factsCmd
+                ((,validation) <$> ssh)
+                mpfsClient
+                tokenId
+                factsCommand
     Wallet walletCommand -> liftIO $ walletCmd walletCommand
     GetToken
         auth

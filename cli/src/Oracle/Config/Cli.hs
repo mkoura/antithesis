@@ -32,7 +32,7 @@ configCmd
 configCmd (SetConfig tokenId wallet config) = do
     mpfs <- askMpfs
     Submission submit <- askSubmit wallet
-    present <- lift $ factsCmd mpfs tokenId ConfigFact
+    present <- lift $ factsCmd Nothing mpfs tokenId ConfigFact
     jkey <- toJSON ConfigKey
     jvalue <- toJSON config
     case present of

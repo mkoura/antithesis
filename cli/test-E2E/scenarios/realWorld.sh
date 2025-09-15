@@ -106,8 +106,8 @@ include_requests
 log "Accept the new test run request because it's a scenario"
 being_agent
 validation=$(anti agent query)
-references=$(echo "$validation" | jq -r '.pending | .[] | .id')
-anti agent accept-test -i "$references" > /dev/null
+reference=$(echo "$validation" | jq -r '.pending | .[] | .id')
+anti agent accept-test -i "$reference" > /dev/null
 
 log "Include the test run acceptance"
 include_requests
@@ -115,14 +115,19 @@ include_requests
 log "Finish the test run"
 being_agent
 validation=$(anti agent query)
-references=$(echo "$validation" | jq -r '.running | .[] | .id')
-anti agent report-test -i "$references" \
+anti agent report-test -i "$reference" \
     --duration 1 \
-    --url "https://example.com/report" \
-    > /dev/null
+    --url "https://example.com/report"
 
 log "Include the test run report"
 include_requests
 
+validation=$(anti agent query)
+
+being_requester
 log "Facts:"
-anti facts | jq .[]
+url=$(anti facts test-runs 'done' --test-run-id "$reference" | jq -r '.[] | .value.url')
+if [[ "$url" != "https://example.com/report" ]]; then
+    echo "Unexpected test run report URL: $url"
+    exit 1
+fi

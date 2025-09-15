@@ -1,7 +1,9 @@
 module User.Agent.Lib
     ( resolveTestRunId
+    , withState
     ) where
 
+import Control.Applicative (Alternative (..))
 import Core.Context (WithContext, withMPFS)
 import Core.Types.Basic (TokenId)
 import Core.Types.Fact (Fact (..), keyHash, parseFacts)
@@ -9,14 +11,14 @@ import Data.Foldable (find)
 import MPFS.API (MPFS (..))
 import Text.JSON.Canonical (FromJSON (..), JSValue)
 import User.Agent.Types (TestRunId (..))
-import User.Types (TestRun, TestRunState)
+import User.Types (Phase (..), TestRun, TestRunState)
 
 resolveTestRunId
     :: forall s m
-     . (Monad m, FromJSON Maybe (TestRunState s))
+     . (Monad m, FromJSON Maybe s)
     => TokenId
     -> TestRunId
-    -> WithContext m (Maybe (Fact TestRun (TestRunState s)))
+    -> WithContext m (Maybe (Fact TestRun s))
 resolveTestRunId tk (TestRunId testRunId) = do
     facts <- fmap parseFacts
         $ withMPFS
@@ -26,3 +28,17 @@ resolveTestRunId tk (TestRunId testRunId) = do
             Nothing -> False
             Just keyId -> keyId == testRunId
     pure $ find match facts >>= \(Fact k v) -> Fact k <$> fromJSON v
+
+withState
+    :: forall a
+     . (forall v. TestRunState v -> a)
+    -> JSValue
+    -> Maybe a
+withState f v =
+    f <$> state @'PendingT
+        <|> f <$> state @'RunningT
+        <|> f <$> state @'DoneT
+  where
+    state
+        :: forall s. FromJSON Maybe (TestRunState s) => Maybe (TestRunState s)
+    state = fromJSON v

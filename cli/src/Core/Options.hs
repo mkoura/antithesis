@@ -62,6 +62,8 @@ platformOption =
             , metavar "PLATFORM"
             , help "The platform to use"
             , option
+            , env "ANTI_PLATFORM"
+            , reader str
             ]
 
 parseRepository :: String -> Maybe Repository
@@ -75,6 +77,7 @@ repositoryOption =
         [ long "repository"
         , short 'r'
         , metavar "ORGANIZATION/PROJECT"
+        , env "ANTI_REPOSITORY"
         , help "The repository in the format 'organization/project'"
         , reader (maybeReader parseRepository)
         , option
@@ -119,7 +122,9 @@ usernameOption =
             [ long "username"
             , short 'u'
             , metavar "USERNAME"
-            , help "The username to register"
+            , env "ANTI_REQUESTER"
+            , reader str
+            , help "A github username"
             , option
             ]
 
@@ -130,7 +135,7 @@ pubkeyhashOption =
             [ long "pubkeyhash"
             , short 'k'
             , metavar "PUBKEYHASH"
-            , help "The public key hash for the user"
+            , help "A public key hash for the user"
             , option
             ]
 

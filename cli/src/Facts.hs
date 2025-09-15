@@ -31,6 +31,7 @@ import Text.JSON.Canonical (FromJSON, JSValue, ToJSON)
 import User.Agent.Types (TestRunId (..), WhiteListKey)
 import User.Types
     ( Phase (..)
+    , RegisterRoleKey
     , RegisterUserKey (..)
     , TestRun (..)
     , TestRunState (..)
@@ -63,7 +64,7 @@ data TestRunSelection a where
         -> TestRunSelection [Fact TestRun JSValue]
 data FactsSelection a where
     UserFacts :: FactsSelection [Fact RegisterUserKey ()]
-    RoleFacts :: FactsSelection [Fact RegisterUserKey ()]
+    RoleFacts :: FactsSelection [Fact RegisterRoleKey ()]
     TestRunFacts :: TestRunSelection a -> FactsSelection a
     ConfigFact :: FactsSelection [Fact ConfigKey Config]
     WhiteListedFacts :: FactsSelection [Fact WhiteListKey ()]

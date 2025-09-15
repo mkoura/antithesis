@@ -4,6 +4,7 @@ module User.Requester.Options
     ( requesterCommandParser
     , addPublicKeyOptions
     , addRoleOptions
+    , sshClientOption
     ) where
 
 import Core.Options

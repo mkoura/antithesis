@@ -17,6 +17,8 @@ result=$(anti oracle token boot)
 tokenId=$(echo "$result" | jq -r '.value')
 log "Anti token ID: $tokenId"
 
+owner=$(anti wallet info | jq -r '.owner')
+
 export ANTI_TOKEN_ID="$tokenId"
 
 tokenEnd() {
@@ -151,7 +153,7 @@ expectedGet1=$(
             "value": "null"
             },
         "outputRefId": "$outputRoleRef1",
-        "owner": "8da87507ba0a8a3c67eaeb8ec768dee132ad8ecac6f526ac526f0c9f"
+        "owner": "$owner"
         },
     "validation": "validated"
   }

@@ -4,10 +4,10 @@
 module Facts
     ( FactsSelection (..)
     , TestRunSelection (..)
-    , factsCmd
     , All (..)
     , tryDecryption
     , URLDecryptionIssue (..)
+    , factsCmd
     )
 where
 
@@ -36,7 +36,7 @@ import User.Types
     , TestRunState (..)
     , URL (..)
     )
-import Validation (Validation)
+import Validation (Validation (..))
 
 data All = All | Requester Username
     deriving (Eq, Show)
@@ -102,37 +102,46 @@ factsCmd
     -> TokenId
     -> FactsSelection a
     -> m a
-factsCmd _ mpfs tokenId UserFacts = retrieveAnyFacts mpfs tokenId
-factsCmd _ mpfs tokenId RoleFacts = retrieveAnyFacts mpfs tokenId
-factsCmd _ mpfs tokenId (TestRunFacts (TestRunPending ids whose)) = do
-    retrieveAnyFacts mpfs tokenId <&> filterFacts ids . whoseFilter whose
-factsCmd _ mpfs tokenId (TestRunFacts (TestRunRunning ids whose)) = do
-    retrieveAnyFacts mpfs tokenId <&> filterFacts ids . whoseFilter whose
-factsCmd _ mpfs tokenId (TestRunFacts (TestRunDone ids whose)) = do
-    facts <-
-        retrieveAnyFacts mpfs tokenId <&> filterFacts ids . whoseFilter whose
-    pure
-        $ filter
-            ( \v -> case factValue v of
+factsCmd mDecrypt mpfs tokenId selection = do
+    decrypt <- case mDecrypt of
+        Nothing -> pure id
+        Just (ssh, validation) -> do
+            users :: [RegisterUserKey] <-
+                fmap factKey <$> retrieveAnyFacts @_ @() mpfs tokenId
+            mk <- decodePrivateSSHFile validation ssh
+            let decrypt = tryDecryption users mk
+            pure decrypt
+    let
+        testRunCommon
+            :: FromJSON Maybe x => [TestRunId] -> All -> m [Fact TestRun x]
+        testRunCommon ids whose =
+            retrieveAnyFacts mpfs tokenId
+                <&> filterFacts ids . whoseFilter whose
+
+        core UserFacts = retrieveAnyFacts mpfs tokenId
+        core RoleFacts = retrieveAnyFacts mpfs tokenId
+        core (TestRunFacts (TestRunPending ids whose)) = do
+            testRunCommon ids whose
+        core (TestRunFacts (TestRunRunning ids whose)) = do
+            testRunCommon ids whose
+        core (TestRunFacts (TestRunDone ids whose)) = do
+            facts <-
+                testRunCommon ids whose <&> map decrypt
+            pure $ filterOn facts factValue $ \case
                 Finished{} -> True
                 _ -> False
-            )
-            facts
-factsCmd _ mpfs tokenId (TestRunFacts (TestRunRejected ids whose)) = do
-    facts <-
-        retrieveAnyFacts mpfs tokenId <&> filterFacts ids . whoseFilter whose
-    pure
-        $ filter
-            ( \v -> case factValue v of
+        core (TestRunFacts (TestRunRejected ids whose)) = do
+            facts <-
+                testRunCommon ids whose
+            pure $ filterOn facts factValue $ \case
                 Rejected{} -> True
                 _ -> False
-            )
-            facts
-factsCmd _ mpfs tokenId (TestRunFacts (AnyTestRuns ids whose)) =
-    retrieveAnyFacts mpfs tokenId <&> filterFacts ids . whoseFilter whose
-factsCmd _ mpfs tokenId ConfigFact = retrieveAnyFacts mpfs tokenId
-factsCmd _ mpfs tokenId WhiteListedFacts = retrieveAnyFacts mpfs tokenId
-factsCmd _ mpfs tokenId AllFacts = retrieveAnyFacts mpfs tokenId
+        core (TestRunFacts (AnyTestRuns ids whose)) =
+            testRunCommon ids whose
+        core ConfigFact = retrieveAnyFacts mpfs tokenId
+        core WhiteListedFacts = retrieveAnyFacts mpfs tokenId
+        core AllFacts = retrieveAnyFacts mpfs tokenId
+    core selection
 
 filterOn :: [a] -> (a -> b) -> (b -> Bool) -> [a]
 filterOn xs f p = filter (p . f) xs

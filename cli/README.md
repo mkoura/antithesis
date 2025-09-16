@@ -64,7 +64,6 @@ For scripting purposes you can disable the pretty effect of the env-var by passi
 
 ### Environment variables
 
-
 #### MPFS host
 If you do not want to host your own MPFS service, you can use a public one at `https://mpfs.plutimus.com`.
 
@@ -216,6 +215,8 @@ anti facts --help
 ```
 will show you all the available facts you can query.
 
+
+
 ## Design
 
 [Interface Design document](docs/antithesis-interface.md)
@@ -225,11 +226,12 @@ will show you all the available facts you can query.
 
 Depending on your role you can access the different manuals.
 
+
 - [Requester manual](docs/requester-role.md). A test-run requester is the regular user of the system. They can register users and roles, and request test-runs.
 - [Agent manual](docs/antithesis-agent-role.md). This is a special role that holds the key to the Antithesis platform. It is responsible  for
   whitelisting repository and managing test-runs, from pending state to running and completed.
 - [Oracle manual](docs/oracle-role.md). The oracle is the owner of the Antithesis token. It is almost mechanically responsible for merging change requests from the agent and the requester.
-
+- [Secrets management manual](docs/secrets-management.md). This manual describes how to manage secrets in a secure way.
 Finally, the [Real-world scenario manual][realWorld] provides a realistic overall use case involving all three roles.
 
 [realWorld]: docs/real-world.md

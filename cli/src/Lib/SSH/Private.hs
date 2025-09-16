@@ -5,6 +5,7 @@ https://hackage.haskell.org/package/hssh-0.1.0.0/docs/src/Network.SSH.Key.html
 
 module Lib.SSH.Private
     ( sshKeyPair
+    , sshKeySelectors
     , KeyPair (..)
     , SSHClient (..)
     , Sign
@@ -78,6 +79,12 @@ sshKeyPair
 sshKeyPair SSHClient{sshKeySelector, sshKeyFile, sshKeyPassphrase} = do
     content <- B.readFile sshKeyFile
     pure $ mkKeyAPI sshKeyPassphrase content sshKeySelector
+
+sshKeySelectors :: FilePath -> ByteString -> IO [String]
+sshKeySelectors sshKeyFile passphrase = do
+    content <- B.readFile sshKeyFile
+    let ks = decodePrivateKeyFile passphrase content
+    pure $ fmap (BC.unpack . snd) ks
 
 data KeyPair
     = KeyPair

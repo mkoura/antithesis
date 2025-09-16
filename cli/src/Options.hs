@@ -55,6 +55,7 @@ import User.Agent.Types (TestRunId)
 import User.Requester.Options
     ( requesterCommandParser
     , sshClientOption
+    , sshClientOptionWithoutSelector
     )
 import Wallet.Options (walletCommandParser)
 
@@ -106,6 +107,8 @@ commandParser =
                 <$> githubAuthOption
                 <*> mpfsClientOption
                 <*> tokenIdOption
+        , command "ssh-selectors" "List key selectors for an SSH key file"
+            $ Box . SSHSelectors <$> sshClientOptionWithoutSelector
         ]
 
 factsSelectionParser :: Parser (Box FactsSelection)

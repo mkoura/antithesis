@@ -15,7 +15,7 @@ import Data.Functor.Identity (Identity (..))
 import Facts (FactsSelection, factsCmd)
 import GitHub (Auth)
 import Lib.JSON.Canonical.Extra
-import Lib.SSH.Private (SSHClient, WithSelector (..))
+import Lib.SSH.Private (SSHClient, WithSelector (..), sshKeySelectors)
 import MPFS.API
     ( MPFS (..)
     , mpfsClient
@@ -70,6 +70,7 @@ data Command a where
         -> TokenId
         -> Command
             (AValidationResult TokenInfoFailure (Token WithValidation))
+    SSHSelectors :: SSHClient 'WithoutSelector -> Command [String]
 
 data SetupError = TokenNotSpecified
     deriving (Show, Eq)
@@ -152,6 +153,7 @@ cmd = \case
                                         $ validateRequest oracle mconfig validation req
                                 pure $ WithValidation r req
                         lift $ fmapMToken f token
+    SSHSelectors sshClient -> sshKeySelectors sshClient
 
 newtype TokenInfoFailure = TokenInfoTokenNotParsable TokenId
     deriving (Show, Eq)

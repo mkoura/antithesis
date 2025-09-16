@@ -5,6 +5,7 @@ module User.Requester.Options
     , addPublicKeyOptions
     , addRoleOptions
     , sshClientOption
+    , sshClientOptionWithoutSelector
     ) where
 
 import Core.Options
@@ -128,6 +129,13 @@ sshClientOption =
     SSHClient
         <$> keySelectorOption
         <*> keyFileOption
+        <*> keyPasswordOption
+
+sshClientOptionWithoutSelector
+    :: Parser (SSHClient 'WithoutSelector)
+sshClientOptionWithoutSelector =
+    SSHClient ()
+        <$> keyFileOption
         <*> keyPasswordOption
 
 keySelectorOption :: Parser String

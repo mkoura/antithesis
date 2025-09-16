@@ -27,7 +27,7 @@ import Data.String.QQ (s)
 import GitHub (Auth)
 import MPFS.API (mpfsClient)
 import OptEnvConf
-import Options (githubAuthOption)
+import Options (githubAuthOption, secretsFileOption)
 import Oracle.Token.Cli
     ( TokenCommand (..)
     , TokenUpdateFailure
@@ -67,7 +67,9 @@ parseArgs =
     runParser
         version
         intro
-        processOptionsParser
+        $ withYamlConfig
+            secretsFileOption
+            processOptionsParser
 
 data ProcessOptions = ProcessOptions
     { poAuth :: Auth

@@ -196,6 +196,7 @@ library
     , monad-control
     , old-time
     , opt-env-conf
+    , path
     , plutus-tx
     , process
     , purebred-email

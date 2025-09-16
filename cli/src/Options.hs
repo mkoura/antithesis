@@ -12,10 +12,12 @@ module Options
     , optionsParser
     , parseArgs
     , githubAuthOption
+    , secretsFileOption
     ) where
 
 import Cli (Command (..))
 import Control.Applicative (optional)
+import Control.Arrow (left)
 import Core.Options
     ( outputReferenceParser
     , tokenIdOption
@@ -34,11 +36,13 @@ import Lib.Options.Secrets (secretsParser)
 import OptEnvConf
     ( Alternative (..)
     , Parser
+    , checkEither
     , command
     , commands
     , env
     , help
     , long
+    , mapIO
     , metavar
     , option
     , reader
@@ -47,9 +51,20 @@ import OptEnvConf
     , str
     , switch
     , value
+    , withYamlConfig
     , (<|>)
     )
 import Oracle.Options (oracleCommandParser)
+import Path
+    ( Abs
+    , File
+    , Path
+    , SomeBase (Abs, Rel)
+    , parseAbsFile
+    , parseSomeFile
+    , toFilePath
+    )
+import System.Directory (makeAbsolute)
 import User.Agent.Options (agentCommandParser, testRunIdOption)
 import User.Agent.Types (TestRunId)
 import User.Requester.Options
@@ -221,7 +236,7 @@ parseArgs version =
     runParser
         version
         intro
-        optionsParser
+        $ withYamlConfig secretsFileOption optionsParser
 
 retractRequestOptions :: Parser (Box Command)
 retractRequestOptions =
@@ -229,3 +244,20 @@ retractRequestOptions =
         <$> mpfsClientOption
         <*> walletOption
         <*> outputReferenceParser
+
+secretsFileOption :: Parser (Maybe (Path Abs File))
+secretsFileOption =
+    optional
+        $ parsePath
+        $ setting
+            [ long "secrets-file"
+            , metavar "FILEPATH"
+            , help "The file path to a YAML file containing secrets"
+            , reader str
+            , option
+            , env "ANTI_SECRETS_FILE"
+            ]
+  where
+    parsePath = mapIO absolutize . checkEither (left show . parseSomeFile)
+    absolutize (Abs fp) = pure fp
+    absolutize (Rel fp) = makeAbsolute (toFilePath fp) >>= parseAbsFile

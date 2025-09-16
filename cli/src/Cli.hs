@@ -15,7 +15,7 @@ import Data.Functor.Identity (Identity (..))
 import Facts (FactsSelection, factsCmd)
 import GitHub (Auth)
 import Lib.JSON.Canonical.Extra
-import Lib.SSH.Private (SSHClient)
+import Lib.SSH.Private (SSHClient, WithSelector (..))
 import MPFS.API
     ( MPFS (..)
     , mpfsClient
@@ -58,7 +58,7 @@ data Command a where
     RetractRequest
         :: MPFSClient -> Wallet -> RequestRefId -> Command TxHash
     GetFacts
-        :: Maybe SSHClient
+        :: Maybe (SSHClient 'WithSelector)
         -> MPFSClient
         -> TokenId
         -> FactsSelection a

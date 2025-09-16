@@ -23,7 +23,7 @@ import Core.Options
 import Core.Types.Tx (TxHash, WithTxHash)
 import Lib.Box (Box (..))
 import Lib.Options.Secrets (secretsParser)
-import Lib.SSH.Private (SSHClient (..))
+import Lib.SSH.Private (SSHClient (..), WithSelector (..))
 import OptEnvConf
     ( Parser
     , command
@@ -123,7 +123,7 @@ requesterCommandParser =
         ]
 
 sshClientOption
-    :: Parser SSHClient
+    :: Parser (SSHClient 'WithSelector)
 sshClientOption =
     SSHClient
         <$> keySelectorOption

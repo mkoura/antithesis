@@ -8,13 +8,14 @@ import Data.ByteString qualified as B
 import Lib.SSH.Private
     ( KeyPair (..)
     , SSHClient (..)
+    , WithSelector (..)
     , sign
     , sshKeyPair
     )
 import Test.Hspec (Spec, beforeAll, describe, it)
 import Test.QuickCheck (Testable (property))
 
-client :: SSHClient
+client :: SSHClient 'WithSelector
 client =
     SSHClient
         { sshKeySelector = "test_user"

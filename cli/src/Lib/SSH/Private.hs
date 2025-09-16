@@ -2,6 +2,8 @@
 This module was taken almost verbatim from the SSH library for Haskell.
 https://hackage.haskell.org/package/hssh-0.1.0.0/docs/src/Network.SSH.Key.html
 -}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Lib.SSH.Private
     ( sshKeyPair
@@ -11,6 +13,8 @@ module Lib.SSH.Private
     , Sign
     , sign
     , mkKeyAPI
+    , WithSelector (..)
+    , SelectorField
     ) where
 
 import Control.Applicative (many, (<|>))
@@ -48,12 +52,22 @@ import Data.ByteString.Lazy qualified as BL
 import Data.Map.Strict qualified as Map
 import Data.Word (Word8)
 
-data SSHClient = SSHClient
-    { sshKeySelector :: String
+data WithSelector = WithSelector | WithoutSelector
+
+type family SelectorField (w :: WithSelector) where
+    SelectorField 'WithSelector = String
+    SelectorField 'WithoutSelector = ()
+
+data SSHClient sel = SSHClient
+    { sshKeySelector :: SelectorField sel
     , sshKeyFile :: FilePath
     , sshKeyPassphrase :: String
     }
-    deriving (Show, Eq)
+
+deriving instance
+    Show (SelectorField sel) => Show (SSHClient sel)
+deriving instance
+    Eq (SelectorField sel) => Eq (SSHClient sel)
 
 type Sign = BC.ByteString -> Ed25519.Signature
 
@@ -74,16 +88,16 @@ mkKeyAPI passPhrase content sshKeySelector =
         Map.lookup sshKeySelector $ foldMap mkMap ks
 
 sshKeyPair
-    :: SSHClient
+    :: SSHClient 'WithSelector
     -> IO (Maybe KeyPair)
 sshKeyPair SSHClient{sshKeySelector, sshKeyFile, sshKeyPassphrase} = do
     content <- B.readFile sshKeyFile
     pure $ mkKeyAPI sshKeyPassphrase content sshKeySelector
 
-sshKeySelectors :: FilePath -> ByteString -> IO [String]
-sshKeySelectors sshKeyFile passphrase = do
+sshKeySelectors :: SSHClient 'WithoutSelector -> IO [String]
+sshKeySelectors SSHClient{sshKeyFile, sshKeyPassphrase} = do
     content <- B.readFile sshKeyFile
-    let ks = decodePrivateKeyFile passphrase content
+    let ks = decodePrivateKeyFile (BC.pack sshKeyPassphrase) content
     pure $ fmap (BC.unpack . snd) ks
 
 data KeyPair

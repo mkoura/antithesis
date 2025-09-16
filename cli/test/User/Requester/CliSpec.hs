@@ -34,7 +34,12 @@ import Data.ByteString (ByteString)
 import Data.Functor.Identity (Identity (..))
 import Data.String.QQ (s)
 import Data.Text (Text)
-import Lib.SSH.Private (KeyPair (..), SSHClient (..), mkKeyAPI)
+import Lib.SSH.Private
+    ( KeyPair (..)
+    , SSHClient (..)
+    , WithSelector (..)
+    , mkKeyAPI
+    )
 import MPFS.API (MPFS (..))
 import MockMPFS (mockMPFS, withFacts)
 import Oracle.Config.Types (Config (..), ConfigKey (..))
@@ -76,7 +81,7 @@ wallet = case readWallet (True, mnemonics) of
     Left err -> error (show err)
     Right w -> w
 
-sshClient :: SSHClient
+sshClient :: SSHClient 'WithSelector
 sshClient =
     SSHClient
         { sshKeySelector = "alice"

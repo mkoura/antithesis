@@ -37,6 +37,7 @@ import Lib.JSON.Canonical.Extra (object, (.=))
 import Lib.SSH.Private
     ( KeyPair (..)
     , SSHClient (..)
+    , WithSelector (..)
     , sign
     )
 import MPFS.API
@@ -121,7 +122,7 @@ data RequesterCommand a where
     RequestTest
         :: TokenId
         -> Wallet
-        -> SSHClient
+        -> SSHClient 'WithSelector
         -> TestRun
         -> Duration
         -> RequesterCommand
@@ -209,7 +210,7 @@ createCommand
     :: Monad m
     => TokenId
     -> Wallet
-    -> SSHClient
+    -> SSHClient 'WithSelector
     -> TestRun
     -> Duration
     -> WithContext

@@ -23,7 +23,7 @@ import Data.Functor.Identity (Identity (..))
 import Lib.CryptoBox (decryptOnly)
 import Lib.CryptoBox qualified as CB
 import Lib.JSON.Canonical.Extra (blakeHashOfJSON)
-import Lib.SSH.Private (KeyPair (..), SSHClient)
+import Lib.SSH.Private (KeyPair (..), SSHClient, WithSelector (..))
 import Lib.SSH.Public (decodePublicKey)
 import MPFS.API (MPFS, mpfsGetTokenFacts)
 import Oracle.Config.Types (Config, ConfigKey)
@@ -98,7 +98,7 @@ whoseFilter whose facts = filterOn facts factKey
 factsCmd
     :: forall m a
      . Monad m
-    => Maybe (SSHClient, Validation m)
+    => Maybe (SSHClient 'WithSelector, Validation m)
     -> MPFS m
     -> TokenId
     -> FactsSelection a

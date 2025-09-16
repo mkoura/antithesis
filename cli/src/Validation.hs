@@ -41,7 +41,7 @@ import Data.Text.IO qualified as T
 import GitHub (Auth)
 import Lib.GitHub qualified as GitHub
 import Lib.JSON.Canonical.Extra (object, (.=))
-import Lib.SSH.Private (KeyPair, SSHClient)
+import Lib.SSH.Private (KeyPair, SSHClient, WithSelector (..))
 import Lib.SSH.Private qualified as SSH
 import MPFS.API (MPFS (..))
 import Oracle.Types (RequestZoo, Token (tokenRequests))
@@ -107,7 +107,7 @@ data Validation m = Validation
     , writeTextFile :: FilePath -> Text -> m () -- Added writeFile to Validation
     , withCurrentDirectory :: forall a. FilePath -> m a -> m a
     , directoryExists :: Directory -> m (Maybe Permissions) -- Added directoryExists to Validation
-    , decodePrivateSSHFile :: SSHClient -> m (Maybe KeyPair)
+    , decodePrivateSSHFile :: SSHClient 'WithSelector -> m (Maybe KeyPair)
     }
 
 hoistValidation

@@ -104,27 +104,43 @@ Then commit and push the changes to your repository.
 
 ### Requesting a test-run
 
+#### SSH key setup
 Before proceding be careful to set the necessary signing assets in your environment variables.
-```bash
-  Which key selector to use from the SSH file
-  env: ANTI_SSH_KEY_SELECTOR STRING
 
-  Path to the SSH private key file
-  env: ANTI_SSH_FILE FILEPATH
-```
+- `anti` will use the SSH private key to sign the request
+- The private key has to be an ed25519 key.
+- The public key corresponding to the private key has to be registered in your github account [see above](#registering-a-user-public-key).
 
-As with the wallet passphrase you can set the password in the environment variable
+Multiple keys file are supported, in this case you have to specify which key to use with the `ANTI_SSH_KEY_SELECTOR` environment variable or the `--ssh-key-selector` option.
+In case you don't know the selector, you can inspect the keys in your file with
 
 ```bash
-read -s -p "Enter password to decrypt the SSH private key: " ANTI_INTERACTIVE_SECRETS
-export ANTI_INTERACTIVE_SECRETS
+anti ssh-selectors --ssh-file PATH_TO_YOUR_SSH_FILE --ask-ssh-passphrase
 ```
 
-Or better paste it from a password manager each time you need it using the 'ask-password' option
+If multiple keys are present in the file and you don't specify a selector, the first key in the file will be used.
 
-Or set the `ANTI_INTERACTIVE_SECRETS` environment variable to any value.
+To link to your private key file, set the `ANTI_SSH_FILE` environment variable to point to it.
+
+
+As with the wallet passphrase you can set the password in the environment variable (not recommended)
+
+```bash
+read -s -p "Enter password to decrypt the SSH private key: " ANTI_SSH_PASSWORD
+export ANTI_SSH_PASSWORD
+```
+
+Or better paste it from a password manager each time you need it using the `--ask-ssh-password` option
+
+Or set the `ANTI_INTERACTIVE_SECRETS` environment variable to any value to imply the `--ask-ssh-password` option
+
+```bash
+export ANTI_INTERACTIVE_SECRETS=1
+```
 
 > The file at ANTI_SSH_FILE path has to be the encrypted ssh private key matching the user registration [see above](#registering-a-user-public-key).
+
+#### Requesting the test-run
 
 To request a test-run, you can use the `anti requester create-test` command.
 
@@ -135,7 +151,7 @@ anti requester create-test --platform github --username alice --repository youro
 
 You can request multiple test-runs for the same commit but you have to specify a different `--try` number for each request.
 
-### Checking the test-run status
+#### Checking the test-run status
 
 You can check the status of your test-run requests with the `anti facts test-runs` command.
 
@@ -146,5 +162,5 @@ anti facts test-runs -i <your_test_run_id>
 You can find all running test-runs for a user with
 
 ```bash
-anti facts test-runs running --whose cfhal 
+anti facts test-runs running --whose alice
 ```

@@ -15,7 +15,12 @@ import Data.Functor.Identity (Identity (..))
 import Facts (FactsSelection, factsCmd)
 import GitHub (Auth)
 import Lib.JSON.Canonical.Extra
-import Lib.SSH.Private (SSHClient, WithSelector (..), sshKeySelectors)
+import Lib.SSH.Private
+    ( SSHClient
+    , Selection
+    , WithSelector (..)
+    , sshKeySelectors
+    )
 import MPFS.API
     ( MPFS (..)
     , mpfsClient
@@ -70,7 +75,7 @@ data Command a where
         -> TokenId
         -> Command
             (AValidationResult TokenInfoFailure (Token WithValidation))
-    SSHSelectors :: SSHClient 'WithoutSelector -> Command [String]
+    SSHSelectors :: SSHClient 'WithoutSelector -> Command [Selection]
 
 data SetupError = TokenNotSpecified
     deriving (Show, Eq)

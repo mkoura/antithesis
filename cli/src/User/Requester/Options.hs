@@ -34,6 +34,7 @@ import OptEnvConf
     , long
     , metavar
     , option
+    , optional
     , reader
     , setting
     , str
@@ -129,7 +130,7 @@ sshClientOption
     :: Parser (SSHClient 'WithSelector)
 sshClientOption =
     SSHClient
-        <$> keySelectorOption
+        <$> optional keySelectorOption
         <*> keyFileOption
         <*> keyPasswordOption
 
@@ -144,7 +145,8 @@ keySelectorOption :: Parser String
 keySelectorOption =
     setting
         [ env "ANTI_SSH_KEY_SELECTOR"
-        , help "Which key selector to use from the SSH file"
+        , help
+            "Which key selector to use from the SSH file, it will use the first one if not specified"
         , metavar "STRING"
         , reader str
         , long "ssh-key-selector"

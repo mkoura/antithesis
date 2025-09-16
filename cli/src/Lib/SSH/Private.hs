@@ -15,6 +15,7 @@ module Lib.SSH.Private
     , mkKeyAPI
     , WithSelector (..)
     , SelectorField
+    , Selection (..)
     ) where
 
 import Control.Applicative (many, (<|>))
@@ -51,11 +52,14 @@ import Data.ByteString.Char8 qualified as BC
 import Data.ByteString.Lazy qualified as BL
 import Data.Map.Strict qualified as Map
 import Data.Word (Word8)
+import Lib.JSON.Canonical.Extra (object, (.=))
+import Lib.SSH.Public (SSHPublicKey (..), encodeSSHPublicKey)
+import Text.JSON.Canonical (ToJSON (..))
 
 data WithSelector = WithSelector | WithoutSelector
 
 type family SelectorField (w :: WithSelector) where
-    SelectorField 'WithSelector = String
+    SelectorField 'WithSelector = Maybe String
     SelectorField 'WithoutSelector = ()
 
 data SSHClient sel = SSHClient
@@ -74,7 +78,7 @@ type Sign = BC.ByteString -> Ed25519.Signature
 sign :: KeyPair -> Sign
 sign (KeyPair pk sk) = Ed25519.sign sk pk
 
-mkKeyAPI :: String -> ByteString -> String -> Maybe KeyPair
+mkKeyAPI :: String -> ByteString -> Maybe String -> Maybe KeyPair
 mkKeyAPI passPhrase content sshKeySelector =
     let
         ks = decodePrivateKeyFile (BC.pack passPhrase) content
@@ -85,7 +89,8 @@ mkKeyAPI passPhrase content sshKeySelector =
                     , privateKey = sk
                     }
     in
-        Map.lookup sshKeySelector $ foldMap mkMap ks
+        maybe (fmap snd <$> Map.lookupMin) Map.lookup sshKeySelector
+            $ foldMap mkMap ks
 
 sshKeyPair
     :: SSHClient 'WithSelector
@@ -94,11 +99,27 @@ sshKeyPair SSHClient{sshKeySelector, sshKeyFile, sshKeyPassphrase} = do
     content <- B.readFile sshKeyFile
     pure $ mkKeyAPI sshKeyPassphrase content sshKeySelector
 
-sshKeySelectors :: SSHClient 'WithoutSelector -> IO [String]
+data Selection = Selection
+    { selectorName :: String
+    , selectorKey :: String
+    }
+    deriving (Show, Eq)
+
+instance Monad m => ToJSON m Selection where
+    toJSON (Selection name key) =
+        object
+            [ "name" .= name
+            , "publicKey" .= key
+            ]
+
+sshKeySelectors :: SSHClient 'WithoutSelector -> IO [Selection]
 sshKeySelectors SSHClient{sshKeyFile, sshKeyPassphrase} = do
     content <- B.readFile sshKeyFile
     let ks = decodePrivateKeyFile (BC.pack sshKeyPassphrase) content
-    pure $ fmap (BC.unpack . snd) ks
+    let f (KeyPair k _, comment) = Selection (BC.unpack comment) render
+          where
+            SSHPublicKey render = encodeSSHPublicKey k
+    pure $ fmap f ks
 
 data KeyPair
     = KeyPair

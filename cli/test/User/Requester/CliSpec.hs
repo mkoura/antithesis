@@ -84,7 +84,7 @@ wallet = case readWallet (True, mnemonics) of
 sshClient :: SSHClient 'WithSelector
 sshClient =
     SSHClient
-        { sshKeySelector = "alice"
+        { sshKeySelector = Just "alice"
         , sshKeyFile = "alice_id_ed25519"
         , sshKeyPassphrase = "testpassphrase"
         }
@@ -178,7 +178,7 @@ wUKzoj1GlS881w5d1K9cXgaTNg2jXmtV3Mm/nYAZtxPXAp/9gxzUE2wWhQdi9NubBHIotl
     |]
 
 keyPair :: KeyPair
-keyPair = case mkKeyAPI "testpassphrase" aliceKey "alice" of
+keyPair = case mkKeyAPI "testpassphrase" aliceKey (Just "alice") of
     Nothing -> error "Failed to create KeyPair"
     Just k -> k
 

@@ -130,18 +130,23 @@ processServer
     -> WithContext m ()
 processServer opts@ProcessOptions{poPollIntervalSeconds} = do
     liftIO $ putStrLn "Starting oracle process server..."
-    let loop :: WithContext m () = do
+    let waitLoop = do
+            liftIO
+                $ putStrLn
+                $ "Sleeping for "
+                    ++ show poPollIntervalSeconds
+                    ++ " seconds..."
+            liftIO $ threadDelay (poPollIntervalSeconds * 1000000)
+            loop
+
+        loop :: WithContext m () = do
             liftIO $ putStrLn "Polling for new requests..."
             reqIds <- liftIO $ poll opts
             if null reqIds
                 then do
                     liftIO
-                        $ putStrLn
-                        $ "No new requests found. Sleeping for "
-                            ++ show poPollIntervalSeconds
-                            ++ " seconds..."
-                    liftIO $ threadDelay (poPollIntervalSeconds * 1000000)
-                    loop
+                        $ putStrLn "No new requests found."
+                    waitLoop
                 else do
                     liftIO
                         $ putStrLn
@@ -166,19 +171,21 @@ processServer opts@ProcessOptions{poPollIntervalSeconds} = do
                                     $ putStrLn
                                     $ "Successfully submitted batch with tx hash: "
                                         ++ show txHash
-                    loop
+                    waitLoop
     loop
 poll :: ProcessOptions -> IO [RequestRefId]
 poll ProcessOptions{poTokenId, poMPFSClient, poAuth} = do
     result <- cmd (GetToken poAuth poMPFSClient poTokenId)
     case result of
         ValidationFailure err -> error $ "Failed to get token: " ++ show err
-        ValidationSuccess token -> pure
-            $ fmap (requestZooRefId . request)
-            $ flip filter (tokenRequests token)
-            $ \(WithValidation v _) -> case v of
-                ValidationFailure _err -> False
-                ValidationSuccess Validated -> True
+        ValidationSuccess token -> do
+            print $ tokenRequests token
+            pure
+                $ fmap (requestZooRefId . request)
+                $ flip filter (tokenRequests token)
+                $ \(WithValidation v _) -> case v of
+                    ValidationFailure _err -> False
+                    ValidationSuccess Validated -> True
 
 batch :: ProcessOptions -> [RequestRefId] -> [[RequestRefId]]
 batch ProcessOptions{poMaxRequestsPerBatch} = go

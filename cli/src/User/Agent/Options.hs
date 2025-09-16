@@ -116,6 +116,7 @@ emailResultsOptions =
                     "ANTI_AGENT_EMAIL_PASSWORD"
                     "EMAIL_PASSWORD"
                     "ask-agent-email-password"
+                    "agentEmailPassword"
             )
         <*> testRunIdOption "check results for"
         <*> setting
@@ -153,6 +154,7 @@ slackOption =
                 "ANTI_SLACK_WEBHOOK"
                 "SLACK_WEBHOOK"
                 "ask-slack-webhook"
+                "slackWebhook"
 
 registryOption :: Parser Registry
 registryOption =
@@ -174,6 +176,7 @@ antithesisAuthOption =
             "ANTI_ANTITHESIS_PASSWORD"
             "PASSWORD"
             "ask-antithesis-password"
+            "antithesisPassword"
   where
     cardanoWithPwd pwd =
         AntithesisAuth{username = "cardano", password = pwd}

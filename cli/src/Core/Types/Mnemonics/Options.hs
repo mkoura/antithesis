@@ -60,6 +60,7 @@ walletPassphraseCommon =
             "ANTI_WALLET_PASSPHRASE"
             "PASSPHRASE"
             "ask-wallet-passphrase"
+            "walletPassphrase"
 
 walletFileOption :: Parser FilePath
 walletFileOption =

@@ -6,6 +6,7 @@ import Data.Functor (($>))
 import OptEnvConf
     ( Alternative ((<|>))
     , Parser
+    , conf
     , env
     , help
     , long
@@ -35,8 +36,10 @@ secretsParser
     -- ^ Metavar string
     -> String
     -- ^ Long option name
+    -> String
+    -- ^ conf json field name
     -> Parser String
-secretsParser prompt helpString envString metaString longString =
+secretsParser prompt helpString envString metaString longString jsonField =
     mapIO id
         $ setting
             [ help helpString
@@ -50,12 +53,14 @@ secretsParser prompt helpString envString metaString longString =
             , long longString
             , switch $ queryConsole prompt
             ]
-        <|> setting
-            [ env envString
-            , metavar metaString
-            , help prompt
-            , reader $ fmap pure str
-            ]
+        <|> pure
+            <$> setting
+                [ env envString
+                , metavar metaString
+                , help prompt
+                , reader str
+                , conf jsonField
+                ]
 
 queryConsole :: String -> IO String
 queryConsole prompt = runInputT defaultSettings $ do

@@ -171,7 +171,8 @@ keyPasswordOption =
         "The passphrase for the SSH private key"
         "ANTI_SSH_PASSWORD"
         "PASSWORD"
-        "ask-ssh-passphrase"
+        "ask-ssh-password"
+        "sshPassword"
 
 requestTestOptions
     :: Parser

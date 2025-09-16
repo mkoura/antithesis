@@ -71,6 +71,7 @@ githubAuthOption =
             "ANTI_GITHUB_PAT"
             "GITHUB_PAT"
             "ask-github-pat"
+            "githubPAT"
 
 commandParser :: Parser (Box Command)
 commandParser =

@@ -4,10 +4,11 @@ https://hackage.haskell.org/package/hssh-0.1.0.0/docs/src/Network.SSH.Key.html
 -}
 
 module Lib.SSH.Private
-    ( decodePrivateSSHFile
+    ( sshKeyPair
+    , KeyPair (..)
     , SSHClient (..)
     , Sign
-    , KeyAPI (..)
+    , sign
     , mkKeyAPI
     ) where
 
@@ -55,35 +56,34 @@ data SSHClient = SSHClient
 
 type Sign = BC.ByteString -> Ed25519.Signature
 
-data KeyAPI = KeyAPI
-    { sign :: Sign
-    , publicKey :: Ed25519.PublicKey
-    , privateKey :: Ed25519.SecretKey
-    }
+sign :: KeyPair -> Sign
+sign (KeyPair pk sk) = Ed25519.sign sk pk
 
-mkKeyAPI :: String -> ByteString -> String -> Maybe KeyAPI
+mkKeyAPI :: String -> ByteString -> String -> Maybe KeyPair
 mkKeyAPI passPhrase content sshKeySelector =
     let
         ks = decodePrivateKeyFile (BC.pack passPhrase) content
-        mkMap (KeyPairEd25519 pk sk, comment) =
+        mkMap (KeyPair pk sk, comment) =
             Map.singleton (BC.unpack comment)
-                $ KeyAPI
-                    { sign = Ed25519.sign sk pk
-                    , publicKey = pk
+                $ KeyPair
+                    { publicKey = pk
                     , privateKey = sk
                     }
     in
         Map.lookup sshKeySelector $ foldMap mkMap ks
 
-decodePrivateSSHFile
+sshKeyPair
     :: SSHClient
-    -> IO (Maybe KeyAPI)
-decodePrivateSSHFile SSHClient{sshKeySelector, sshKeyFile, sshKeyPassphrase} = do
+    -> IO (Maybe KeyPair)
+sshKeyPair SSHClient{sshKeySelector, sshKeyFile, sshKeyPassphrase} = do
     content <- B.readFile sshKeyFile
     pure $ mkKeyAPI sshKeyPassphrase content sshKeySelector
 
 data KeyPair
-    = KeyPairEd25519 Ed25519.PublicKey Ed25519.SecretKey
+    = KeyPair
+    { publicKey :: Ed25519.PublicKey
+    , privateKey :: Ed25519.SecretKey
+    }
     deriving (Eq, Show)
 
 decodePrivateKeyFile
@@ -258,7 +258,7 @@ parsePrivateKeys count = do
                     secretKeyRaw <- getByteString Ed25519.secretKeySize
                     publicKeyRaw <- getByteString Ed25519.publicKeySize
                     cryptoFail
-                        $ KeyPairEd25519
+                        $ KeyPair
                             <$> Ed25519.publicKey publicKeyRaw
                             <*> Ed25519.secretKey secretKeyRaw
             _ -> failB $ "Unsupported algorithm for private key " <> algo

@@ -34,7 +34,7 @@ import Data.ByteString (ByteString)
 import Data.Functor.Identity (Identity (..))
 import Data.String.QQ (s)
 import Data.Text (Text)
-import Lib.SSH.Private (KeyAPI (..), SSHClient (..), mkKeyAPI)
+import Lib.SSH.Private (KeyPair (..), SSHClient (..), mkKeyAPI)
 import MPFS.API (MPFS (..))
 import MockMPFS (mockMPFS, withFacts)
 import Oracle.Config.Types (Config (..), ConfigKey (..))
@@ -172,9 +172,9 @@ wUKzoj1GlS881w5d1K9cXgaTNg2jXmtV3Mm/nYAZtxPXAp/9gxzUE2wWhQdi9NubBHIotl
 -----END OPENSSH PRIVATE KEY-----
     |]
 
-keyAPI :: KeyAPI
-keyAPI = case mkKeyAPI "testpassphrase" aliceKey "alice" of
-    Nothing -> error "Failed to create KeyAPI"
+keyPair :: KeyPair
+keyPair = case mkKeyAPI "testpassphrase" aliceKey "alice" of
+    Nothing -> error "Failed to create KeyPair"
     Just k -> k
 
 validSSHKeys :: [(FilePath, ByteString)]
@@ -184,7 +184,7 @@ testDuration :: Duration
 testDuration = Duration 3
 
 pendingState :: TestRunState 'PendingT
-pendingState = case signKey keyAPI testRun of
+pendingState = case signKey keyPair testRun of
     Nothing -> error "Failed to sign testRun"
     Just (_, signature) -> Pending testDuration signature
 

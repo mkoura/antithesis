@@ -23,7 +23,7 @@ import Data.Functor.Identity (Identity (..))
 import Lib.CryptoBox (decryptOnly)
 import Lib.CryptoBox qualified as CB
 import Lib.JSON.Canonical.Extra (blakeHashOfJSON)
-import Lib.SSH.Private (KeyAPI (..), SSHClient)
+import Lib.SSH.Private (KeyPair (..), SSHClient)
 import Lib.SSH.Public (decodePublicKey)
 import MPFS.API (MPFS, mpfsGetTokenFacts)
 import Oracle.Config.Types (Config, ConfigKey)
@@ -162,7 +162,7 @@ nothingLeft e = maybe (Left e) Right
 
 tryDecryption
     :: [RegisterUserKey]
-    -> Maybe KeyAPI
+    -> Maybe KeyPair
     -> Fact TestRun (TestRunState 'DoneT)
     -> Fact TestRun (TestRunState 'DoneT)
 tryDecryption _ Nothing f = f
@@ -175,14 +175,14 @@ decryptURL
     :: [RegisterUserKey]
     -> TestRun
     -> TestRunState DoneT
-    -> KeyAPI
+    -> KeyPair
     -> Either URLDecryptionIssue (TestRunState DoneT)
 decryptURL _ _ Rejected{} _ = Left StateIsNotFinished
 decryptURL
     users
     testRun@TestRun{requester}
     (Finished old dur (URL enc))
-    KeyAPI{privateKey, publicKey = sshPublicKey} = do
+    KeyPair{privateKey, publicKey = sshPublicKey} = do
         RegisterUserKey{pubkeyhash} <-
             nothingLeft (UsersNotRegistered requester)
                 $ find ((== requester) . username) users

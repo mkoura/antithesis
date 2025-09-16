@@ -35,8 +35,9 @@ import Data.ByteString.Lazy qualified as BL
 import Data.Functor (($>))
 import Lib.JSON.Canonical.Extra (object, (.=))
 import Lib.SSH.Private
-    ( KeyAPI (..)
+    ( KeyPair (..)
     , SSHClient (..)
+    , sign
     )
 import MPFS.API
     ( MPFS (..)
@@ -186,10 +187,10 @@ generateAssets (Directory targetDirectory) = do
         pure Success
 
 signKey
-    :: (ToJSON m key, Monad m) => KeyAPI -> key -> m (JSValue, Signature)
-signKey KeyAPI{sign} key = do
+    :: (ToJSON m key, Monad m) => KeyPair -> key -> m (JSValue, Signature)
+signKey sshKey key = do
     jkey <- toJSON key
-    pure (jkey, sign $ BL.toStrict $ renderCanonicalJSON jkey)
+    pure (jkey, sign sshKey $ BL.toStrict $ renderCanonicalJSON jkey)
 
 data NewTestRunCreated = NewTestRunCreated
     { newTestRunState :: TestRunState PendingT
@@ -230,10 +231,10 @@ createCommand
         lift $ runValidate $ do
             Config{configTestRun} <-
                 liftMaybe CreateTestConfigNotAvailable mconfig
-            keyAPI <-
+            sshKeyPair <-
                 liftMaybe CreateTestRunInvalidSSHKey
                     =<< decodePrivateSSHFile (hoistValidation validation) sshClient
-            (key, signature) <- lift $ signKey keyAPI testRun
+            (key, signature) <- lift $ signKey sshKeyPair testRun
             let newState = Pending duration signature
             void
                 $ validateCreateTestRun configTestRun validation ForUser

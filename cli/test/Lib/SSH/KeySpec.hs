@@ -6,9 +6,10 @@ where
 import Crypto.PubKey.Ed25519 qualified as Ed25519
 import Data.ByteString qualified as B
 import Lib.SSH.Private
-    ( KeyAPI (KeyAPI, publicKey, sign)
+    ( KeyPair (..)
     , SSHClient (..)
-    , decodePrivateSSHFile
+    , sign
+    , sshKeyPair
     )
 import Test.Hspec (Spec, beforeAll, describe, it)
 import Test.QuickCheck (Testable (property))
@@ -21,16 +22,16 @@ client =
         , sshKeyPassphrase = "pw"
         }
 
-readKey :: IO KeyAPI
+readKey :: IO KeyPair
 readKey = do
-    Just api <- decodePrivateSSHFile client
+    Just api <- sshKeyPair client
     pure api
 
 spec :: Spec
 spec = do
     describe "SSH Key" $ beforeAll readKey $ do
-        it "should sign and verify a message" $ \KeyAPI{sign, publicKey} -> do
+        it "should sign and verify a message" $ \k@KeyPair{publicKey} -> do
             property $ \msgb -> do
                 let msg = B.pack msgb
-                let signed = sign msg
+                let signed = sign k msg
                 Ed25519.verify publicKey msg signed

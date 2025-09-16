@@ -31,7 +31,9 @@ import OptEnvConf
     , commands
     , env
     , help
+    , long
     , metavar
+    , option
     , reader
     , setting
     , str
@@ -145,6 +147,8 @@ keySelectorOption =
         , help "Which key selector to use from the SSH file"
         , metavar "STRING"
         , reader str
+        , long "ssh-key-selector"
+        , option
         ]
 
 keyFileOption :: Parser FilePath
@@ -154,6 +158,8 @@ keyFileOption =
         , help "Path to the SSH private key file"
         , metavar "FILEPATH"
         , reader str
+        , long "ssh-key-file"
+        , option
         ]
 
 keyPasswordOption :: Parser String

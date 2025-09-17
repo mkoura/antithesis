@@ -1,34 +1,36 @@
 # shellcheck shell=bash
 
+set unstable := true
+
 format:
-   #!/usr/bin/env bash
-   fourmolu -i src app test test-E2E test-lib CI/rewrite-libs
-   cabal-fmt -i anti.cabal CI/rewrite-libs/rewrite-libs.cabal
-   nixfmt *.nix
-   nixfmt nix/*.nix
-   nixfmt CI/rewrite-libs/*.nix
-   nixfmt CI/rewrite-libs/nix/*.nix
+    #!/usr/bin/env bash
+    fourmolu -i src app test test-E2E test-lib CI/rewrite-libs
+    cabal-fmt -i anti.cabal CI/rewrite-libs/rewrite-libs.cabal
+    nixfmt *.nix
+    nixfmt nix/*.nix
+    nixfmt CI/rewrite-libs/*.nix
+    nixfmt CI/rewrite-libs/nix/*.nix
 
 hlint:
-  #!/usr/bin/env bash
-  hlint app src test test-E2E test-lib CI/rewrite-libs
+    #!/usr/bin/env bash
+    hlint app src test test-E2E test-lib CI/rewrite-libs
 
 unit match="":
-  #!/usr/bin/env bash
-  # shellcheck disable=SC2050
-  if [[ '{{match}}' == "" ]]; then
-    cabal test anti-unit-test \
-        --test-show-details=direct
-  else
-    cabal test anti-unit-test\
-        --test-show-details=direct \
-        --test-option=--match \
-        --test-option="{{match}}"
-  fi
+    #!/usr/bin/env bash
+    # shellcheck disable=SC2050
+    if [[ '{{ match }}' == "" ]]; then
+      cabal test anti-unit-test \
+          --test-show-details=direct
+    else
+      cabal test anti-unit-test\
+          --test-show-details=direct \
+          --test-option=--match \
+          --test-option="{{ match }}"
+    fi
+
 build:
     #!/usr/bin/env bash
     cabal build all --enable-tests
-
 
 E2E match="":
     #!/usr/bin/env bash
@@ -95,35 +97,69 @@ E2E match="":
     owner=$(anti wallet info | jq -r '.owner')
     export ANTI_AGENT_PUBLIC_KEY_HASH=$owner
     echo "Starting E2E tests..."
-    just E2E-tests "{{match}}"
+    just E2E-tests "{{ match }}"
 
 E2E-tests match="":
     #!/usr/bin/env bash
     # shellcheck disable=SC2050
-    if [[ '{{match}}' == "" ]]; then
+    if [[ '{{ match }}' == "" ]]; then
     cabal test anti-E2E-test \
         --test-show-details=direct
     else
     cabal test anti-E2E-test \
         --test-show-details=direct \
         --test-option=--match \
-        --test-option="{{match}}"
+        --test-option="{{ match }}"
     fi
 
 CI:
-  #!/usr/bin/env bash
-  set -euo pipefail
-  just build
-  just unit
-  just E2E
-  cabal-fmt -c anti.cabal CI/rewrite-libs/rewrite-libs.cabal
-  fourmolu -m check src app test CI/rewrite-libs
-  hlint -c src app test CI/rewrite-libs
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just build
+    just unit
+    just E2E
+    cabal-fmt -c anti.cabal CI/rewrite-libs/rewrite-libs.cabal
+    fourmolu -m check src app test CI/rewrite-libs
+    hlint -c src app test CI/rewrite-libs
 
 start-mpfs:
-  #!/usr/bin/env bash
-  docker compose -p "anti-testing" -f test-E2E/fixtures/docker-compose.yml up -d
+    #!/usr/bin/env bash
+    docker compose -p "anti-testing" -f test-E2E/fixtures/docker-compose.yml up -d
 
 stop-mpfs:
-  #!/usr/bin/env bash
-  docker compose -p "anti-testing" -f test-E2E/fixtures/docker-compose.yml down
+    #!/usr/bin/env bash
+    docker compose -p "anti-testing" -f test-E2E/fixtures/docker-compose.yml down
+
+start-anti-agent bg="false":
+    #!/usr/bin/env bash
+    nix build .#anti-agent-docker-image
+    docker load < result
+    version=$(nix eval --raw .#version)
+    docker image tag cardano-foundation/anti-agent:"$version" cardano-foundation/anti-agent:latest
+    # shellcheck disable=SC2050
+    if [[ '{{ bg }}' == "true" ]]; then
+        docker compose -f CD/anti-agent/docker-compose.yaml up -d
+    else
+        docker compose -f CD/anti-agent/docker-compose.yaml up
+    fi
+
+logs-anti-agent:
+    #!/usr/bin/env bash
+    docker compose -f CD/anti-agent/docker-compose.yaml logs -f
+
+start-anti-oracle bg="false":
+    #!/usr/bin/env bash
+    nix build .#anti-oracle-docker-image
+    docker load < result
+    version=$(nix eval --raw .#version)
+    docker image tag cardano-foundation/anti-oracle:"$version" cardano-foundation/anti-oracle:latest
+    # shellcheck disable=SC2050
+    if [[ '{{ bg }}' == "true" ]]; then
+        docker compose -f CD/anti-oracle/docker-compose.yaml up -d
+    else
+        docker compose -f CD/anti-oracle/docker-compose.yaml up
+    fi
+
+logs-anti-oracle:
+    #!/usr/bin/env bash
+    docker compose -f CD/anti-oracle/docker-compose.yaml logs -f

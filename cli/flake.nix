@@ -74,10 +74,18 @@
           };
           anti-oracle-docker-image = import ./nix/anti-oracle-docker.nix {
             inherit pkgs;
-            linux-package = linux-artifacts.packages.linux64.tarball;
             inherit version;
+            linux-package = linux-artifacts.packages.linux64.tarball;
           };
-          docker.packages = { inherit anti-oracle-docker-image; };
+          anti-agent-docker-image = import ./nix/anti-agent-docker.nix {
+            inherit pkgs;
+            inherit version;
+            linux-package = linux-artifacts.packages.linux64.tarball;
+          };
+          docker.packages = {
+            inherit anti-oracle-docker-image;
+            inherit anti-agent-docker-image;
+          };
           info.packages = { inherit version; };
           fullPackages = lib.mergeAttrsList [
             project.packages

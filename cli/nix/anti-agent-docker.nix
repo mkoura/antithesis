@@ -7,9 +7,9 @@ let
       -C $out
   '';
 in pkgs.dockerTools.buildImage {
-  name = "cardano-foundation/anti-oracle";
+  name = "cardano-foundation/anti-agent";
   tag = version;
-  config = { EntryPoint = [ "./anti-oracle" ]; };
+  config = { EntryPoint = [ "./anti-agent" ]; };
   copyToRoot = pkgs.buildEnv {
     name = "image-root";
     paths = let

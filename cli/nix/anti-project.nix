@@ -63,6 +63,7 @@ in {
   inherit project;
   packages.anti = project.hsPkgs.anti.components.exes.anti;
   packages.anti-oracle = project.hsPkgs.anti.components.exes.anti-oracle;
+  packages.anti-agent = project.hsPkgs.anti.components.exes.anti-agent;
   packages.bech32 = project.hsPkgs.bech32.components.exes.bech32;
   packages.cardano-address =
     project.hsPkgs.cardano-addresses.components.exes.cardano-address;

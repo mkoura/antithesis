@@ -26,6 +26,7 @@ import OptEnvConf
     , auto
     , command
     , commands
+    , conf
     , eitherReader
     , env
     , help
@@ -108,6 +109,7 @@ agentEmailOption =
             , reader str
             , long "email-user"
             , option
+            , conf "agentEmail"
             ]
 agentEmailPasswordOption :: Parser EmailPassword
 agentEmailPasswordOption =

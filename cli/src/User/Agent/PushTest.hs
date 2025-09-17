@@ -52,11 +52,11 @@ import Text.JSON.Canonical
     , ToJSON (..)
     , renderCanonicalJSON
     )
-import User.Agent.Lib (resolveTestRunId, withState)
+import User.Agent.Lib (resolveTestRunId, testRunDuration, withState)
 import User.Agent.Types
     ( TestRunId (..)
     )
-import User.Types (TestRun (..), TestRunState (..))
+import User.Types (TestRun (..))
 
 dockerfile :: String
 dockerfile =
@@ -195,12 +195,6 @@ collectImagesFromAssets (Directory dirname) = do
     let images = nub . sort . filter (not . null) . lines
     return $ output <&> images
 
-pickDuration :: TestRunState v -> Duration
-pickDuration (Pending d _) = d
-pickDuration (Rejected pending _) = pickDuration pending
-pickDuration (Accepted pending) = pickDuration pending
-pickDuration (Finished accepted _ _) = pickDuration accepted
-
 getTestRun
     :: Monad m
     => TokenId
@@ -213,7 +207,7 @@ getTestRun tk testRunId = do
     mts <- lift $ resolveTestRunId tk testRunId
     Fact tr v <- liftMaybe (Couldn'tResolveTestRunId testRunId) mts
     liftMaybe (Couldn'tResolveTestRunId testRunId)
-        $ withState (\state -> (tr, pickDuration state)) v
+        $ withState (\state -> (tr, testRunDuration state)) v
 
 data AntithesisAuth = AntithesisAuth
     { username :: String

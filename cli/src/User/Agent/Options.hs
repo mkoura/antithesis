@@ -89,8 +89,44 @@ agentCommandParser =
             $ Box <$> downloadAssetsOptions
         , command "push-test" "Push a test run to Antithesis"
             $ Box <$> pushTestOptions
-        , command "collect-email-results" "Collect test results from email"
+        , command "collect-results-for" "Collect test results from email"
             $ Box <$> emailResultsOptions
+        , command "collect-all-results" "Collect all test results from email"
+            $ Box <$> emailAllResultsOptions
+        ]
+
+agentEmailOption :: Parser EmailUser
+agentEmailOption =
+    EmailUser
+        <$> setting
+            [ env "ANTI_AGENT_EMAIL"
+            , metavar "EMAIL"
+            , help "The agent email to access the results mailbox"
+            , reader str
+            , long "email-user"
+            , option
+            ]
+agentEmailPasswordOption :: Parser EmailPassword
+agentEmailPasswordOption =
+    EmailPassword
+        <$> secretsParser
+            "Enter the agent email password to access the mailbox"
+            "The agent email password to access the mailbox"
+            "ANTI_AGENT_EMAIL_PASSWORD"
+            "EMAIL_PASSWORD"
+            "ask-agent-email-password"
+            "agentEmailPassword"
+
+daysOption :: Parser Int
+daysOption =
+    setting
+        [ long "days"
+        , help
+            "Number of days in the past to check for test results (default: 7)"
+        , metavar "DAYS"
+        , reader auto
+        , value 7
+        , option
         ]
 
 emailResultsOptions
@@ -99,35 +135,19 @@ emailResultsOptions
 emailResultsOptions =
     CheckResultFor
         <$> tokenIdOption
-        <*> ( EmailUser
-                <$> setting
-                    [ env "ANTI_AGENT_EMAIL"
-                    , metavar "EMAIL"
-                    , help "The agent email to access the results mailbox"
-                    , reader str
-                    , long "email-user"
-                    , option
-                    ]
-            )
-        <*> ( EmailPassword
-                <$> secretsParser
-                    "Enter the agent email password to access the mailbox"
-                    "The agent email password to access the mailbox"
-                    "ANTI_AGENT_EMAIL_PASSWORD"
-                    "EMAIL_PASSWORD"
-                    "ask-agent-email-password"
-                    "agentEmailPassword"
-            )
+        <*> agentEmailOption
+        <*> agentEmailPasswordOption
         <*> testRunIdOption "check results for"
-        <*> setting
-            [ long "days"
-            , help
-                "Number of days in the past to check for test results (default: 7)"
-            , metavar "DAYS"
-            , reader auto
-            , value 7
-            , option
-            ]
+        <*> daysOption
+
+emailAllResultsOptions
+    :: Parser
+        (AgentCommand NotReady (AValidationResult CheckResultsFailure [Result]))
+emailAllResultsOptions =
+    CheckAllResults
+        <$> agentEmailOption
+        <*> agentEmailPasswordOption
+        <*> daysOption
 
 pushTestOptions
     :: Parser

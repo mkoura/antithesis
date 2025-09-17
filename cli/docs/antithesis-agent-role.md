@@ -94,7 +94,7 @@ export ANTI_AGENT_EMAIL="<your-email>"
 Then you can check for the completion of a test-run via
 
 ```bash
-anti agent collect-email-results --days <n> --ask-agent-email-password
+anti agent collect-results-for --test-run-id <test-run-id> --days <n> --ask-agent-email-password
 ```
 
 > HAL Team

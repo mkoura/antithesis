@@ -47,6 +47,7 @@ import Core.Types.Tx (WithTxHash (..))
 import Core.Types.Wallet (Wallet (..))
 import Data.ByteString.Base64 qualified as Base64
 import Data.ByteString.Char8 qualified as B8
+import Data.Either (rights)
 import Data.Function ((&))
 import Data.Functor (($>), (<&>))
 import Data.Functor.Identity (Identity (..))
@@ -239,6 +240,15 @@ agentCmd = \case
             Left err -> notValidated $ CheckResultsEmail err
             Right Nothing -> notValidated $ CheckResultsNoEmailsFor key
             Right (Just result) -> pure result
+    CheckAllResults emailUser emailPassword days -> runValidate $ do
+        r <-
+            liftIO
+                $ runExceptT
+                $ readEmails emailUser emailPassword days
+                & S.toList_
+        case r of
+            Left err -> notValidated $ CheckResultsEmail err
+            Right results -> pure $ rights results
 
 data IsReady = NotReady | Ready
     deriving (Show, Eq)
@@ -357,6 +367,12 @@ data AgentCommand (phase :: IsReady) result where
         -> Int
         -- ^ limit to last N days
         -> AgentCommand phase (AValidationResult CheckResultsFailure Result)
+    CheckAllResults
+        :: EmailUser
+        -> EmailPassword
+        -> Int
+        -- ^ limit to last N days
+        -> AgentCommand phase (AValidationResult CheckResultsFailure [Result])
     PushTest
         :: TokenId
         -> Registry

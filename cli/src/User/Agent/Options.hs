@@ -3,6 +3,9 @@
 
 module User.Agent.Options
     ( agentCommandParser
+    , agentEmailOption
+    , agentEmailPasswordOption
+    , daysOption
     , testRunIdOption
     ) where
 

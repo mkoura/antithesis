@@ -11,6 +11,7 @@ module Oracle.Process
     ( ProcessOptions (..)
     , oracleProcess
     , parseArgs
+    , pollIntervalOption
     ) where
 
 import Cli (Command (GetToken), WithValidation (..), cmd)

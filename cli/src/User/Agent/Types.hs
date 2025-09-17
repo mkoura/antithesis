@@ -3,11 +3,14 @@ module User.Agent.Types
     , TestRunMap (..)
     , WhiteListKey (..)
     , TestRunId (..)
+    , mkTestRunId
+    , testRunIdFromFact
     ) where
 
 import Control.Monad (unless)
 import Core.Types.Basic (Platform, Repository)
-import Core.Types.Fact (Fact)
+import Core.Types.Fact (Fact (..), keyHash)
+import Data.Functor.Identity (Identity (..))
 import Lib.JSON.Canonical.Extra (object, withObject, (.:), (.=))
 import Text.JSON.Canonical
     ( FromJSON (..)
@@ -22,6 +25,11 @@ import User.Types (Phase (..), TestRun, TestRunState)
 newtype TestRunId = TestRunId {testRunId :: String}
     deriving (Show, Eq)
 
+mkTestRunId :: ToJSON Identity key => key -> TestRunId
+mkTestRunId = TestRunId . runIdentity . keyHash
+
+testRunIdFromFact :: Fact TestRun v -> TestRunId
+testRunIdFromFact = mkTestRunId . factKey
 instance Monad m => ToJSON m TestRunId where
     toJSON (TestRunId hash) =
         pure $ JSString $ toJSString hash

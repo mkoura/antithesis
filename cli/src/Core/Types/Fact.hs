@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE StrictData #-}
 
 module Core.Types.Fact
@@ -30,7 +31,7 @@ data Fact k v = Fact
     { factKey :: k
     , factValue :: v
     }
-    deriving (Eq, Show)
+    deriving (Eq, Show, Functor, Foldable, Traversable)
 
 keyHash :: (ToJSON m k, Monad m) => k -> m String
 keyHash key = do

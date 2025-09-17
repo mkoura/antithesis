@@ -16,6 +16,6 @@ in pkgs.dockerTools.buildImage {
       unpacked = pkgs.runCommand "unpack" {
         nativeBuildInputs = [ pkgs.gnutar pkgs.gzip ];
       } unpack;
-    in [ unpacked pkgs.cacert ];
+    in [ unpacked pkgs.docker pkgs.curl pkgs.coreutils pkgs.bash ];
   };
 }

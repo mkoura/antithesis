@@ -2,6 +2,7 @@ module Cli
     ( cmd
     , Command (..)
     , WithValidation (..)
+    , TokenInfoFailure (..)
     ) where
 
 import Control.Monad.IO.Class (MonadIO (..))

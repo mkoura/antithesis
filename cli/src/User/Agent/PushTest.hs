@@ -15,6 +15,7 @@ module User.Agent.PushTest
     , renderTestRun
     , SlackWebhook (..)
     , TestRunWithId (..)
+    , pushConfigImage
     )
 where
 
@@ -45,6 +46,7 @@ import Oracle.Validate.Types
     , liftMaybe
     , throwLeft
     )
+import System.Environment (lookupEnv)
 import System.IO.Temp (withSystemTempDirectory)
 import Text.JSON.Canonical
     ( FromJSON (..)
@@ -242,12 +244,21 @@ newtype Tag = Tag {tagString :: String}
 
 pushConfigImage :: Tag -> IO (Either String String)
 pushConfigImage (Tag tag) =
-    runSystemCommand
-        []
-        "docker"
-        [ "push"
-        , tag
-        ]
+    lookupEnv "DOCKER_CONFIG" >>= \case
+        Just dockerConfigPath ->
+            runSystemCommand
+                [("DOCKER_CONFIG", dockerConfigPath)]
+                "docker"
+                [ "push"
+                , tag
+                ]
+        Nothing ->
+            runSystemCommand
+                []
+                "docker"
+                [ "push"
+                , tag
+                ]
 
 newtype Registry = Registry {unRegistry :: String}
     deriving (Show, Eq)

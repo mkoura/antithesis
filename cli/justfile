@@ -130,26 +130,33 @@ stop-mpfs:
     #!/usr/bin/env bash
     docker compose -p "anti-testing" -f test-E2E/fixtures/docker-compose.yml down
 
-start-anti-agent bg="false":
+build-anti-agent:
     #!/usr/bin/env bash
     nix build .#anti-agent-docker-image
     docker load < result
     version=$(nix eval --raw .#version)
     docker image tag cardano-foundation/anti-agent:"$version" cardano-foundation/anti-agent:latest
-    # shellcheck disable=SC2050
+
+start-anti-agent bg="false":
+    #!/usr/bin/env bash
     if [[ '{{ bg }}' == "true" ]]; then
         docker compose -f CD/anti-agent/docker-compose.yaml up -d
     else
         docker compose -f CD/anti-agent/docker-compose.yaml up
     fi
 
+build-and-start-anti-agent bg="false":
+    #!/usr/bin/env bash
+    just build-anti-agent
+    just start-anti-agent "{{ bg }}"
+
 logs-anti-agent:
     #!/usr/bin/env bash
-    docker compose -f CD/anti-agent/docker-compose.yaml logs -f
+    docker compose -f CD/anti-agent/docker-compose.yaml logs -ft
 
 start-anti-oracle bg="false":
     #!/usr/bin/env bash
-    nix build .#anti-oracle-docker-image
+     nix build .#anti-oracle-docker-image
     docker load < result
     version=$(nix eval --raw .#version)
     docker image tag cardano-foundation/anti-oracle:"$version" cardano-foundation/anti-oracle:latest
@@ -162,4 +169,4 @@ start-anti-oracle bg="false":
 
 logs-anti-oracle:
     #!/usr/bin/env bash
-    docker compose -f CD/anti-oracle/docker-compose.yaml logs -f
+    docker compose -f CD/anti-oracle/docker-compose.yaml logs -ft

@@ -7,6 +7,8 @@ module User.Agent.Options
     , agentEmailPasswordOption
     , daysOption
     , testRunIdOption
+    , registryOption
+    , antithesisAuthOption
     ) where
 
 import Core.Options

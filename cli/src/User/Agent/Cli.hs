@@ -222,7 +222,7 @@ agentCmd = \case
             key
             slack
             $> Success
-    CheckResults tk emailUser emailPassword key days -> runValidate $ do
+    CheckResultFor tk emailUser emailPassword key days -> runValidate $ do
         mfact <- lift $ findFact tk key
         Fact testRun' _ <-
             liftMaybe (CheckResultsNoTestRunFor key) mfact
@@ -349,7 +349,7 @@ data AgentCommand (phase :: IsReady) result where
         -> AgentCommand
             phase
             (AValidationResult DownloadAssetsFailure Success)
-    CheckResults
+    CheckResultFor
         :: TokenId
         -> EmailUser
         -> EmailPassword

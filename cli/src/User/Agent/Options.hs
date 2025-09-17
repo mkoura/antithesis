@@ -97,7 +97,7 @@ emailResultsOptions
     :: Parser
         (AgentCommand NotReady (AValidationResult CheckResultsFailure Result))
 emailResultsOptions =
-    CheckResults
+    CheckResultFor
         <$> tokenIdOption
         <*> ( EmailUser
                 <$> setting

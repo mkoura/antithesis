@@ -362,8 +362,8 @@ pollTestRuns
         } = do
         allTrs <-
             cmd
-                $ GetFacts Nothing poMPFSClient poTokenId
-                $ TestRunFacts (AnyTestRuns [] All)
+                $ GetFacts poMPFSClient poTokenId
+                $ TestRunFacts (AnyTestRuns Nothing [] All)
         let typed :: FromJSON Maybe x => [Fact TestRun x]
             typed = mapMaybe (mapM fromJSON) allTrs
         etoken <- cmd $ GetToken poAuth poMPFSClient poTokenId

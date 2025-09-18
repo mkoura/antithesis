@@ -48,7 +48,8 @@ data TestRunSelection a where
         -> All
         -> TestRunSelection [Fact TestRun (TestRunState 'RunningT)]
     TestRunDone
-        :: [TestRunId]
+        :: Maybe (SSHClient 'WithSelector)
+        -> [TestRunId]
         -> All
         -> TestRunSelection [Fact TestRun (TestRunState 'DoneT)]
     TestRunRejected
@@ -56,7 +57,8 @@ data TestRunSelection a where
         -> All
         -> TestRunSelection [Fact TestRun (TestRunState 'DoneT)]
     AnyTestRuns
-        :: [TestRunId]
+        :: Maybe (SSHClient 'WithSelector)
+        -> [TestRunId]
         -> All
         -> TestRunSelection [Fact TestRun JSValue]
 data FactsSelection a where
@@ -95,20 +97,20 @@ whoseFilter whose facts = filterOn facts factKey
 factsCmd
     :: forall m a
      . Monad m
-    => Maybe (SSHClient 'WithSelector, Validation m)
+    => Maybe (Validation m)
     -> MPFS m
     -> TokenId
     -> FactsSelection a
     -> m a
-factsCmd mDecrypt mpfs tokenId selection = do
-    decrypt <- case mDecrypt of
-        Nothing -> pure id
-        Just (ssh, validation) -> do
-            users :: [RegisterUserKey] <-
-                fmap factKey <$> retrieveAnyFacts @_ @() mpfs tokenId
-            mk <- decodePrivateSSHFile validation ssh
-            let decrypt = tryDecryption users mk
-            pure decrypt
+factsCmd mValidation mpfs tokenId selection = do
+    let mkDecrypt mDecrypt = case (,) <$> mDecrypt <*> mValidation of
+            Nothing -> pure id
+            Just (ssh, validation) -> do
+                users :: [RegisterUserKey] <-
+                    fmap factKey <$> retrieveAnyFacts @_ @() mpfs tokenId
+                mk <- decodePrivateSSHFile validation ssh
+                let decrypt = tryDecryption users mk
+                pure decrypt
     let
         testRunCommon
             :: FromJSON Maybe x => [TestRunId] -> All -> m [Fact TestRun x]
@@ -122,7 +124,8 @@ factsCmd mDecrypt mpfs tokenId selection = do
             testRunCommon ids whose
         core (TestRunFacts (TestRunRunning ids whose)) = do
             testRunCommon ids whose
-        core (TestRunFacts (TestRunDone ids whose)) = do
+        core (TestRunFacts (TestRunDone mDecrypt ids whose)) = do
+            decrypt <- mkDecrypt mDecrypt
             facts <-
                 testRunCommon ids whose <&> fmap decrypt
             pure $ filterOn facts factValue $ \case
@@ -134,7 +137,8 @@ factsCmd mDecrypt mpfs tokenId selection = do
             pure $ filterOn facts factValue $ \case
                 Rejected{} -> True
                 _ -> False
-        core (TestRunFacts (AnyTestRuns ids whose)) =
+        core (TestRunFacts (AnyTestRuns mDecrypt ids whose)) = do
+            decrypt <- mkDecrypt mDecrypt
             testRunCommon ids whose <&> fmap (parseDecrypt decrypt)
         core ConfigFact = retrieveAnyFacts mpfs tokenId
         core WhiteListedFacts = retrieveAnyFacts mpfs tokenId

@@ -64,8 +64,7 @@ data Command a where
     RetractRequest
         :: MPFSClient -> Wallet -> RequestRefId -> Command TxHash
     GetFacts
-        :: Maybe (SSHClient 'WithSelector)
-        -> MPFSClient
+        :: MPFSClient
         -> TokenId
         -> FactsSelection a
         -> Command a
@@ -123,7 +122,7 @@ cmd = \case
                 $ submit
                 $ \address ->
                     retractChange address refId
-    GetFacts ssh MPFSClient{runMPFS} tokenId factsCommand -> do
+    GetFacts MPFSClient{runMPFS} tokenId factsCommand -> do
         let validation =
                 mkValidation
                     (error "shouldn't need this...")
@@ -131,7 +130,7 @@ cmd = \case
                     $ Just tokenId
         runMPFS
             $ factsCmd
-                ((,validation) <$> ssh)
+                (Just validation)
                 mpfsClient
                 tokenId
                 factsCommand

@@ -113,9 +113,8 @@ commandParser =
             "Retract a request"
             retractRequestOptions
         , command "facts" "Get token facts"
-            $ (\ssh c tk -> fmapBox (GetFacts ssh c tk))
-                <$> optional sshClientOption
-                <*> mpfsClientOption
+            $ (\c tk -> fmapBox (GetFacts c tk))
+                <$> mpfsClientOption
                 <*> tokenIdOption
                 <*> factsSelectionParser
         , command "token" "Get the token content"
@@ -161,13 +160,24 @@ testRunSelectionParser =
         , command
             "done"
             "Get done test runs"
-            (fmap Box $ TestRunDone <$> includedTestRuns <*> whoseOption)
+            ( fmap Box
+                $ TestRunDone
+                    <$> optional sshClientOption
+                    <*> includedTestRuns
+                    <*> whoseOption
+            )
         , command
             "rejected"
             "Get rejected test runs"
             (fmap Box $ TestRunRejected <$> includedTestRuns <*> whoseOption)
         ]
-        <|> fmap Box (AnyTestRuns <$> includedTestRuns <*> whoseOption)
+        <|> fmap
+            Box
+            ( AnyTestRuns
+                <$> optional sshClientOption
+                <*> includedTestRuns
+                <*> whoseOption
+            )
 
 whoseOption :: Parser All
 whoseOption =

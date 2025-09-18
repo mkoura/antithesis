@@ -1,6 +1,3 @@
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-
-{-# HLINT ignore "Use fewer imports" #-}
 module Facts
     ( FactsSelection (..)
     , TestRunSelection (..)
@@ -27,7 +24,7 @@ import Lib.SSH.Private (KeyPair (..), SSHClient, WithSelector (..))
 import Lib.SSH.Public (decodePublicKey)
 import MPFS.API (MPFS, mpfsGetTokenFacts)
 import Oracle.Config.Types (Config, ConfigKey)
-import Text.JSON.Canonical (FromJSON, JSValue, ToJSON)
+import Text.JSON.Canonical (FromJSON (..), JSValue, ToJSON (..))
 import User.Agent.Types (TestRunId (..), WhiteListKey)
 import User.Types
     ( Phase (..)
@@ -127,7 +124,7 @@ factsCmd mDecrypt mpfs tokenId selection = do
             testRunCommon ids whose
         core (TestRunFacts (TestRunDone ids whose)) = do
             facts <-
-                testRunCommon ids whose <&> map decrypt
+                testRunCommon ids whose <&> fmap decrypt
             pure $ filterOn facts factValue $ \case
                 Finished{} -> True
                 _ -> False
@@ -138,11 +135,22 @@ factsCmd mDecrypt mpfs tokenId selection = do
                 Rejected{} -> True
                 _ -> False
         core (TestRunFacts (AnyTestRuns ids whose)) =
-            testRunCommon ids whose
+            testRunCommon ids whose <&> fmap (parseDecrypt decrypt)
         core ConfigFact = retrieveAnyFacts mpfs tokenId
         core WhiteListedFacts = retrieveAnyFacts mpfs tokenId
-        core AllFacts = retrieveAnyFacts mpfs tokenId
+        core AllFacts =
+            retrieveAnyFacts mpfs tokenId
+
     core selection
+
+parseDecrypt
+    :: ( Fact TestRun (TestRunState DoneT)
+         -> Fact TestRun (TestRunState DoneT)
+       )
+    -> Fact TestRun JSValue
+    -> Fact TestRun JSValue
+parseDecrypt decrypt f =
+    maybe f (fmap (runIdentity . toJSON) . decrypt) $ mapM fromJSON f
 
 filterOn :: [a] -> (a -> b) -> (b -> Bool) -> [a]
 filterOn xs f p = filter (p . f) xs

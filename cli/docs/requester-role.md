@@ -164,3 +164,13 @@ You can find all running test-runs for a user with
 ```bash
 anti facts test-runs running --whose alice
 ```
+
+Because the result URL is encrypted, you need to provide the requester SSH for decryption (see above). This work for the done selector and the full test-runs list.
+
+```bash
+anti facts test-runs done --ssh-file PATH_TO_YOUR_SSH_FILE --ask-ssh-passphrase
+```
+
+```bash
+anti facts test-runs --ssh-file PATH_TO_YOUR_SSH_FILE --ask-ssh-passphrase
+```

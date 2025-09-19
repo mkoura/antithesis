@@ -139,6 +139,7 @@ build-anti-agent:
 
 start-anti-agent bg="false":
     #!/usr/bin/env bash
+    # shellcheck disable=SC2050
     if [[ '{{ bg }}' == "true" ]]; then
         docker compose -f CD/anti-agent/docker-compose.yaml up -d
     else

@@ -17,6 +17,7 @@ services:
     restart:
       always
     privileged: true
+    command: "--poll-interval 60 --days 1"
     volumes:
       - tmp:/tmp
          # Mount CA certificates, curl seems not to find them when the pkgs.cacert is included in the image

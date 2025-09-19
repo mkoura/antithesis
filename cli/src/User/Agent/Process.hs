@@ -21,7 +21,7 @@ module User.Agent.Process
 import Cli (Command (..), TokenInfoFailure, WithValidation (..), cmd)
 import Control.Applicative (Alternative (..), optional)
 import Control.Concurrent (threadDelay)
-import Control.Monad (forever)
+import Control.Monad (forever, when)
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Trans.Except (runExceptT, throwE)
 import Core.Options (tokenIdOption, walletOption)
@@ -52,6 +52,8 @@ import OptEnvConf
     , setting
     , short
     , strOption
+    , switch
+    , value
     , withYamlConfig
     )
 import Options (githubAuthOption, secretsFileOption)
@@ -133,6 +135,7 @@ data ProcessOptions = ProcessOptions
     , poTrustedCreators :: [Username]
     , poRegistry :: Registry
     , poAntithesisAuth :: AntithesisAuth
+    , poVerbose :: Bool
     }
 
 processOptionsParser :: Parser ProcessOptions
@@ -149,6 +152,17 @@ processOptionsParser =
         <*> creatorsOption
         <*> registryOption
         <*> antithesisAuthOption
+        <*> verboseOption
+
+verboseOption :: Parser Bool
+verboseOption =
+    setting
+        [ long "verbose"
+        , help "Enable verbose logging."
+        , metavar "VERBOSE"
+        , switch True
+        , value False
+        ]
 
 creatorsOption :: Parser [Username]
 creatorsOption =
@@ -178,7 +192,7 @@ creatorsOption =
 agentProcess
     :: ProcessOptions
     -> IO ()
-agentProcess opts@ProcessOptions{poPollIntervalSeconds} = do
+agentProcess opts@ProcessOptions{poPollIntervalSeconds, poVerbose} = do
     putStrLn "Starting agent process service..."
     forever $ runExceptT $ do
         results <- liftIO $ pollEmails opts
@@ -231,7 +245,7 @@ agentProcess opts@ProcessOptions{poPollIntervalSeconds} = do
                                     ++ trId
                                     ++ " in transaction "
                                     ++ show txHash
-                Just (Right _) -> do
+                Just (Right _) -> when poVerbose $ do
                     loggin
                         $ "Test-run "
                             ++ trId

@@ -352,7 +352,8 @@ spec = do
                                 validation
                                 testRun
                                 testRunState
-                    onConditionHaveReason mresult UnacceptableTryIndex
+                    let maxTry = testRunDB.tryIndex
+                    onConditionHaveReason mresult (UnacceptableTryIndex maxTry)
                         $ testRun.tryIndex /= testRunDB.tryIndex + 1
 
         it "reports unacceptable directory" $ egenProperty $ do

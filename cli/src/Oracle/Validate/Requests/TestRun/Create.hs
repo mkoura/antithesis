@@ -9,7 +9,7 @@ module Oracle.Validate.Requests.TestRun.Create
 
 import Control.Monad (when)
 import Control.Monad.Trans.Class (lift)
-import Core.Types.Basic (Commit, Directory (..), Duration (..), Repository, Try (..))
+import Core.Types.Basic (Commit(..), Directory (..), Duration (..), Repository(..), Try (..))
 import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Fact (Fact (..))
 import Core.Types.Operation (Op (..), Operation (..))
@@ -106,7 +106,7 @@ validateCreateTestRun
 data TestRunRejection
     = UnacceptableDuration Int Int
     | UnacceptableCommit Repository Commit
-    | UnacceptableTryIndex
+    | UnacceptableTryIndex Try
     | UnacceptableRole
     | NoRegisteredKeyVerifiesTheSignature
     | UserHasNoRegisteredSSHKeys
@@ -119,10 +119,10 @@ data TestRunRejection
 instance Monad m => ToJSON m TestRunRejection where
     toJSON (UnacceptableDuration minDuration maxDuration) =
         stringJSON $ "unacceptable duration. Expecting duration to be between "<> show minDuration <> " and "<>show maxDuration
-    toJSON (UnacceptableCommit repo commit)=
-        stringJSON $ "unacceptable commit. The specified commit "<> show commit<>" cannot be found in the repository "<>show repo
-    toJSON UnacceptableTryIndex =
-        stringJSON "unacceptable try index"
+    toJSON (UnacceptableCommit (Repository org repo) (Commit commit))=
+        stringJSON $ "unacceptable commit. The specified commit "<> show commit<>" cannot be found in the repository "<>show org<>"/"<>show repo
+    toJSON (UnacceptableTryIndex (Try maxIx))=
+        stringJSON $ "unacceptable try index. Expecting at most "<>show maxIx<>" run attempts for a given commit"
     toJSON UnacceptableRole =
         stringJSON "unacceptable role"
     toJSON NoRegisteredKeyVerifiesTheSignature =
@@ -194,7 +194,7 @@ checkTryIndex
 
         if tryIndex testRun == succ latest
             then return Nothing
-            else return $ Just UnacceptableTryIndex
+            else return $ Just (UnacceptableTryIndex latest)
 
 checkCommit
     :: Monad m

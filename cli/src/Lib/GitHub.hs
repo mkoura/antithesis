@@ -8,11 +8,20 @@ module Lib.GitHub
     , githubGetFile
     , githubGetCodeOwnersFile
     , githubRepositoryExists
+
+      -- * Utilities for working with GitHub directories
+    , copyGithubDirectory
+    , writeToDirectory
+    , exitOnException
+    , githubStreamDirectoryContents
     ) where
 
 import Control.Exception
     ( Exception
+    , SomeException
     )
+import Control.Monad.Fix (fix)
+import Control.Monad.Trans.Except (ExceptT, runExceptT, throwE)
 import Core.Types.Basic
     ( Commit (..)
     , Directory (..)
@@ -20,8 +29,11 @@ import Core.Types.Basic
     , Repository (..)
     , Username (..)
     )
+import Data.ByteString (ByteString)
+import Data.ByteString qualified as B
 import Data.ByteString.Base64 qualified as B64
-import Data.Foldable (Foldable (..))
+import Data.Foldable (Foldable (..), forM_)
+import Data.Function ((&))
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import GitHub (Auth (..), FetchCount (..), github)
@@ -34,7 +46,22 @@ import Network.HTTP.Client
     , Response (..)
     )
 import Network.HTTP.Types (Status (..))
+import Path
+    ( Abs
+    , Dir
+    , File
+    , Path
+    , Rel
+
+    , parseRelFile
+    , toFilePath
+    , (</>), parseRelDir, parent
+    )
+import Streaming
+import Streaming.Prelude (yield)
+import Streaming.Prelude qualified as S
 import Text.JSON.Canonical
+import System.Directory (createDirectoryIfMissing)
 
 data GithubResponseError
     = GithubResponseErrorRepositoryNotFound
@@ -179,6 +206,7 @@ data GetGithubFileFailure
     | GetGithubFileUnsupportedEncoding String
     | GetGithubFileOtherFailure FilePath String
     | GetGithubFileCodeError GithubResponseStatusCodeError
+    | GithubPathParsingError String
     deriving (Eq, Show)
 
 instance Exception GetGithubFileFailure
@@ -237,3 +265,118 @@ githubGetFile auth (Repository owner repo) commitM (FileName filename) = do
   where
     owner' = N $ T.pack owner
     repo' = N $ T.pack repo
+
+githubStreamDirectoryContents
+    :: Auth
+    -> Repository
+    -> Maybe Commit
+    -> Path Rel Dir
+    -> Stream
+        (Of (Path Rel File, ByteString))
+        (ExceptT GetGithubFileFailure IO)
+        ()
+githubStreamDirectoryContents
+    auth
+    (Repository owner repo)
+    commitM
+    startDir =
+        ($ startDir) $ fix $ \go dir -> do
+            -- Get the contents of the source directory
+            response <-
+                liftIO
+                    $ github auth
+                    $ GH.contentsForR
+                        owner'
+                        repo'
+                        (T.dropEnd 1 $ T.pack $ toFilePath dir)
+                        ((\(Commit c) -> T.pack c) <$> commitM)
+            case response of
+                Left e -> do
+                    res <- liftIO $ onStatusCodeOfException e $ \c -> do
+                        case c of
+                            404 ->
+                                pure
+                                    . Just
+                                    $ GetGithubFileDirectoryNotFound
+                            _ ->
+                                pure
+                                    . Just
+                                    . GetGithubFileOtherFailure (toFilePath dir)
+                                    $ show e
+                    case res of
+                        Left err -> lift $ throwE $ GetGithubFileCodeError err
+                        Right a -> lift $ throwE a
+                Right (GH.ContentFile contents) -> do
+                    let content = GH.contentFileContent contents
+                    ebytes <- case GH.contentFileEncoding contents of
+                        "base64" ->
+                            pure
+                                . Right
+                                . B64.decodeLenient
+                                . T.encodeUtf8
+                                $ content
+                        enc ->
+                            pure
+                                . Left
+                                . GetGithubFileUnsupportedEncoding
+                                $ T.unpack enc
+                    case ebytes of
+                        Left err -> lift $ throwE err
+                        Right t -> lift (dirToFile dir) >>= yield . (,t)
+                Right (GH.ContentDirectory vis) -> forM_ vis $ \case
+                    GH.ContentItem _ctype GH.ContentInfo{contentPath} -> do
+                        dir' <-
+                            lift
+                                $ throwPathParsing
+                                $ parseRelDir (T.unpack contentPath)
+                        go dir'
+      where
+        owner' = N $ T.pack owner
+        repo' = N $ T.pack repo
+
+dirToFile
+    :: Monad m => Path b t -> ExceptT GetGithubFileFailure m (Path Rel File)
+dirToFile = throwPathParsing . parseRelFile . tailU . toFilePath
+  where
+    tailU = T.unpack . T.dropWhileEnd (== '/') . T.dropWhile (== '/') . T.pack
+
+throwPathParsing
+    :: (Monad m)
+    => Either SomeException a
+    -> ExceptT GetGithubFileFailure m a
+throwPathParsing f = case f of
+    Left err -> throwE . GithubPathParsingError . show $ err
+    Right file -> pure file
+
+writeToDirectory
+    :: Path Abs Dir -> Stream (Of (Path Rel File, ByteString)) IO r -> IO r
+writeToDirectory targetDir = S.mapM_ writeFile'
+  where
+    writeFile' (relPath, content) = do
+        let fullPath = targetDir </> relPath
+        createDirectoryIfMissing True (toFilePath $ parent fullPath)
+        B.writeFile (toFilePath fullPath) content
+
+exitOnException
+    :: Stream (Of a) (ExceptT e IO) r -> Stream (Of a) IO (Either e r)
+exitOnException strm = effect $ do
+    x <- runExceptT $ S.next strm
+    pure $ case x of
+        Left e -> pure $ Left e
+        Right (Left r) -> pure $ Right r
+        Right (Right (a, rest)) -> do
+            yield a >> exitOnException rest
+
+copyGithubDirectory
+    :: Auth
+    -> Repository
+    -> Maybe Commit
+    -> Path Rel Dir
+    -- ^ Source directory in the GitHub repository
+    -> Path Abs Dir
+    -- ^ Target directory on the local filesystem
+    -> IO (Either GetGithubFileFailure ())
+copyGithubDirectory auth repo commitM srcDir targetDir =
+    githubStreamDirectoryContents auth repo commitM srcDir
+        & exitOnException
+        & writeToDirectory targetDir

@@ -104,9 +104,9 @@ data Validation m = Validation
          . String
         -> (FilePath -> m a)
         -> m a
-    , writeTextFile :: FilePath -> Text -> m () -- Added writeFile to Validation
+    , writeTextFile :: FilePath -> Text -> m ()
     , withCurrentDirectory :: forall a. FilePath -> m a -> m a
-    , directoryExists :: Directory -> m (Maybe Permissions) -- Added directoryExists to Validation
+    , directoryExists :: Directory -> m (Maybe Permissions)
     , decodePrivateSSHFile :: SSHClient 'WithSelector -> m (Maybe KeyPair)
     }
 

@@ -144,16 +144,17 @@ instance Monad m => ToJSON m TestRunRejection where
             $ "unacceptable try index. Expecting at most "
                 <> show maxIx
                 <> " run attempts for a given commit"
-    toJSON ( UnacceptableRole
+    toJSON
+        ( UnacceptableRole
                 (RegisterRoleKey _ (Repository org repo) (Username user))
             ) =
-        stringJSON
-            $ "unacceptable role. User "
-                <> show user
-                <> " has not been registered within the repository "
-                <> show org
-                <> "/"
-                <> show repo
+            stringJSON
+                $ "unacceptable role. User "
+                    <> show user
+                    <> " has not been registered within the repository "
+                    <> show org
+                    <> "/"
+                    <> show repo
     toJSON NoRegisteredKeyVerifiesTheSignature =
         stringJSON
             "there is no registered Ed25519 SSH key that can verify the signature"

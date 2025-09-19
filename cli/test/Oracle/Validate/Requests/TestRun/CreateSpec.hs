@@ -91,10 +91,10 @@ import Test.QuickCheck.EGen
     )
 import User.Agent.Types (WhiteListKey (..))
 import User.Types
-    ( TestRun (..)
+    ( RegisterRoleKey (..)
+    , TestRun (..)
     , TestRunRejection (..)
     , TestRunState (..)
-    , RegisterRoleKey(..)
     , URL (..)
     , tryIndexL
     )
@@ -252,7 +252,9 @@ spec = do
                             testRunState
                 let expectedMinDuration = minDuration testConfig
                 let expectedMaxDuration = maxDuration testConfig
-                onConditionHaveReason mresult (UnacceptableDuration expectedMinDuration expectedMaxDuration)
+                onConditionHaveReason
+                    mresult
+                    (UnacceptableDuration expectedMinDuration expectedMaxDuration)
                     $ duration < expectedMinDuration
                         || duration > expectedMaxDuration
 
@@ -284,7 +286,11 @@ spec = do
                             validation
                             testRunRequest
                             testRunState
-                let role = RegisterRoleKey testRunRequest.platform testRunRequest.repository testRunRequest.requester
+                let role =
+                        RegisterRoleKey
+                            testRunRequest.platform
+                            testRunRequest.repository
+                            testRunRequest.requester
                 onConditionHaveReason mresult (UnacceptableRole role)
                     $ testRunRequest.platform /= testRunFact.platform
                         || testRunRequest.repository.organization

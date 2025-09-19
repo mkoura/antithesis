@@ -9,7 +9,7 @@ module Oracle.Validate.Requests.TestRun.Create
 
 import Control.Monad (when)
 import Control.Monad.Trans.Class (lift)
-import Core.Types.Basic (Directory (..), Duration (..), Try (..))
+import Core.Types.Basic (Commit, Directory (..), Duration (..), Repository, Try (..))
 import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Fact (Fact (..))
 import Core.Types.Operation (Op (..), Operation (..))
@@ -105,7 +105,7 @@ validateCreateTestRun
 
 data TestRunRejection
     = UnacceptableDuration Int Int
-    | UnacceptableCommit
+    | UnacceptableCommit Repository Commit
     | UnacceptableTryIndex
     | UnacceptableRole
     | NoRegisteredKeyVerifiesTheSignature
@@ -119,8 +119,8 @@ data TestRunRejection
 instance Monad m => ToJSON m TestRunRejection where
     toJSON (UnacceptableDuration minDuration maxDuration) =
         stringJSON $ "unacceptable duration. Expecting duration to be between "<> show minDuration <> " and "<>show maxDuration
-    toJSON UnacceptableCommit =
-        stringJSON "unacceptable commit"
+    toJSON (UnacceptableCommit repo commit)=
+        stringJSON $ "unacceptable commit. The specified commit "<> show commit<>" cannot be found in the repository "<>show repo
     toJSON UnacceptableTryIndex =
         stringJSON "unacceptable try index"
     toJSON UnacceptableRole =
@@ -210,7 +210,7 @@ checkCommit
             Right exists ->
                 if exists
                     then Nothing
-                    else Just UnacceptableCommit
+                    else Just (UnacceptableCommit testRun.repository (commitId testRun))
 
 checkSignature
     :: Monad m

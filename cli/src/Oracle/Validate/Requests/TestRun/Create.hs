@@ -9,7 +9,7 @@ module Oracle.Validate.Requests.TestRun.Create
 
 import Control.Monad (when)
 import Control.Monad.Trans.Class (lift)
-import Core.Types.Basic (Commit(..), Directory (..), Duration (..), Repository(..), Try (..))
+import Core.Types.Basic (Commit(..), Directory (..), Duration (..), Repository(..), Try (..), Username(..))
 import Core.Types.Change (Change (..), Key (..))
 import Core.Types.Fact (Fact (..))
 import Core.Types.Operation (Op (..), Operation (..))
@@ -45,6 +45,7 @@ import User.Agent.Types (WhiteListKey (..))
 import User.Types
     ( Phase (PendingT)
     , RegisterUserKey (..)
+    , RegisterRoleKey (..)
     , TestRun (..)
     , TestRunState (..)
     , roleOfATestRun
@@ -107,7 +108,7 @@ data TestRunRejection
     = UnacceptableDuration Int Int
     | UnacceptableCommit Repository Commit
     | UnacceptableTryIndex Try
-    | UnacceptableRole
+    | UnacceptableRole RegisterRoleKey
     | NoRegisteredKeyVerifiesTheSignature
     | UserHasNoRegisteredSSHKeys
     | GithubResponseError GithubResponseError
@@ -123,8 +124,8 @@ instance Monad m => ToJSON m TestRunRejection where
         stringJSON $ "unacceptable commit. The specified commit "<> show commit<>" cannot be found in the repository "<>show org<>"/"<>show repo
     toJSON (UnacceptableTryIndex (Try maxIx))=
         stringJSON $ "unacceptable try index. Expecting at most "<>show maxIx<>" run attempts for a given commit"
-    toJSON UnacceptableRole =
-        stringJSON "unacceptable role"
+    toJSON (UnacceptableRole (RegisterRoleKey _ (Repository org repo) (Username user)))=
+        stringJSON $ "unacceptable role. User "<>show user<>" has not been registered within the repository "<>show org<>"/"<>show repo
     toJSON NoRegisteredKeyVerifiesTheSignature =
         stringJSON "no registered key verifies the signature"
     toJSON UserHasNoRegisteredSSHKeys =
@@ -154,7 +155,7 @@ checkRole
         let roleFact = roleOfATestRun testRun
         if Fact roleFact () `elem` fs
             then return Nothing
-            else return $ Just UnacceptableRole
+            else return $ Just (UnacceptableRole roleFact)
 
 checkWhiteList
     :: Monad m

@@ -94,6 +94,7 @@ import User.Types
     ( TestRun (..)
     , TestRunRejection (..)
     , TestRunState (..)
+    , RegisterRoleKey(..)
     , URL (..)
     , tryIndexL
     )
@@ -269,10 +270,10 @@ spec = do
                         , changeProject testRunRequest
                         , pure testRunRequest
                         ]
-            role <- jsFactRole testRunFact
+            roleFact <- jsFactRole testRunFact
             let validation =
                     mkValidation
-                        (withFacts [role] mockMPFS)
+                        (withFacts [roleFact] mockMPFS)
                         noValidation
                 testRunState = Pending (Duration duration) signature
             pure $ do
@@ -283,7 +284,8 @@ spec = do
                             validation
                             testRunRequest
                             testRunState
-                onConditionHaveReason mresult UnacceptableRole
+                let role = RegisterRoleKey testRunRequest.platform testRunRequest.repository testRunRequest.requester
+                onConditionHaveReason mresult (UnacceptableRole role)
                     $ testRunRequest.platform /= testRunFact.platform
                         || testRunRequest.repository.organization
                             /= testRunFact.repository.organization

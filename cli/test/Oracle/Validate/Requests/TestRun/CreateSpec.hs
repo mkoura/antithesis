@@ -249,9 +249,11 @@ spec = do
                             (mkValidation mockMPFS noValidation)
                             testRun
                             testRunState
-                onConditionHaveReason mresult UnacceptableDuration
-                    $ duration < minDuration testConfig
-                        || duration > maxDuration testConfig
+                let expectedMinDuration = minDuration testConfig
+                let expectedMaxDuration = maxDuration testConfig
+                onConditionHaveReason mresult (UnacceptableDuration expectedMinDuration expectedMaxDuration)
+                    $ duration < expectedMinDuration
+                        || duration > expectedMaxDuration
 
         it "reports unacceptable role" $ egenProperty $ do
             testConfig <- testConfigEGen

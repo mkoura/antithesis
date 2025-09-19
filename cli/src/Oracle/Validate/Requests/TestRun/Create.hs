@@ -104,7 +104,7 @@ validateCreateTestRun
                 testRunState
 
 data TestRunRejection
-    = UnacceptableDuration
+    = UnacceptableDuration Int Int
     | UnacceptableCommit
     | UnacceptableTryIndex
     | UnacceptableRole
@@ -117,8 +117,8 @@ data TestRunRejection
     deriving (Eq, Show)
 
 instance Monad m => ToJSON m TestRunRejection where
-    toJSON UnacceptableDuration =
-        stringJSON "unacceptable duration"
+    toJSON (UnacceptableDuration minDuration maxDuration) =
+        stringJSON $ "unacceptable duration. Expecting duration to be between "<> show minDuration <> " and "<>show maxDuration
     toJSON UnacceptableCommit =
         stringJSON "unacceptable commit"
     toJSON UnacceptableTryIndex =
@@ -141,7 +141,8 @@ instance Monad m => ToJSON m TestRunRejection where
 checkDuration
     :: TestRunValidationConfig -> Duration -> Maybe TestRunRejection
 checkDuration TestRunValidationConfig{maxDuration, minDuration} (Duration n)
-    | n < minDuration || n > maxDuration = Just UnacceptableDuration
+    | n < minDuration || n > maxDuration =
+          Just $ UnacceptableDuration minDuration maxDuration
     | otherwise = Nothing
 
 checkRole

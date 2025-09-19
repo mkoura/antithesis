@@ -52,16 +52,17 @@ import Path
     , File
     , Path
     , Rel
-
+    , parent
+    , parseRelDir
     , parseRelFile
     , toFilePath
-    , (</>), parseRelDir, parent
+    , (</>)
     )
 import Streaming
 import Streaming.Prelude (yield)
 import Streaming.Prelude qualified as S
-import Text.JSON.Canonical
 import System.Directory (createDirectoryIfMissing)
+import Text.JSON.Canonical
 
 data GithubResponseError
     = GithubResponseErrorRepositoryNotFound

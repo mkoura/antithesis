@@ -1,36 +1,29 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Lib.GitHubSpec (spec) where
+module Lib.GitHubSpec (githubSpec) where
 
-import Control.Monad (void)
 import Core.Types.Basic (Commit (..), Repository (..))
-import Data.ByteString.Char8 qualified as BC
-import GitHub (Auth (OAuth))
+import GitHub (Auth)
 import Lib.GitHub (copyGithubDirectory)
 import Path
-    ( Dir,
-      Path,
-      parseAbsDir,
-      toFilePath,
-      (</>),
-      mkRelDir,
-      mkRelFile,
-      parseRelFile,
-      File,
-      Rel )
+    ( Dir
+    , File
+    , Path
+    , Rel
+    , mkRelDir
+    , mkRelFile
+    , parseAbsDir
+    , toFilePath
+    , (</>)
+    )
 import System.Directory (doesFileExist)
-import System.Environment (getEnv)
 import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec
-    ( Spec
-    , beforeAll
+    ( SpecWith
     , describe
     , it
     , shouldReturn
     )
-
-boot :: IO Auth
-boot = OAuth . BC.pack <$> getEnv "ANTI_GITHUB_PAT"
 
 repo :: Repository
 repo =
@@ -54,26 +47,20 @@ dockerComposePath = $(mkRelFile "docker-compose.yaml")
 testnetPath :: Path Rel File
 testnetPath = $(mkRelFile "testnet.yaml")
 
-spec :: Spec
-spec = do
-    describe "Path lib" $ do
-        it "parses relative directory" $ do
-            void $ parseRelFile @IO "antithesis-test/somefile.txt"
-    beforeAll boot $ do
-        describe "Lib.GitHub" $ do
-            it "downloads a directory" $ \pat ->
-                withSystemTempDirectory "github-test" $ \targetPath -> do
-                    targetDir <- parseAbsDir targetPath
-                    copyGithubDirectory pat repo commit srcPath targetDir
-                        `shouldReturn` Right ()
-                    let readmeAbsPath = targetDir </> srcPath </> readmePath
-                    print $ "Checking for file: " ++ toFilePath readmeAbsPath
-                    doesFileExist (toFilePath readmeAbsPath) `shouldReturn` True
-                    let dockerComposeAbsPath =
-                            targetDir
-                                </> srcPath
-                                </> dockerComposePath
-                    doesFileExist (toFilePath dockerComposeAbsPath)
-                        `shouldReturn` True
-                    let testnetAbsPath = targetDir </> srcPath </> testnetPath
-                    doesFileExist (toFilePath testnetAbsPath) `shouldReturn` True
+githubSpec :: SpecWith Auth
+githubSpec = describe "Lib.GitHub" $ do
+    it "downloads a directory" $ \pat ->
+        withSystemTempDirectory "github-test" $ \targetPath -> do
+            targetDir <- parseAbsDir targetPath
+            copyGithubDirectory pat repo commit srcPath targetDir
+                `shouldReturn` Right ()
+            let readmeAbsPath = targetDir </> srcPath </> readmePath
+            doesFileExist (toFilePath readmeAbsPath) `shouldReturn` True
+            let dockerComposeAbsPath =
+                    targetDir
+                        </> srcPath
+                        </> dockerComposePath
+            doesFileExist (toFilePath dockerComposeAbsPath)
+                `shouldReturn` True
+            let testnetAbsPath = targetDir </> srcPath </> testnetPath
+            doesFileExist (toFilePath testnetAbsPath) `shouldReturn` True

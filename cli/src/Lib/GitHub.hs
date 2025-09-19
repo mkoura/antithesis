@@ -10,7 +10,7 @@ module Lib.GitHub
     , githubRepositoryExists
 
       -- * Utilities for working with GitHub directories
-    , copyGithubDirectory
+    , githubDownloadDirectory
     , writeToDirectory
     , exitOnException
     , githubStreamDirectoryContents
@@ -21,7 +21,7 @@ import Control.Exception
     , SomeException
     )
 import Control.Monad.Fix (fix)
-import Control.Monad.Trans.Except (ExceptT, runExceptT, throwE)
+import Control.Monad.Trans.Except (ExceptT (..), runExceptT, throwE)
 import Core.Types.Basic
     ( Commit (..)
     , Directory (..)
@@ -52,17 +52,30 @@ import Path
     , File
     , Path
     , Rel
+    , SomeBase (..)
     , parent
+    , parseAbsDir
     , parseRelDir
     , parseRelFile
+    , parseSomeDir
+    , stripProperPrefix
     , toFilePath
     , (</>)
     )
 import Streaming
+    ( MonadIO (liftIO)
+    , MonadTrans (lift)
+    , Of
+    , Stream
+    , effect
+    )
 import Streaming.Prelude (yield)
 import Streaming.Prelude qualified as S
-import System.Directory (createDirectoryIfMissing)
-import Text.JSON.Canonical
+import System.Directory
+    ( createDirectoryIfMissing
+    , getCurrentDirectory
+    )
+import Text.JSON.Canonical (ToJSON (..))
 
 data GithubResponseError
     = GithubResponseErrorRepositoryNotFound
@@ -350,11 +363,15 @@ throwPathParsing f = case f of
     Right file -> pure file
 
 writeToDirectory
-    :: Path Abs Dir -> Stream (Of (Path Rel File, ByteString)) IO r -> IO r
-writeToDirectory targetDir = S.mapM_ writeFile'
+    :: Path Rel Dir
+    -> Path Abs Dir
+    -> Stream (Of (Path Rel File, ByteString)) IO r
+    -> IO r
+writeToDirectory srcDir targetDir = S.mapM_ writeFile'
   where
     writeFile' (relPath, content) = do
-        let fullPath = targetDir </> relPath
+        unrootedPath <- stripProperPrefix srcDir relPath
+        let fullPath = targetDir </> unrootedPath
         createDirectoryIfMissing True (toFilePath $ parent fullPath)
         B.writeFile (toFilePath fullPath) content
 
@@ -368,16 +385,32 @@ exitOnException strm = effect $ do
         Right (Right (a, rest)) -> do
             yield a >> exitOnException rest
 
-copyGithubDirectory
+absolutizePath :: SomeBase x -> IO (Path Abs x)
+absolutizePath (Rel relPath) = do
+    currDir <- parseAbsDir =<< getCurrentDirectory
+    pure $ currDir </> relPath
+absolutizePath (Abs absPath) = pure absPath
+
+githubDownloadDirectory
     :: Auth
     -> Repository
     -> Maybe Commit
-    -> Path Rel Dir
+    -> Directory
     -- ^ Source directory in the GitHub repository
-    -> Path Abs Dir
+    -> Directory
     -- ^ Target directory on the local filesystem
     -> IO (Either GetGithubFileFailure ())
-copyGithubDirectory auth repo commitM srcDir targetDir =
-    githubStreamDirectoryContents auth repo commitM srcDir
-        & exitOnException
-        & writeToDirectory targetDir
+githubDownloadDirectory
+    auth
+    repo
+    commitM
+    (Directory srcDir)
+    (Directory targetDir) = runExceptT $ do
+        srcDirPath <- throwPathParsing $ parseRelDir srcDir
+        -- Ensure the target directory exists
+        targetDirPath <- throwPathParsing $ parseSomeDir targetDir
+        targetDirAbs <- lift $ absolutizePath targetDirPath
+        ExceptT
+            $ githubStreamDirectoryContents auth repo commitM srcDirPath
+            & exitOnException
+            & writeToDirectory srcDirPath targetDirAbs

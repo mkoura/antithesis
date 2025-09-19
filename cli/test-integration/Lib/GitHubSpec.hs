@@ -2,9 +2,9 @@
 
 module Lib.GitHubSpec (githubSpec) where
 
-import Core.Types.Basic (Commit (..), Repository (..))
+import Core.Types.Basic (Commit (..), Directory (..), Repository (..))
 import GitHub (Auth)
-import Lib.GitHub (copyGithubDirectory)
+import Lib.GitHub (githubDownloadDirectory)
 import Path
     ( Dir
     , File
@@ -52,15 +52,17 @@ githubSpec = describe "Lib.GitHub" $ do
     it "downloads a directory" $ \pat ->
         withSystemTempDirectory "github-test" $ \targetPath -> do
             targetDir <- parseAbsDir targetPath
-            copyGithubDirectory pat repo commit srcPath targetDir
+            githubDownloadDirectory
+                pat
+                repo
+                commit
+                (Directory $ toFilePath srcPath)
+                (Directory targetPath)
                 `shouldReturn` Right ()
-            let readmeAbsPath = targetDir </> srcPath </> readmePath
+            let readmeAbsPath = targetDir </> readmePath
             doesFileExist (toFilePath readmeAbsPath) `shouldReturn` True
-            let dockerComposeAbsPath =
-                    targetDir
-                        </> srcPath
-                        </> dockerComposePath
+            let dockerComposeAbsPath = targetDir </> dockerComposePath
             doesFileExist (toFilePath dockerComposeAbsPath)
                 `shouldReturn` True
-            let testnetAbsPath = targetDir </> srcPath </> testnetPath
+            let testnetAbsPath = targetDir </> testnetPath
             doesFileExist (toFilePath testnetAbsPath) `shouldReturn` True

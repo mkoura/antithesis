@@ -106,10 +106,20 @@ anti requester generate-assets -D ./path/to/your/test/directory
 Once you modified them you can try to run them locally  with the `anti requester test-run` command.
 
 ```bash
-anti agent test-run -D ./path/to/your/test/directory
+anti agent test-run -D ./path/to/your/test/directory (TBD)
 ```
 
-Then commit and push the changes to your repository.
+Then commit and push the changes to your repository so you will have a commit hash to use when requesting the test-run.
+
+In general your test assets directory should contain at least a `docker-compose.yaml` file with all its images published on a public registry (like DockerHub or GHCR).
+Any other asset in the test assets directory can be made available to any of your containers via a bind mount from the current working directory on the host.
+
+i.e. if you have an asset file `myconfig.json` in the test directory, it will be available to a container if you add a volume mount like this to your `docker-compose.yaml` file:
+
+```yaml
+    volumes:
+      - ./myconfig.json:/etc/myapp/config.json:ro
+```
 
 ### Requesting a test-run
 

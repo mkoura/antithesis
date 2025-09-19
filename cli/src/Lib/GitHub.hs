@@ -223,6 +223,30 @@ data GetGithubFileFailure
     | GithubPathParsingError String
     deriving (Eq, Show)
 
+instance Monad m => ToJSON m GetGithubFileFailure where
+    toJSON GetGithubFileDirectoryNotFound =
+        object ["error" .= ("directory not found" :: String)]
+    toJSON GetGithubFileNotAFile =
+        object ["error" .= ("not a file" :: String)]
+    toJSON (GetGithubFileUnsupportedEncoding enc) =
+        object
+            [ "error"
+                .= ("unsupported encoding: " ++ enc)
+            ]
+    toJSON (GetGithubFileOtherFailure filename err) =
+        object
+            [ "error"
+                .= ( "error fetching file "
+                        ++ filename
+                        ++ ": "
+                        ++ err
+                   )
+            ]
+    toJSON (GetGithubFileCodeError err) =
+        object ["error" .= ("GitHub response code error: " ++ show err)]
+    toJSON (GithubPathParsingError err) =
+        object ["error" .= ("path parsing error: " ++ err)]
+
 instance Exception GetGithubFileFailure
 
 githubGetFile

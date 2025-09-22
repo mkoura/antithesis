@@ -160,7 +160,7 @@ generateAssets (Directory targetDirectory) = do
                     $ githubDownloadDirectory
                         (Repository "cardano-foundation" "antithesis")
                         Nothing
-                        (Directory "compose/testnet/cardano_node_master")
+                        (Directory "compose/testnets/cardano_node_master")
                         (Directory targetDirectory)
             throwLeft id r $> Success
 
